@@ -29,6 +29,10 @@ icon_path = {'pre_processing': os.path.join(icon_dir, 'pre_processing_icon.png')
              'save': os.path.join(icon_dir, 'save_icon.png'),
              'close': os.path.join(icon_dir, 'close_icon.png')}
 
+# parameter/resource folder paths
+para_dir = os.path.join(os.getcwd(), 'resources', 'parameters').replace('\\', '/')
+para_file = os.path.join(para_dir, 'test2.spp').replace('\\', '/')
+
 # widget stylesheets
 toolbar_style = """
     QToolBar {
@@ -51,10 +55,6 @@ hdr_hght = 52
 dlg_wid, dlg_hght, grp_wid = 900, 450, 200
 combo_wid, combo_hght = 200, 22
 edit_wid, edit_hght = 200, 20
-
-# test fields (REMOVE ME LATER)
-para_dir = os.path.join(os.getcwd(), 'resources', 'parameters').replace('\\', '/')
-para_file = os.path.join(para_dir, 'test.spp').replace('\\', '/')
 
 
 class PreProcessDialog(QMainWindow):
@@ -104,6 +104,10 @@ class PreProcessDialog(QMainWindow):
 
         :return:
         """
+
+        # # # REMOVE ME LATER
+        # with open(para_file, 'rb') as f:
+        #     self.p_dict = pickle.load(f)
 
         # initialises the parameter information fields
         self.setup_para_info_fields()
@@ -396,6 +400,7 @@ class PreProcessDialog(QMainWindow):
 
                 # creates the tab-group widget
                 obj_tab_grp = create_tab_group(None)
+                obj_tab_grp.setObjectName(p_name)
 
                 # adds the tab group to the layout
                 layout.addRow(obj_tab_grp)
@@ -405,8 +410,12 @@ class PreProcessDialog(QMainWindow):
                     h_tab = self.create_para_object(None, ps_t, ps['ch_fld'][ps_t], p_str_l + [ps_t])
                     obj_tab_grp.addTab(h_tab, ps['ch_fld'][ps_t]['name'])
 
+                if ps['value'] is not None:
+                    h_tab = obj_tab_grp.findChildren(QWidget, ps['value'])[0]
+                    obj_tab_grp.setCurrentWidget(h_tab)
+
                 # sets up the slot function
-                cb_fcn = functools.partial(self.tab_change, obj_tab_grp)
+                cb_fcn = functools.partial(self.tab_change, obj_tab_grp, p_str_l)
                 obj_tab_grp.currentChanged.connect(cb_fcn)
 
                 # exits the function
@@ -517,13 +526,15 @@ class PreProcessDialog(QMainWindow):
     # --- WIDGET EVENT FUNCTIONS --- #
     # ------------------------------ #
 
-    def tab_change(self, h_tab_grp):
+    def tab_change(self, h_tab_grp, p_str_l):
         """
 
         :return:
         """
 
-        a = 1
+        # updates the selected tab value
+        p_tab_sel = h_tab_grp.currentWidget().objectName()
+        set_multi_dict_value(self.p_dict, p_str_l + [p_str_l[-1]], p_tab_sel)
 
     def para_tab_change(self, p_str):
         """
@@ -728,7 +739,7 @@ class PreProcessDialog(QMainWindow):
         pp_m5 = {'scheme': self.create_para_field('Scheme', 'edit', 2, p_fld='mountainsort5'),
                  'filter': self.create_para_field('Filter', 'checkbox', False, p_fld='mountainsort5'), }
 
-        # sets the tab parameter fields
+        # sets the sorting tab group parameter fields
         p_tmp[pp_str[5]]['ch_fld'] = {
             'kilosort2': self.create_para_field('Kilosort 2', 'tab', None, ch_fld=pp_k2),
             'kilosort2_5': self.create_para_field('Kilosort 2.5', 'tab', None, ch_fld=pp_k2_5),
@@ -737,7 +748,7 @@ class PreProcessDialog(QMainWindow):
         }
 
         # updates the class field
-        self.p_info['pre_processing'] = {'name': 'Pre-Processing', 'ch_fld': p_tmp}
+        self.p_info['pre_processing'] = {'name': 'Pre-Processing', 'type': 'group', 'ch_fld': p_tmp}
 
         # ------------------------------ #
         # --- PRE-PROCESSING OBJECTS --- #
@@ -779,7 +790,7 @@ class PreProcessDialog(QMainWindow):
         }
 
         # updates the class field
-        self.p_info['general'] = {'name': 'General', 'ch_fld': p_tmp}
+        self.p_info['general'] = {'name': 'General', 'type': 'group', 'ch_fld': p_tmp}
 
     # ------------------------------- #
     # --- MISCELLANEOUS FUNCTIONS --- #
@@ -825,10 +836,21 @@ class PreProcessDialog(QMainWindow):
             # sets the children nodes (if any)
             if ps_info[ps]['ch_fld'] is not None:
                 if ps_info[ps]['type'] == 'checkpanel':
+                    # case is a checkpanel widget
                     self.init_group_para_fields(ps_info[ps]['ch_fld'], k)
 
                 else:
+                    # case is another widget type
                     self.init_group_para_fields(ps_info[ps]['ch_fld'], ks)
+
+                    # appends the parameter fields for tab groups
+                    if ps_info[ps]['type'] == 'tabgroup':
+                        # initialises the value field (if empty)
+                        if ps_info[ps]['value'] is None:
+                            ps_info[ps]['value'] = list(ps_info[ps]['ch_fld'].keys())[0]
+
+                        # appends the parameter value to the dictionary
+                        set_multi_dict_value(self.p_dict, ks + [ps], ps_info[ps]['value'])
 
     def reset_para_info_value(self, ps, pd):
         """
@@ -841,17 +863,15 @@ class PreProcessDialog(QMainWindow):
             if k not in pd:
                 continue
 
-            # determines if the object is a checkbox panel
-            if 'type' in ps[k]:
-                is_chkpanel = ps[k]['type'] == 'checkpanel'
-
-            else:
-                is_chkpanel = False
-
-            if is_chkpanel:
+            if ps[k]['type'] == 'checkpanel':
                 # case is a checkbox panel object
                 ps[k]['value'] = pd[k]
                 self.reset_para_info_value(ps[k]['ch_fld'], pd)
+
+            elif ps[k]['type'] == 'tabgroup':
+                # case is a tabgroup object
+                ps[k]['value'] = pd[k][k]
+                self.reset_para_info_value(ps[k]['ch_fld'], pd[k])
 
             elif isinstance(pd[k], dict):
                 # case is a parent branch field
@@ -881,6 +901,7 @@ class PreProcessDialog(QMainWindow):
                 h_obj_c = h_obj.findChildren(QWidget, k)
 
             if len(h_obj_c) == 0:
+                # if there are no matches, then continue
                 continue
 
             elif isinstance(d[k], dict):
@@ -909,6 +930,11 @@ class PreProcessDialog(QMainWindow):
                     # case is a groupbox widget
                     h_obj_c[0].setChecked(p_val)
                     h_obj_c[0].clicked.emit()
+
+                elif isinstance(h_obj_c[0], QTabWidget):
+                    # case is a tabgroup widget
+                    h_tab_sel = h_obj_c[0].findChildren(QWidget, p_val)[0]
+                    h_obj_c[0].setCurrentWidget(h_tab_sel)
 
     def set_styles(self):
         """
