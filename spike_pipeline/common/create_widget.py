@@ -1394,13 +1394,11 @@ class QCollapseGroup(QWidget):
         """
 
         self.group_panel.setStyleSheet("background-color: rgba(240, 240, 255, 255) ;")
-        self.expand_button.setStyleSheet("""
-            QPushButton {
-                text-align:left;
-                background-color: rgba(26, 83, 200, 255) ;
-                color: rgba(255, 255, 255, 255) ;
-            }""")
-
+        self.expand_button.setStyleSheet("text-align:left;"
+                                         "background-color: rgba(26, 83, 200, 255) ;"
+                                         "color: rgba(255, 255, 255, 255) ;"
+                                         "border-top-left-radius: 10px;"
+                                         "border-top-right-radius: 10px")
 
 ########################################################################################################################
 ########################################################################################################################
