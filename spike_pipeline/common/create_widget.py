@@ -1,10 +1,12 @@
 # module import
 import os
+import re
 import pickle
 import functools
 from copy import deepcopy
 
 # pyqt6 module import
+import numpy as np
 from PyQt6.QtWidgets import (QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QPushButton, QGroupBox, QTabWidget,
                              QFormLayout, QLabel, QCheckBox, QLineEdit, QComboBox, QToolBar, QSizePolicy,
                              QMessageBox, QScrollArea, QFileDialog, QDialog)
@@ -27,7 +29,8 @@ icon_path = {'pre_processing': os.path.join(icon_dir, 'pre_processing_icon.png')
              'reset': os.path.join(icon_dir, 'reset_icon.png'),
              'open': os.path.join(icon_dir, 'open_icon.png'),
              'save': os.path.join(icon_dir, 'save_icon.png'),
-             'close': os.path.join(icon_dir, 'close_icon.png')}
+             'close': os.path.join(icon_dir, 'close_icon.png'),
+             'search': os.path.join(icon_dir, 'search_icon')}
 
 # parameter/resource folder paths
 para_dir = os.path.join(os.getcwd(), 'resources', 'parameters').replace('\\', '/')
@@ -45,11 +48,24 @@ toolbar_style = """
     }
 """
 
+gbox_style_on = """
+    QGroupBox::title {
+        background-color: yellow;
+    }
+"""
+
+gbox_style_off = """
+    QGroupBox::title {
+    }
+"""
+
 # other initialisations
+q_fix = QSizePolicy.Policy.Fixed
 q_exp = QSizePolicy.Policy.Expanding
 q_yes_no = QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
 
 # parameters
+x_gap = 20
 w_space = 10
 hdr_hght = 52
 dlg_wid, dlg_hght, grp_wid = 900, 450, 200
@@ -105,10 +121,6 @@ class PreProcessDialog(QMainWindow):
         :return:
         """
 
-        # # # REMOVE ME LATER
-        # with open(para_file, 'rb') as f:
-        #     self.p_dict = pickle.load(f)
-
         # initialises the parameter information fields
         self.setup_para_info_fields()
 
@@ -137,15 +149,20 @@ class PreProcessDialog(QMainWindow):
         self.group_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
         self.group_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.group_scroll.setFixedHeight(dlg_hght + hdr_hght)
-        self.group_scroll.setFixedWidth(grp_wid)
+        self.group_scroll.setFixedWidth(grp_wid + x_gap)
 
         # sets the parameter tab layout properties
         self.para_layout.setSpacing(0)
         self.para_layout.setContentsMargins(0, hdr_hght, 0, 0)
 
         # sets the parameter widget properties
-        self.h_widget_para.setGeometry(grp_wid, 0, dlg_wid - grp_wid, dlg_hght + hdr_hght)
+        self.h_widget_para.setGeometry(grp_wid + x_gap, 0, dlg_wid - (x_gap + grp_wid), dlg_hght + hdr_hght)
         self.h_widget_para.setLayout(self.para_layout)
+
+        # sets up the search widget
+        self.search_dlg = QSearchWidget(self)
+        self.search_dlg.setFixedWidth(grp_wid)
+        self.group_layout.addRow(self.search_dlg)
 
     def setup_dialog(self):
         """
@@ -393,6 +410,9 @@ class PreProcessDialog(QMainWindow):
                 layout.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
                 h_panel.setLayout(layout)
 
+                # appends the parameter search
+                self.search_dlg.append_para_obj(h_panel, ps['name'], p_str_l[1])
+
                 # self.group_panel_click(h_panel, p_str_l)
 
             case 'tabgroup':
@@ -471,6 +491,9 @@ class PreProcessDialog(QMainWindow):
                 obj_edit.setFixedSize(edit_wid, edit_hght)
                 obj_lbl.setStyleSheet('padding-top: 2 px;')
 
+                # appends the parameter search objects
+                self.search_dlg.append_para_obj(obj_lbl, ps['name'], p_str_l[1])
+
                 # self.edit_para_change(obj_edit, p_str_l)
 
             case 'combobox':
@@ -488,19 +511,25 @@ class PreProcessDialog(QMainWindow):
                 obj_cbox.setFixedSize(combo_wid, combo_hght)
                 obj_lbl.setStyleSheet('padding-top: 3 px;')
 
+                # appends the parameter search objects
+                self.search_dlg.append_para_obj(obj_lbl, ps['name'], p_str_l[1])
+
                 # self.combobox_para_change(obj_cbox, p_str_l)
 
             case 'checkbox':
                 # case is a checkbox
 
                 # creates the checkbox widget
-                obj_checkbox = create_check_box(
+                obj_checkbox = QCheckboxHTML(
                     None, ps['name'], ps['value'], font=self.font_lbl, name=p_name)
                 layout.addRow(obj_checkbox)
 
                 # sets up the slot function
                 cb_fcn = functools.partial(self.checkbox_para_change, obj_checkbox, p_str_l)
-                obj_checkbox.stateChanged.connect(cb_fcn)
+                obj_checkbox.h_chk.stateChanged.connect(cb_fcn)
+
+                # appends the parameter search objects
+                self.search_dlg.append_para_obj(obj_checkbox, ps['name'], p_str_l[1])
 
                 # self.checkbox_para_change(obj_checkbox, p_str_l)
 
@@ -508,12 +537,15 @@ class PreProcessDialog(QMainWindow):
                 # case is a file selection widget
 
                 # creates the file selection widget
-                h_filespec = QFileSpec(None, ps['name'], ps['value'], name=p_name, f_mode=ps['p_misc'])
-                layout.addRow(h_filespec)
+                obj_filespec = QFileSpec(None, ps['name'], ps['value'], name=p_name, f_mode=ps['p_misc'])
+                layout.addRow(obj_filespec)
 
                 # sets up the slot function
-                cb_fcn = functools.partial(self.button_file_spec, h_filespec, p_str_l)
-                h_filespec.h_but.clicked.connect(cb_fcn)
+                cb_fcn = functools.partial(self.button_file_spec, obj_filespec, p_str_l)
+                obj_filespec.h_but.clicked.connect(cb_fcn)
+
+                # appends the parameter search objects
+                self.search_dlg.append_para_obj(obj_filespec, ps['name'], p_str_l[1])
 
                 # self.button_file_spec(h_filespec, p_str_l)
 
@@ -606,7 +638,7 @@ class PreProcessDialog(QMainWindow):
         """
 
         # field retrieval
-        p_val = h_check.isChecked()
+        p_val = h_check.h_chk.isChecked()
 
         # updates the parameter dictionary
         set_multi_dict_value(self.p_dict, p_str_l, p_val)
@@ -677,9 +709,6 @@ class PreProcessDialog(QMainWindow):
         :return:
         """
 
-        # common properties
-        mu_str = get_greek_chr('mu')
-
         # ------------------------------ #
         # --- PRE-PROCESSING OBJECTS --- #
         # ------------------------------ #
@@ -719,7 +748,7 @@ class PreProcessDialog(QMainWindow):
         p_tmp[pp_str[3]]['ch_fld'] = {
             'apply_mean': self.create_para_field('Subtract Mean', 'checkbox', False),
             'mode': self.create_para_field('Mode', 'combobox', mode_list[0], p_list=mode_list),
-            'radius_um': self.create_para_field('Reference Radius ({0}m)'.format(mu_str), 'edit', 100),
+            'radius_um': self.create_para_field('Reference Radius (um)', 'edit', 100),
         }
 
         # drift correction parameters
@@ -776,7 +805,7 @@ class PreProcessDialog(QMainWindow):
         peak_sign_list = ['neg', 'pos']
         pp_sp = {'peak_sign': self.create_para_field('Operator', 'combobox', peak_sign_list[0], p_list=peak_sign_list),
                  'method': self.create_para_field('Method', 'combobox', method_list[0], p_list=method_list),
-                 'radius_um': self.create_para_field('Radius ({0}m)'.format(mu_str), 'edit', 75), }
+                 'radius_um': self.create_para_field('Radius (um)', 'edit', 75), }
 
         # sets the sparsity 
         p_tmp[pp_str[1]]['ch_fld'] = {
@@ -949,6 +978,160 @@ class PreProcessDialog(QMainWindow):
 ########################################################################################################################
 ########################################################################################################################
 
+# parameters
+but_hght = 24
+
+
+def add_highlight(s, i0, n):
+    '''
+
+    :param i0:
+    :param n:
+    :return:
+    '''
+
+    return '{0}{1}{2}'.format(s[0:i0], set_text_background_colour(s[i0:(i0+n)], 'yellow'), s[(i0+n):])
+
+
+class QSearchWidget(QWidget):
+    def __init__(self, parent=None):
+        super(QSearchWidget, self).__init__(parent)
+
+        # initialisations
+        self.n_grp, self.n_para = 0, 0
+        self.h_grp, self.h_para = {}, []
+        self.para_name0, self.para_name, self.para_grp, self.grp_name = [], [], [], []
+
+        # main widget layout
+        self.main_layout = QFormLayout()
+
+        # sets the widget properties
+        self.setFixedHeight(but_hght)
+
+        # initialises the class fields and objects
+        self.init_class_fields()
+        self.init_class_widgets()
+
+    def init_class_fields(self):
+        """
+
+        :return:
+        """
+
+        # creates the layout
+        self.main_layout.setSpacing(0)
+        self.main_layout.setContentsMargins(0, 0, 0, 0)
+        self.setLayout(self.main_layout)
+
+    def init_class_widgets(self):
+        """
+
+        :param self:
+        :return:
+        """
+
+        # creates the button object
+        self.h_lbl = create_text_label(None, '', None)
+        self.h_edit = create_line_edit(None, '', align='left')
+        self.main_layout.addRow(self.h_lbl, self.h_edit)
+
+        # sets the icon label properties
+        q_pixmap = QIcon(icon_path['search']).pixmap(QSize(but_hght, but_hght))
+        self.h_lbl.setPixmap(q_pixmap)
+        self.h_lbl.setContentsMargins(0, 0, 0, 0)
+        self.h_lbl.setFixedSize(but_hght, but_hght)
+
+        # sets the editbox properties
+        self.h_edit.setContentsMargins(0, 0, 0, 0)
+        self.h_edit.setFixedHeight(but_hght)
+        self.h_edit.setPlaceholderText('Search')
+        self.h_edit.textChanged.connect(self.edit_search_change)
+
+        # sets the stylesheet properties
+        self.setStyleSheet("background-color: rgba(255, 255, 255, 255) ;")
+        self.h_edit.setStyleSheet("background-color: rgba(255, 255, 255, 255) ;"
+                                  "qproperty-frame: False")
+
+    def edit_search_change(self):
+        """
+
+        :return:
+        """
+
+        # field retrieval
+        s_txt = self.h_edit.text().lower()
+        ns_txt = len(s_txt)
+
+        if ns_txt:
+            ind_s = [[m.start() for m in re.finditer(s_txt, n)] for n in self.para_name]
+        else:
+            ind_s = [[] for _ in range(self.n_para)]
+
+        # determines the groups which have a match
+        has_s = np.array([len(x) > 0 for x in ind_s])
+        grp_s = np.unique(np.array(self.para_grp)[has_s])
+
+        # updates the group text labels
+        for i, hg in enumerate(self.h_grp):
+            col = 'yellow' if hg in grp_s else 'rgba(240, 240, 255, 255)'
+            t_lbl = set_text_background_colour(self.grp_name[i], col)
+            self.h_grp[hg].setText(t_lbl)
+
+        # resets the parameter label strings
+        for ii, nn, hh in zip(ind_s, self.para_name0, self.h_para):
+            # sets the text highlight
+            for xi0 in np.flip(ii):
+                nn = add_highlight(nn, xi0, ns_txt)
+
+            # updates the parameter label text
+            if isinstance(hh, QGroupBox):
+                t_style = gbox_style_on if len(ii) else gbox_style_off
+                hh.setStyleSheet(t_style)
+
+            elif isinstance(hh, QCheckboxHTML):
+                hh.set_label_text(nn)
+
+            else:
+                hh.setText(nn)
+
+    def append_para_obj(self, h_obj, p_name, g_name):
+        """
+
+        :param h_obj:
+        :param p_name:
+        :param g_name:
+        :return:
+        """
+
+        # increments the count
+        self.n_para += 1
+        p_name_s = re.sub(r'\<[^>]*\>|[&;]+','', p_name)
+
+        # appends the objects
+        self.h_para.append(h_obj)
+        self.para_name.append(p_name_s.lower())
+        self.para_name0.append(p_name_s)
+        self.para_grp.append(g_name)
+
+    def append_grp_obj(self, h_obj, g_str, g_name):
+        '''
+
+        :param h_obj:
+        :param g_str:
+        :param g_name:
+        :return:
+        '''
+
+        # increments the count
+        self.n_grp += 1
+
+        # appends the objects
+        self.h_grp[g_str] = h_obj
+        self.grp_name.append(g_name)
+
+########################################################################################################################
+########################################################################################################################
+
 
 class QFileSpec(QGroupBox):
     def __init__(self, parent=None, grp_hdr=None, file_path=None, name=None, f_mode=None):
@@ -978,6 +1161,41 @@ class QFileSpec(QGroupBox):
         self.layout.addWidget(self.h_but)
         self.h_but.setFixedWidth(25)
 
+########################################################################################################################
+########################################################################################################################
+
+
+class QCheckboxHTML(QWidget):
+    def __init__(self, parent=None, text=None, state=False, font=None, name=None):
+        super(QCheckboxHTML, self).__init__(parent)
+
+        # creates the layout widget
+        self.layout = QHBoxLayout()
+        self.layout.setSpacing(3)
+        self.layout.setContentsMargins(0, 0, 0, 0)
+        self.setLayout(self.layout)
+
+        # creates the checkbox object
+        self.h_chk = create_check_box(None, '', state, name=name)
+        self.h_chk.adjustSize()
+        self.h_chk.setSizePolicy(QSizePolicy(q_fix, q_fix))
+
+        # creates the label object
+        self.h_lbl = create_text_label(None, text, font, align='left')
+        self.h_lbl.setStyleSheet('padding-bottom: 2px;')
+
+        # adds the widgets to the layout
+        self.layout.addWidget(self.h_chk)
+        self.layout.addWidget(self.h_lbl)
+
+    def set_label_text(self, t_lbl):
+        '''
+
+        :param t_lbl:
+        :return:
+        '''
+
+        self.h_lbl.setText(t_lbl)
 
 ########################################################################################################################
 ########################################################################################################################
@@ -1069,7 +1287,6 @@ class QCollapseGroup(QWidget):
         self.update_button_text()
 
         # resets the collapse panel size policy
-        q_fix = QSizePolicy.Policy.Fixed
         self.setSizePolicy(QSizePolicy(QSizePolicy.Policy.Preferred, q_fix))
 
     # ------------------------------ #
@@ -1088,6 +1305,9 @@ class QCollapseGroup(QWidget):
         h_gap = create_text_label(None, '', name=p_str)
         h_txt = create_text_label(None, p_info['name'], align='left', name=p_str)
 
+        h_txt.adjustSize()
+        h_txt.setSizePolicy(QSizePolicy(q_fix, q_fix))
+
         # sets the gap object properties
         h_gap.setFixedWidth(5)
         h_gap.setStyleSheet("background-color: rgba(240, 240, 255, 255) ;")
@@ -1099,12 +1319,16 @@ class QCollapseGroup(QWidget):
                 color: rgba(26, 83, 200, 255) ;
             }
             QLabel:hover {
-                color: rgba(255, 0, 0, 255) ;                
+                color: rgba(255, 0, 0, 255) ;
             }""")
 
         # adds the object to the layout
         self.form_layout.addRow(h_gap, h_txt)
         self.orig_hght = self.height()
+
+        # appends the group
+        h_root = get_parent_widget(self, PreProcessDialog)
+        h_root.search_dlg.append_grp_obj(h_txt, p_str, p_info['name'])
 
     # ----------------------- #
     # --- EVENT FUNCTIONS --- #
@@ -1537,3 +1761,14 @@ def set_text_colour(text, col='black'):
     """
 
     return '<span style="color:{0}">{1}</span>'.format(col, text)
+
+
+def set_text_background_colour(text, col='black'):
+    """
+
+    :param text:
+    :param col:
+    :return:
+    """
+
+    return '<span style="background-color: {0}">{1}</span>'.format(col, text)
