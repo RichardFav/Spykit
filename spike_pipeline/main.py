@@ -29,57 +29,81 @@ if __name__ == '__main__':
     # Run the main Qt loop
     sys.exit(app.exec())
 
+
 # import sys
-# from PyQt5.QtWidgets import QVBoxLayout, QLabel, QDesktopWidget, QWidget, QApplication
-# from PyQt5.QtCore import Qt
+# import time
+#
+# import numpy as np
+#
+# from matplotlib.backends.backend_qtagg import FigureCanvas
+# from matplotlib.backends.backend_qtagg import \
+#     NavigationToolbar2QT as NavigationToolbar
+# from matplotlib.backends.qt_compat import QtWidgets
+# from matplotlib.figure import Figure
 #
 #
-# class SpecialBG(QLabel):
-#     def __init__(self, parent):
-#         QLabel.__init__(self, parent)
-#         # mess with border-radius, thatDarklordGuy!
-#         self.setStyleSheet("""
-#                 color: rgba(237,174,28,100%);
-#                 background-color: rgba(0,0,0,100%);
-#                 text-align: center;
-#                 border-radius: 50px;
-#                 border: 1px solid rgba(237,174,28,100%);
-#                 padding: 0px;
-#                 """)
-#
-#
-# class SimpleRoundedCorners(QWidget):
+# class ApplicationWindow(QtWidgets.QMainWindow):
 #     def __init__(self):
-#         super(SimpleRoundedCorners, self).__init__()
-#         self.initUI()
+#         super().__init__()
+#         self._main = QtWidgets.QWidget()
+#         self.setCentralWidget(self._main)
+#         layout = QtWidgets.QVBoxLayout(self._main)
 #
-#     def initUI(self):
-#         winwidth = 320
-#         winheight = 320
-#         VBox = QVBoxLayout()
-#         roundyround = SpecialBG(self)
-#         VBox.addWidget(roundyround)
-#         self.setLayout(VBox)
-#         # transparency cannot be set for window BG in style sheets, so...
-#         # self.setWindowOpacity(0.5)
-#         self.setWindowFlags(
-#             Qt.FramelessWindowHint  # hides the window controls
-#             | Qt.WindowStaysOnTopHint  # forces window to top... maybe
-#             | Qt.SplashScreen  # this one hides it from the task bar!
-#         )
-#         # alternative way of making base window transparent
-#         self.setAttribute(Qt.WA_TranslucentBackground, True)  # 100% transparent
+#         static_canvas = FigureCanvas(Figure(figsize=(5, 3)))
+#         # Ideally one would use self.addToolBar here, but it is slightly
+#         # incompatible between PyQt6 and other bindings, so we just add the
+#         # toolbar as a plain widget instead.
+#         layout.addWidget(NavigationToolbar(static_canvas, self))
+#         layout.addWidget(static_canvas)
 #
-#         self.setGeometry(0, 0, winwidth, winheight)
-#         self.setWindowTitle('Simple Rounded Corners')
-#         self.show()
+#         dynamic_canvas = FigureCanvas(Figure(figsize=(5, 3)))
+#         layout.addWidget(dynamic_canvas)
+#         layout.addWidget(NavigationToolbar(dynamic_canvas, self))
+#
+#         self._static_ax = static_canvas.figure.subplots()
+#         t = np.linspace(0, 10, 501)
+#         self._static_ax.plot(t, np.tan(t), ".")
+#
+#         self._dynamic_ax = dynamic_canvas.figure.subplots()
+#         # Set up a Line2D.
+#         self.xdata = np.linspace(0, 10, 101)
+#         self._update_ydata()
+#         self._line, = self._dynamic_ax.plot(self.xdata, self.ydata)
+#         # The below two timers must be attributes of self, so that the garbage
+#         # collector won't clean them after we finish with __init__...
+#
+#         # The data retrieval may be fast as possible (Using QRunnable could be
+#         # even faster).
+#         self.data_timer = dynamic_canvas.new_timer(1)
+#         self.data_timer.add_callback(self._update_ydata)
+#         self.data_timer.start()
+#         # Drawing at 50Hz should be fast enough for the GUI to feel smooth, and
+#         # not too fast for the GUI to be overloaded with events that need to be
+#         # processed while the GUI element is changed.
+#         self.drawing_timer = dynamic_canvas.new_timer(20)
+#         self.drawing_timer.add_callback(self._update_canvas)
+#         self.drawing_timer.start()
+#
+#     def _update_ydata(self):
+#         # Shift the sinusoid as a function of time.
+#         self.ydata = np.sin(self.xdata + time.time())
+#
+#     def _update_canvas(self):
+#         self._line.set_data(self.xdata, self.ydata)
+#         # It should be safe to use the synchronous draw() method for most drawing
+#         # frequencies, but it is safer to use draw_idle().
+#         self._line.figure.canvas.draw_idle()
 #
 #
-# def main():
-#     app = QApplication(sys.argv)
-#     alldone = SimpleRoundedCorners()
-#     sys.exit(app.exec_())
+# if __name__ == "__main__":
+#     # Check whether there is already a running QApplication (e.g., if running
+#     # from an IDE).
+#     qapp = QtWidgets.QApplication.instance()
+#     if not qapp:
+#         qapp = QtWidgets.QApplication(sys.argv)
 #
-#
-# if __name__ == '__main__':
-#     main()
+#     app = ApplicationWindow()
+#     app.show()
+#     app.activateWindow()
+#     app.raise_()
+#     qapp.exec()

@@ -2,11 +2,12 @@
 import os
 import sys
 from importlib import reload
-from PyQt6.QtWidgets import QDialog, QVBoxLayout, QScrollArea, QWidget
+from PyQt6.QtWidgets import QDialog, QVBoxLayout
 
 # other imports
 import spike_pipeline.common.misc_func as mf
-import spike_pipeline.common.create_widget as cw
+import spike_pipeline.common.common_widget as cw
+from  spike_pipeline.widgets.para_dialog import PreProcessDialog
 
 ########################################################################################################################
 ########################################################################################################################
@@ -88,4 +89,4 @@ class Testing(object):
         '''
 
         # creates the parameter panel object
-        return cw.PreProcessDialog()
+        return PreProcessDialog()
