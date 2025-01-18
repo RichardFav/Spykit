@@ -278,6 +278,9 @@ class PreProcessDialog(QMainWindow):
             h_panel_c.is_expanded = h_panel_c.is_expanded ^ True
             h_panel_c.update_button_text()
 
+            f_style = cw.expand_style if h_panel_c.is_expanded else cw.close_style
+            h_panel_c.expand_button.setStyleSheet(f_style)
+
     def link_click(self, h_txt, evnt=None):
         """
 
