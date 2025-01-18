@@ -5,12 +5,18 @@ from PyQt6.QtCore import Qt
 # other initialisations
 q_fix = QSizePolicy.Policy.Fixed
 q_exp = QSizePolicy.Policy.Expanding
+
+q_yes = QMessageBox.StandardButton.Yes
 q_yes_no = QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
 
 # common parameters
 align_type = {'centre': Qt.AlignmentFlag.AlignCenter,
               'left': Qt.AlignmentFlag.AlignLeft,
               'right': Qt.AlignmentFlag.AlignRight}
+
+# widget dimensions
+edit_height = 20
+combo_height = 22
 
 ########################################################################################################################
 

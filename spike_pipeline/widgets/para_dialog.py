@@ -60,10 +60,10 @@ gbox_style_off = """
 # parameters
 x_gap = 20
 
-hdr_hght = 52
-dlg_wid, dlg_hght, grp_wid = 900, 450, 200
-combo_wid, combo_hght = 200, 22
-edit_wid, edit_hght = 200, 20
+# widget dimensions
+hdr_height, dlg_height = 52, 450
+dlg_width, grp_width = 900, 200
+combo_width, edit_width = 200, 200
 
 ########################################################################################################################
 
@@ -85,6 +85,11 @@ class PreProcessDialog(QMainWindow):
         self.group_layout = QFormLayout()
         self.group_scroll = QScrollArea(self)
         self.para_layout = QFormLayout()
+        self.search_dlg = QSearchWidget(self)
+
+        # label/header font objects
+        self.font_lbl = cw.create_font_obj(is_bold=True, font_weight=QFont.Weight.Bold)
+        self.font_hdr = cw.create_font_obj(size=9, is_bold=True, font_weight=QFont.Weight.Bold)
 
         # initialises the class fields
         self.init_class_fields()
@@ -129,14 +134,10 @@ class PreProcessDialog(QMainWindow):
             self.p_dict0 = deepcopy(self.p_dict)
             self.reset_para_info_value(self.p_info, self.p_dict)
 
-        # label/header font objects
-        self.font_hdr = cw.create_font_obj(size=9, is_bold=True, font_weight=QFont.Weight.Bold)
-        self.font_lbl = cw.create_font_obj(is_bold=True, font_weight=QFont.Weight.Bold)
-
         # sets the group layout properties
         self.group_layout.setSpacing(0)
         self.group_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-        self.group_layout.setContentsMargins(0, hdr_hght, 0, 0)
+        self.group_layout.setContentsMargins(0, hdr_height, 0, 0)
         self.h_widget_group.setLayout(self.group_layout)
 
         # sets the scroll area properties
@@ -144,20 +145,19 @@ class PreProcessDialog(QMainWindow):
         self.group_scroll.setWidget(self.h_widget_group)
         self.group_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
         self.group_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self.group_scroll.setFixedHeight(dlg_hght + hdr_hght)
-        self.group_scroll.setFixedWidth(grp_wid + x_gap)
+        self.group_scroll.setFixedHeight(dlg_height + hdr_height)
+        self.group_scroll.setFixedWidth(grp_width + x_gap)
 
         # sets the parameter tab layout properties
         self.para_layout.setSpacing(0)
-        self.para_layout.setContentsMargins(0, hdr_hght, 0, 0)
+        self.para_layout.setContentsMargins(0, hdr_height, 0, 0)
 
         # sets the parameter widget properties
-        self.h_widget_para.setGeometry(grp_wid + x_gap, 0, dlg_wid - (x_gap + grp_wid), dlg_hght + hdr_hght)
+        self.h_widget_para.setGeometry(grp_width + x_gap, 0, dlg_width - (x_gap + grp_width), dlg_height + hdr_height)
         self.h_widget_para.setLayout(self.para_layout)
 
         # sets up the search widget
-        self.search_dlg = QSearchWidget(self)
-        self.search_dlg.setFixedWidth(grp_wid)
+        self.search_dlg.setFixedWidth(grp_width)
         self.group_layout.addRow(self.search_dlg)
 
     def setup_dialog(self):
@@ -167,7 +167,7 @@ class PreProcessDialog(QMainWindow):
         """
 
         # creates the dialog window
-        self.setFixedSize(dlg_wid, dlg_hght + hdr_hght)
+        self.setFixedSize(dlg_width, dlg_height + hdr_height)
         self.setWindowTitle("SpikeInterface Parameters")
 
     def setup_toolbar(self):
@@ -251,6 +251,8 @@ class PreProcessDialog(QMainWindow):
     def set_panel_events(self, h_panel_c, evnt=None):
         """
 
+        :param h_panel_c:
+        :param evnt:
         :return:
         """
 
@@ -380,7 +382,7 @@ class PreProcessDialog(QMainWindow):
         if (self.p_dict != self.p_dict0) and (self.p_dict0 is not None):
             # if there is a parameter change, then prompt the user if they want to change
             q_str = 'There are outstanding changes which have not been save.\nDo you still want to close the window?'
-            u_choice = QMessageBox.question(self, 'Reset Parameters?', q_str, cf.q_yes_no, QMessageBox.StandardButton.Yes)
+            u_choice = QMessageBox.question(self, 'Reset Parameters?', q_str, cf.q_yes_no, cf.q_yes)
             if u_choice == QMessageBox.StandardButton.No:
                 # exit if they cancelled
                 return
@@ -544,7 +546,7 @@ class PreProcessDialog(QMainWindow):
                 # sets up the label/editbox slot function
                 cb_fcn = functools.partial(self.edit_para_change, obj_edit, p_str_l)
                 obj_edit.editingFinished.connect(cb_fcn)
-                obj_edit.setFixedSize(edit_wid, edit_hght)
+                obj_edit.setFixedSize(edit_width, cf.edit_height)
                 obj_lbl.setStyleSheet('padding-top: 2 px;')
 
                 # appends the parameter search objects
@@ -564,7 +566,7 @@ class PreProcessDialog(QMainWindow):
                 # sets up the slot function
                 cb_fcn = functools.partial(self.combobox_para_change, obj_cbox, p_str_l)
                 obj_cbox.currentIndexChanged.connect(cb_fcn)
-                obj_cbox.setFixedSize(combo_wid, combo_hght)
+                obj_cbox.setFixedSize(combo_width, cf.combo_height)
                 obj_lbl.setStyleSheet('padding-top: 3 px;')
 
                 # appends the parameter search objects
@@ -687,9 +689,10 @@ class PreProcessDialog(QMainWindow):
 
     def checkbox_para_change(self, h_check, p_str_l, evnt=None):
         """
-
+        
         :param h_check:
         :param p_str_l:
+        :param evnt:
         :return:
         """
 
@@ -1005,11 +1008,11 @@ class PreProcessDialog(QMainWindow):
                 continue
 
             elif isinstance(d[k], dict):
-                # sub-field is a dictionary field
+                # subfield is a dictionary field
                 self.reset_para_fields(d[k], kp + [k], h_obj_c[0])
 
             else:
-                # sub-field is a widget field
+                # subfield is a widget field
                 p_val = cf.get_multi_dict_value(self.p_dict, kp + [k])
                 if isinstance(h_obj_c[0], QLineEdit):
                     # case is a lineedit widget
@@ -1049,16 +1052,17 @@ class PreProcessDialog(QMainWindow):
 ########################################################################################################################
 
 # parameters
-but_hght = 24
+but_height = 24
 
 
 def add_highlight(s, i0, n):
-    '''
+    """
 
+    :param s: 
     :param i0:
     :param n:
     :return:
-    '''
+    """
 
     return '{0}{1}{2}'.format(s[0:i0], cf.set_text_background_colour(s[i0:(i0+n)], 'yellow'), s[(i0+n):])
 
@@ -1075,8 +1079,12 @@ class QSearchWidget(QWidget):
         # main widget layout
         self.main_layout = QFormLayout()
 
+        # other widget setup
+        self.h_lbl = cw.create_text_label(None, '', None)
+        self.h_edit = cw.create_line_edit(None, '', align='left')
+
         # sets the widget properties
-        self.setFixedHeight(but_hght)
+        self.setFixedHeight(but_height)
 
         # initialises the class fields and objects
         self.init_class_fields()
@@ -1101,19 +1109,17 @@ class QSearchWidget(QWidget):
         """
 
         # creates the button object
-        self.h_lbl = cw.create_text_label(None, '', None)
-        self.h_edit = cw.create_line_edit(None, '', align='left')
         self.main_layout.addRow(self.h_lbl, self.h_edit)
 
         # sets the icon label properties
-        q_pixmap = QIcon(icon_path['search']).pixmap(QSize(but_hght, but_hght))
+        q_pixmap = QIcon(icon_path['search']).pixmap(QSize(but_height, but_height))
         self.h_lbl.setPixmap(q_pixmap)
         self.h_lbl.setContentsMargins(0, 0, 0, 0)
-        self.h_lbl.setFixedSize(but_hght, but_hght)
+        self.h_lbl.setFixedSize(but_height, but_height)
 
         # sets the editbox properties
         self.h_edit.setContentsMargins(0, 0, 0, 0)
-        self.h_edit.setFixedHeight(but_hght)
+        self.h_edit.setFixedHeight(but_height)
         self.h_edit.setPlaceholderText('Search')
         self.h_edit.textChanged.connect(self.edit_search_change)
 
@@ -1184,13 +1190,13 @@ class QSearchWidget(QWidget):
         self.para_grp.append(g_name)
 
     def append_grp_obj(self, h_obj, g_str, g_name):
-        '''
+        """
 
         :param h_obj:
         :param g_str:
         :param g_name:
         :return:
-        '''
+        """
 
         # increments the count
         self.n_grp += 1

@@ -1,14 +1,9 @@
-# module import
-import os
-import functools
-
 # custom module import
 import spike_pipeline.common.common_func as cf
 
 # pyqt6 module import
 from PyQt6.QtWidgets import (QWidget, QHBoxLayout, QVBoxLayout, QPushButton, QGroupBox, QTabWidget,
-                             QFormLayout, QLabel, QCheckBox, QLineEdit, QComboBox, QSizePolicy,
-                             QMessageBox, QFileDialog)
+                             QFormLayout, QLabel, QCheckBox, QLineEdit, QComboBox, QSizePolicy, QFileDialog)
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
 
@@ -143,6 +138,7 @@ close_style = """
     border-bottom-left-radius: 10px;
     border-bottom-right-radius: 10px;
 """
+
 
 # lambda function declarations
 def arr_chr(is_chk):
