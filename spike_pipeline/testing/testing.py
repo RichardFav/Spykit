@@ -2,12 +2,15 @@
 import os
 import sys
 from importlib import reload
+
+# pyqt6 module import
 from PyQt6.QtWidgets import QDialog, QVBoxLayout
 
 # other imports
 import spike_pipeline.common.misc_func as mf
 import spike_pipeline.common.common_widget as cw
-from  spike_pipeline.widgets.para_dialog import PreProcessDialog
+from spike_pipeline.widgets.para_dialog import ParaDialog
+from spike_pipeline.widgets.plot_widget import QPlotWidgetMain, QPlotCanvas
 
 ########################################################################################################################
 ########################################################################################################################
@@ -28,10 +31,10 @@ class Testing(object):
         self.test_type = test_type
 
     def run_test(self):
-        '''
+        """
 
         :return:
-        '''
+        """
 
         match self.test_type:
             case 0:
@@ -46,11 +49,15 @@ class Testing(object):
                 # case is the parameter dialog test
                 return self.run_para_dialog_test()
 
+            case 3:
+                # case is the plot dialog test
+                return self.run_plot_dialog_test()
+
     def run_dialog_test(self, title_str="My Dialog"):
-        '''
+        """
 
         :return:
-        '''
+        """
 
         dlg = QDialog()
         dlg.setWindowTitle(title_str)
@@ -58,10 +65,10 @@ class Testing(object):
         return dlg
 
     def run_para_widget_test(self):
-        '''
+        """
 
         :return:
-        '''
+        """
 
         # parameters
         dlg_wid, dlg_hght = 300, 600
@@ -83,10 +90,19 @@ class Testing(object):
         return dlg
 
     def run_para_dialog_test(self):
-        '''
+        """
 
         :return:
-        '''
+        """
 
         # creates the parameter panel object
-        return PreProcessDialog()
+        return ParaDialog()
+
+    def run_plot_dialog_test(self):
+        """
+
+        :return:
+        """
+
+        # creates the parameter panel object
+        return QPlotWidgetMain()

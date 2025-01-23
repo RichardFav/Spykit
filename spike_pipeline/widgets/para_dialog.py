@@ -12,11 +12,11 @@ import spike_pipeline.common.common_func as cf
 # pyqt6 module import
 import numpy as np
 from PyQt6.QtWidgets import (QMainWindow, QWidget, QGroupBox, QTabWidget, QFormLayout, QCheckBox, QLineEdit,
-                             QComboBox, QToolBar, QSizePolicy, QMessageBox, QScrollArea, QDialog, QLabel)
+                             QComboBox, QToolBar, QSizePolicy, QMessageBox, QScrollArea, QDialog, QLabel,
+                             QHBoxLayout, QMenuBar)
 from PyQt6.QtGui import QFont, QIcon, QAction, QMouseEvent
 from PyQt6.QtCore import Qt, QSize
 
-########################################################################################################################
 ########################################################################################################################
 
 # file path/filter modes
@@ -61,16 +61,14 @@ gbox_style_off = """
 x_gap = 20
 
 # widget dimensions
-hdr_height, dlg_height = 52, 450
+hdr_height, dlg_height = 63, 450
 dlg_width, grp_width = 900, 200
 combo_width, edit_width = 200, 200
 
-########################################################################################################################
 
-
-class PreProcessDialog(QMainWindow):
+class ParaDialog(QMainWindow):
     def __init__(self, p_dict0=None):
-        super(PreProcessDialog, self).__init__()
+        super(ParaDialog, self).__init__()
 
         # field initialisation
         self.p_info = {}
@@ -79,13 +77,17 @@ class PreProcessDialog(QMainWindow):
         self.is_updating = False
         self.p_dict, self.p_dict0 = p_dict0, None
 
+        # sets up the main layout
+        self.main_layout = QHBoxLayout()
+        self.setLayout(self.main_layout)
+
         # widget setup
-        self.h_widget_group = QWidget()
-        self.h_widget_para = QWidget(self)
-        self.group_layout = QFormLayout()
         self.group_scroll = QScrollArea(self)
+        self.h_widget_group = QWidget()
+        self.group_layout = QFormLayout()
+        self.h_widget_para = QWidget(self)
         self.para_layout = QFormLayout()
-        self.search_dlg = QSearchWidget(self)
+        self.search_dlg = QSearchWidget()
 
         # label/header font objects
         self.font_lbl = cw.create_font_obj(is_bold=True, font_weight=QFont.Weight.Bold)
@@ -94,13 +96,13 @@ class PreProcessDialog(QMainWindow):
         # initialises the class fields
         self.init_class_fields()
 
-        # initialises the group fields
-        self.setup_dialog()
-        self.setup_toolbar()
-
         # sets up the objects for each parameter group
         for i, p in enumerate(self.p_info):
             self.setup_group_objects(p, i)
+
+        # initialises the group fields
+        self.setup_dialog()
+        self.setup_toolbar()
 
         # resets the selected group/parameter index
         self.selected_group = list(self.p_info.keys())[0]
@@ -108,6 +110,7 @@ class PreProcessDialog(QMainWindow):
 
         # sets the first group as the parameter tab
         self.para_layout.addWidget(self.h_tab_grp[self.selected_group])
+        self.setCentralWidget(self.group_scroll)
 
         # sets the object style sheets
         self.set_styles()
@@ -137,16 +140,15 @@ class PreProcessDialog(QMainWindow):
         # sets the group layout properties
         self.group_layout.setSpacing(0)
         self.group_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-        self.group_layout.setContentsMargins(0, hdr_height, 0, 0)
+        self.group_layout.setContentsMargins(0, 0, 0, 0)
         self.h_widget_group.setLayout(self.group_layout)
 
         # sets the scroll area properties
         self.group_scroll.setWidgetResizable(True)
-        self.group_scroll.setWidget(self.h_widget_group)
         self.group_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
         self.group_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self.group_scroll.setFixedHeight(dlg_height + hdr_height)
         self.group_scroll.setFixedWidth(grp_width + x_gap)
+        self.group_scroll.setWidget(self.h_widget_group)
 
         # sets the parameter tab layout properties
         self.para_layout.setSpacing(0)
@@ -176,16 +178,18 @@ class PreProcessDialog(QMainWindow):
         :return:
         """
 
+        # creates the menubar object
+        h_menubar = QMenuBar(self)
+        self.setMenuBar(h_menubar)
+        h_menu_file = h_menubar.addMenu('File')
+
         # creates the toolbar object
-        h_toolbar = QToolBar('ToolBar')
+        h_toolbar = QToolBar('ToolBar', self)
         h_toolbar.setMovable(False)
         h_toolbar.setStyleSheet(toolbar_style)
-        h_toolbar.setIconSize(QSize(25, 25))
-        self.addToolBar(h_toolbar)
-
-        # creates the menubar object
-        h_menubar = self.menuBar()
-        h_menu_file = h_menubar.addMenu('File')
+        h_toolbar.setIconSize(QSize(cf.but_height + 1, cf.but_height + 1))
+        self.addToolBar(Qt.ToolBarArea.TopToolBarArea, h_toolbar)
+        self.addToolBarBreak()
 
         # initialisations
         p_str = ['reset', 'open', 'save', None, 'close']
@@ -213,6 +217,8 @@ class PreProcessDialog(QMainWindow):
     def setup_group_objects(self, p, i_tab):
         """
 
+        :param p:
+        :param i_tab:
         :return:
         """
 
@@ -221,7 +227,22 @@ class PreProcessDialog(QMainWindow):
         grp_info = self.p_info[p]['ch_fld']
 
         # creates the collapsible group object
-        h_panel_c = cw.QCollapseGroup(self.group_scroll, grp_name, grp_info, i_tab == 0, root=self)
+        h_panel_c = cw.QCollapseGroup(self.group_scroll, grp_name, i_tab == 0)
+        h_panel_c.connect()
+
+        # adds the subgroups to the
+        for ch_grp in grp_info:
+            # creates the text links
+            h_gap, h_txt = self.create_group_text_link(ch_grp, grp_info[ch_grp]['name'])
+
+            # sets the text label properties
+            h_panel_c.add_group_row(h_gap, h_txt)
+            self.search_dlg.append_grp_obj(h_txt, ch_grp, grp_info[ch_grp]['name'])
+
+        # readjusts the panel height
+        h_panel_c.adjustSize()
+        h_panel_c.orig_hght = h_panel_c.size().height()
+
         self.set_panel_events(h_panel_c)
         self.group_layout.addRow(h_panel_c)
 
@@ -244,6 +265,30 @@ class PreProcessDialog(QMainWindow):
         cb_fcn = functools.partial(self.para_tab_change, p)
         self.h_tab_grp[p].currentChanged.connect(cb_fcn)
 
+    def create_group_text_link(self, name, lbl_name):
+
+        # creates the text labels
+        h_gap = cw.create_text_label(None, '', name=name)
+        h_txt = cw.create_text_label(None, lbl_name, align='left', name=name)
+
+        # sets the label properties
+        h_txt.adjustSize()
+        h_txt.setSizePolicy(QSizePolicy(cf.q_fix, cf.q_fix))
+        h_txt.setStyleSheet("""
+            QLabel {
+                color: rgba(26, 83, 200, 255) ;
+            }
+            QLabel:hover {
+                color: rgba(255, 0, 0, 255) ;
+            }""")
+
+        # sets the gap object properties
+        h_gap.setFixedWidth(5)
+        h_gap.setStyleSheet("background-color: rgba(240, 240, 255, 255) ;")
+
+        # returns the objects
+        return h_gap, h_txt
+
     # ----------------------------------------- #
     # --- COLLAPSIBLE PANEL EVENT FUNCTIONS --- #
     # ----------------------------------------- #
@@ -256,36 +301,15 @@ class PreProcessDialog(QMainWindow):
         :return:
         """
 
-        # sets the button click event function
-        cb_fcn_p = functools.partial(self.expand, h_panel_c)
-        h_panel_c.expand_button.clicked.connect(cb_fcn_p)
-
         # sets the label click event function
         for h_txt in h_panel_c.findChildren(QLabel):
             h_txt.mousePressEvent = functools.partial(self.link_click, h_txt)
 
-    def expand(self, h_panel_c):
-        """
-
-        :param h_panel_c:
-        :return:
-        """
-
-        if self.was_reset:
-            # hack fix - top panel group wants to collapse when editbox value is reset?
-            self.was_reset = False
-
-        else:
-            # field retrieval
-            h_panel_c.is_expanded = h_panel_c.is_expanded ^ True
-            h_panel_c.update_button_text()
-
-            f_style = cw.expand_style if h_panel_c.is_expanded else cw.close_style
-            h_panel_c.expand_button.setStyleSheet(f_style)
-
     def link_click(self, h_txt, evnt=None):
         """
 
+        :param h_txt:
+        :param evnt:
         :return:
         """
 
@@ -595,15 +619,15 @@ class PreProcessDialog(QMainWindow):
                 # case is a file selection widget
 
                 # creates the file selection widget
-                obj_filespec = cw.QFileSpec(None, ps['name'], ps['value'], name=p_name, f_mode=ps['p_misc'])
-                layout.addRow(obj_filespec)
+                obj_fspec = cw.QFileSpec(None, ps['name'], ps['value'], name=p_name, f_mode=ps['p_misc'])
+                layout.addRow(obj_fspec)
 
                 # sets up the slot function
-                cb_fcn = functools.partial(self.button_file_spec, obj_filespec, p_str_l)
-                obj_filespec.h_but.clicked.connect(cb_fcn)
+                cb_fcn = functools.partial(self.button_file_spec, p_str_l)
+                obj_fspec.connect(cb_fcn)
 
                 # appends the parameter search objects
-                self.search_dlg.append_para_obj(obj_filespec, ps['name'], p_str_l[1])
+                self.search_dlg.append_para_obj(obj_fspec, ps['name'], p_str_l[1])
 
                 # self.button_file_spec(h_filespec, p_str_l)
 
@@ -717,11 +741,11 @@ class PreProcessDialog(QMainWindow):
         # updates the parameter dictionary
         cf.set_multi_dict_value(self.p_dict, p_str_l, p_val)
 
-    def button_file_spec(self, h_fspec, p_str_l):
+    def button_file_spec(self, p_str_l, h_fspec):
         """
 
-        :param h_fspec:
         :param p_str_l:
+        :param h_fspec:
         :return:
         """
 
@@ -787,12 +811,12 @@ class PreProcessDialog(QMainWindow):
         # --- PRE-PROCESSING OBJECTS --- #
         # ------------------------------ #
 
-        # sub-group properties
+        # subgroup properties
         pp_str = ['phase_shift', 'bandpass_filter', 'common_reference', 'whitening', 'drift_correct', 'sorting']
         pp_hdr = ['Phase Shift', 'Bandpass Filter', 'Common Reference', 'Whitening', 'Drift Correction', 'Sorting']
         pp_type = ['panel', 'panel', 'panel', 'panel', 'panel', 'tabgroup']
 
-        # sets up the sub-group fields
+        # sets up the subgroup fields
         p_tmp = {}
         for pp_s, pp_h, pp_t in zip(pp_str, pp_hdr, pp_type):
             p_tmp[pp_s] = self.create_para_field(pp_h, pp_t, None)
@@ -857,11 +881,11 @@ class PreProcessDialog(QMainWindow):
         # --- PRE-PROCESSING OBJECTS --- #
         # ------------------------------ #
 
-        # sub-group properties
+        # subgroup properties
         pp_str = ['waveforms', 'sparce_opt', 'testing']
         pp_hdr = ['Wave Forms', 'Sparsity Options', 'Testing']
 
-        # sets up the sub-group fields
+        # sets up the subgroup fields
         p_tmp = {}
         for pp_s, pp_h in zip(pp_str, pp_hdr):
             p_tmp[pp_s] = self.create_para_field(pp_h, 'panel', None)
@@ -958,6 +982,8 @@ class PreProcessDialog(QMainWindow):
     def reset_para_info_value(self, ps, pd):
         """
 
+        :param ps:
+        :param pd:
         :return:
         """
 
@@ -1051,9 +1077,6 @@ class PreProcessDialog(QMainWindow):
 
 ########################################################################################################################
 
-# parameters
-but_height = 24
-
 
 def add_highlight(s, i0, n):
     """
@@ -1084,7 +1107,7 @@ class QSearchWidget(QWidget):
         self.h_edit = cw.create_line_edit(None, '', align='left')
 
         # sets the widget properties
-        self.setFixedHeight(but_height)
+        self.setFixedHeight(cf.but_height)
 
         # initialises the class fields and objects
         self.init_class_fields()
@@ -1112,14 +1135,14 @@ class QSearchWidget(QWidget):
         self.main_layout.addRow(self.h_lbl, self.h_edit)
 
         # sets the icon label properties
-        q_pixmap = QIcon(icon_path['search']).pixmap(QSize(but_height, but_height))
+        q_pixmap = QIcon(icon_path['search']).pixmap(QSize(cf.but_height, cf.but_height))
         self.h_lbl.setPixmap(q_pixmap)
         self.h_lbl.setContentsMargins(0, 0, 0, 0)
-        self.h_lbl.setFixedSize(but_height, but_height)
+        self.h_lbl.setFixedSize(cf.but_height, cf.but_height)
 
         # sets the editbox properties
         self.h_edit.setContentsMargins(0, 0, 0, 0)
-        self.h_edit.setFixedHeight(but_height)
+        self.h_edit.setFixedHeight(cf.but_height)
         self.h_edit.setPlaceholderText('Search')
         self.h_edit.textChanged.connect(self.edit_search_change)
 
