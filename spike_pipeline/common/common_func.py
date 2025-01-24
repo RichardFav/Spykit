@@ -1,4 +1,5 @@
 # module import
+import math
 import threading
 
 # pyqt6 module import
@@ -8,6 +9,7 @@ from PyQt6.QtCore import Qt
 # other initialisations
 q_fix = QSizePolicy.Policy.Fixed
 q_exp = QSizePolicy.Policy.Expanding
+q_expm = QSizePolicy.Policy.MinimumExpanding
 
 q_yes = QMessageBox.StandardButton.Yes
 q_yes_no = QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
@@ -189,7 +191,6 @@ def get_root_widget(h_obj):
             h_obj = h_obj_p
 
 
-
 def get_greek_chr(x):
     """
 
@@ -255,7 +256,6 @@ def set_text_background_colour(text, col='black'):
     return '<span style="background-color: {0}">{1}</span>'.format(col, text)
 
 
-# lambda function declarations
 def arr_chr(is_chk):
     """
 
@@ -271,40 +271,51 @@ def get_colour_value(col_id, alpha=255):
     match col_id:
         case col_id if col_id in ['red', 'r', 0]:
             # case is red
-            return QColor(255, 0, 0, 255)
+            return QColor(255, 0, 0, alpha)
 
         case col_id if col_id in ['green', 'g', 1]:
             # case is green
-            return QColor(0, 255, 0)
+            return QColor(0, 255, 0, alpha)
 
         case col_id if col_id in ['blue', 'b', 2]:
             # case is blue
-            return QColor(0, 0, 255)
+            return QColor(0, 0, 255, alpha)
 
         case col_id if col_id in ['yellow', 'y', 3]:
             # case is green
-            return QColor(255, 255, 0)
+            return QColor(255, 255, 0, alpha)
 
         case col_id if col_id in ['magenta', 'm', 4]:
             # case is magenta
-            return QColor(255, 0, 255)
+            return QColor(255, 0, 255, alpha)
 
         case col_id if col_id in ['cyan', 'c', 5]:
             # case is cyan
-            return QColor(0, 255, 255)
+            return QColor(0, 255, 255, alpha)
 
         case col_id if col_id in ['white', 'w']:
             # case is white
-            return QColor(255, 255, 255)
+            return QColor(255, 255, 255, alpha)
 
         case col_id if col_id in ['black', 'k']:
             # case is black
-            return QColor(0, 0, 0)
+            return QColor(0, 0, 0, alpha)
 
         case col_id if col_id in ['dark-gray', 'dg']:
             # case is dark-gray
-            return QColor(50, 50, 50)
+            return QColor(50, 50, 50, alpha)
 
         case col_id if col_id in ['light-gray', 'lg']:
             # case is light-gray
-            return QColor(200, 200, 200)
+            return QColor(200, 200, 200, alpha)
+
+
+def lcm(a, b):
+    """
+
+    :param a:
+    :param b:
+    :return:
+    """
+
+    return (a * b) // math.gcd(a, b)

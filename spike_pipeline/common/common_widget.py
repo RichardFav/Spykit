@@ -3,7 +3,7 @@ import textwrap
 import functools
 import numpy as np
 from copy import deepcopy
-from skimage.measure import label, regionprops, regionprops_table
+from skimage.measure import label, regionprops
 
 # custom module import
 import spike_pipeline.common.common_func as cf
@@ -11,215 +11,9 @@ import spike_pipeline.common.common_func as cf
 # pyqt6 module import
 from PyQt6.QtWidgets import (QWidget, QHBoxLayout, QGridLayout, QVBoxLayout, QPushButton, QGroupBox, QTabWidget,
                              QFormLayout, QLabel, QCheckBox, QLineEdit, QComboBox, QSizePolicy, QFileDialog,
-                             QApplication)
-from PyQt6.QtCore import Qt, QRect, pyqtSignal, QMimeData
-from PyQt6.QtGui import QFont, QColor, QDrag, QCursor
-
-
-########################################################################################################################
-
-
-class QFileSpec(QGroupBox):
-    def __init__(self, parent=None, grp_hdr=None, file_path=None, name=None, f_mode=None):
-        super(QFileSpec, self).__init__(parent)
-
-        # initialisations
-        self.f_mode = f_mode
-        font_hdr = create_font_obj(size=9, is_bold=True, font_weight=QFont.Weight.Bold)
-        font_but = create_font_obj(size=10, is_bold=True, font_weight=QFont.Weight.Bold)
-
-        # sets the groupbox properties
-        self.setTitle(grp_hdr)
-        self.setFont(font_hdr)
-
-        # creates the layout widget
-        self.layout = QHBoxLayout()
-        self.setLayout(self.layout)
-
-        # creates the editbox widget
-        self.h_edit = create_line_edit(None, file_path, align='left', name=name)
-        self.layout.addWidget(self.h_edit)
-        self.h_edit.setReadOnly(True)
-        self.h_edit.setObjectName(name)
-
-        # creates the button widget
-        self.h_but = create_push_button(None, '...', font_but)
-        self.layout.addWidget(self.h_but)
-        self.h_but.setFixedWidth(25)
-
-    def connect(self, cb_fcn0):
-        """
-
-        :param cb_fcn0:
-        :return:
-        """
-
-        cb_fcn = functools.partial(cb_fcn0, self)
-        self.h_but.clicked.connect(cb_fcn)
-
-########################################################################################################################
-
-
-class QLabelEdit(QWidget):
-    def __init__(self, parent=None, lbl_str=None, edit_str=None, font_lbl=None, name=None):
-        super(QLabelEdit, self).__init__(parent)
-
-        # creates the layout widget
-        self.layout = QHBoxLayout()
-        self.layout.setSpacing(3)
-        self.layout.setContentsMargins(0, 0, 0, 0)
-        self.setLayout(self.layout)
-
-        # creates the label/editbox widget combo
-        self.obj_lbl = create_text_label(None, lbl_str, font=font_lbl)
-        self.obj_edit = create_line_edit(None, edit_str, name=name, align='left')
-        self.layout.addWidget(self.obj_lbl)
-        self.layout.addWidget(self.obj_edit)
-
-        # sets up the label properties
-        self.obj_lbl.adjustSize()
-        self.obj_lbl.setStyleSheet('padding-top: 2 px;')
-
-        # sets up the editbox properties
-        self.obj_edit.setFixedHeight(cf.edit_height)
-        self.obj_edit.setStyleSheet(
-            "border: 1px solid; border-radius: 2px; padding-left: 5px;"
-        )
-
-    def connect(self, cb_fcn0):
-        """
-
-        :param cb_fcn0:
-        :return:
-        """
-
-        cb_fcn = functools.partial(cb_fcn0, self.obj_edit)
-        self.obj_edit.editingFinished.connect(cb_fcn)
-
-
-########################################################################################################################
-
-
-class QLabelButton(QWidget):
-    def __init__(self, parent=None, lbl_str=None, but_str=None, font_lbl=None, name=None):
-        super(QLabelButton, self).__init__(parent)
-
-        # creates the layout widget
-        self.layout = QHBoxLayout()
-        self.layout.setSpacing(3)
-        self.layout.setContentsMargins(0, 0, 0, 0)
-        self.setLayout(self.layout)
-
-        # creates the label/editbox widget combo
-        self.obj_lbl = create_text_label(None, lbl_str, font=font_lbl)
-        self.obj_but = create_push_button(None, but_str, name=name)
-        self.layout.addWidget(self.obj_lbl)
-        self.layout.addWidget(self.obj_but)
-
-        # sets up the label properties
-        self.obj_lbl.adjustSize()
-        self.obj_lbl.setStyleSheet("padding-top: 3 px;")
-
-        # sets up the editbox properties
-        self.obj_but.setFixedHeight(cf.but_height)
-
-    def connect(self, cb_fcn0):
-        """
-
-        :param cb_fcn0:
-        :return:
-        """
-
-        cb_fcn = functools.partial(cb_fcn0, self.obj_but)
-        self.obj_but.clicked.connect(cb_fcn)
-
-
-########################################################################################################################
-
-
-class QLabelCombo(QWidget):
-    def __init__(self, parent=None, lbl_str=None, list_str=None, value=None, font_lbl=None, name=None):
-        super(QLabelCombo, self).__init__(parent)
-
-        # creates the layout widget
-        self.layout = QHBoxLayout()
-        self.layout.setSpacing(1)
-        self.layout.setContentsMargins(0, 0, 0, 0)
-        self.setLayout(self.layout)
-
-        # creates the label/combobox widget combo
-        self.obj_lbl = create_text_label(None, lbl_str, font=font_lbl)
-        self.obj_cbox = create_combo_box(None, list_str, name=name)
-
-        self.layout.addWidget(self.obj_lbl)
-        self.layout.addWidget(self.obj_cbox)
-
-        # sets up the label properties
-        self.obj_lbl.adjustSize()
-        self.obj_lbl.setStyleSheet('padding-top: 2 px;')
-
-        # sets up the slot function
-        self.obj_cbox.setFixedHeight(cf.combo_height)
-        self.obj_cbox.setCurrentText(value)
-        self.obj_cbox.setStyleSheet('border-radius: 2px; border: 1px solid')
-
-    def connect(self, cb_fcn0):
-        """
-
-        :param cb_fcn0:
-        :return:
-        """
-
-        cb_fcn = functools.partial(cb_fcn0, self.obj_cbox)
-        self.obj_cbox.currentIndexChanged.connect(cb_fcn)
-
-
-########################################################################################################################
-
-
-class QCheckboxHTML(QWidget):
-    def __init__(self, parent=None, text=None, state=False, font=None, name=None):
-        super(QCheckboxHTML, self).__init__(parent)
-
-        # creates the layout widget
-        self.layout = QHBoxLayout()
-        self.layout.setSpacing(3)
-        self.layout.setContentsMargins(0, 0, 0, 0)
-        self.setLayout(self.layout)
-
-        # creates the checkbox object
-        self.h_chk = create_check_box(None, '', state, name=name)
-        self.h_chk.adjustSize()
-        self.h_chk.setSizePolicy(QSizePolicy(cf.q_fix, cf.q_fix))
-
-        # creates the label object
-        self.h_lbl = create_text_label(None, text, font, align='left')
-        self.h_lbl.setStyleSheet('padding-bottom: 2px;')
-        self.h_lbl.adjustSize()
-
-        # adds the widgets to the layout
-        self.layout.addWidget(self.h_chk)
-        self.layout.addWidget(self.h_lbl)
-
-    def set_label_text(self, t_lbl):
-        """
-
-        :param t_lbl:
-        :return:
-        """
-
-        self.h_lbl.setText(t_lbl)
-
-    def set_slot_func(self, cb_fcn):
-        """
-
-        :param cb_fcn:
-        :return:
-        """
-
-        self.h_chk.stateChanged.connect(cb_fcn)
-        self.h_lbl.mousePressEvent = cb_fcn
-
+                             QApplication, QTreeView, QFrame)
+from PyQt6.QtGui import QFont, QDrag, QCursor, QStandardItemModel, QStandardItem
+from PyQt6.QtCore import Qt, QRect, QMimeData, pyqtSignal
 
 ########################################################################################################################
 
@@ -228,8 +22,9 @@ class QCheckboxHTML(QWidget):
 x_gap = 10
 gbox_height0 = 25
 
+
 class QRegionConfig(QWidget):
-    plot_update = pyqtSignal()
+    config_reset = pyqtSignal()
 
     def __init__(self, parent=None, font=None, n_row=1, n_col=1):
         super(QRegionConfig, self).__init__(parent)
@@ -273,13 +68,14 @@ class QRegionConfig(QWidget):
         self.rc_widget = QWidget()
         self.rc_widget.setLayout(self.rc_layout)
 
-        # creates the
+        # creates the row/column widgets
         for tl, ps in zip(t_lbl, p_str):
             # creates the label/editbox object
             tl_lbl = "{0}:".format(tl)
             obj_lbl_edit = QLabelEdit(None, tl_lbl, getattr(self, ps), font_lbl=font)
             self.rc_layout.addWidget(obj_lbl_edit)
 
+            # sets the editbox widget properties
             obj_lbl_edit.obj_lbl.setAlignment(Qt.AlignmentFlag.AlignRight)
             obj_lbl_edit.obj_lbl.adjustSize()
 
@@ -316,64 +112,26 @@ class QRegionConfig(QWidget):
         self.obj_gbox.setCheckable(False)
         self.obj_gbox.setFont(font)
         self.obj_gbox.setFixedHeight(gbox_height0)
+        # self.obj_gbox.setStyleSheet("""
+        #     QGroupbox::label {
+        #         color: red;
+        #     }
+        # """)
 
-        # sets up the
+        # sets up the groupbox layout widget
         self.gb_layout = QGridLayout()
         self.gb_layout.setSpacing(0)
         self.gb_layout.setContentsMargins(x_gap, x_gap, x_gap, x_gap)
-        self.obj_gbox.setLayout(self.gb_layout)
 
         # updates the selector widgets
         self.reset_selector_widgets()
 
-        # sets the callback function
+        # sets the groupbox properties
+        self.obj_gbox.setLayout(self.gb_layout)
         self.obj_gbox.mousePressEvent = self.panel_group_update
 
         # adds the widget to the class widget
         self.main_layout.addWidget(self.obj_gbox)
-
-    def reset_selector_widgets(self):
-        """
-
-        :return:
-        """
-
-        # retrieves the
-        self.g_id[:] = 0
-        self.h_rgrid = []
-        obj_ch = self.obj_gbox.findChildren(ClickableRegion)
-        n_ch, n_reg = len(obj_ch), self.n_row * self.n_col
-
-        # removes extraneous widgets
-        if n_ch > n_reg:
-            for i_ch in range(n_reg, n_ch):
-                obj_ch[i_ch].setParent(None)
-
-        # creates/resets the label objects
-        for i_row in range(self.n_row):
-            for i_col in range(self.n_col):
-                i_reg = i_row * self.n_col + i_col
-
-                if i_reg < n_ch:
-                    # case is the widget already exists
-                    h_grid = obj_ch[i_reg]
-                    h_grid.set_grid_indices(i_row, i_col)
-
-                else:
-                    # case is the grid needs to be created
-                    h_grid = ClickableRegion(self, i_row, i_col)
-                    h_grid.clicked.connect(self.mouse_clicked)
-                    h_grid.release.connect(self.mouse_released)
-                    h_grid.leaving.connect(self.mouse_leaving)
-                    h_grid.setSizePolicy(QSizePolicy(cf.q_exp, cf.q_exp))
-
-                # updates the widget stylesheet
-                g_col = self.p_col[self.c_id[i_row, i_col]]
-                self.set_grid_style_sheet(h_grid, g_col)
-
-                # appends the widget to the parent widget
-                self.gb_layout.addWidget(h_grid, i_row, i_col)
-                self.h_rgrid.append(h_grid)
 
     # ----------------------------- #
     # --- MOUSE EVENT FUNCTIONS --- #
@@ -485,7 +243,7 @@ class QRegionConfig(QWidget):
                 self.set_grid_style_sheet(self.h_rgrid[i_reg], g_col)
 
             # flag that the plot widgets need updating
-            self.plot_update.emit()
+            self.config_reset.emit()
 
         else:
             # otherwise, output an error to screen
@@ -542,7 +300,7 @@ class QRegionConfig(QWidget):
             self.reset_selector_widgets()
 
             # flag that the plot widgets need updating
-            self.plot_update.emit()
+            self.config_reset.emit()
 
         else:
             # otherwise, reset the previous value
@@ -610,9 +368,53 @@ class QRegionConfig(QWidget):
     # --- MISCELLANEOUS FUNCTIONS --- #
     # ------------------------------- #
 
+    def reset_selector_widgets(self):
+        """
+
+        :return:
+        """
+
+        # retrieves the
+        self.g_id[:] = 0
+        self.h_rgrid = []
+        obj_ch = self.obj_gbox.findChildren(ClickableRegion)
+        n_ch, n_reg = len(obj_ch), self.n_row * self.n_col
+
+        # removes extraneous widgets
+        if n_ch > n_reg:
+            for i_ch in range(n_reg, n_ch):
+                obj_ch[i_ch].setParent(None)
+
+        # creates/resets the label objects
+        for i_row in range(self.n_row):
+            for i_col in range(self.n_col):
+                i_reg = i_row * self.n_col + i_col
+
+                if i_reg < n_ch:
+                    # case is the widget already exists
+                    h_grid = obj_ch[i_reg]
+                    h_grid.set_grid_indices(i_row, i_col)
+
+                else:
+                    # case is the grid needs to be created
+                    h_grid = ClickableRegion(self, i_row, i_col)
+                    h_grid.clicked.connect(self.mouse_clicked)
+                    h_grid.release.connect(self.mouse_released)
+                    h_grid.leaving.connect(self.mouse_leaving)
+                    h_grid.setSizePolicy(QSizePolicy(cf.q_exp, cf.q_exp))
+
+                # updates the widget stylesheet
+                g_col = self.p_col[self.c_id[i_row, i_col]]
+                self.set_grid_style_sheet(h_grid, g_col)
+
+                # appends the widget to the parent widget
+                self.gb_layout.addWidget(h_grid, i_row, i_col)
+                self.h_rgrid.append(h_grid)
+
     def update_selection_grid(self, is_add):
         """
 
+        :param is_add:
         :return:
         """
 
@@ -682,7 +484,6 @@ class QRegionConfig(QWidget):
 
         :param h_grid:
         :param n_col:
-        :param s_col:
         :return:
         """
 
@@ -716,27 +517,130 @@ class QRegionConfig(QWidget):
 ########################################################################################################################
 
 
-class FileDialogModal(QFileDialog):
-    def __init__(self, parent=None, caption=None, f_filter=None,
-                 f_directory=None, is_save=False, dir_only=False, is_multi=False):
-        # creates the widget
-        super(FileDialogModal, self).__init__(parent=parent, caption=caption, filter=f_filter, directory=f_directory)
+# widget stylesheets
+tree_style = """
+    QTreeView {
+        font: Arial 8px;
+    }
+    
+    QTreeView::item {
 
-        # sets the file dialog parameters
-        self.setModal(True)
-        self.setWindowFlags(Qt.WindowType.WindowStaysOnTopHint)
+    }    
+            
+    QTreeView::branch:open:has-children:has-siblings {
 
-        # sets the file dialog to open if
-        if is_save:
-            self.setAcceptMode(QFileDialog.AcceptMode.AcceptSave)
+    }        
+"""
 
-        # sets the file mode to directory (if directory only)
-        if dir_only:
-            self.setFileMode(QFileDialog.FileMode.Directory)
+# widget dimensions
+row_height = 20
 
-        # sets the multi-select flag to true (if required)
-        if is_multi:
-            self.setFileMode(QFileDialog.FileMode.ExistingFiles)
+
+class QTraceTree(QWidget):
+    node_added = pyqtSignal()
+    node_deleted = pyqtSignal()
+
+    def __init__(self, parent=None, font=None):
+        super(QTraceTree, self).__init__(parent)
+
+        # field initialistions
+        self.n_node = 0
+        self.h_node = {}
+        self.s_node = {}
+
+        # sets up the widget layout
+        self.main_layout = QVBoxLayout()
+        self.main_layout.setContentsMargins(0, 0, 0, 0)
+        self.setLayout(self.main_layout)
+
+        # ------------------------ #
+        # --- TEXT LABEL SETUP --- #
+        # ------------------------ #
+
+        # creates the text label
+        self.obj_txt_lbl = QLabelText(None, 'Trace Count: ', '0', font_lbl=font)
+        self.main_layout.addWidget(self.obj_txt_lbl)
+
+        # sets the label properties
+        self.obj_txt_lbl.obj_lbl.setFixedSize(self.obj_txt_lbl.obj_lbl.sizeHint())
+
+        # ------------------------- #
+        # --- TREE WIDGET SETUP --- #
+        # ------------------------- #
+
+        # sets up the table model
+        self.t_model = QStandardItemModel()
+
+        # creates the tree-view widget
+        self.obj_tview = QTreeView()
+
+        # sets the tree-view properties
+        self.obj_tview.setModel(self.t_model)
+        self.obj_tview.setStyleSheet(tree_style)
+        self.obj_tview.setItemsExpandable(False)
+        self.obj_tview.setIndentation(10)
+        self.obj_tview.setRootIsDecorated(False)
+        # self.obj_tview.setFixedSize(self.obj_tview.sizeHint())
+        self.obj_tview.setHeaderHidden(True)
+        self.obj_tview.setFrameStyle(QFrame.Shape.WinPanel | QFrame.Shadow.Sunken)
+
+        # creates the root tree item
+        self.s_node['name'] = 'Root Node'
+        self.h_node['h'] = QStandardItem(self.s_node['name'])
+        self.t_model.appendRow(self.h_node['h'])
+
+        # appends the widget to the main widget
+        self.main_layout.addWidget(self.obj_tview)
+
+        # REMOVE ME LATER
+        self.add_tree_item("Node 1")
+        self.add_tree_item("Node 11", [1])
+        self.add_tree_item("Node 12", [1])
+        self.add_tree_item("Node 2")
+        self.add_tree_item("Node 21", [2])
+
+        a = 1
+
+    def add_tree_item(self, n_name, parent_id=None):
+        """
+
+        :param n_name:
+        :param parent_id:
+        :return:
+        """
+
+        # creates the tree item
+        if parent_id is None:
+            parent_id = []
+        item = QStandardItem(n_name)
+
+        # case is another node type
+        d_node, n_node = self.h_node, self.s_node
+        for p_id in parent_id:
+            d_node, n_node = d_node[str(p_id)], n_node[str(p_id)]
+
+        # appends the widget to the branch node
+        d_node['h'].appendRow(item)
+        n_ch = len(d_node.keys())
+
+        # appends the widget dictionary
+        d_node[str(n_ch)] = {}
+        d_node[str(n_ch)]['h'] = item
+
+        # appends the name dictionary
+        n_node[str(n_ch)] = {}
+        n_node[str(n_ch)]['name'] = n_name
+
+        # increments the counter
+        self.n_node += 1
+        self.obj_txt_lbl.set_label(str(self.n_node + 1))
+        
+        # resets the tree-viewer properties
+        self.obj_tview.setFixedHeight(self.n_node * row_height)
+        self.obj_tview.expandAll()
+
+        # # flag that a new node has been added
+        # self.node_added.emit()
 
 
 ########################################################################################################################
@@ -879,6 +783,32 @@ class QCollapseGroup(QWidget):
 ########################################################################################################################
 
 
+class FileDialogModal(QFileDialog):
+    def __init__(self, parent=None, caption=None, f_filter=None,
+                 f_directory=None, is_save=False, dir_only=False, is_multi=False):
+        # creates the widget
+        super(FileDialogModal, self).__init__(parent=parent, caption=caption, filter=f_filter, directory=f_directory)
+
+        # sets the file dialog parameters
+        self.setModal(True)
+        self.setWindowFlags(Qt.WindowType.WindowStaysOnTopHint)
+
+        # sets the file dialog to open if
+        if is_save:
+            self.setAcceptMode(QFileDialog.AcceptMode.AcceptSave)
+
+        # sets the file mode to directory (if directory only)
+        if dir_only:
+            self.setFileMode(QFileDialog.FileMode.Directory)
+
+        # sets the multi-select flag to true (if required)
+        if is_multi:
+            self.setFileMode(QFileDialog.FileMode.ExistingFiles)
+
+
+########################################################################################################################
+
+
 class ClickableRegion(QLabel):
     clicked = pyqtSignal(int, int, bool)
     leaving = pyqtSignal(int, int)
@@ -933,6 +863,246 @@ class ClickableRegion(QLabel):
 
     def dragLeaveEvent(self, event):
         self.leaving.emit(self.i_row, self.i_col)
+
+
+########################################################################################################################
+
+
+class QFileSpec(QGroupBox):
+    def __init__(self, parent=None, grp_hdr=None, file_path=None, name=None, f_mode=None):
+        super(QFileSpec, self).__init__(parent)
+
+        # initialisations
+        self.f_mode = f_mode
+        font_hdr = create_font_obj(size=9, is_bold=True, font_weight=QFont.Weight.Bold)
+        font_but = create_font_obj(size=10, is_bold=True, font_weight=QFont.Weight.Bold)
+
+        # sets the groupbox properties
+        self.setTitle(grp_hdr)
+        self.setFont(font_hdr)
+
+        # creates the layout widget
+        self.layout = QHBoxLayout()
+        self.setLayout(self.layout)
+
+        # creates the editbox widget
+        self.h_edit = create_line_edit(None, file_path, align='left', name=name)
+        self.layout.addWidget(self.h_edit)
+        self.h_edit.setReadOnly(True)
+        self.h_edit.setObjectName(name)
+
+        # creates the button widget
+        self.h_but = create_push_button(None, '...', font_but)
+        self.layout.addWidget(self.h_but)
+        self.h_but.setFixedWidth(25)
+
+    def connect(self, cb_fcn0):
+        """
+
+        :param cb_fcn0:
+        :return:
+        """
+
+        cb_fcn = functools.partial(cb_fcn0, self)
+        self.h_but.clicked.connect(cb_fcn)
+
+
+########################################################################################################################
+
+
+class QLabelText(QWidget):
+    def __init__(self, parent=None, lbl_str=None, text_str=None, font_lbl=None, font_txt=None, name=None):
+        super(QLabelText, self).__init__(parent)
+
+        # creates the layout widget
+        self.layout = QHBoxLayout()
+        self.layout.setSpacing(3)
+        self.layout.setContentsMargins(0, 0, 0, 0)
+        self.setLayout(self.layout)
+
+        # creates the label/editbox widget combo
+        self.obj_lbl = create_text_label(None, lbl_str, font=font_lbl)
+        self.obj_txt = create_text_label(None, text_str, name=name, align='left', font=font_txt)
+        self.layout.addWidget(self.obj_lbl)
+        self.layout.addWidget(self.obj_txt)
+
+        # sets up the label properties
+        self.obj_lbl.adjustSize()
+
+    def set_label(self, txt_str):
+        """
+
+        :param txt_str:
+        :return:
+        """
+
+        self.obj_txt.setText(txt_str)
+
+
+########################################################################################################################
+
+
+class QLabelEdit(QWidget):
+    def __init__(self, parent=None, lbl_str=None, edit_str=None, font_lbl=None, name=None):
+        super(QLabelEdit, self).__init__(parent)
+
+        # creates the layout widget
+        self.layout = QHBoxLayout()
+        self.layout.setSpacing(3)
+        self.layout.setContentsMargins(0, 0, 0, 0)
+        self.setLayout(self.layout)
+
+        # creates the label/editbox widget combo
+        self.obj_lbl = create_text_label(None, lbl_str, font=font_lbl)
+        self.obj_edit = create_line_edit(None, edit_str, name=name, align='left')
+        self.layout.addWidget(self.obj_lbl)
+        self.layout.addWidget(self.obj_edit)
+
+        # sets up the label properties
+        self.obj_lbl.adjustSize()
+        self.obj_lbl.setStyleSheet('padding-top: 2 px;')
+
+        # sets up the editbox properties
+        self.obj_edit.setFixedHeight(cf.edit_height)
+        self.obj_edit.setStyleSheet(
+            "border: 1px solid; border-radius: 2px; padding-left: 5px;"
+        )
+
+    def connect(self, cb_fcn0):
+        """
+
+        :param cb_fcn0:
+        :return:
+        """
+
+        cb_fcn = functools.partial(cb_fcn0, self.obj_edit)
+        self.obj_edit.editingFinished.connect(cb_fcn)
+
+
+########################################################################################################################
+
+
+class QLabelButton(QWidget):
+    def __init__(self, parent=None, lbl_str=None, but_str=None, font_lbl=None, name=None):
+        super(QLabelButton, self).__init__(parent)
+
+        # creates the layout widget
+        self.layout = QHBoxLayout()
+        self.layout.setSpacing(3)
+        self.layout.setContentsMargins(0, 0, 0, 0)
+        self.setLayout(self.layout)
+
+        # creates the label/editbox widget combo
+        self.obj_lbl = create_text_label(None, lbl_str, font=font_lbl)
+        self.obj_but = create_push_button(None, but_str, name=name)
+        self.layout.addWidget(self.obj_lbl)
+        self.layout.addWidget(self.obj_but)
+
+        # sets up the label properties
+        self.obj_lbl.adjustSize()
+        self.obj_lbl.setStyleSheet("padding-top: 3 px;")
+
+        # sets up the editbox properties
+        self.obj_but.setFixedHeight(cf.but_height)
+        self.obj_but.setCursor(Qt.CursorShape.PointingHandCursor)
+
+    def connect(self, cb_fcn0):
+        """
+
+        :param cb_fcn0:
+        :return:
+        """
+
+        cb_fcn = functools.partial(cb_fcn0, self.obj_but)
+        self.obj_but.clicked.connect(cb_fcn)
+
+
+########################################################################################################################
+
+
+class QLabelCombo(QWidget):
+    def __init__(self, parent=None, lbl_str=None, list_str=None, value=None, font_lbl=None, name=None):
+        super(QLabelCombo, self).__init__(parent)
+
+        # creates the layout widget
+        self.layout = QHBoxLayout()
+        self.layout.setSpacing(1)
+        self.layout.setContentsMargins(0, 0, 0, 0)
+        self.setLayout(self.layout)
+
+        # creates the label/combobox widget combo
+        self.obj_lbl = create_text_label(None, lbl_str, font=font_lbl)
+        self.obj_cbox = create_combo_box(None, list_str, name=name)
+
+        self.layout.addWidget(self.obj_lbl)
+        self.layout.addWidget(self.obj_cbox)
+
+        # sets up the label properties
+        self.obj_lbl.adjustSize()
+        self.obj_lbl.setStyleSheet('padding-top: 2 px;')
+
+        # sets up the slot function
+        self.obj_cbox.setFixedHeight(cf.combo_height)
+        self.obj_cbox.setCurrentText(value)
+        self.obj_cbox.setStyleSheet('border-radius: 2px; border: 1px solid')
+
+    def connect(self, cb_fcn0):
+        """
+
+        :param cb_fcn0:
+        :return:
+        """
+
+        cb_fcn = functools.partial(cb_fcn0, self.obj_cbox)
+        self.obj_cbox.currentIndexChanged.connect(cb_fcn)
+
+
+########################################################################################################################
+
+
+class QCheckboxHTML(QWidget):
+    def __init__(self, parent=None, text=None, state=False, font=None, name=None):
+        super(QCheckboxHTML, self).__init__(parent)
+
+        # creates the layout widget
+        self.layout = QHBoxLayout()
+        self.layout.setSpacing(3)
+        self.layout.setContentsMargins(0, 0, 0, 0)
+        self.setLayout(self.layout)
+
+        # creates the checkbox object
+        self.h_chk = create_check_box(None, '', state, name=name)
+        self.h_chk.adjustSize()
+        self.h_chk.setSizePolicy(QSizePolicy(cf.q_fix, cf.q_fix))
+
+        # creates the label object
+        self.h_lbl = create_text_label(None, text, font, align='left')
+        self.h_lbl.setStyleSheet('padding-bottom: 2px;')
+        self.h_lbl.adjustSize()
+
+        # adds the widgets to the layout
+        self.layout.addWidget(self.h_chk)
+        self.layout.addWidget(self.h_lbl)
+
+    def set_label_text(self, t_lbl):
+        """
+
+        :param t_lbl:
+        :return:
+        """
+
+        self.h_lbl.setText(t_lbl)
+
+    def set_slot_func(self, cb_fcn):
+        """
+
+        :param cb_fcn:
+        :return:
+        """
+
+        self.h_chk.stateChanged.connect(cb_fcn)
+        self.h_lbl.mousePressEvent = cb_fcn
+
 
 ########################################################################################################################
 

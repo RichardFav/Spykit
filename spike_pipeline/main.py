@@ -59,13 +59,20 @@ tree_style = """
 #     v.expandAll()
 #     v.setItemsExpandable(False)
 #     v.setRootIsDecorated(False)
+#     v.setFixedSize(v.sizeHint())
+#     v.setHeaderHidden(True)
+#
 #     v.show()
+#
+#
 #
 #     sys.exit(app.exec())
 
 if __name__ == '__main__':
     # Create the Qt Application
     app = QApplication(sys.argv)
+
+    # app.setStyle('Windows')
 
     if is_testing:
         # case is running testing mode

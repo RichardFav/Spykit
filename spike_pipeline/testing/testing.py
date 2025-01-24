@@ -10,7 +10,7 @@ from PyQt6.QtWidgets import QDialog, QVBoxLayout
 import spike_pipeline.common.misc_func as mf
 import spike_pipeline.common.common_widget as cw
 from spike_pipeline.widgets.para_dialog import ParaDialog
-from spike_pipeline.widgets.plot_widget import QPlotWidgetMain, QPlotCanvas
+from spike_pipeline.widgets.plot_widget import QPlotWidgetMain
 
 ########################################################################################################################
 ########################################################################################################################
