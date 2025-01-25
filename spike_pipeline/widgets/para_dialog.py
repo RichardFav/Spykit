@@ -608,7 +608,7 @@ class ParaDialog(QMainWindow):
 
                 # sets up the slot function
                 cb_fcn = functools.partial(self.checkbox_para_change, obj_checkbox, p_str_l)
-                obj_checkbox.set_slot_func(cb_fcn)
+                obj_checkbox.connect(cb_fcn)
 
                 # appends the parameter search objects
                 self.search_dlg.append_para_obj(obj_checkbox, ps['name'], p_str_l[1])

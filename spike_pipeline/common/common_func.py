@@ -10,6 +10,7 @@ from PyQt6.QtCore import Qt
 q_fix = QSizePolicy.Policy.Fixed
 q_exp = QSizePolicy.Policy.Expanding
 q_expm = QSizePolicy.Policy.MinimumExpanding
+q_pref = QSizePolicy.Policy.Preferred
 
 q_yes = QMessageBox.StandardButton.Yes
 q_yes_no = QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
@@ -18,6 +19,12 @@ q_yes_no = QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
 align_type = {'centre': Qt.AlignmentFlag.AlignCenter,
               'left': Qt.AlignmentFlag.AlignLeft,
               'right': Qt.AlignmentFlag.AlignRight}
+
+pen_style = {'Solid': Qt.PenStyle.SolidLine,
+             'Dash': Qt.PenStyle.DashLine,
+             'Dot': Qt.PenStyle.DotLine,
+             'Dash-Dot': Qt.PenStyle.DashDotLine,
+             'Dash-Dot-Dot': Qt.PenStyle.DashDotDotLine}
 
 from PyQt6.QtGui import QColor
 
@@ -38,7 +45,7 @@ class ObservableProperty:
         return self._value
 
     def __set__(self, instance, new_value):
-        if (new_value != self._value) and (self._value is not None):
+        if new_value != self._value:
             self._value = new_value
             if self._callback:
                 self._callback(instance)

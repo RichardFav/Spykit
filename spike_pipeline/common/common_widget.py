@@ -544,7 +544,7 @@ class QTraceTree(QWidget):
         super(QTraceTree, self).__init__(parent)
 
         # field initialistions
-        self.n_node = 0
+        self.n_trace = 0
         self.h_node = {}
         self.s_node = {}
 
@@ -558,7 +558,7 @@ class QTraceTree(QWidget):
         # ------------------------ #
 
         # creates the text label
-        self.obj_txt_lbl = QLabelText(None, 'Trace Count: ', '0', font_lbl=font)
+        self.obj_txt_lbl = QLabelText(None, 'Trace Count: ', '0', font_lbl=font, name='name')
         self.main_layout.addWidget(self.obj_txt_lbl)
 
         # sets the label properties
@@ -570,6 +570,7 @@ class QTraceTree(QWidget):
 
         # sets up the table model
         self.t_model = QStandardItemModel()
+        self.t_model.dataChanged.connect(self.node_name_update)
 
         # creates the tree-view widget
         self.obj_tview = QTreeView()
@@ -580,26 +581,11 @@ class QTraceTree(QWidget):
         self.obj_tview.setItemsExpandable(False)
         self.obj_tview.setIndentation(10)
         self.obj_tview.setRootIsDecorated(False)
-        # self.obj_tview.setFixedSize(self.obj_tview.sizeHint())
         self.obj_tview.setHeaderHidden(True)
         self.obj_tview.setFrameStyle(QFrame.Shape.WinPanel | QFrame.Shadow.Sunken)
 
-        # creates the root tree item
-        self.s_node['name'] = 'Root Node'
-        self.h_node['h'] = QStandardItem(self.s_node['name'])
-        self.t_model.appendRow(self.h_node['h'])
-
         # appends the widget to the main widget
         self.main_layout.addWidget(self.obj_tview)
-
-        # REMOVE ME LATER
-        self.add_tree_item("Node 1")
-        self.add_tree_item("Node 11", [1])
-        self.add_tree_item("Node 12", [1])
-        self.add_tree_item("Node 2")
-        self.add_tree_item("Node 21", [2])
-
-        a = 1
 
     def add_tree_item(self, n_name, parent_id=None):
         """
@@ -610,38 +596,65 @@ class QTraceTree(QWidget):
         """
 
         # creates the tree item
-        if parent_id is None:
-            parent_id = []
         item = QStandardItem(n_name)
+        item.setEditable(True)
 
-        # case is another node type
-        d_node, n_node = self.h_node, self.s_node
-        for p_id in parent_id:
-            d_node, n_node = d_node[str(p_id)], n_node[str(p_id)]
+        if parent_id is None:
+            # creates the root tree item
+            self.s_node['name'] = 'Root Trace'
+            self.h_node['h'] = QStandardItem(self.s_node['name'])
+            self.t_model.appendRow(self.h_node['h'])
 
-        # appends the widget to the branch node
-        d_node['h'].appendRow(item)
-        n_ch = len(d_node.keys())
+        else:
+            # case is another node type
+            d_node, n_node = self.h_node, self.s_node
+            for p_id in parent_id:
+                d_node, n_node = d_node[str(p_id)], n_node[str(p_id)]
 
-        # appends the widget dictionary
-        d_node[str(n_ch)] = {}
-        d_node[str(n_ch)]['h'] = item
+            # appends the widget to the branch node
+            d_node['h'].appendRow(item)
+            n_ch = len(d_node.keys())
 
-        # appends the name dictionary
-        n_node[str(n_ch)] = {}
-        n_node[str(n_ch)]['name'] = n_name
+            # appends the widget dictionary
+            d_node[str(n_ch)] = {}
+            d_node[str(n_ch)]['h'] = item
+
+            # appends the name dictionary
+            n_node[str(n_ch)] = {}
+            n_node[str(n_ch)]['name'] = n_name
 
         # increments the counter
-        self.n_node += 1
-        self.obj_txt_lbl.set_label(str(self.n_node + 1))
+        self.n_trace += 1
+        self.obj_txt_lbl.set_label(str(self.n_trace))
         
         # resets the tree-viewer properties
-        self.obj_tview.setFixedHeight(self.n_node * row_height)
+        self.reset_tview_props()
+
+    def reset_tview_props(self):
+        """
+
+        :return:
+        """
+
+        self.obj_tview.setFixedHeight(self.n_trace * row_height + 2)
         self.obj_tview.expandAll()
 
         # # flag that a new node has been added
         # self.node_added.emit()
 
+    def node_name_update(self, ind_mod_1, ind_mod_2, roles):
+        """
+
+        :param ind_mod_1:
+        :param ind_mod_2:
+        :param roles:
+        :return:
+        """
+
+        from spike_pipeline.widgets.plot_widget import QPlotPara
+
+        h_plot_para = cf.get_parent_widget(self, QPlotPara)
+        h_plot_para.p_props.name = ind_mod_1.data()
 
 ########################################################################################################################
 
@@ -709,7 +722,7 @@ class QCollapseGroup(QWidget):
         self.update_button_text()
 
         # resets the collapse panel size policy
-        self.setSizePolicy(QSizePolicy(QSizePolicy.Policy.Preferred, cf.q_fix))
+        self.setSizePolicy(QSizePolicy(cf.q_pref, cf.q_fix))
 
     # ------------------------------ #
     # --- WIDGET SETUP FUNCTIONS --- #
@@ -1093,7 +1106,7 @@ class QCheckboxHTML(QWidget):
 
         self.h_lbl.setText(t_lbl)
 
-    def set_slot_func(self, cb_fcn):
+    def connect(self, cb_fcn):
         """
 
         :param cb_fcn:
