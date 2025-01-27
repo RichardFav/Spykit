@@ -78,6 +78,7 @@ class QRegionConfig(QWidget):
             # sets the editbox widget properties
             obj_lbl_edit.obj_lbl.setAlignment(Qt.AlignmentFlag.AlignRight)
             obj_lbl_edit.obj_lbl.adjustSize()
+            obj_lbl_edit.obj_lbl.setStyleSheet("padding-left: 5px")
 
             # sets the callback function
             cb_fcn_rc = functools.partial(self.edit_dim_update, ps)
@@ -397,7 +398,7 @@ class QRegionConfig(QWidget):
                     self.c_id = np.vstack([self.c_id, n_trace])
 
                 else:
-                    nw_row = np.hstack([n_trace, np.array((1, self.n_col - 1), dtype=int)])
+                    nw_row = np.hstack([n_trace, np.zeros(self.n_col - 1, dtype=int)])
                     self.c_id = np.vstack([self.c_id, nw_row])
 
                 # increments the region row counter
@@ -1067,7 +1068,7 @@ class QLabelEdit(QWidget):
 
         # sets up the label properties
         self.obj_lbl.adjustSize()
-        self.obj_lbl.setStyleSheet('padding-top: 2 px;')
+        self.obj_lbl.setStyleSheet('padding-top: 3px;')
 
         # sets up the editbox properties
         self.obj_edit.setFixedHeight(cf.edit_height)
