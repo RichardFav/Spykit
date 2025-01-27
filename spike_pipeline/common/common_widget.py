@@ -26,20 +26,20 @@ gbox_height0 = 25
 class QRegionConfig(QWidget):
     config_reset = pyqtSignal()
 
-    def __init__(self, parent=None, font=None, n_row=1, n_col=1):
+    def __init__(self, parent=None, font=None):
         super(QRegionConfig, self).__init__(parent)
 
         # field initialisations
         self.h_rgrid = []
-        self.n_row = n_row
-        self.n_col = n_col
+        self.n_row = 1
+        self.n_col = 1
         self.is_expanded = False
         self.is_mouse_down = False
         self.tr_col = cf.get_colour_value('w')
 
         self.is_sel = None
         self.g_id = np.zeros((2, 2), dtype=int)
-        self.c_id = np.ones((self.n_row, self.n_col), dtype=int)
+        self.c_id = np.zeros((self.n_row, self.n_col), dtype=int)
 
         # sets up the widget layout
         self.main_layout = QVBoxLayout()
@@ -72,7 +72,7 @@ class QRegionConfig(QWidget):
         for tl, ps in zip(t_lbl, p_str):
             # creates the label/editbox object
             tl_lbl = "{0}:".format(tl)
-            obj_lbl_edit = QLabelEdit(None, tl_lbl, getattr(self, ps), font_lbl=font)
+            obj_lbl_edit = QLabelEdit(None, tl_lbl, getattr(self, ps), font_lbl=font, name=ps)
             self.rc_layout.addWidget(obj_lbl_edit)
 
             # sets the editbox widget properties
@@ -84,9 +84,9 @@ class QRegionConfig(QWidget):
             obj_lbl_edit.connect(cb_fcn_rc)
 
         # adds the combo object
-        self.p_list = ['(No Trace)', 'Root Trace']
-        self.p_col = [cf.get_colour_value('lg'), cf.get_colour_value(0)]
-        self.obj_lbl_combo = QLabelCombo(None, 'Trace Name: ', self.p_list, 'Root Trace', font_lbl=font)
+        self.p_list = ['(No Trace)']
+        self.p_col = [cf.get_colour_value('lg')]
+        self.obj_lbl_combo = QLabelCombo(None, 'Trace Name: ', self.p_list, self.p_list[0], font_lbl=font)
 
         # sets the label properties
         self.obj_lbl_combo.obj_lbl.setFixedWidth(80)
@@ -121,7 +121,7 @@ class QRegionConfig(QWidget):
         # sets up the groupbox layout widget
         self.gb_layout = QGridLayout()
         self.gb_layout.setSpacing(0)
-        self.gb_layout.setContentsMargins(x_gap, x_gap, x_gap, x_gap)
+        self.gb_layout.setContentsMargins(x_gap, 0, x_gap, x_gap)
 
         # updates the selector widgets
         self.reset_selector_widgets()
@@ -364,6 +364,93 @@ class QRegionConfig(QWidget):
         return [(m_pos.x() >= w_sz.width()) - (m_pos.x() <= 0),
                 (m_pos.y() >= w_sz.height()) - (m_pos.y() <= 0)]
 
+    # ---------------------------------- #
+    # --- TRACE OBJECT I/O FUNCTIONS --- #
+    # ---------------------------------- #
+
+    def add_new_trace(self, tr_name, n_trace):
+        """
+
+        :param tr_name:
+        :param n_trace:
+        :return:
+        """
+
+        # appends the name/colour lists
+        self.p_list.append(tr_name)
+        self.p_col.append(cf.get_colour_value(n_trace - 1))
+
+        if n_trace == 1:
+            self.c_id[:] = int(1)
+
+        else:
+            is_empty = np.any(self.c_id == 0, axis=1)
+            if np.any(is_empty):
+                # is so, then add the new trace into the array
+                i_row_nw = np.where(is_empty)[0][0]
+                i_col_nw = np.where(self.c_id[i_row_nw, :] == 0)[0][0]
+                self.c_id[i_row_nw, i_col_nw] = n_trace
+
+            else:
+                # otherwise, append a new row to the grid ID array
+                if self.n_col == 1:
+                    self.c_id = np.vstack([self.c_id, n_trace])
+
+                else:
+                    nw_row = np.hstack([n_trace, np.array((1, self.n_col - 1), dtype=int)])
+                    self.c_id = np.vstack([self.c_id, nw_row])
+
+                # increments the region row counter
+                self.n_row += 1
+                self.findChild(QLineEdit, name='n_row').setText(str(self.n_row))
+                self.reset_selector_widgets()
+
+        # appends a new combobox item
+        self.obj_lbl_combo.obj_cbox.addItem(tr_name)
+        self.obj_lbl_combo.obj_cbox.setCurrentText(tr_name)
+
+    def delete_existing_trace(self, tr_obj, i_trace):
+        """
+
+        :param i_trace:
+        :return:
+        """
+
+        # initialisations
+        reset_region = False
+
+        # removes the groupbox item
+        self.obj_lbl_combo.obj_cbox.removeItem(i_trace + 1)
+        self.obj_lbl_combo.obj_cbox.setCurrentIndex(self.i_trace)
+
+        # resets the grid ID flags
+        self.c_id[self.c_id == (i_trace + 1)] = 0
+        self.c_id = self.c_id - (self.c_id > i_trace)
+        self.p_col.pop(-1)
+
+        # removes any empty rows
+        is_empty_row = np.all(self.c_id == 0, axis=1)
+        if np.any(is_empty_row):
+            self.c_id, reset_region = self.c_id[np.logical_not(is_empty_row), :], True
+
+        # removes any empty columns
+        is_empty_col = np.all(self.c_id == 0, axis=0)
+        if np.any(is_empty_col):
+            self.c_id, reset_region = self.c_id[:, np.logical_not(is_empty_col)], True
+
+        # updates any
+        if reset_region:
+            # resets the row/column indices
+            self.n_row, self.n_col = self.c_id.shape[0], self.c_id.shape[1]
+            self.findChild(QLineEdit, name='n_row').setText(str(self.n_row))
+            self.findChild(QLineEdit, name='n_col').setText(str(self.n_col))
+
+            # resets the selector widgets
+            self.reset_selector_widgets()
+
+            # flag that the plot widgets need updating
+            self.config_reset.emit()
+
     # ------------------------------- #
     # --- MISCELLANEOUS FUNCTIONS --- #
     # ------------------------------- #
@@ -404,8 +491,11 @@ class QRegionConfig(QWidget):
                     h_grid.setSizePolicy(QSizePolicy(cf.q_exp, cf.q_exp))
 
                 # updates the widget stylesheet
-                g_col = self.p_col[self.c_id[i_row, i_col]]
-                self.set_grid_style_sheet(h_grid, g_col)
+                try:
+                    g_col = self.p_col[self.c_id[i_row, i_col]]
+                    self.set_grid_style_sheet(h_grid, g_col)
+                except:
+                    a = 1
 
                 # appends the widget to the parent widget
                 self.gb_layout.addWidget(h_grid, i_row, i_col)
@@ -543,7 +633,7 @@ class QTraceTree(QWidget):
     def __init__(self, parent=None, font=None):
         super(QTraceTree, self).__init__(parent)
 
-        # field initialistions
+        # field initialisations
         self.n_trace = 0
         self.h_node = {}
         self.s_node = {}
@@ -580,18 +670,18 @@ class QTraceTree(QWidget):
         self.obj_tview.setStyleSheet(tree_style)
         self.obj_tview.setItemsExpandable(False)
         self.obj_tview.setIndentation(10)
-        self.obj_tview.setRootIsDecorated(False)
+        # self.obj_tview.setRootIsDecorated(False)
         self.obj_tview.setHeaderHidden(True)
         self.obj_tview.setFrameStyle(QFrame.Shape.WinPanel | QFrame.Shadow.Sunken)
 
         # appends the widget to the main widget
         self.main_layout.addWidget(self.obj_tview)
 
-    def add_tree_item(self, n_name, parent_id=None):
+    def add_tree_item(self, n_name, h_parent=None):
         """
 
         :param n_name:
-        :param parent_id:
+        :param h_parent:
         :return:
         """
 
@@ -599,34 +689,38 @@ class QTraceTree(QWidget):
         item = QStandardItem(n_name)
         item.setEditable(True)
 
-        if parent_id is None:
-            # creates the root tree item
-            self.s_node['name'] = 'Root Trace'
-            self.h_node['h'] = QStandardItem(self.s_node['name'])
-            self.t_model.appendRow(self.h_node['h'])
+        if h_parent is None:
+            # case is the root trace
+            self.t_model.appendRow(item)
 
         else:
-            # case is another node type
-            d_node, n_node = self.h_node, self.s_node
-            for p_id in parent_id:
-                d_node, n_node = d_node[str(p_id)], n_node[str(p_id)]
-
-            # appends the widget to the branch node
-            d_node['h'].appendRow(item)
-            n_ch = len(d_node.keys())
-
-            # appends the widget dictionary
-            d_node[str(n_ch)] = {}
-            d_node[str(n_ch)]['h'] = item
-
-            # appends the name dictionary
-            n_node[str(n_ch)] = {}
-            n_node[str(n_ch)]['name'] = n_name
+            # case is a sub-trace
+            h_parent.h_tree.appendRow(item)
 
         # increments the counter
         self.n_trace += 1
         self.obj_txt_lbl.set_label(str(self.n_trace))
         
+        # resets the tree-viewer properties
+        self.reset_tview_props()
+
+        # returns the tree item
+        return item
+
+    def delete_tree_item(self, item):
+        """
+
+        :param item:
+        :return:
+        """
+
+        # creates the tree item
+        item.parent().removeRow(item.row())
+
+        # increments the counter
+        self.n_trace -= 1
+        self.obj_txt_lbl.set_label(str(self.n_trace))
+
         # resets the tree-viewer properties
         self.reset_tview_props()
 
@@ -1114,8 +1208,16 @@ class QCheckboxHTML(QWidget):
         """
 
         self.h_chk.stateChanged.connect(cb_fcn)
-        self.h_lbl.mousePressEvent = cb_fcn
+        self.h_lbl.mousePressEvent = self.label_clicked
 
+    def label_clicked(self, evnt):
+        """
+
+        :param evnt:
+        :return:
+        """
+
+        self.h_chk.setChecked(not self.h_chk.isChecked())
 
 ########################################################################################################################
 

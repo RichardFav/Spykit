@@ -1,6 +1,8 @@
 # module import
 import math
 import threading
+from copy import deepcopy
+from typing import TypeVar
 
 # pyqt6 module import
 from PyQt6.QtWidgets import (QMessageBox, QSizePolicy)
@@ -38,6 +40,8 @@ combo_height = 22
 
 class ObservableProperty:
     def __init__(self, callback=None):
+        super(ObservableProperty, self).__init__()
+
         self._value = None
         self._callback = callback
 
@@ -326,3 +330,20 @@ def lcm(a, b):
     """
 
     return (a * b) // math.gcd(a, b)
+
+
+Cls = TypeVar('Cls')
+
+# This type hint is a dirty lie to make autocomplete and static
+# analyzers give more useful results. Crazy the stuff you can do
+# with python...
+def copy_class(cls: Cls) -> Cls:
+    copy_cls = type(f'{cls.__name__}Copy', cls.__bases__, dict(cls.__dict__))
+    for name, attr in cls.__dict__.items():
+        try:
+            hash(attr)
+        except TypeError:
+            # Assume lack of __hash__ implies mutability. This is NOT
+            # a bullet proof assumption but good in many cases.
+            setattr(copy_cls, name, deepcopy(attr))
+    return copy_cls
