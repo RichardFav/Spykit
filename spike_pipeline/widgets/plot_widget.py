@@ -41,8 +41,8 @@ main_name = "Main Trace"
 ########################################################################################################################
 
 # object dimensions
-dlg_width = 1500
-dlg_height = 1000
+dlg_width = 1650
+dlg_height = 900
 
 min_width = 800
 min_height = 450
@@ -99,6 +99,7 @@ class QPlotWidgetMain(QDialog):
         # creates the dialog window
         self.setWindowTitle("Plotting Widget")
         self.setMinimumSize(min_width, min_height)
+        self.resize(dlg_width, dlg_height)
 
     def init_class_fields(self):
         """
@@ -1351,7 +1352,12 @@ class QPlotWidget(QWidget):
         # sets up the plot item
         self.h_plot_item.setDownsampling(auto=True)
         self.h_plot_item.setDefaultPadding(0.0)
+        self.h_plot_item.showGrid(x=True, y=True, alpha=0.5)
         self.plot_layout.addWidget(self.h_plot)
+
+        # # adds the zero line (optional?)
+        # h_line = pg.InfiniteLine(pos=0, angle=0)
+        # self.h_plot.addItem(h_line)
 
         # updates the axis limits
         v_box = self.h_plot.getViewBox()
