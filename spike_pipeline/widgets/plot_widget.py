@@ -384,6 +384,7 @@ class QPlotPara(QWidget):
 
         # group initialisations
         style_list = ['Solid', 'Dash', 'Dot', 'Dash-Dot', 'Dash-Dot-Dot']
+        grid_list = ['No Grid', 'X-Direction Only', 'Y-Direction Only', 'Both Directions']
 
         # sets up the subgroup fields
         p_tmp = {
@@ -391,6 +392,7 @@ class QPlotPara(QWidget):
             'p_width': self.create_para_field('Line Width', 'edit', self.p_props.p_width),
             'p_style': self.create_para_field('Line Style', 'combobox', self.p_props.p_style, p_list=style_list),
             'p_col': self.create_para_field('Trace Colour', 'colorpick', self.p_props.p_col),
+            'g_style': self.create_para_field('Line Style', 'combobox', self.p_props.g_style, p_list=grid_list),
         }
 
         # updates the class field
@@ -452,6 +454,10 @@ class QPlotPara(QWidget):
         obj_panel_c.expand_button.setFixedHeight(cf.but_height + 1)
         # h_panel_c.expand_button.setIcon(QIcon(icon_path[p]))
         # h_panel_c.expand_button.setIconSize(QSize(cf.but_height, cf.but_height))
+
+        if isinstance(f_layout, QGridLayout):
+            for i in range(3):
+                f_layout.setColumnStretch(i, 1)
 
         # creates the parameter objects
         self.n_para = 0
@@ -555,7 +561,7 @@ class QPlotPara(QWidget):
 
                 if isinstance(layout, QGridLayout):
                     # case is adding to a QGridlayout
-                    layout.addWidget(obj_checkbox, self.n_para, 0, 1, 4)
+                    layout.addWidget(obj_checkbox, self.n_para, 0, 1, 3)
 
                 else:
                     # case is another layout type
@@ -1289,6 +1295,7 @@ class QPlotWidget(QWidget):
 
         # initialisations
         f_name = ['reset', 'open', 'save', 'close']
+        tt_str = 'Finish Me!'
 
         # sets up the
         gb_layout = QHBoxLayout()
@@ -1329,6 +1336,17 @@ class QPlotWidget(QWidget):
             obj_but.setIconSize(QSize(but_height_plt - 1, but_height_plt - 1))
             obj_but.setFixedSize(but_height_plt, but_height_plt)
             obj_but.setCursor(Qt.CursorShape.PointingHandCursor)
+            obj_but.setToolTip(tt_str)
+            obj_but.setObjectName(fp)
+
+            obj_but.setStyleSheet("""
+                QToolTip {
+                    color: white;                 
+                }
+            """)
+
+            # sets the callback function
+            obj_but.clicked.connect(self.button_plot_click)
 
             # adds the widgets
             frm_layout.addWidget(obj_but)
@@ -1354,10 +1372,6 @@ class QPlotWidget(QWidget):
         self.h_plot_item.setDefaultPadding(0.0)
         self.h_plot_item.showGrid(x=True, y=True, alpha=0.5)
         self.plot_layout.addWidget(self.h_plot)
-
-        # # adds the zero line (optional?)
-        # h_line = pg.InfiniteLine(pos=0, angle=0)
-        # self.h_plot.addItem(h_line)
 
         # updates the axis limits
         v_box = self.h_plot.getViewBox()
@@ -1482,6 +1496,14 @@ class QPlotWidget(QWidget):
     # --- WIDGET EVENT FUNCTIONS --- #
     # ------------------------------ #
 
+    def button_plot_click(self):
+        """
+
+        :return:
+        """
+
+        cf.show_error('Finish Me!')
+
     def region_mouse_click(self, evnt):
         """
 
@@ -1549,6 +1571,15 @@ class QPlotWidget(QWidget):
                 # case is the line pen-width
                 pen = pg.mkPen(color=self.p_props.p_col, width=self.p_props.p_width)
                 self.h_plot_item.dataItems[0].setPen(pen)
+
+            case 'g_style':
+
+                # sets the x/y-grid flag values
+                x_on = ('X-Dir' in self.p_props.g_style) or (self.p_props.g_style == 'Both Directions')
+                y_on = ('Y-Dir' in self.p_props.g_style) or (self.p_props.g_style == 'Both Directions')
+
+                # resets the grid values
+                self.h_plot_item.showGrid(x=y_on, y=x_on, alpha=0.5)
 
     # ------------------------------- #
     # --- MISCELLANEOUS FUNCTIONS --- #
@@ -1651,6 +1682,7 @@ class QParaTrace(QWidget):
         self.p_width = 1
         self.p_style = 'Solid'
         self.p_col = QColor(255, 255, 255)
+        self.g_style = 'Both Directions'
 
         # trace operation fields
         self.show_child = False
@@ -1698,6 +1730,7 @@ class QParaClass(QParaTrace):
     p_width = cf.ObservableProperty(functools.partial(para_change, 'p_width'))
     p_style = cf.ObservableProperty(functools.partial(para_change, 'p_style'))
     p_col = cf.ObservableProperty(functools.partial(para_change, 'p_col'))
+    g_style = cf.ObservableProperty(functools.partial(para_change, 'g_style'))
 
     # trace operation observer properties
     show_child = cf.ObservableProperty(functools.partial(prop_update, 'show_child'))

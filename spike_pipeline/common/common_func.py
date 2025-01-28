@@ -141,7 +141,7 @@ def check_edit_num(nw_str, is_int=False, min_val=-1e100, max_val=1e10, show_err=
     return None, e_str
 
 
-def show_error(text, title):
+def show_error(text, title=""):
     """
 
     :param text:
