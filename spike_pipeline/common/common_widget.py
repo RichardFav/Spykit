@@ -15,6 +15,9 @@ from PyQt6.QtWidgets import (QWidget, QHBoxLayout, QGridLayout, QVBoxLayout, QPu
 from PyQt6.QtGui import QFont, QDrag, QCursor, QStandardItemModel, QStandardItem
 from PyQt6.QtCore import Qt, QRect, QMimeData, pyqtSignal
 
+# style sheets
+edit_style_sheet = "border: 1px solid; border-radius: 2px; padding-left: 5px;"
+
 ########################################################################################################################
 
 
@@ -232,6 +235,20 @@ class QRegionConfig(QWidget):
                 break
 
         if is_feas:
+            if self.i_trace == 0:
+                for cid in np.unique(self.c_id[self.is_sel]):
+                    tr_obj = self.h_root.tr_obj[cid - 1]
+                    if tr_obj.plot_para.show_parent:
+                        # hides the region object and resets the flag
+                        tr_obj.plot_para.show_parent = False
+                        tr_obj.plot_obj.l_reg_p.hide()
+
+                        # unchecks the parent region checkbox (if currently set)
+                        if cid == (self.h_root.i_trace + 1):
+                            h_chk = self.h_root.obj_para.findChild(QWidget, name='show_parent')
+                            h_chk.set_check(False)
+
+
             # if feasible, then update the parameter fields and other properties
             ind_sel = np.where(self.is_sel)
             for i_r, i_c in zip(ind_sel[0], ind_sel[1]):
@@ -604,6 +621,99 @@ class QRegionConfig(QWidget):
         """
 
         return 'rgba({0}, {1}, {2}, {3})'.format(t_col.red(), t_col.green(), t_col.blue(), t_col.alpha())
+
+########################################################################################################################
+
+
+class QAxesLimits(QWidget):
+    # initialisations
+    p_str = ['x_min', 'x_max', 'y_min', 'y_max']
+
+    def __init__(self, parent=None, font=None):
+        super(QAxesLimits, self).__init__(parent)
+
+        # field initialisation
+        self.font = font
+        self.x_lim, self.y_lim = [], []
+
+        # widget initialisations
+        self.main_layout = QVBoxLayout()
+        self.h_edit = []
+
+        # creates the class field widgets
+        self.init_class_fields()
+
+    def init_class_fields(self):
+        """
+
+        :return:
+        """
+
+        # sets up the widget layout
+        self.main_layout.setSpacing(0)
+        self.main_layout.setContentsMargins(0, 0, 0, 0)
+        self.setLayout(self.main_layout)
+
+        # -------------------------- #
+        # --- AXIS LIMIT WIDGETS --- #
+        # -------------------------- #
+
+        # creates the limit widgets
+        lim_widget = QWidget()
+
+        lim_layout = QGridLayout(self)
+        lim_layout.setContentsMargins(0, 0, 0, 5)
+        lim_widget.setLayout(lim_layout)
+
+        #
+        h_lbl_min = create_text_label(None, 'Min', self.font, align='center')
+        h_lbl_max = create_text_label(None, 'Max', self.font, align='center')
+        h_lbl_min.setFixedHeight(10)
+        h_lbl_max.setFixedHeight(10)
+
+        # creates the header row
+        # lim_layout.addWidget(QWidget(), 0, 0, 1, 1)
+        lim_layout.addWidget(h_lbl_min, 0, 1, 1, 1)
+        lim_layout.addWidget(h_lbl_max, 0, 2, 1, 1)
+
+        # creates the x-axis limit row
+        lim_layout.addWidget(create_text_label(None, 'X-Axis:', self.font), 1, 0, 1, 1)
+        lim_layout.addWidget(create_text_label(None, 'Y-Axis:', self.font), 2, 0, 1, 1)
+
+        for i in range(2):
+            for j in range(2):
+                # creates the line edit widget
+                h_edit_new = create_line_edit(None, '', name=self.p_str[i][j])
+                lim_layout.addWidget(h_edit_new, i + 1, j + 1, 1, 1)
+
+                # sets the editbox event callback function
+                cb_fcn = functools.partial(self.edit_limit_para, self.p_str[i][j])
+                h_edit_new.editingFinished.connect(cb_fcn)
+                h_edit_new.setStyleSheet(edit_style_sheet)
+
+                # appends the widget to the class field
+                self.h_edit.append(h_edit_new)
+
+        # adds the widget to the main widget
+        self.main_layout.addWidget(lim_widget)
+
+        # --------------------------- #
+        # --- OTHER CLASS WIDGETS --- #
+        # --------------------------- #
+
+        # sets up the label edit widget
+        self.obj_lbl_dur = QLabelText(
+            None, 'Signal Duration: ', '0', font_lbl=self.font, font_txt=self.font, name='t_dur')
+        self.main_layout.addWidget(self.obj_lbl_dur)
+
+    def edit_limit_para(self, p_str):
+        """
+
+        :param p_str:
+        :return:
+        """
+
+        a = 1
 
 ########################################################################################################################
 
@@ -1072,9 +1182,7 @@ class QLabelEdit(QWidget):
 
         # sets up the editbox properties
         self.obj_edit.setFixedHeight(cf.edit_height)
-        self.obj_edit.setStyleSheet(
-            "border: 1px solid; border-radius: 2px; padding-left: 5px;"
-        )
+        self.obj_edit.setStyleSheet(edit_style_sheet)
 
     def connect(self, cb_fcn0):
         """
@@ -1178,6 +1286,9 @@ class QCheckboxHTML(QWidget):
         self.layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(self.layout)
 
+        if name is not None:
+            self.setObjectName(name)
+
         # creates the checkbox object
         self.h_chk = create_check_box(None, '', state, name=name)
         self.h_chk.adjustSize()
@@ -1200,6 +1311,25 @@ class QCheckboxHTML(QWidget):
         """
 
         self.h_lbl.setText(t_lbl)
+
+    def set_enabled(self, state):
+        """
+
+        :param state:
+        :return:
+        """
+
+        self.h_lbl.setEnabled(state)
+        self.h_chk.setEnabled(state)
+
+    def set_check(self, state):
+        """
+
+        :param state:
+        :return:
+        """
+
+        self.h_chk.setChecked(state)
 
     def connect(self, cb_fcn):
         """
@@ -1257,7 +1387,7 @@ def create_text_label(parent, text, font=None, align='right', name=None):
     return h_lbl
 
 
-def create_line_edit(parent, text, font=None, align='centre', name=None):
+def create_line_edit(parent, text, font=None, align='center', name=None):
     """
 
     :param parent:

@@ -18,7 +18,7 @@ q_yes = QMessageBox.StandardButton.Yes
 q_yes_no = QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
 
 # common parameters
-align_type = {'centre': Qt.AlignmentFlag.AlignCenter,
+align_type = {'center': Qt.AlignmentFlag.AlignCenter,
               'left': Qt.AlignmentFlag.AlignLeft,
               'right': Qt.AlignmentFlag.AlignRight}
 

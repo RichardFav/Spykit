@@ -1,20 +1,17 @@
 import os
-import functools
 import time
+import functools
 
 import numpy as np
 import pyqtgraph as pg
 from copy import deepcopy
 
-from pyqtgraph.Qt.QtGui import QPen
-from pyqtgraph.Qt import QtCore
-
 # pyqt6 module import
 from PyQt6.QtWidgets import (QDialog, QWidget, QVBoxLayout, QFormLayout, QGridLayout, QHBoxLayout,
                              QGroupBox, QColorDialog, QScrollArea, QFrame, QSizePolicy, QLayout, QLayoutItem,
-                             QLineEdit, QComboBox, QCheckBox, QLabel, QPushButton)
-from PyQt6.QtGui import QFont, QColor, QIcon, QStandardItem, QAction, QMouseEvent, QPixmap
-from PyQt6.QtCore import Qt, QSize, QRect, pyqtSignal, QAbstractItemModel
+                             QLineEdit, QComboBox, QCheckBox, QPushButton)
+from PyQt6.QtCore import Qt, QSize, QRect, pyqtSignal
+from PyQt6.QtGui import QFont, QColor, QIcon
 
 # custom module import
 import spike_pipeline.common.common_widget as cw
@@ -38,11 +35,14 @@ icon_path = {'pre_processing': os.path.join(icon_dir, 'pre_processing_icon.png')
              'close': os.path.join(icon_dir, 'close_icon.png'),
              'search': os.path.join(icon_dir, 'search_icon')}
 
+# main trace root string
+main_name = "Main Trace"
+
 ########################################################################################################################
 
 # object dimensions
-dlg_width = 1400
-dlg_height = 800
+dlg_width = 1500
+dlg_height = 1000
 
 min_width = 800
 min_height = 450
@@ -83,7 +83,7 @@ class QPlotWidgetMain(QDialog):
 
         # creates the trace objects
         self.dx = np.diff(self.x[:2])
-        self.tr_obj = [QTraceObject(self, 'Root Trace', _id=0)]
+        self.tr_obj = [QTraceObject(self, main_name)]
         self.i_trace = 0
 
     # -------------------------------------- #
@@ -148,14 +148,24 @@ class QPlotWidgetMain(QDialog):
         setattr(obj_tr_sel.plot_para, p_str, getattr(self.obj_para.p_props, p_str))
 
         match p_str:
-            case 'show_highlight':
+            case 'show_child':
                 # case is showing the trace highlight
 
                 # field initialisations
-                is_show = obj_tr_sel.plot_para.show_highlight
+                is_show = obj_tr_sel.plot_para.show_child
 
                 # shows/hides the linear region object
                 obj_tr_sel.plot_obj.l_reg.show() if is_show else obj_tr_sel.plot_obj.l_reg.hide()
+                self.obj_para.update_button_props(obj_tr_sel)
+
+            case 'show_parent':
+                # case is showing the trace highlight
+
+                # field initialisations
+                is_show = obj_tr_sel.plot_para.show_parent
+
+                # shows/hides the linear region object
+                obj_tr_sel.plot_obj.l_reg_p.show() if is_show else obj_tr_sel.plot_obj.l_reg_p.hide()
                 self.obj_para.update_button_props(obj_tr_sel)
 
             case 'create_trace':
@@ -164,7 +174,7 @@ class QPlotWidgetMain(QDialog):
                 # creates and appends the trace object
                 n_tr_obj = len(self.tr_obj)
                 tr_name = 'Trace {0}/{1}'.format(obj_tr_sel.i_lvl + 1, obj_tr_sel.n_ch + 1)
-                obj_tr_new = QTraceObject(self, tr_name, obj_tr_sel, _id=n_tr_obj)
+                obj_tr_new = QTraceObject(self, tr_name, obj_tr_sel)
                 self.tr_obj.append(obj_tr_new)
 
                 # resets the selected trace index
@@ -177,6 +187,9 @@ class QPlotWidgetMain(QDialog):
                 # deletes the trace object
                 tr_obj_rmv = self.tr_obj.pop(self.i_trace)
                 tr_obj_rmv.delete()
+
+                # resets the axes limit fields
+                self.obj_para.reset_axis_limit_fields(self.tr_obj[self.i_trace])
 
                 # resets the selection highlight
                 p_gbox = self.tr_obj[self.i_trace].plot_obj.obj_plot_gbox
@@ -231,9 +244,6 @@ class QPlotWidgetMain(QDialog):
 x_gap = 15
 grp_width = 250
 
-# other string fields
-root_str = 'Root Trace'
-
 
 class QPlotPara(QWidget):
     axes_reset = pyqtSignal(QWidget)
@@ -246,11 +256,12 @@ class QPlotPara(QWidget):
         self.n_trace = 0
         self.p_info = {}
         self.is_updating = False
+        self.h_root = cf.get_parent_widget(self, QPlotWidgetMain)
 
         # sets up the properties class object
-        self.p_props = QParaClass("Root Trace")
-        self.p_props.update_props.connect(self.parent().update_trace)
-        self.p_props.trace_operation.connect(self.parent().trace_operation)
+        self.p_props = QParaClass(main_name)
+        self.p_props.update_props.connect(self.h_root.update_trace)
+        self.p_props.trace_operation.connect(self.h_root.trace_operation)
 
         # widget setup
         self.main_layout = QFormLayout()
@@ -390,7 +401,8 @@ class QPlotPara(QWidget):
 
         # sets up the subgroup fields
         p_tmp = {
-            'show_highlight': self.create_para_field('Show Region Highlight', 'checkbox', False),
+            'show_child': self.create_para_field('Show Sub-Trace Region', 'checkbox', False),
+            'show_parent': self.create_para_field('Show Parent Region', 'checkbox', False),
             'create_trace': self.create_para_field('Create New Sub-Trace', 'pushbutton', None),
             'delete_trace': self.create_para_field('Delete Current Trace', 'pushbutton', None),
             'clip_trace': self.create_para_field('Clip Highlighted Region', 'pushbutton', None),
@@ -398,6 +410,18 @@ class QPlotPara(QWidget):
 
         # updates the class field
         self.p_info['tr_op'] = {'name': 'Trace Operations', 'type': 'v_panel', 'ch_fld': p_tmp}
+
+        # -------------------------------- #
+        # --- TRACE PROPERTIES OBJECTS --- #
+        # -------------------------------- #
+
+        # sets up the subgroup fields
+        p_tmp = {
+            'ax_lim': self.create_para_field('Axis Limits', 'axeslimits', None)
+        }
+
+        # updates the class field
+        self.p_info['tr_limits'] = {'name': 'Current Trace Limits', 'type': 'v_panel', 'ch_fld': p_tmp}
 
     def setup_para_group(self, p, i_grp):
         """
@@ -604,6 +628,13 @@ class QPlotPara(QWidget):
                     # case is another layout type
                     layout.addRow(obj_lblbutton)
 
+            case 'axeslimits':
+                # case is the axes limit widget
+
+                # creates the file selection widget
+                self.obj_axlim = cw.QAxesLimits(None, font=self.font_lbl)
+                layout.addRow(self.obj_axlim)
+
             case 'filespec':
                 # case is a file selection widget
 
@@ -629,15 +660,27 @@ class QPlotPara(QWidget):
         h_group_pr = self.findChildren(QCollapseGroup, name='tr_prop')[0]
         self.reset_widget_values(h_group_pr, self.p_info['tr_prop'], tr_obj.plot_para)
 
+        # updates the name editbox properties (can't alter main trace string)
+        h_edit_name = h_group_pr.findChild(QLineEdit, name='name')
+        h_edit_name.setEnabled(h_edit_name.text() != main_name)
+
         # resets the operation panel properties
         h_group_op = self.findChildren(QCollapseGroup, name='tr_op')[0]
         self.reset_widget_values(h_group_op, self.p_info['tr_op'], tr_obj.plot_para)
-        self.parent().obj_para.update_button_props(tr_obj)
+        self.h_root.obj_para.update_button_props(tr_obj)
+        self.h_root.obj_para.reset_axis_limit_fields(tr_obj)
 
         # updates the parameter field
         self.is_updating = False
 
     def reset_widget_values(self, h_group, p_info_grp, _p_props):
+        """
+
+        :param h_group:
+        :param p_info_grp:
+        :param _p_props:
+        :return:
+        """
 
         for i, p_fld in enumerate(p_info_grp['ch_fld'].keys()):
             p_val = getattr(_p_props, p_fld)
@@ -662,6 +705,10 @@ class QPlotPara(QWidget):
                 # case is a checkbox
                 h_widget_p.setChecked(p_val)
 
+            elif isinstance(h_widget_p, QCheckboxHTML):
+                # case is a checkbox
+                h_widget_p.h_chk.setChecked(p_val)
+
             else:
                 # case is another widget type
                 match h_widget_p.objectName():
@@ -671,6 +718,37 @@ class QPlotPara(QWidget):
                             "border: 2px solid;"
                             "background-color: {0}".format(p_val.name())
                         )
+
+    def reset_axis_limit_fields(self, tr_obj):
+        """
+
+        :return:
+        """
+
+        # updates the x/y-axis limits
+        i_frm = tr_obj.plot_obj.i_frm
+
+        # calculates the axis limits
+        if tr_obj.i_lvl == 0:
+            x_lim = tr_obj.plot_obj.x_lim
+            y_lim = tr_obj.plot_obj.y_lim
+
+        else:
+            y_frm = tr_obj.plot_obj.y[range(i_frm[0], i_frm[1])]
+            x_lim = tr_obj.plot_obj.x[i_frm]
+            y_lim = [np.min(y_frm), np.max(y_frm)]
+
+        # resets the editbox values
+        self.obj_axlim.h_edit[0].setText('%g' % x_lim[0])
+        self.obj_axlim.h_edit[1].setText('%g' % x_lim[1])
+        self.obj_axlim.h_edit[2].setText('%g' % y_lim[0])
+        self.obj_axlim.h_edit[3].setText('%g' % y_lim[1])
+
+        # resets the duration label string
+        self.obj_axlim.obj_lbl_dur.obj_txt.setText('%g' % np.diff(x_lim))
+
+        # updates the editbox enabled properties
+        [x.setEnabled(tr_obj.i_lvl > 0) for x in self.obj_axlim.h_edit]
 
     # ----------------------------------------- #
     # --- COLLAPSIBLE PANEL EVENT FUNCTIONS --- #
@@ -683,9 +761,9 @@ class QPlotPara(QWidget):
         :return:
         """
 
-        if self.parent().was_reset:
+        if self.h_root.was_reset:
             # hack fix - top panel group wants to collapse when editbox value is reset?
-            self.parent().was_reset = False
+            self.h_root.was_reset = False
 
         else:
             # field retrieval
@@ -739,7 +817,7 @@ class QPlotPara(QWidget):
             # case is a numerical parameters
 
             # updates the reset flag
-            self.parent().was_reset = True
+            self.h_root.was_reset = True
 
             # sets the parameter limiting properties
             p_min, p_max, is_int = -1e6, 1e6, True
@@ -800,9 +878,9 @@ class QPlotPara(QWidget):
 
         # parameter specific updates
         match p_str:
-            case 'show_highlight':
+            case 'show_child':
                 # case is show highlight
-                self.update_button_props(self.parent().tr_obj[self.parent().i_trace])
+                self.update_button_props(self.h_root.tr_obj[self.h_root.i_trace])
 
     def pushbutton_para_update(self, h_button):
         """
@@ -876,18 +954,20 @@ class QPlotPara(QWidget):
         """
 
         if tr_obj is None:
-            can_del = False
+            can_del, is_child = False, False
 
         else:
-            can_del = (tr_obj.i_lvl > 0) and (tr_obj.plot_obj.h_child is None)
+            is_child = tr_obj.i_lvl > 0
+            can_del = is_child and (tr_obj.plot_obj.h_child is None)
 
         # retrieves the operation panel widget
-        h_panel_c = self.findChildren(QCollapseGroup, 'tr_op')[0]
+        h_panel_c = self.findChild(QCollapseGroup, 'tr_op')
 
         # updates the button properties
-        h_panel_c.findChildren(QPushButton, name='create_trace')[0].setEnabled(self.p_props.show_highlight)
-        h_panel_c.findChildren(QPushButton, name='delete_trace')[0].setEnabled(can_del)
-        h_panel_c.findChildren(QPushButton, name='clip_trace')[0].setEnabled(self.p_props.show_highlight)
+        h_panel_c.findChild(QPushButton, name='create_trace').setEnabled(self.p_props.show_child)
+        h_panel_c.findChild(QPushButton, name='delete_trace').setEnabled(can_del)
+        h_panel_c.findChild(QPushButton, name='clip_trace').setEnabled(self.p_props.show_child)
+        h_panel_c.findChild(QCheckboxHTML, name='show_parent').setEnabled(is_child)
 
     def setup_widget_callback(self, h_widget=None):
 
@@ -978,11 +1058,10 @@ class QPlotWindow(QWidget):
 
 
 class QTraceObject(object):
-    def __init__(self, parent, tr_name, h_parent=None, _id=0):
+    def __init__(self, parent, tr_name, h_parent=None):
         super(QTraceObject, self).__init__()
 
         # field initialisation
-        self.id = _id
         self.n_ch = 0
         self.parent = parent
         self.h_parent = h_parent
@@ -991,9 +1070,11 @@ class QTraceObject(object):
         # boolean fields
         self.has_child = False
         self.is_root = h_parent is None
+        self.i_lvl = 0 if self.is_root else (self.h_parent.i_lvl + 1)
 
         # creates the plot parameter class object
         self.plot_para = QParaTrace(tr_name)
+        self.plot_para.show_parent = not self.is_root
 
         # appends the new tree-item
         self.h_tree = self.parent.obj_para.obj_ttree.add_tree_item(tr_name, h_parent)
@@ -1003,7 +1084,6 @@ class QTraceObject(object):
             # case is the root trace
 
             # creates the root plot widget
-            self.i_lvl = 0
             self.plot_obj = QPlotWidget(self.parent, x=x_0, y=y_0, hdr=tr_name, p_props=self.plot_para)
 
         else:
@@ -1012,14 +1092,25 @@ class QTraceObject(object):
             # creates the sub-trace plot widget
             self.plot_obj = QPlotWidget(
                 self.parent, x=x_0, y=y_0, hdr=tr_name, p_props=self.plot_para, h_parent=h_parent)
+            self.plot_obj.region_moved.connect(self.region_moved)
+
+            # enables the parent line region object
+            self.plot_obj.l_reg_p.show()
 
             # sets the other class fields
             self.h_parent.n_ch += 1
-            self.i_lvl = self.h_parent.i_lvl + 1
 
         # adds to the trace explorer
         self.parent.obj_para.reset_para_props(self)
         self.parent.trace_added(self.plot_obj, tr_name)
+
+    def region_moved(self):
+        """
+
+        :return:
+        """
+
+        self.parent.obj_para.reset_axis_limit_fields(self)
 
     def delete(self):
         """
@@ -1028,8 +1119,9 @@ class QTraceObject(object):
         """
 
         # sets the parameter update flag
-        self.h_parent.h_tree = None
+        self.h_parent.plot_obj.h_child = None
         self.parent.obj_para.is_updating = True
+        self.h_parent.plot_obj.h_plot.removeItem(self.plot_obj.l_reg_p)
 
         # removes the associated item from the tree-view
         self.parent.obj_para.obj_ttree.delete_tree_item(self.h_tree)
@@ -1082,6 +1174,8 @@ plot_gbox_style = """
 
 
 class QPlotWidget(QWidget):
+    region_moved = pyqtSignal()
+
     def __init__(self, parent=None, x=None, y=None, hdr=None, p_props=None, h_parent=None):
         super(QPlotWidget, self).__init__(parent)
 
@@ -1090,7 +1184,7 @@ class QPlotWidget(QWidget):
         self.y = y
         self.hdr = hdr
         self.i_frm = []
-        self.i_frm_ofs = 0
+        self.i_frm_ch = []
         self.p_props = p_props
 
         # widget fields
@@ -1100,11 +1194,14 @@ class QPlotWidget(QWidget):
 
         # boolean class fields
         self.is_root = h_parent is None
+        self.region_clicked = False
 
         # other field initialisations
         self.l_reg = None
+        self.l_reg_p = None
         self.h_plot_line = None
         self.x_lim, self.y_lim = None, None
+        self.h_root = cf.get_parent_widget(self, QPlotWidgetMain)
 
         # sets the panel properties
         self.main_layout = QHBoxLayout()
@@ -1114,6 +1211,10 @@ class QPlotWidget(QWidget):
         # plot-widget setup
         self.h_plot = pg.PlotWidget()
         self.h_plot_item = self.h_plot.getPlotItem()
+
+        # sets the parent index range (for non-root widgets)
+        if not self.is_root:
+            self.i_frm = self.h_parent.plot_obj.i_frm_ch
 
         # sets up the plot widgets
         self.setup_plot_widget()
@@ -1161,17 +1262,19 @@ class QPlotWidget(QWidget):
         :return:
         """
 
+        if self.region_clicked:
+            return
+
         tr_name = self.obj_plot_gbox.title()
-        h_root = cf.get_parent_widget(self, QPlotWidgetMain)
 
         # if the selected trace index doesn't match the plot widget, then update
-        if h_root.tr_obj[h_root.i_trace].plot_para.name != tr_name:
+        if self.h_root.tr_obj[self.h_root.i_trace].plot_para.name != tr_name:
             # removes the current highlight and resets the selected region index
-            h_root.remove_plot_highlight()
-            h_root.i_trace = next((i for i, h in enumerate(h_root.tr_obj) if (h.plot_para.name == tr_name)))
+            self.h_root.remove_plot_highlight()
+            self.h_root.i_trace = next((i for i, h in enumerate(self.h_root.tr_obj) if (h.plot_para.name == tr_name)))
 
             # resets the parameter properties
-            h_root.obj_para.reset_para_props(h_root.tr_obj[h_root.i_trace])
+            self.h_root.obj_para.reset_para_props(self.h_root.tr_obj[self.h_root.i_trace])
 
             # resets the s
             self.obj_plot_gbox.setObjectName('selected')
@@ -1188,12 +1291,11 @@ class QPlotWidget(QWidget):
 
         # sets up the
         gb_layout = QHBoxLayout()
-        gb_layout.setContentsMargins(0, x_gap_plt, x_gap_plt, 0)
+        gb_layout.setContentsMargins(0, 0, x_gap_plt, 0)
 
         # creates the checkbox object
         obj_grp = QWidget()
         obj_grp.setLayout(gb_layout)
-        obj_grp.setFixedHeight(but_height_plt + 4 * x_gap_plt)
         obj_grp.setStyleSheet("""
             background-color: transparent;
         """)
@@ -1202,7 +1304,7 @@ class QPlotWidget(QWidget):
         obj_gap = QWidget()
         gb_layout.addWidget(obj_gap)
         obj_gap.setStyleSheet("""
-            background-color: rgb(0, 0, 0);
+            background-color: transparent;
         """)
 
         # frame layout
@@ -1264,38 +1366,62 @@ class QPlotWidget(QWidget):
             # case is the root plot
             self.i_frm = [0, (x_plt.size - 1)]
 
+        # initialises the children index array
+        self.i_frm_ch = deepcopy(self.i_frm)
+
         # resets the axis limits
         v_box.setXRange(x_min, x_max, padding=x_pad)
         v_box.setYRange(y_min, y_max, padding=y_pad)
         v_box.setLimits(xMin=p_rng[0][0], xMax=p_rng[0][1], yMin=y_min, yMax=y_max)
 
         # adds the plot widget
-        self.setup_linear_region_item()
+        self.setup_linear_region_items()
+        if not self.is_root:
+            self.setup_linear_region_items(True)
 
-    def setup_linear_region_item(self, del_prev=False):
+    def setup_linear_region_items(self, link_parent=False):
         """
 
         :return:
         """
 
-        # deletes the previous linear region object (if required)
-        if del_prev:
-            del self.l_reg
-
-        # calculates the proportional linear span
-        p_rng = self.h_plot.getViewBox().viewRange()
-        l_span = (self.x_lim - p_rng[0][0]) / np.diff(p_rng[0])
-
         # sets up the linear region item
-        self.l_reg = pg.LinearRegionItem(self.x_lim, bounds=self.x_lim, span=l_span)
-        self.h_plot.addItem(self.l_reg)
-
-        # sets the linear region callback function
-        self.l_reg.sigRegionChangeFinished.connect(self.region_move_update)
+        # p_obj = self.h_parent.plot_obj if link_parent else self
+        l_pen = pg.mkPen(width=2, color='y' if link_parent else 'm')
+        l_pen_h = pg.mkPen(width=2, color='g')
+        l_reg_new = pg.LinearRegionItem(self.x_lim, bounds=self.x_lim, span=[0, 1], pen=l_pen, hoverPen=l_pen_h)
 
         # sets the linear region item properties
-        self.l_reg.setZValue(-10)
-        self.l_reg.hide()
+        l_reg_new.setZValue(int(link_parent)-10)
+        l_reg_new.hide()
+
+        # sets the linear region callback function
+        if link_parent:
+            # case is the linear region is being added to the parent axes
+            self.l_reg_p = l_reg_new
+
+            # sets the linear region properties
+            self.l_reg_p.setBrush(pg.mkBrush(255, 0, 0, 100))
+            self.l_reg_p.setHoverBrush(pg.mkBrush(255, 0, 0, 120))
+
+            # sets the linear region callback function
+            self.h_parent.plot_obj.h_plot.addItem(l_reg_new)
+            self.l_reg_p.sigRegionChanged.connect(self.region_parent_moving)
+            self.l_reg_p.sigRegionChangeFinished.connect(self.region_parent_moved)
+
+            # sets up the mouse press event
+            self.mp_event_click = self.l_reg_p.mousePressEvent
+            self.l_reg_p.mousePressEvent = self.region_mouse_click
+
+            # sets up the mouse press event
+            self.mp_event_release = self.l_reg_p.mouseReleaseEvent
+            self.l_reg_p.mouseReleaseEvent = self.region_mouse_release
+
+        else:
+            # case is the linear region is being added to the current axes
+            self.l_reg = l_reg_new
+            self.l_reg.sigRegionChangeFinished.connect(self.region_current_move)
+            self.h_plot.addItem(self.l_reg)
 
     def setup_plot_pen(self):
         """
@@ -1307,34 +1433,71 @@ class QPlotWidget(QWidget):
         pen_style = cf.pen_style[self.p_props.p_style]
         return pg.mkPen(color=self.p_props.p_col, width=self.p_props.p_width, style=pen_style)
 
-    # ------------------------------ #
-    # --- WIDGET EVENT FUNCTIONS --- #
-    # ------------------------------ #
+    # --------------------------------- #
+    # --- REGION MOVEMENT FUNCTIONS --- #
+    # --------------------------------- #
 
-    def reset_plot_data(self):
+    def region_current_move(self):
         """
 
         :return:
         """
 
-        # updates the plot values
-        x_plt, y_plt = self.get_plot_values()
+        x_lim = self.l_reg.getRegion()
+        self.i_frm_ch = np.int64(np.ceil(np.array(x_lim) / self.h_root.dx))
 
-        # updates the plot line
-        self.h_plot_line = self.h_plot.plot(x_plt, y_plt, pen=self.pen, clear=True)
+    def region_parent_moved(self):
+        """
 
-        # resets the axis limit fields
-        self.x_lim, self.y_lim = x_plt[::len(x_plt) - 1], [np.min(y_plt), np.max(y_plt)]
+        :return:
+        """
 
-        # resets the axis limits
-        v_box = self.h_plot.getViewBox()
-        v_box.setLimits(xMin=self.x_lim[0], xMax=self.x_lim[1], yMin=self.y_lim[0], yMax=self.y_lim[1])
-        v_box.setXRange(self.x_lim[0], self.x_lim[1], padding=x_pad)
-        v_box.setYRange(self.y_lim[0], self.y_lim[1], padding=y_pad)
+        # recalculates the region frame indices
+        x_lim = self.l_reg_p.getRegion()
+        self.i_frm = np.int64(np.ceil(np.array(x_lim) / self.h_root.dx))
 
-        #
-        self.setup_linear_region_item(True)
-        time.sleep(0.005)
+        # resets the plot data
+        self.reset_plot_data()
+        self.reset_current_region()
+
+        # resets the click flag and evoke a region movement event
+        self.h_parent.plot_obj.region_clicked = False
+        self.region_moved.emit()
+
+    def region_parent_moving(self):
+        """
+
+        :return:
+        """
+
+        a = 1
+
+    # ------------------------------ #
+    # --- WIDGET EVENT FUNCTIONS --- #
+    # ------------------------------ #
+
+    def region_mouse_click(self, evnt):
+        """
+
+        :param evnt:
+        :return:
+        """
+
+        # updates the region clicked flag
+        self.h_parent.plot_obj.region_clicked = True
+
+        # runs the mouse-clicked event
+        self.mp_event_click(evnt)
+
+    def region_mouse_release(self, evnt):
+        """
+
+        :param evnt:
+        :return:
+        """
+
+        # runs the mouse-clicked event
+        self.mp_event_release(evnt)
 
     def update_trace(self, p_str):
         """
@@ -1349,30 +1512,29 @@ class QPlotWidget(QWidget):
 
                 # field retrieval
                 tr_name = self.p_props.name
-                h_root = cf.get_parent_widget(self, QPlotWidgetMain)
-                h_root.was_reset = True
+                self.h_root.was_reset = True
 
                 # resets the plot trace object title
                 tr_name0 = self.obj_plot_gbox.title()
                 self.obj_plot_gbox.setTitle(tr_name)
 
                 # resets the explorer tree string
-                h_ttree = h_root.obj_para.obj_ttree
+                h_ttree = self.h_root.obj_para.obj_ttree
                 if self.is_root:
                     h_ttree.t_model.item(0).setText(tr_name)
 
                 else:
-                    h_root.tr_obj[h_root.i_trace].h_tree.setText(tr_name)
+                    self.h_root.tr_obj[self.h_root.i_trace].h_tree.setText(tr_name)
 
                 # updates the combo box text
-                h_cbox_tr = h_root.obj_para.obj_rcfig.obj_lbl_combo.obj_cbox
+                h_cbox_tr = self.h_root.obj_para.obj_rcfig.obj_lbl_combo.obj_cbox
                 for i in range(h_cbox_tr.count()):
                     if h_cbox_tr.itemText(i) == tr_name0:
                         h_cbox_tr.setItemText(i, tr_name)
                         break
 
                 # updates the trace name editbox
-                h_group_c = h_root.obj_para.findChildren(QCollapseGroup, name='tr_prop')[0]
+                h_group_c = self.h_root.obj_para.findChildren(QCollapseGroup, name='tr_prop')[0]
                 h_edit_c = h_group_c.findChildren(QLineEdit, name='name')[0]
                 h_edit_c.setText(tr_name)
 
@@ -1382,22 +1544,60 @@ class QPlotWidget(QWidget):
                 pen = pg.mkPen(color=self.p_props.p_col, width=self.p_props.p_width)
                 self.h_plot_item.dataItems[0].setPen(pen)
 
-    def region_move_update(self):
+    # ------------------------------- #
+    # --- MISCELLANEOUS FUNCTIONS --- #
+    # ------------------------------- #
+
+    def reset_plot_data(self):
         """
 
         :return:
         """
 
-        x_lim = self.l_reg.getRegion()
-        self.i_frm = np.int64(np.ceil(np.array(x_lim) / self.parent().parent().dx))
+        # updates the plot values
+        x_plt, y_plt = self.get_plot_values()
 
-        # if there is a child trace, then update the trace
-        if self.h_child is not None:
-            self.h_child.plot_obj.reset_plot_data()
+        # # updates the plot line
+        # self.h_plot_line = self.h_plot.plot(x_plt, y_plt, pen=self.pen, clear=True)
 
-    # ------------------------------- #
-    # --- MISCELLANEOUS FUNCTIONS --- #
-    # ------------------------------- #
+        # resets the axis limit fields
+        self.x_lim, self.y_lim = x_plt[::len(x_plt) - 1], [np.min(y_plt), np.max(y_plt)]
+
+        # resets the axis limits
+        v_box = self.h_plot.getViewBox()
+        v_box.setLimits(xMin=self.x_lim[0], xMax=self.x_lim[1], yMin=self.y_lim[0], yMax=self.y_lim[1])
+        v_box.setXRange(self.x_lim[0], self.x_lim[1], padding=x_pad)
+        v_box.setYRange(self.y_lim[0], self.y_lim[1], padding=y_pad)
+
+    def reset_current_region(self):
+        """
+
+        :return:
+        """
+
+        # initialisations
+        is_change = False
+
+        # recalculates the region frame indices
+        x_lim = list(self.l_reg.getRegion())
+        x_lim_p = list(self.l_reg_p.getRegion())
+
+        # lower region limit check
+        if x_lim_p[0] > x_lim[0]:
+            x_lim[0], is_change = x_lim_p[0], True
+            if x_lim_p[0] > x_lim[1]:
+                x_lim[1] = x_lim_p[0]
+
+        # upper region limit check
+        if x_lim_p[1] < x_lim[1]:
+            x_lim[1] = x_lim_p[1]
+            is_change = True
+            if x_lim_p[1] < x_lim[0]:
+                x_lim[0] = x_lim_p[1]
+
+        # if there is a change, then update the linear region
+        if is_change:
+            self.l_reg.setRegion(tuple(x_lim))
 
     def get_plot_values(self):
         """
@@ -1413,7 +1613,6 @@ class QPlotWidget(QWidget):
             # case is a sub-trace
 
             # retrieves the global index range
-            self.i_frm = self.h_parent.plot_obj.i_frm
             xi_frm = range(self.i_frm[0], self.i_frm[1])
 
             # returns the final plot coordinates
@@ -1431,16 +1630,11 @@ class QPlotWidget(QWidget):
         # deletes the class widget
         del self
 
-    # # observer properties
-    # x_lim = cf.ObservableProperty(update_axis_limits)
-    # y_lim = cf.ObservableProperty(update_axis_limits)
-
-
 ########################################################################################################################
 
 
 class QParaTrace(QWidget):
-    def __init__(self, tr_name="Root Trace"):
+    def __init__(self, tr_name):
         super(QParaTrace, self).__init__()
 
         # initialisations
@@ -1453,7 +1647,8 @@ class QParaTrace(QWidget):
         self.p_col = QColor(255, 255, 255)
 
         # trace operation fields
-        self.show_highlight = False
+        self.show_child = False
+        self.show_parent = False
         self.create_trace = 0
         self.delete_trace = 0
         self.clip_trace = 0
@@ -1469,7 +1664,7 @@ class QParaClass(QParaTrace):
     update_props = pyqtSignal(str)
     trace_operation = pyqtSignal(str)
 
-    def __init__(self, tr_name="Root Trace"):
+    def __init__(self, tr_name):
         super(QParaClass, self).__init__(tr_name)
 
     def para_change(p_str, _self):
@@ -1499,7 +1694,8 @@ class QParaClass(QParaTrace):
     p_col = cf.ObservableProperty(functools.partial(para_change, 'p_col'))
 
     # trace operation observer properties
-    show_highlight = cf.ObservableProperty(functools.partial(prop_update, 'show_highlight'))
+    show_child = cf.ObservableProperty(functools.partial(prop_update, 'show_child'))
+    show_parent = cf.ObservableProperty(functools.partial(prop_update, 'show_parent'))
     create_trace = cf.ObservableProperty(functools.partial(prop_update, 'create_trace'))
     delete_trace = cf.ObservableProperty(functools.partial(prop_update, 'delete_trace'))
     clip_trace = cf.ObservableProperty(functools.partial(prop_update, 'clip_trace'))
