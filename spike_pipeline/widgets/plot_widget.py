@@ -109,7 +109,7 @@ class QPlotWidgetMain(QDialog):
 
         if self.x is None:
             # test signals
-            self.x = np.arange(0, 4 * np.pi, 1e-7)
+            self.x = np.arange(0, 4 * np.pi, 1e-6)
             self.y = 1e-2 * np.sin(1e3 * self.x) + np.sin(self.x) + 1e-3 * np.sin(1e10 * self.x)
 
     # ------------------------------------------ #
@@ -182,7 +182,6 @@ class QPlotWidgetMain(QDialog):
                 # creates and appends the trace object
                 n_tr_obj = len(self.tr_obj)
                 tr_name = self.get_trace_name(obj_tr_sel)
-                # tr_name = 'Trace {0}/{1}'.format(obj_tr_sel.i_lvl + 1, obj_tr_sel.n_ch + 1)
                 obj_tr_new = QTraceObject(self, tr_name, obj_tr_sel)
                 self.tr_obj.append(obj_tr_new)
 
@@ -228,6 +227,20 @@ class QPlotWidgetMain(QDialog):
     # --- MISCELLANEOUS FUNCTIONS --- #
     # ------------------------------- #
 
+    def change_selected_plot(self, tr_obj_p):
+        """
+
+        :param tr_obj_p:
+        :return:
+        """
+
+        # removes the current highlight and resets the selected region index
+        self.remove_plot_highlight()
+        self.i_trace = next((i for i, h in enumerate(self.tr_obj) if (h == tr_obj_p)))
+
+        # resets the parameter properties
+        self.obj_para.reset_para_props(self.tr_obj[self.i_trace])
+
     def trace_added(self, p_obj, tr_name):
         """
 
@@ -265,22 +278,30 @@ class QPlotWidgetMain(QDialog):
 
         if _obj_tr.i_lvl == 0:
             # case is the parent node is the main trace
-            return 'Trace {0}'.format(_obj_tr.n_ch + 1)
+            return 'Trace {0}'.format(_obj_tr.n_tr + 1)
 
         else:
             # case is another node type
 
             # initialisations
             h_p = _obj_tr.h_parent
-            n_ch = [_obj_tr.n_ch + 1, h_p.n_ch]
+            n_ch = [_obj_tr.n_tr + 1, h_p.n_tr]
 
             # retrieves the trace count for each of the upper levels
             while h_p.i_lvl > 0:
                 h_p = h_p.h_parent
-                n_ch.append(h_p.n_ch)
+                n_ch.append(h_p.n_tr)
 
             # returns the final trace name
             return 'Trace {0}'.format('/'.join([str(x) for x in np.flip(n_ch)]))
+
+    def get_trace_object(self):
+        """
+
+        :return:
+        """
+
+        return self.tr_obj[self.i_trace]
 
 ########################################################################################################################
 #                                                 MAIN WIDGET OBJECTS                                                  #
@@ -784,6 +805,7 @@ class QPlotPara(QWidget):
         """
 
         # flag that manual updating is taking place
+        is_updating0 = deepcopy(self.is_updating)
         self.is_updating = True
 
         # updates the x/y-axis limits
@@ -818,7 +840,7 @@ class QPlotPara(QWidget):
         [x.setEnabled(tr_obj.i_lvl > 0) for x in self.obj_axlim.h_edit]
 
         # resets the update flag
-        self.is_updating = True
+        self.is_updating = is_updating0
 
     # ----------------------------------------- #
     # --- COLLAPSIBLE PANEL EVENT FUNCTIONS --- #
@@ -1132,7 +1154,8 @@ class QTraceObject(object):
         super(QTraceObject, self).__init__()
 
         # field initialisation
-        self.n_ch = 0
+        self.n_tr = 0
+        self.h_child = []
         self.parent = parent
         self.h_parent = h_parent
         x_0, y_0 = self.parent.x, self.parent.y
@@ -1154,21 +1177,23 @@ class QTraceObject(object):
             # case is the root trace
 
             # creates the root plot widget
-            self.plot_obj = QPlotWidget(self.parent, x=x_0, y=y_0, hdr=tr_name, p_props=self.plot_para)
+            self.plot_obj = QPlotWidget(
+                self, x=x_0, y=y_0, hdr=tr_name, p_props=self.plot_para)
 
         else:
             # case are the sub-traces
 
             # creates the sub-trace plot widget
             self.plot_obj = QPlotWidget(
-                self.parent, x=x_0, y=y_0, hdr=tr_name, p_props=self.plot_para, h_parent=h_parent)
+                self, x=x_0, y=y_0, hdr=tr_name, p_props=self.plot_para, h_parent=h_parent)
             self.plot_obj.region_moved.connect(self.region_moved)
 
             # enables the parent line region object
             self.plot_obj.l_reg_p.show()
 
-            # sets the other class fields
-            self.h_parent.n_ch += 1
+            # updates the parent trace object fields
+            self.h_parent.n_tr += 1
+            self.h_parent.h_child.append(self)
 
         # adds to the trace explorer
         self.parent.obj_para.reset_para_props(self)
@@ -1188,13 +1213,14 @@ class QTraceObject(object):
         :return:
         """
 
-        # sets the parameter update flag
-        self.h_parent.plot_obj.h_child = None
+        # sets the parent widget fields
         self.parent.obj_para.is_updating = True
-        self.h_parent.plot_obj.h_plot.removeItem(self.plot_obj.l_reg_p)
-
-        # removes the associated item from the tree-view
         self.parent.obj_para.obj_ttree.delete_tree_item(self.h_tree)
+
+        # resets the parent trace object fields
+        self.h_parent.plot_obj.h_child = None
+        self.h_parent.plot_obj.h_plot.removeItem(self.plot_obj.l_reg_p)
+        self.h_parent.h_child.pop(self.h_parent.h_child.index(self))
 
         # resets the selected trace index
         i_trace0 = deepcopy(self.parent.i_trace)
@@ -1246,8 +1272,8 @@ plot_gbox_style = """
 class QPlotWidget(QWidget):
     region_moved = pyqtSignal()
 
-    def __init__(self, parent=None, x=None, y=None, hdr=None, p_props=None, h_parent=None):
-        super(QPlotWidget, self).__init__(parent)
+    def __init__(self, parent_tr=None, x=None, y=None, hdr=None, p_props=None, h_parent=None):
+        super(QPlotWidget, self).__init__()
 
         # field setup
         self.x = x
@@ -1256,6 +1282,8 @@ class QPlotWidget(QWidget):
         self.i_frm = []
         self.i_frm_ch = []
         self.p_props = p_props
+        self.parent_tr = parent_tr
+        self.setParent(parent_tr.parent)
 
         # widget fields
         self.h_child = None
@@ -1265,6 +1293,7 @@ class QPlotWidget(QWidget):
         # boolean class fields
         self.is_root = h_parent is None
         self.region_clicked = False
+        self.is_updating = False
 
         # other field initialisations
         self.l_reg = None
@@ -1302,7 +1331,7 @@ class QPlotWidget(QWidget):
         """
 
         if not self.is_root:
-            self.parent().remove_plot_highlight()
+            self.h_root.remove_plot_highlight()
 
         # sets the main widget properties
         self.setSizePolicy(QSizePolicy(cf.q_pref, cf.q_exp))
@@ -1335,16 +1364,9 @@ class QPlotWidget(QWidget):
         if self.region_clicked:
             return
 
-        tr_name = self.obj_plot_gbox.title()
-
-        # if the selected trace index doesn't match the plot widget, then update
-        if self.h_root.tr_obj[self.h_root.i_trace].plot_para.name != tr_name:
-            # removes the current highlight and resets the selected region index
-            self.h_root.remove_plot_highlight()
-            self.h_root.i_trace = next((i for i, h in enumerate(self.h_root.tr_obj) if (h.plot_para.name == tr_name)))
-
-            # resets the parameter properties
-            self.h_root.obj_para.reset_para_props(self.h_root.tr_obj[self.h_root.i_trace])
+        if self.h_root.get_trace_object() != self.parent_tr:
+            # if the selected trace index doesn't match the plot widget, then update
+            self.h_root.change_selected_plot(self.parent_tr)
 
             # resets the s
             self.obj_plot_gbox.setObjectName('selected')
@@ -1472,7 +1494,8 @@ class QPlotWidget(QWidget):
         # p_obj = self.h_parent.plot_obj if link_parent else self
         l_pen = pg.mkPen(width=2, color='y' if link_parent else 'm')
         l_pen_h = pg.mkPen(width=2, color='g')
-        l_reg_new = pg.LinearRegionItem(self.x_lim, bounds=self.x_lim, span=[0, 1], pen=l_pen, hoverPen=l_pen_h)
+        l_reg_new = pg.LinearRegionItem(
+            self.x_lim, bounds=self.x_lim, span=[0, 1], pen=l_pen, hoverPen=l_pen_h, swapMode='block')
 
         # sets the linear region item properties
         l_reg_new.setZValue(int(link_parent)-10)
@@ -1553,7 +1576,30 @@ class QPlotWidget(QWidget):
         :return:
         """
 
-        a = 1
+        if self.is_updating:
+            return
+
+        # determines if the current trace has any children objects
+        tr_obj = self.h_root.get_trace_object()
+        if len(tr_obj.h_child):
+            # if so, determine if the limits don't violate the internal limits
+
+            # retrieves the current location of the linear region
+            x_lim_p, update_reqd = list(self.l_reg_p.getRegion()), False
+
+            # determines if the left side exceeds the lower limit
+            x_lower = np.min([x.plot_para.x_min for x in tr_obj.h_child])
+            if x_lim_p[0] > x_lower:
+                x_lim_p[0], update_reqd = x_lower, True
+
+            x_upper = np.max([x.plot_para.x_max for x in tr_obj.h_child])
+            if x_lim_p[1] < x_upper:
+                x_lim_p[1], update_reqd = x_upper, True
+
+            if update_reqd:
+                self.is_updating = True
+                self.l_reg_p.setRegion(x_lim_p)
+                self.is_updating = False
 
     # ------------------------------ #
     # --- WIDGET EVENT FUNCTIONS --- #
@@ -1574,8 +1620,15 @@ class QPlotWidget(QWidget):
         :return:
         """
 
-        # updates the region clicked flag
         self.h_parent.plot_obj.region_clicked = True
+
+        if self.h_root.get_trace_object() != self.parent_tr:
+            # if the selected trace index doesn't match the plot widget, then update
+            self.h_root.change_selected_plot(self.parent_tr)
+
+            # resets the s
+            self.obj_plot_gbox.setObjectName('selected')
+            self.obj_plot_gbox.setStyleSheet(self.obj_plot_gbox.styleSheet())
 
         # runs the mouse-clicked event
         self.mp_event_click(evnt)
@@ -1707,7 +1760,7 @@ class QPlotWidget(QWidget):
 
         if self.is_root:
             # case is the root trace
-            return self.parent().x, self.parent().y
+            return self.h_root.x, self.h_root.y
 
         else:
             # case is a sub-trace
@@ -1725,10 +1778,11 @@ class QPlotWidget(QWidget):
         """
 
         # removes the plot widget from the plot canvas
-        self.parent.obj_plot.main_layout.removeItem(self)
+        self.h_root.obj_plot.main_layout.removeItem(self)
 
         # deletes the class widget
         del self
+
 
 ########################################################################################################################
 
@@ -1824,6 +1878,7 @@ class QParaClass(QParaTrace):
     x_max = cf.ObservableProperty(functools.partial(limit_change, 'x_max'))
     y_min = cf.ObservableProperty(functools.partial(limit_change, 'y_min'))
     y_max = cf.ObservableProperty(functools.partial(limit_change, 'y_max'))
+
 
 ########################################################################################################################
 

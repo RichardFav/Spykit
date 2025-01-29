@@ -830,7 +830,6 @@ class QTraceTree(QWidget):
         self.obj_tview.setStyleSheet(tree_style)
         self.obj_tview.setItemsExpandable(False)
         self.obj_tview.setIndentation(10)
-        # self.obj_tview.setRootIsDecorated(False)
         self.obj_tview.setHeaderHidden(True)
         self.obj_tview.setFrameStyle(QFrame.Shape.WinPanel | QFrame.Shadow.Sunken)
 
@@ -847,7 +846,7 @@ class QTraceTree(QWidget):
 
         # creates the tree item
         item = QStandardItem(n_name)
-        item.setEditable(True)
+        item.setEditable(n_name != "Main Trace")
 
         if h_parent is None:
             # case is the root trace
