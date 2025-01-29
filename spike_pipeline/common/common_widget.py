@@ -629,11 +629,12 @@ class QAxesLimits(QWidget):
     # initialisations
     p_str = ['x_min', 'x_max', 'y_min', 'y_max']
 
-    def __init__(self, parent=None, font=None):
+    def __init__(self, parent=None, font=None, p_props=None):
         super(QAxesLimits, self).__init__(parent)
 
         # field initialisation
         self.font = font
+        self.p_props = p_props
         self.x_lim, self.y_lim = [], []
 
         # widget initialisations
@@ -683,11 +684,11 @@ class QAxesLimits(QWidget):
         for i in range(2):
             for j in range(2):
                 # creates the line edit widget
-                h_edit_new = create_line_edit(None, '', name=self.p_str[i][j])
+                h_edit_new = create_line_edit(None, '', name=self.p_str[len(self.h_edit)])
                 lim_layout.addWidget(h_edit_new, i + 1, j + 1, 1, 1)
 
                 # sets the editbox event callback function
-                cb_fcn = functools.partial(self.edit_limit_para, self.p_str[i][j])
+                cb_fcn = functools.partial(self.edit_limit_para, h_edit_new)
                 h_edit_new.editingFinished.connect(cb_fcn)
                 h_edit_new.setStyleSheet(edit_style_sheet)
 
@@ -706,14 +707,62 @@ class QAxesLimits(QWidget):
             None, 'Signal Duration: ', '0', font_lbl=self.font, font_txt=self.font, name='t_dur')
         self.main_layout.addWidget(self.obj_lbl_dur)
 
-    def edit_limit_para(self, p_str):
+    def edit_limit_para(self, h_edit):
         """
 
-        :param p_str:
+        :param h_edit:
         :return:
         """
 
-        a = 1
+        # module import
+        from spike_pipeline.widgets.plot_widget import QPlotWidgetMain
+
+        # field retrieval
+        nw_val = h_edit.text()
+        p_str = h_edit.objectName()
+        is_xlim_para = p_str.startswith('x_')
+
+        # REMOVE ME LATER
+        p_min, p_max = 0, 12
+
+        # resets the main flag
+        h_root = cf.get_parent_widget(self, QPlotWidgetMain)
+        h_root.was_reset = True
+
+        # sets the parameter lower/upper limits
+        match p_str:
+            case 'x_min':
+                # case is the lower x-axis limit
+                p_max = self.p_props.x_max
+
+            case 'x_max':
+                # case is the upper x-axis limit
+                p_min = self.p_props.x_min
+
+            case 'y_min':
+                # case is the lower y-axis limit
+                p_max = self.p_props.y_max
+
+            case 'y_max':
+                # case is the upper y-axis limit
+                p_min = self.p_props.y_min
+
+        # determines if the new value is valid
+        chk_val = cf.check_edit_num(nw_val, min_val=p_min, max_val=p_max, is_int=False)
+        if chk_val[1] is None:
+            # case is the value is valid
+
+            # updates the other class field with the new value
+            setattr(self.p_props, p_str, chk_val[0])
+
+            # updates the signal duration (if altering x-axis limit value)
+            if is_xlim_para:
+                t_dur = self.p_props.x_max - self.p_props.x_min
+                self.obj_lbl_dur.obj_txt.setText('%g' % t_dur)
+
+        else:
+            # otherwise, reset to the previous valid value
+            h_edit.setText('%g' % getattr(self.p_props, p_str))
 
 ########################################################################################################################
 

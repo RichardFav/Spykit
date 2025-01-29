@@ -109,30 +109,37 @@ class QPlotWidgetMain(QDialog):
 
         if self.x is None:
             # test signals
-            self.x = np.arange(0, 4 * np.pi, 1e-6)
+            self.x = np.arange(0, 4 * np.pi, 1e-7)
             self.y = 1e-2 * np.sin(1e3 * self.x) + np.sin(self.x) + 1e-3 * np.sin(1e10 * self.x)
 
-    # -------------------------------------- #
-    # --- CLASS INITIALISATION FUNCTIONS --- #
-    # -------------------------------------- #
+    # ------------------------------------------ #
+    # --- OBSERVER PARAMETER EVENT FUNCTIONS --- #
+    # ------------------------------------------ #
 
-    def trace_added(self, p_obj, tr_name):
+    def update_trace(self, p_str):
         """
 
-        :param p_obj:
-        :param tr_name:
+        :param p_str:
         :return:
         """
 
-        # increments the trace counter
-        self.n_trace += 1
+        # if manually updating parameters, then exit
+        if self.obj_para.is_updating:
+            return
 
-        # updates the region configuration widgets
-        self.obj_para.obj_rcfig.add_new_trace(tr_name, self.n_trace)
+        else:
+            # otherwise, set the update flag
+            self.obj_para.is_updating = True
 
-        # adds the widget and update the configuration ID
-        self.obj_plot.main_layout.addWidget(p_obj)
-        self.obj_plot.main_layout.updateID(self.obj_para.obj_rcfig.c_id, False)
+        # updates the signal trace object with the new parameter value
+        obj_tr_sel = self.tr_obj[self.i_trace]
+        setattr(obj_tr_sel.plot_para, p_str, getattr(self.obj_para.p_props, p_str))
+
+        # updates the trace
+        obj_tr_sel.plot_obj.update_trace(p_str)
+
+        # resets the update flag
+        self.obj_para.is_updating = False
 
     def trace_operation(self, p_str):
         """
@@ -144,7 +151,7 @@ class QPlotWidgetMain(QDialog):
         if self.obj_para.is_updating:
             return
 
-        # field retrieval
+        # updates the signal trace object with the new parameter value
         obj_tr_sel = self.tr_obj[self.i_trace]
         setattr(obj_tr_sel.plot_para, p_str, getattr(self.obj_para.p_props, p_str))
 
@@ -174,7 +181,8 @@ class QPlotWidgetMain(QDialog):
 
                 # creates and appends the trace object
                 n_tr_obj = len(self.tr_obj)
-                tr_name = 'Trace {0}/{1}'.format(obj_tr_sel.i_lvl + 1, obj_tr_sel.n_ch + 1)
+                tr_name = self.get_trace_name(obj_tr_sel)
+                # tr_name = 'Trace {0}/{1}'.format(obj_tr_sel.i_lvl + 1, obj_tr_sel.n_ch + 1)
                 obj_tr_new = QTraceObject(self, tr_name, obj_tr_sel)
                 self.tr_obj.append(obj_tr_new)
 
@@ -201,7 +209,7 @@ class QPlotWidgetMain(QDialog):
                 # case is clipping the existing trace
                 a = 1
 
-    def update_trace(self, p_str):
+    def update_limits(self, p_str):
         """
 
         :param p_str:
@@ -212,19 +220,31 @@ class QPlotWidgetMain(QDialog):
         if self.obj_para.is_updating:
             return
 
-        else:
-            # otherwise, set the update flag
-            self.obj_para.is_updating = True
+        # updates the signal trace object with the new parameter value
+        obj_tr_sel = self.tr_obj[self.i_trace]
+        setattr(obj_tr_sel.plot_para, p_str, getattr(self.obj_para.p_props, p_str))
 
-        # field retrieval
-        tr_sel = self.tr_obj[self.i_trace]
-        setattr(tr_sel.plot_para, p_str, getattr(self.obj_para.p_props, p_str))
+    # ------------------------------- #
+    # --- MISCELLANEOUS FUNCTIONS --- #
+    # ------------------------------- #
 
-        # updates the trace
-        tr_sel.plot_obj.update_trace(p_str)
+    def trace_added(self, p_obj, tr_name):
+        """
 
-        # resets the update flag
-        self.obj_para.is_updating = False
+        :param p_obj:
+        :param tr_name:
+        :return:
+        """
+
+        # increments the trace counter
+        self.n_trace += 1
+
+        # updates the region configuration widgets
+        self.obj_para.obj_rcfig.add_new_trace(tr_name, self.n_trace)
+
+        # adds the widget and update the configuration ID
+        self.obj_plot.main_layout.addWidget(p_obj)
+        self.obj_plot.main_layout.updateID(self.obj_para.obj_rcfig.c_id, False)
 
     def remove_plot_highlight(self):
         """
@@ -235,6 +255,32 @@ class QPlotWidgetMain(QDialog):
         g_box = self.tr_obj[self.i_trace].plot_obj.obj_plot_gbox
         g_box.setObjectName(None)
         g_box.setStyleSheet(g_box.styleSheet())
+
+    def get_trace_name(self, _obj_tr):
+        """
+
+        :param _obj_tr:
+        :return:
+        """
+
+        if _obj_tr.i_lvl == 0:
+            # case is the parent node is the main trace
+            return 'Trace {0}'.format(_obj_tr.n_ch + 1)
+
+        else:
+            # case is another node type
+
+            # initialisations
+            h_p = _obj_tr.h_parent
+            n_ch = [_obj_tr.n_ch + 1, h_p.n_ch]
+
+            # retrieves the trace count for each of the upper levels
+            while h_p.i_lvl > 0:
+                h_p = h_p.h_parent
+                n_ch.append(h_p.n_ch)
+
+            # returns the final trace name
+            return 'Trace {0}'.format('/'.join([str(x) for x in np.flip(n_ch)]))
 
 ########################################################################################################################
 #                                                 MAIN WIDGET OBJECTS                                                  #
@@ -263,6 +309,7 @@ class QPlotPara(QWidget):
         self.p_props = QParaClass(main_name)
         self.p_props.update_props.connect(self.h_root.update_trace)
         self.p_props.trace_operation.connect(self.h_root.trace_operation)
+        self.p_props.update_limits.connect(self.h_root.update_limits)
 
         # widget setup
         self.main_layout = QFormLayout()
@@ -639,7 +686,7 @@ class QPlotPara(QWidget):
                 # case is the axes limit widget
 
                 # creates the file selection widget
-                self.obj_axlim = cw.QAxesLimits(None, font=self.font_lbl)
+                self.obj_axlim = cw.QAxesLimits(None, font=self.font_lbl, p_props=self.p_props)
                 layout.addRow(self.obj_axlim)
 
             case 'filespec':
@@ -676,6 +723,10 @@ class QPlotPara(QWidget):
         self.reset_widget_values(h_group_op, self.p_info['tr_op'], tr_obj.plot_para)
         self.h_root.obj_para.update_button_props(tr_obj)
         self.h_root.obj_para.reset_axis_limit_fields(tr_obj)
+
+        # sets the axes limit values
+        for p in self.h_root.obj_para.obj_axlim.p_str:
+            setattr(self.p_props, p, getattr(tr_obj.plot_para, p))
 
         # updates the parameter field
         self.is_updating = False
@@ -732,6 +783,9 @@ class QPlotPara(QWidget):
         :return:
         """
 
+        # flag that manual updating is taking place
+        self.is_updating = True
+
         # updates the x/y-axis limits
         i_frm = tr_obj.plot_obj.i_frm
 
@@ -751,11 +805,20 @@ class QPlotPara(QWidget):
         self.obj_axlim.h_edit[2].setText('%g' % y_lim[0])
         self.obj_axlim.h_edit[3].setText('%g' % y_lim[1])
 
+        # updates the parameter fields
+        tr_obj.plot_para.x_min = x_lim[0]
+        tr_obj.plot_para.x_max = x_lim[1]
+        tr_obj.plot_para.y_min = y_lim[0]
+        tr_obj.plot_para.y_max = y_lim[1]
+
         # resets the duration label string
         self.obj_axlim.obj_lbl_dur.obj_txt.setText('%g' % np.diff(x_lim))
 
         # updates the editbox enabled properties
         [x.setEnabled(tr_obj.i_lvl > 0) for x in self.obj_axlim.h_edit]
+
+        # resets the update flag
+        self.is_updating = True
 
     # ----------------------------------------- #
     # --- COLLAPSIBLE PANEL EVENT FUNCTIONS --- #
@@ -1691,6 +1754,12 @@ class QParaTrace(QWidget):
         self.delete_trace = 0
         self.clip_trace = 0
 
+        # x/y-axes limit fields
+        self.x_min = None
+        self.x_max = None
+        self.y_min = None
+        self.y_max = None
+
         # flag reset
         self.has_init = True
 
@@ -1701,6 +1770,7 @@ class QParaTrace(QWidget):
 class QParaClass(QParaTrace):
     update_props = pyqtSignal(str)
     trace_operation = pyqtSignal(str)
+    update_limits = pyqtSignal(str)
 
     def __init__(self, tr_name):
         super(QParaClass, self).__init__(tr_name)
@@ -1725,6 +1795,16 @@ class QParaClass(QParaTrace):
         if _self.has_init:
             _self.trace_operation.emit(p_str)
 
+    def limit_change(p_str, _self):
+        """
+
+        :param p_str:
+        :return:
+        """
+
+        if _self.has_init:
+            _self.update_limits.emit(p_str)
+
     # trace property observer properties
     name = cf.ObservableProperty(functools.partial(para_change, 'name'))
     p_width = cf.ObservableProperty(functools.partial(para_change, 'p_width'))
@@ -1739,6 +1819,11 @@ class QParaClass(QParaTrace):
     delete_trace = cf.ObservableProperty(functools.partial(prop_update, 'delete_trace'))
     clip_trace = cf.ObservableProperty(functools.partial(prop_update, 'clip_trace'))
 
+    # trace property observer properties
+    x_min = cf.ObservableProperty(functools.partial(limit_change, 'x_min'))
+    x_max = cf.ObservableProperty(functools.partial(limit_change, 'x_max'))
+    y_min = cf.ObservableProperty(functools.partial(limit_change, 'y_min'))
+    y_max = cf.ObservableProperty(functools.partial(limit_change, 'y_max'))
 
 ########################################################################################################################
 
