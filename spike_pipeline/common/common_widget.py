@@ -627,6 +627,7 @@ class QRegionConfig(QWidget):
 
 class QAxesLimits(QWidget):
     # initialisations
+    ax_del = 1e-8
     p_str = ['x_min', 'x_max', 'y_min', 'y_max']
 
     def __init__(self, parent=None, font=None, p_props=None):
@@ -727,17 +728,20 @@ class QAxesLimits(QWidget):
 
         # resets the main flag
         h_root = cf.get_parent_widget(self, QPlotWidgetMain)
+        tr_obj = h_root.get_trace_object()
         h_root.was_reset = True
 
         # sets the parameter lower/upper limits
         match p_str:
             case 'x_min':
                 # case is the lower x-axis limit
-                p_max = self.p_props.x_max
+                p_min = tr_obj.plot_obj.x_lim0[0]
+                p_max = self.p_props.x_max - self.ax_del
 
             case 'x_max':
                 # case is the upper x-axis limit
-                p_min = self.p_props.x_min
+                p_min = self.p_props.x_min + self.ax_del
+                p_max = tr_obj.plot_obj.x_lim0[1]
 
             case 'y_min':
                 # case is the lower y-axis limit
@@ -759,6 +763,10 @@ class QAxesLimits(QWidget):
             if is_xlim_para:
                 t_dur = self.p_props.x_max - self.p_props.x_min
                 self.obj_lbl_dur.obj_txt.setText('%g' % t_dur)
+
+                # resets the region limits
+                x_lim_new = [self.p_props.x_min, self.p_props.x_max]
+                tr_obj.plot_obj.l_reg_p.setRegion(tuple(x_lim_new))
 
         else:
             # otherwise, reset to the previous valid value

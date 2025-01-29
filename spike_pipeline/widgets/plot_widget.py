@@ -303,6 +303,7 @@ class QPlotWidgetMain(QDialog):
 
         return self.tr_obj[self.i_trace]
 
+
 ########################################################################################################################
 #                                                 MAIN WIDGET OBJECTS                                                  #
 ########################################################################################################################
@@ -1244,8 +1245,8 @@ class QTraceObject(object):
 
 
 # dimensions
-x_pad = 0.02
-y_pad = 0.05
+x_pad = 0.0
+y_pad = 0.0
 x_gap_plt = 2
 but_height_plt = 16
 
@@ -1492,8 +1493,8 @@ class QPlotWidget(QWidget):
 
         # sets up the linear region item
         # p_obj = self.h_parent.plot_obj if link_parent else self
-        l_pen = pg.mkPen(width=2, color='y' if link_parent else 'm')
-        l_pen_h = pg.mkPen(width=2, color='g')
+        l_pen = pg.mkPen(width=3, color='y' if link_parent else 'm')
+        l_pen_h = pg.mkPen(width=3, color='g')
         l_reg_new = pg.LinearRegionItem(
             self.x_lim, bounds=self.x_lim, span=[0, 1], pen=l_pen, hoverPen=l_pen_h, swapMode='block')
 
@@ -1505,6 +1506,7 @@ class QPlotWidget(QWidget):
         if link_parent:
             # case is the linear region is being added to the parent axes
             self.l_reg_p = l_reg_new
+            self.x_lim0 = deepcopy(self.x_lim)
 
             # sets the linear region properties
             self.l_reg_p.setBrush(pg.mkBrush(255, 0, 0, 100))
