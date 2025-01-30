@@ -17,7 +17,7 @@ from PyQt6.QtWidgets import (QMainWindow, QWidget, QGroupBox, QTabWidget, QFormL
 from PyQt6.QtGui import QFont, QIcon, QAction, QMouseEvent
 from PyQt6.QtCore import Qt, QSize
 
-########################################################################################################################
+# ----------------------------------------------------------------------------------------------------------------------
 
 # file path/filter modes
 f_mode_p = "Spike Pipeline Parameter File (*.spp)"
@@ -56,6 +56,8 @@ gbox_style_off = """
     QGroupBox::title {
     }
 """
+
+# ----------------------------------------------------------------------------------------------------------------------
 
 # parameters
 x_gap = 20
@@ -1075,19 +1077,7 @@ class ParaDialog(QMainWindow):
         self.group_scroll.setStyleSheet("background-color: rgba(120, 152, 229, 255) ;")
 
 
-########################################################################################################################
-
-
-def add_highlight(s, i0, n):
-    """
-
-    :param s: 
-    :param i0:
-    :param n:
-    :return:
-    """
-
-    return '{0}{1}{2}'.format(s[0:i0], cf.set_text_background_colour(s[i0:(i0+n)], 'yellow'), s[(i0+n):])
+# ----------------------------------------------------------------------------------------------------------------------
 
 
 class QSearchWidget(QWidget):
@@ -1180,7 +1170,7 @@ class QSearchWidget(QWidget):
         for ii, nn, hh in zip(ind_s, self.para_name0, self.h_para):
             # sets the text highlight
             for xi0 in np.flip(ii):
-                nn = add_highlight(nn, xi0, ns_txt)
+                nn = self.add_highlight(nn, xi0, ns_txt)
 
             # updates the parameter label text
             if isinstance(hh, QGroupBox):
@@ -1227,3 +1217,15 @@ class QSearchWidget(QWidget):
         # appends the objects
         self.h_grp[g_str] = h_obj
         self.grp_name.append(g_name)
+
+    @staticmethod
+    def add_highlight(s, i0, n):
+        """
+
+        :param s:
+        :param i0:
+        :param n:
+        :return:
+        """
+
+        return '{0}{1}{2}'.format(s[0:i0], cf.set_text_background_colour(s[i0:(i0 + n)], 'yellow'), s[(i0 + n):])

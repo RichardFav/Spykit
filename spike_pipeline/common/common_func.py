@@ -37,8 +37,9 @@ combo_height = 22
 
 # other parmaeters
 n_col_max = 20
+Cls = TypeVar('Cls')
 
-########################################################################################################################
+# ----------------------------------------------------------------------------------------------------------------------
 
 
 class ObservableProperty:
@@ -58,7 +59,7 @@ class ObservableProperty:
                 self._callback(instance)
 
 
-########################################################################################################################
+# ----------------------------------------------------------------------------------------------------------------------
 
 
 class ObservableThreadSafe:
@@ -84,7 +85,7 @@ class ObservableThreadSafe:
         self._callback = callback
 
 
-########################################################################################################################
+# ----------------------------------------------------------------------------------------------------------------------
 
 
 def check_edit_num(nw_str, is_int=False, min_val=-1e100, max_val=1e10, show_err=True):
@@ -340,19 +341,18 @@ def lcm(a, b):
 
     return (a * b) // math.gcd(a, b)
 
+# ----------------------------------------------------------------------------------------------------------------------
 
-Cls = TypeVar('Cls')
-
-# This type hint is a dirty lie to make autocomplete and static
-# analyzers give more useful results. Crazy the stuff you can do
-# with python...
-def copy_class(cls: Cls) -> Cls:
-    copy_cls = type(f'{cls.__name__}Copy', cls.__bases__, dict(cls.__dict__))
-    for name, attr in cls.__dict__.items():
-        try:
-            hash(attr)
-        except TypeError:
-            # Assume lack of __hash__ implies mutability. This is NOT
-            # a bullet proof assumption but good in many cases.
-            setattr(copy_cls, name, deepcopy(attr))
-    return copy_cls
+# # This type hint is a dirty lie to make autocomplete and static
+# # analyzers give more useful results. Crazy the stuff you can do
+# # with python...
+# def copy_class(cls: Cls) -> Cls:
+#     copy_cls = type(f'{cls.__name__}Copy', cls.__bases__, dict(cls.__dict__))
+#     for name, attr in cls.__dict__.items():
+#         try:
+#             hash(attr)
+#         except TypeError:
+#             # Assume lack of __hash__ implies mutability. This is NOT
+#             # a bullet proof assumption but good in many cases.
+#             setattr(copy_cls, name, deepcopy(attr))
+#     return copy_cls

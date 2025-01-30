@@ -18,7 +18,7 @@ from PyQt6.QtCore import Qt, QRect, QMimeData, pyqtSignal
 # style sheets
 edit_style_sheet = "border: 1px solid; border-radius: 2px; padding-left: 5px;"
 
-########################################################################################################################
+# ----------------------------------------------------------------------------------------------------------------------
 
 
 # dimensions
@@ -137,9 +137,7 @@ class QRegionConfig(QWidget):
         # adds the widget to the class widget
         self.main_layout.addWidget(self.obj_gbox)
 
-    # ----------------------------- #
-    # --- MOUSE EVENT FUNCTIONS --- #
-    # ----------------------------- #
+    # MOUSE EVENT FUNCTIONS --------------------------------------------------
 
     def mouse_clicked(self, i_row, i_col, is_press):
         """
@@ -273,9 +271,7 @@ class QRegionConfig(QWidget):
             h.setObjectName('normal')
             h.setStyleSheet(h.styleSheet())
 
-    # ------------------------------ #
-    # --- WIDGET EVENT FUNCTIONS --- #
-    # ------------------------------ #
+    # WIDGET EVENT FUNCTIONS -------------------------------------------------
 
     def panel_group_update(self, evnt):
         """
@@ -348,9 +344,7 @@ class QRegionConfig(QWidget):
             h_style.polish(h)
             h.update()
 
-    # -------------------------- #
-    # --- INDEXING FUNCTIONS --- #
-    # -------------------------- #
+    # INDEXING FUNCTIONS -----------------------------------------------------
 
     def get_region_index(self, i_row, i_col):
         """
@@ -382,9 +376,7 @@ class QRegionConfig(QWidget):
         return [(m_pos.x() >= w_sz.width()) - (m_pos.x() <= 0),
                 (m_pos.y() >= w_sz.height()) - (m_pos.y() <= 0)]
 
-    # ---------------------------------- #
-    # --- TRACE OBJECT I/O FUNCTIONS --- #
-    # ---------------------------------- #
+    # TRACE OBJECT I/O FUNCTIONS ---------------------------------------------
 
     def add_new_trace(self, tr_name, n_trace):
         """
@@ -468,9 +460,7 @@ class QRegionConfig(QWidget):
             # flag that the plot widgets need updating
             self.config_reset.emit()
 
-    # ------------------------------- #
-    # --- MISCELLANEOUS FUNCTIONS --- #
-    # ------------------------------- #
+    # MISCELLANEOUS FUNCTIONS ------------------------------------------------
 
     def reset_selector_widgets(self):
         """
@@ -612,7 +602,8 @@ class QRegionConfig(QWidget):
         # updates the object style sheet
         h_grid.setStyleSheet(ss_str)
 
-    def get_rgba_string(self, t_col):
+    @staticmethod
+    def get_rgba_string(t_col):
         """
 
         :param t_col:
@@ -622,7 +613,7 @@ class QRegionConfig(QWidget):
         return 'rgba({0}, {1}, {2}, {3})'.format(t_col.red(), t_col.green(), t_col.blue(), t_col.alpha())
 
 
-########################################################################################################################
+# ----------------------------------------------------------------------------------------------------------------------
 
 
 class QAxesLimits(QWidget):
@@ -774,7 +765,8 @@ class QAxesLimits(QWidget):
             # otherwise, reset to the previous valid value
             h_edit.setText('%g' % getattr(self.p_props, p_str))
 
-########################################################################################################################
+
+# ----------------------------------------------------------------------------------------------------------------------
 
 
 # widget stylesheets
@@ -846,9 +838,7 @@ class QTraceTree(QWidget):
         # appends the widget to the main widget
         self.main_layout.addWidget(self.obj_tview)
 
-    # --------------------------------- #
-    # --- TREE ADD/DELETE FUNCTIONS --- #
-    # --------------------------------- #
+    # TREE ADD/DELETE FUNCTIONS ----------------------------------------------
 
     def add_tree_item(self, n_name, h_parent=None):
         """
@@ -905,9 +895,7 @@ class QTraceTree(QWidget):
         # resets the tree-viewer properties
         self.reset_tview_props()
 
-    # ------------------------------- #
-    # --- MISCELLANEOUS FUNCTIONS --- #
-    # ------------------------------- #
+    # MISCELLANEOUS FUNCTIONS -------------------------------------------------
 
     def node_name_update(self, ind_mod_1, ind_mod_2, roles):
         """
@@ -936,7 +924,7 @@ class QTraceTree(QWidget):
         # self.node_added.emit()
 
 
-########################################################################################################################
+# ----------------------------------------------------------------------------------------------------------------------
 
 
 # object dimensions
@@ -1004,9 +992,7 @@ class QCollapseGroup(QWidget):
         # resets the collapse panel size policy
         self.setSizePolicy(QSizePolicy(cf.q_pref, cf.q_fix))
 
-    # ------------------------------ #
-    # --- WIDGET SETUP FUNCTIONS --- #
-    # ------------------------------ #
+    # WIDGET SETUP FUNCTIONS --------------------------------------------------
 
     def add_group_row(self, h_obj1, h_obj2):
         """
@@ -1019,9 +1005,7 @@ class QCollapseGroup(QWidget):
         # adds the object to the layout
         self.form_layout.addRow(h_obj1, h_obj2)
 
-    # ----------------------------- #
-    # --- PANEL EVENT FUNCTIONS --- #
-    # ----------------------------- #
+    # PANEL EVENT FUNCTIONS ---------------------------------------------------
 
     def connect(self, cb_fcn0=None):
 
@@ -1050,9 +1034,7 @@ class QCollapseGroup(QWidget):
             f_style = expand_style if self.is_expanded else close_style
             self.expand_button.setStyleSheet(f_style)
 
-    # ------------------------------- #
-    # --- MISCELLANEOUS FUNCTIONS --- #
-    # ------------------------------- #
+    # MISCELLANEOUS FUNCTIONS -------------------------------------------------
 
     def update_button_text(self):
         """
@@ -1073,7 +1055,7 @@ class QCollapseGroup(QWidget):
         self.expand_button.setStyleSheet(expand_style)
 
 
-########################################################################################################################
+# ----------------------------------------------------------------------------------------------------------------------
 
 
 class FileDialogModal(QFileDialog):
@@ -1099,7 +1081,7 @@ class FileDialogModal(QFileDialog):
             self.setFileMode(QFileDialog.FileMode.ExistingFiles)
 
 
-########################################################################################################################
+# ----------------------------------------------------------------------------------------------------------------------
 
 
 class ClickableRegion(QLabel):
@@ -1158,7 +1140,7 @@ class ClickableRegion(QLabel):
         self.leaving.emit(self.i_row, self.i_col)
 
 
-########################################################################################################################
+# ----------------------------------------------------------------------------------------------------------------------
 
 
 class QFileSpec(QGroupBox):
@@ -1200,7 +1182,7 @@ class QFileSpec(QGroupBox):
         self.h_but.clicked.connect(cb_fcn)
 
 
-########################################################################################################################
+# ----------------------------------------------------------------------------------------------------------------------
 
 
 class QLabelText(QWidget):
@@ -1232,7 +1214,7 @@ class QLabelText(QWidget):
         self.obj_txt.setText(txt_str)
 
 
-########################################################################################################################
+# ----------------------------------------------------------------------------------------------------------------------
 
 
 class QLabelEdit(QWidget):
@@ -1270,7 +1252,7 @@ class QLabelEdit(QWidget):
         self.obj_edit.editingFinished.connect(cb_fcn)
 
 
-########################################################################################################################
+# ----------------------------------------------------------------------------------------------------------------------
 
 
 class QLabelButton(QWidget):
@@ -1308,7 +1290,7 @@ class QLabelButton(QWidget):
         self.obj_but.clicked.connect(cb_fcn)
 
 
-########################################################################################################################
+# ----------------------------------------------------------------------------------------------------------------------
 
 
 class QLabelCombo(QWidget):
@@ -1348,7 +1330,7 @@ class QLabelCombo(QWidget):
         self.obj_cbox.currentIndexChanged.connect(cb_fcn)
 
 
-########################################################################################################################
+# ----------------------------------------------------------------------------------------------------------------------
 
 
 class QCheckboxHTML(QWidget):
@@ -1426,7 +1408,7 @@ class QCheckboxHTML(QWidget):
         self.h_chk.setChecked(not self.h_chk.isChecked())
 
 
-########################################################################################################################
+# ----------------------------------------------------------------------------------------------------------------------
 
 
 def create_text_label(parent, text, font=None, align='right', name=None):

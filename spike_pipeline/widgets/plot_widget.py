@@ -23,7 +23,7 @@ from spike_pipeline.common.common_widget import (QCollapseGroup, QLabelEdit, QCh
 font_lbl = cw.create_font_obj(is_bold=True, font_weight=QFont.Weight.Bold)
 font_hdr = cw.create_font_obj(size=9, is_bold=True, font_weight=QFont.Weight.Bold)
 
-########################################################################################################################
+# ----------------------------------------------------------------------------------------------------------------------
 
 # file path/filter modes
 icon_dir = os.path.join(os.getcwd(), 'resources', 'icons')
@@ -38,7 +38,7 @@ icon_path = {'pre_processing': os.path.join(icon_dir, 'pre_processing_icon.png')
 # main trace root string
 main_name = "Main Trace"
 
-########################################################################################################################
+# MAIN WIDGET OBJECTS --------------------------------------------------------------------------------------------------
 
 # object dimensions
 dlg_width = 1650
@@ -395,9 +395,7 @@ class QPlotWidgetMain(QDialog):
         return next((i for i, x in enumerate(self.tr_obj) if (x == tr_obj)))
 
 
-########################################################################################################################
-#                                                 MAIN WIDGET OBJECTS                                                  #
-########################################################################################################################
+# MAIN WIDGET OBJECTS --------------------------------------------------------------------------------------------------
 
 
 # widget dimensions
@@ -445,9 +443,7 @@ class QPlotPara(QWidget):
         self.update_button_props()
         self.set_styles()
 
-    # -------------------------------------- #
-    # --- CLASS INITIALISATION FUNCTIONS --- #
-    # -------------------------------------- #
+    # CLASS INITIALISATION FUNCTIONS ------------------------------------------
 
     def init_class_fields(self):
         """
@@ -488,25 +484,7 @@ class QPlotPara(QWidget):
         self.scroll_layout.setSpacing(0)
         self.scroll_layout.setContentsMargins(0, 0, 0, 0)
 
-    # ------------------------------ #
-    # --- PARAMETER WIDGET SETUP --- #
-    # ------------------------------ #
-
-    def create_para_field(self, name, obj_type, value, p_fld=None, p_list=None, p_misc=None, ch_fld=None):
-        """
-
-        :param name:
-        :param obj_type:
-        :param value:
-        :param p_fld:
-        :param p_list:
-        :param ch_fld:
-        :param p_misc:
-        :return:
-        """
-
-        return {'name': name, 'type': obj_type, 'value': value, 'p_fld': p_fld,
-                'p_list': p_list, 'p_misc': p_misc, 'ch_fld': ch_fld}
+    # PARAMETER WIDGET SETUP --------------------------------------------------
 
     def setup_para_info_fields(self):
         """
@@ -936,9 +914,7 @@ class QPlotPara(QWidget):
         # resets the update flag
         self.is_updating = is_updating0
 
-    # ----------------------------------------- #
-    # --- COLLAPSIBLE PANEL EVENT FUNCTIONS --- #
-    # ----------------------------------------- #
+    # COLLAPSIBLE PANEL EVENT FUNCTIONS ---------------------------------------
 
     def expand(self, h_panel_c):
         """
@@ -959,9 +935,7 @@ class QPlotPara(QWidget):
             f_style = cw.expand_style if h_panel_c.is_expanded else cw.close_style
             h_panel_c.expand_button.setStyleSheet(f_style)
 
-    # --------------------------------------- #
-    # --- PROPERTY WIDGET EVENT FUNCTIONS --- #
-    # --------------------------------------- #
+    #  PROPERTY WIDGET EVENT FUNCTIONS ----------------------------------------
 
     def widget_para_update(self, h_widget, evnt=None):
         """
@@ -1087,9 +1061,7 @@ class QPlotPara(QWidget):
         # updates the parameter field
         setattr(self.p_props, p_str, nw_val)
 
-    # ------------------------------ #
-    # --- WIDGET EVENT FUNCTIONS --- #
-    # ------------------------------ #
+    # WIDGET EVENT FUNCTIONS --------------------------------------------------
 
     def config_reset(self):
         '''
@@ -1130,9 +1102,7 @@ class QPlotPara(QWidget):
             # updates the parameter field
             setattr(self.p_props, p_str, p_col)
 
-    # ------------------------------- #
-    # --- MISCELLANEOUS FUNCTIONS --- #
-    # ------------------------------- #
+    # MISCELLANEOUS FUNCTIONS -------------------------------------------------
 
     def update_button_props(self, tr_obj=None):
         """
@@ -1178,8 +1148,24 @@ class QPlotPara(QWidget):
         # sets the style sheets
         self.h_scroll.setStyleSheet("background-color: rgba(120, 152, 229, 255) ;")
 
+    @staticmethod
+    def create_para_field(name, obj_type, value, p_fld=None, p_list=None, p_misc=None, ch_fld=None):
+        """
 
-########################################################################################################################
+        :param name:
+        :param obj_type:
+        :param value:
+        :param p_fld:
+        :param p_list:
+        :param ch_fld:
+        :param p_misc:
+        :return:
+        """
+
+        return {'name': name, 'type': obj_type, 'value': value, 'p_fld': p_fld,
+                'p_list': p_list, 'p_misc': p_misc, 'ch_fld': ch_fld}
+
+# ----------------------------------------------------------------------------------------------------------------------
 
 
 class QPlotWindow(QWidget):
@@ -1244,9 +1230,7 @@ class QPlotWindow(QWidget):
         self.main_layout.updateID(obj_rcfig.c_id)
 
 
-########################################################################################################################
-#                                                 TRACE OBJECT CLASSES                                                 #
-########################################################################################################################
+# TRACE OBJECT CLASSES -------------------------------------------------------------------------------------------------
 
 
 class QTraceObject(object):
@@ -1353,7 +1337,7 @@ class QTraceObject(object):
         self.parent.n_trace -= 1
 
 
-########################################################################################################################
+# ----------------------------------------------------------------------------------------------------------------------
 
 
 # dimensions
@@ -1899,7 +1883,7 @@ class QPlotWidget(QWidget):
         del self
 
 
-########################################################################################################################
+# ----------------------------------------------------------------------------------------------------------------------
 
 
 class QParaTrace(QWidget):
@@ -1934,70 +1918,7 @@ class QParaTrace(QWidget):
         self.has_init = True
 
 
-########################################################################################################################
-
-
-class QParaClass(QParaTrace):
-    update_props = pyqtSignal(str)
-    trace_operation = pyqtSignal(str)
-    update_limits = pyqtSignal(str)
-
-    def __init__(self, tr_name):
-        super(QParaClass, self).__init__(tr_name)
-
-    def para_change(p_str, _self):
-        """
-
-        :param p_str:
-        :return:
-        """
-
-        if _self.has_init:
-            _self.update_props.emit(p_str)
-
-    def prop_update(p_str, _self):
-        """
-
-        :param p_str:
-        :return:
-        """
-
-        if _self.has_init:
-            _self.trace_operation.emit(p_str)
-
-    def limit_change(p_str, _self):
-        """
-
-        :param p_str:
-        :return:
-        """
-
-        if _self.has_init:
-            _self.update_limits.emit(p_str)
-
-    # trace property observer properties
-    name = cf.ObservableProperty(functools.partial(para_change, 'name'))
-    p_width = cf.ObservableProperty(functools.partial(para_change, 'p_width'))
-    p_style = cf.ObservableProperty(functools.partial(para_change, 'p_style'))
-    p_col = cf.ObservableProperty(functools.partial(para_change, 'p_col'))
-    g_style = cf.ObservableProperty(functools.partial(para_change, 'g_style'))
-
-    # trace operation observer properties
-    show_child = cf.ObservableProperty(functools.partial(prop_update, 'show_child'))
-    show_parent = cf.ObservableProperty(functools.partial(prop_update, 'show_parent'))
-    create_trace = cf.ObservableProperty(functools.partial(prop_update, 'create_trace'))
-    clip_trace = cf.ObservableProperty(functools.partial(prop_update, 'clip_trace'))
-    delete_trace = cf.ObservableProperty(functools.partial(prop_update, 'delete_trace'))
-    delete_children = cf.ObservableProperty(functools.partial(prop_update, 'delete_children'))
-
-    # trace property observer properties
-    x_min = cf.ObservableProperty(functools.partial(limit_change, 'x_min'))
-    x_max = cf.ObservableProperty(functools.partial(limit_change, 'x_max'))
-    y_min = cf.ObservableProperty(functools.partial(limit_change, 'y_min'))
-    y_max = cf.ObservableProperty(functools.partial(limit_change, 'y_max'))
-
-
-########################################################################################################################
+# ----------------------------------------------------------------------------------------------------------------------
 
 
 class QPlotLayout(QLayout):
@@ -2086,3 +2007,66 @@ class QPlotLayout(QLayout):
     @property
     def items(self):
         return self._items
+
+
+# COMMON CLASSES -------------------------------------------------------------------------------------------------------
+
+
+class QParaClass(QParaTrace):
+    update_props = pyqtSignal(str)
+    trace_operation = pyqtSignal(str)
+    update_limits = pyqtSignal(str)
+
+    def __init__(self, tr_name):
+        super(QParaClass, self).__init__(tr_name)
+
+    def para_change(p_str, _self):
+        """
+
+        :param p_str:
+        :return:
+        """
+
+        if _self.has_init:
+            _self.update_props.emit(p_str)
+
+    def prop_update(p_str, _self):
+        """
+
+        :param p_str:
+        :return:
+        """
+
+        if _self.has_init:
+            _self.trace_operation.emit(p_str)
+
+    def limit_change(p_str, _self):
+        """
+
+        :param p_str:
+        :return:
+        """
+
+        if _self.has_init:
+            _self.update_limits.emit(p_str)
+
+    # trace property observer properties
+    name = cf.ObservableProperty(functools.partial(para_change, 'name'))
+    p_width = cf.ObservableProperty(functools.partial(para_change, 'p_width'))
+    p_style = cf.ObservableProperty(functools.partial(para_change, 'p_style'))
+    p_col = cf.ObservableProperty(functools.partial(para_change, 'p_col'))
+    g_style = cf.ObservableProperty(functools.partial(para_change, 'g_style'))
+
+    # trace operation observer properties
+    show_child = cf.ObservableProperty(functools.partial(prop_update, 'show_child'))
+    show_parent = cf.ObservableProperty(functools.partial(prop_update, 'show_parent'))
+    create_trace = cf.ObservableProperty(functools.partial(prop_update, 'create_trace'))
+    clip_trace = cf.ObservableProperty(functools.partial(prop_update, 'clip_trace'))
+    delete_trace = cf.ObservableProperty(functools.partial(prop_update, 'delete_trace'))
+    delete_children = cf.ObservableProperty(functools.partial(prop_update, 'delete_children'))
+
+    # trace property observer properties
+    x_min = cf.ObservableProperty(functools.partial(limit_change, 'x_min'))
+    x_max = cf.ObservableProperty(functools.partial(limit_change, 'x_max'))
+    y_min = cf.ObservableProperty(functools.partial(limit_change, 'y_min'))
+    y_max = cf.ObservableProperty(functools.partial(limit_change, 'y_max'))
