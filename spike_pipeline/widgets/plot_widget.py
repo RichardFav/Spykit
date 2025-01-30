@@ -192,8 +192,18 @@ class QPlotWidgetMain(QDialog):
             case 'delete_trace':
                 # case is delete the existing trace
 
+                # resets the selected trace index
+                tr_obj_rmv = self.tr_obj[self.i_trace]
+
+                if tr_obj_rmv.h_parent is None:
+                    # if a root node, then reset to the root trace
+                    self.i_trace = 0  # SET TO FIRST-NON EMPTY REGION
+
+                else:
+                    # otherwise, determine the matching trace
+                    self.i_trace = self.get_trace_object_index(tr_obj_rmv.h_parent)
+
                 # deletes the trace object
-                tr_obj_rmv = self.tr_obj.pop(self.i_trace)
                 tr_obj_rmv.delete()
 
                 # resets the axes limit fields
@@ -204,9 +214,32 @@ class QPlotWidgetMain(QDialog):
                 p_gbox.setObjectName('selected')
                 p_gbox.setStyleSheet(p_gbox.styleSheet())
 
+                # resets the trace-object properties
+                tr_obj_nw = self.tr_obj[self.i_trace]
+                self.obj_para.reset_para_props(tr_obj_nw)
+                self.obj_para.axes_reset.emit(self.obj_para.obj_rcfig)
+                self.obj_para.obj_rcfig.obj_lbl_combo.obj_cbox.setCurrentIndex(self.i_trace)
+
             case 'clip_trace':
                 # case is clipping the existing trace
-                a = 1
+
+                # retrieves the parent tree item
+                tr_obj = self.get_trace_object()
+                h_tree_pr = tr_obj.h_tree.parent()
+
+                # determines the tree items row index
+                i_row = next((i for i in range(h_tree_pr.rowCount()) if (h_tree_pr.child(i) == tr_obj.h_tree)))
+
+                # swaps the rows
+                item_tmp = h_tree_pr.takeRow(i_row)
+                self.obj_para.obj_ttree.t_model.appendRow(item_tmp)
+
+                # removes parent/child links from the trace object
+                tr_obj.h_parent.h_child.pop(tr_obj.h_parent.h_child.index(self))
+                tr_obj.h_parent = None
+
+                # re-expands all the tree branches
+                self.obj_para.obj_ttree.obj_tview.expandAll()
 
     def update_limits(self, p_str):
         """
@@ -285,15 +318,15 @@ class QPlotWidgetMain(QDialog):
 
             # initialisations
             h_p = _obj_tr.h_parent
-            n_ch = [_obj_tr.n_tr + 1, h_p.n_tr]
+            f_id = [_obj_tr.n_tr + 1, _obj_tr._id]
 
             # retrieves the trace count for each of the upper levels
             while h_p.i_lvl > 0:
+                f_id.append(h_p._id)
                 h_p = h_p.h_parent
-                n_ch.append(h_p.n_tr)
 
             # returns the final trace name
-            return 'Trace {0}'.format('/'.join([str(x) for x in np.flip(n_ch)]))
+            return 'Trace {0}'.format('/'.join([str(x) for x in np.flip(f_id)]))
 
     def get_trace_object(self):
         """
@@ -303,6 +336,14 @@ class QPlotWidgetMain(QDialog):
 
         return self.tr_obj[self.i_trace]
 
+    def get_trace_object_index(self, tr_obj):
+        """
+
+        :param tr_obj:
+        :return:
+        """
+
+        return next((i for i, x in enumerate(self.tr_obj) if ((x.i_lvl == tr_obj.i_lvl) and (x._id == tr_obj._id))))
 
 ########################################################################################################################
 #                                                 MAIN WIDGET OBJECTS                                                  #
@@ -461,7 +502,7 @@ class QPlotPara(QWidget):
             'p_width': self.create_para_field('Line Width', 'edit', self.p_props.p_width),
             'p_style': self.create_para_field('Line Style', 'combobox', self.p_props.p_style, p_list=style_list),
             'p_col': self.create_para_field('Trace Colour', 'colorpick', self.p_props.p_col),
-            'g_style': self.create_para_field('Line Style', 'combobox', self.p_props.g_style, p_list=grid_list),
+            'g_style': self.create_para_field('Grid Style', 'combobox', self.p_props.g_style, p_list=grid_list),
         }
 
         # updates the class field
@@ -1043,23 +1084,26 @@ class QPlotPara(QWidget):
     def update_button_props(self, tr_obj=None):
         """
 
+        :param tr_obj:
         :return:
         """
 
-        if tr_obj is None:
-            can_del, is_child = False, False
+        # initialisations
+        can_clip, is_child = False, False
 
-        else:
+        # determines if the trace object is a sub-trace/non-root node
+        if tr_obj is not None:
             is_child = tr_obj.i_lvl > 0
-            can_del = is_child and (tr_obj.plot_obj.h_child is None)
+            if is_child:
+                can_clip = tr_obj.h_parent is not None
 
         # retrieves the operation panel widget
         h_panel_c = self.findChild(QCollapseGroup, 'tr_op')
 
         # updates the button properties
         h_panel_c.findChild(QPushButton, name='create_trace').setEnabled(self.p_props.show_child)
-        h_panel_c.findChild(QPushButton, name='delete_trace').setEnabled(can_del)
-        h_panel_c.findChild(QPushButton, name='clip_trace').setEnabled(self.p_props.show_child)
+        h_panel_c.findChild(QPushButton, name='delete_trace').setEnabled(is_child)
+        h_panel_c.findChild(QPushButton, name='clip_trace').setEnabled(can_clip)
         h_panel_c.findChild(QCheckboxHTML, name='show_parent').setEnabled(is_child)
 
     def setup_widget_callback(self, h_widget=None):
@@ -1156,6 +1200,7 @@ class QTraceObject(object):
 
         # field initialisation
         self.n_tr = 0
+        self._id = 1
         self.h_child = []
         self.parent = parent
         self.h_parent = h_parent
@@ -1195,6 +1240,7 @@ class QTraceObject(object):
             # updates the parent trace object fields
             self.h_parent.n_tr += 1
             self.h_parent.h_child.append(self)
+            self._id = deepcopy(self.h_parent.n_tr)
 
         # adds to the trace explorer
         self.parent.obj_para.reset_para_props(self)
@@ -1223,19 +1269,14 @@ class QTraceObject(object):
         self.h_parent.plot_obj.h_plot.removeItem(self.plot_obj.l_reg_p)
         self.h_parent.h_child.pop(self.h_parent.h_child.index(self))
 
-        # resets the selected trace index
-        i_trace0 = deepcopy(self.parent.i_trace)
-        self.parent.i_trace = next((i for i, x in enumerate(self.parent.tr_obj) if (x.h_tree == self.h_parent.h_tree)))
-
         # removes the region configuration items
+        i_trace0 = self.parent.get_trace_object_index(self)
         self.parent.obj_para.obj_rcfig.delete_existing_trace(self, i_trace0)
+        self.parent.tr_obj.pop(i_trace0)
 
         # removes the plot widget from the main canvas
-        tr_obj_nw = self.parent.tr_obj[self.parent.i_trace]
         self.parent.obj_plot.main_layout.itemAt(i_trace0 + 1).widget().setHidden(True)
         self.parent.obj_plot.main_layout.removeAt(i_trace0 + 1)
-        self.parent.obj_para.reset_para_props(tr_obj_nw)
-        self.parent.obj_para.axes_reset.emit(self.parent.obj_para.obj_rcfig)
 
         # resets the parameter update flag
         self.parent.obj_para.is_updating = False
@@ -1311,6 +1352,7 @@ class QPlotWidget(QWidget):
         # plot-widget setup
         self.h_plot = pg.PlotWidget()
         self.h_plot_item = self.h_plot.getPlotItem()
+        self.h_plot_item.setMouseEnabled(y=False)
 
         # sets the parent index range (for non-root widgets)
         if not self.is_root:
@@ -1363,6 +1405,7 @@ class QPlotWidget(QWidget):
         """
 
         if self.region_clicked:
+            self.region_clicked = False
             return
 
         if self.h_root.get_trace_object() != self.parent_tr:
@@ -1569,7 +1612,6 @@ class QPlotWidget(QWidget):
         self.reset_current_region()
 
         # resets the click flag and evoke a region movement event
-        self.h_parent.plot_obj.region_clicked = False
         self.region_moved.emit()
 
     def region_parent_moving(self):

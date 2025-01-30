@@ -235,6 +235,7 @@ class QRegionConfig(QWidget):
                 break
 
         if is_feas:
+            # if removing traces, then hide the linear regions for all plots to be removed
             if self.i_trace == 0:
                 for cid in np.unique(self.c_id[self.is_sel]):
                     tr_obj = self.h_root.tr_obj[cid - 1]
@@ -439,7 +440,6 @@ class QRegionConfig(QWidget):
 
         # removes the groupbox item
         self.obj_lbl_combo.obj_cbox.removeItem(i_trace + 1)
-        self.obj_lbl_combo.obj_cbox.setCurrentIndex(self.i_trace)
 
         # resets the grid ID flags
         self.c_id[self.c_id == (i_trace + 1)] = 0
@@ -791,7 +791,7 @@ tree_style = """
 """
 
 # widget dimensions
-row_height = 20
+row_height = 17
 
 
 class QTraceTree(QWidget):

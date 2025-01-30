@@ -1,5 +1,6 @@
 # module import
 import math
+import colorsys
 import threading
 from copy import deepcopy
 from typing import TypeVar
@@ -27,13 +28,15 @@ pen_style = {'Solid': Qt.PenStyle.SolidLine,
              'Dot': Qt.PenStyle.DotLine,
              'Dash-Dot': Qt.PenStyle.DashDotLine,
              'Dash-Dot-Dot': Qt.PenStyle.DashDotDotLine}
-
 from PyQt6.QtGui import QColor
 
 # widget dimensions
 but_height = 24
 edit_height = 20
 combo_height = 22
+
+# other parmaeters
+n_col_max = 20
 
 ########################################################################################################################
 
@@ -280,27 +283,27 @@ def arr_chr(is_chk):
 def get_colour_value(col_id, alpha=255):
 
     match col_id:
-        case col_id if col_id in ['red', 'r', 0]:
+        case col_id if col_id in ['red', 'r']:
             # case is red
             return QColor(255, 0, 0, alpha)
 
-        case col_id if col_id in ['green', 'g', 1]:
+        case col_id if col_id in ['green', 'g']:
             # case is green
             return QColor(0, 255, 0, alpha)
 
-        case col_id if col_id in ['blue', 'b', 2]:
+        case col_id if col_id in ['blue', 'b']:
             # case is blue
             return QColor(0, 0, 255, alpha)
 
-        case col_id if col_id in ['yellow', 'y', 3]:
+        case col_id if col_id in ['yellow', 'y']:
             # case is green
             return QColor(255, 255, 0, alpha)
 
-        case col_id if col_id in ['magenta', 'm', 4]:
+        case col_id if col_id in ['magenta', 'm']:
             # case is magenta
             return QColor(255, 0, 255, alpha)
 
-        case col_id if col_id in ['cyan', 'c', 5]:
+        case col_id if col_id in ['cyan', 'c']:
             # case is cyan
             return QColor(0, 255, 255, alpha)
 
@@ -319,6 +322,12 @@ def get_colour_value(col_id, alpha=255):
         case col_id if col_id in ['light-gray', 'lg']:
             # case is light-gray
             return QColor(200, 200, 200, alpha)
+
+        case _:
+            # case is a number
+            p_HSV = (col_id * 1.0 / n_col_max, 0.5, 0.5)
+            p_RGB = [int(255 * x) for x in list(colorsys.hsv_to_rgb(*p_HSV))]
+            return QColor(p_RGB[0], p_RGB[1], p_RGB[2], alpha)
 
 
 def lcm(a, b):
