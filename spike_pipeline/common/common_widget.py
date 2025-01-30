@@ -881,8 +881,16 @@ class QTraceTree(QWidget):
         :return:
         """
 
+        # module import
+        from spike_pipeline.widgets.plot_widget import QPlotWidgetMain
+
         # creates the tree item
-        item.parent().removeRow(item.row())
+        if item.parent() is None:
+            h_root = cf.get_parent_widget(self, QPlotWidgetMain)
+            h_root.obj_para.obj_ttree.t_model.removeRow(item.row())
+
+        else:
+            item.parent().removeRow(item.row())
 
         # increments the counter
         self.n_trace -= 1

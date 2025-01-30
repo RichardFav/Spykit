@@ -195,16 +195,17 @@ class QPlotWidgetMain(QDialog):
                 # resets the selected trace index
                 tr_obj_rmv = self.tr_obj[self.i_trace]
 
+                # deletes the trace object
+                tr_obj_rmv.delete()
+
                 if tr_obj_rmv.h_parent is None:
                     # if a root node, then reset to the root trace
-                    self.i_trace = 0  # SET TO FIRST-NON EMPTY REGION
+                    ind_m = np.where(self.obj_para.obj_rcfig.c_id > 0)
+                    self.i_trace = self.obj_para.obj_rcfig.c_id[ind_m[0], ind_m[1]][0] - 1
 
                 else:
                     # otherwise, determine the matching trace
                     self.i_trace = self.get_trace_object_index(tr_obj_rmv.h_parent)
-
-                # deletes the trace object
-                tr_obj_rmv.delete()
 
                 # resets the axes limit fields
                 self.obj_para.reset_axis_limit_fields(self.tr_obj[self.i_trace])
@@ -235,7 +236,7 @@ class QPlotWidgetMain(QDialog):
                 self.obj_para.obj_ttree.t_model.appendRow(item_tmp)
 
                 # removes parent/child links from the trace object
-                tr_obj.h_parent.h_child.pop(tr_obj.h_parent.h_child.index(self))
+                tr_obj.h_parent.h_child.pop(tr_obj.h_parent.h_child.index(tr_obj))
                 tr_obj.h_parent = None
 
                 # re-expands all the tree branches
@@ -343,7 +344,7 @@ class QPlotWidgetMain(QDialog):
         :return:
         """
 
-        return next((i for i, x in enumerate(self.tr_obj) if ((x.i_lvl == tr_obj.i_lvl) and (x._id == tr_obj._id))))
+        return next((i for i, x in enumerate(self.tr_obj) if (x == tr_obj)))
 
 ########################################################################################################################
 #                                                 MAIN WIDGET OBJECTS                                                  #
@@ -1260,17 +1261,20 @@ class QTraceObject(object):
         :return:
         """
 
-        # sets the parent widget fields
+        #
         self.parent.obj_para.is_updating = True
-        self.parent.obj_para.obj_ttree.delete_tree_item(self.h_tree)
+        i_trace0 = self.parent.get_trace_object_index(self)
 
         # resets the parent trace object fields
-        self.h_parent.plot_obj.h_child = None
-        self.h_parent.plot_obj.h_plot.removeItem(self.plot_obj.l_reg_p)
-        self.h_parent.h_child.pop(self.h_parent.h_child.index(self))
+        if self.h_parent is not None:
+            self.h_parent.plot_obj.h_child = None
+            self.h_parent.plot_obj.h_plot.removeItem(self.plot_obj.l_reg_p)
+            self.h_parent.h_child.pop(self.h_parent.h_child.index(self))
+
+        # sets the parent widget fields
+        self.parent.obj_para.obj_ttree.delete_tree_item(self.h_tree)
 
         # removes the region configuration items
-        i_trace0 = self.parent.get_trace_object_index(self)
         self.parent.obj_para.obj_rcfig.delete_existing_trace(self, i_trace0)
         self.parent.tr_obj.pop(i_trace0)
 
