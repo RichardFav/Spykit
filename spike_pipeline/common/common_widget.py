@@ -249,7 +249,6 @@ class QRegionConfig(QWidget):
                             h_chk = self.h_root.obj_para.findChild(QWidget, name='show_parent')
                             h_chk.set_check(False)
 
-
             # if feasible, then update the parameter fields and other properties
             ind_sel = np.where(self.is_sel)
             for i_r, i_c in zip(ind_sel[0], ind_sel[1]):
@@ -622,6 +621,7 @@ class QRegionConfig(QWidget):
 
         return 'rgba({0}, {1}, {2}, {3})'.format(t_col.red(), t_col.green(), t_col.blue(), t_col.alpha())
 
+
 ########################################################################################################################
 
 
@@ -745,11 +745,13 @@ class QAxesLimits(QWidget):
 
             case 'y_min':
                 # case is the lower y-axis limit
+                p_min = tr_obj.plot_obj.y_lim0[0]
                 p_max = self.p_props.y_max
 
             case 'y_max':
                 # case is the upper y-axis limit
                 p_min = self.p_props.y_min
+                p_max = tr_obj.plot_obj.y_lim0[1]
 
         # determines if the new value is valid
         chk_val = cf.check_edit_num(nw_val, min_val=p_min, max_val=p_max, is_int=False)
@@ -844,6 +846,10 @@ class QTraceTree(QWidget):
         # appends the widget to the main widget
         self.main_layout.addWidget(self.obj_tview)
 
+    # --------------------------------- #
+    # --- TREE ADD/DELETE FUNCTIONS --- #
+    # --------------------------------- #
+
     def add_tree_item(self, n_name, h_parent=None):
         """
 
@@ -899,17 +905,9 @@ class QTraceTree(QWidget):
         # resets the tree-viewer properties
         self.reset_tview_props()
 
-    def reset_tview_props(self):
-        """
-
-        :return:
-        """
-
-        self.obj_tview.setFixedHeight(self.n_trace * row_height + 2)
-        self.obj_tview.expandAll()
-
-        # # flag that a new node has been added
-        # self.node_added.emit()
+    # ------------------------------- #
+    # --- MISCELLANEOUS FUNCTIONS --- #
+    # ------------------------------- #
 
     def node_name_update(self, ind_mod_1, ind_mod_2, roles):
         """
@@ -924,6 +922,19 @@ class QTraceTree(QWidget):
 
         h_plot_para = cf.get_parent_widget(self, QPlotPara)
         h_plot_para.p_props.name = ind_mod_1.data()
+
+    def reset_tview_props(self):
+        """
+
+        :return:
+        """
+
+        self.obj_tview.setFixedHeight(self.n_trace * row_height + 2)
+        self.obj_tview.expandAll()
+
+        # # flag that a new node has been added
+        # self.node_added.emit()
+
 
 ########################################################################################################################
 
@@ -1413,6 +1424,7 @@ class QCheckboxHTML(QWidget):
         """
 
         self.h_chk.setChecked(not self.h_chk.isChecked())
+
 
 ########################################################################################################################
 

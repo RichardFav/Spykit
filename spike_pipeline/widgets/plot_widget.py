@@ -9,7 +9,7 @@ from copy import deepcopy
 # pyqt6 module import
 from PyQt6.QtWidgets import (QDialog, QWidget, QVBoxLayout, QFormLayout, QGridLayout, QHBoxLayout,
                              QGroupBox, QColorDialog, QScrollArea, QFrame, QSizePolicy, QLayout, QLayoutItem,
-                             QLineEdit, QComboBox, QCheckBox, QPushButton)
+                             QLineEdit, QComboBox, QCheckBox, QPushButton, QMessageBox)
 from PyQt6.QtCore import Qt, QSize, QRect, pyqtSignal
 from PyQt6.QtGui import QFont, QColor, QIcon
 
@@ -158,8 +158,6 @@ class QPlotWidgetMain(QDialog):
         match p_str:
             case 'show_child':
                 # case is showing the trace highlight
-
-                # field initialisations
                 is_show = obj_tr_sel.plot_para.show_child
 
                 # shows/hides the linear region object
@@ -168,8 +166,6 @@ class QPlotWidgetMain(QDialog):
 
             case 'show_parent':
                 # case is showing the trace highlight
-
-                # field initialisations
                 is_show = obj_tr_sel.plot_para.show_parent
 
                 # shows/hides the linear region object
@@ -189,23 +185,75 @@ class QPlotWidgetMain(QDialog):
                 self.i_trace = n_tr_obj
                 obj_tr_sel.plot_obj.h_child = obj_tr_new
 
+                # resets the show child checkbox
+                obj_tr_sel.plot_para.show_child = False
+                obj_tr_sel.plot_obj.l_reg.hide()
+                self.obj_para.findChild(QCheckboxHTML, name='show_child').set_check(False)
+
+            case 'clip_trace':
+                # case is clipping the existing trace
+
+                # prompts the user if they want to reset all the fields
+                u_choice = QMessageBox.question(self, 'Clip Trace?',
+                                                "Are you sure you want to clip the trace from the parent trace?",
+                                                cf.q_yes_no, QMessageBox.StandardButton.Yes)
+                if u_choice == QMessageBox.StandardButton.No:
+                    # exit if they cancelled
+                    return
+
+                # field retrieval
+                obj_tr = self.get_trace_object()
+                h_tree_pr = obj_tr.h_tree.parent()
+
+                # determines the tree items row index
+                i_row = next((i for i in range(h_tree_pr.rowCount()) if (h_tree_pr.child(i) == obj_tr.h_tree)))
+
+                # swaps the rows
+                item_tmp = h_tree_pr.takeRow(i_row)
+                self.obj_para.obj_ttree.t_model.appendRow(item_tmp)
+
+                # resets the clipped trace object fields
+                obj_tr.plot_obj.l_reg_p.deleteLater()
+                obj_tr.h_parent.h_child.pop(obj_tr.h_parent.h_child.index(obj_tr))
+                obj_tr.h_parent = None
+
+                # resets the show parent checkbox
+                obj_tr.plot_para.show_parent = False
+                self.obj_para.findChild(QCheckboxHTML, name='show_parent').set_check(False)
+
+                # resets the button properties
+                self.obj_para.update_button_props(obj_tr)
+
+                # re-expands all the tree branches
+                self.obj_para.obj_ttree.obj_tview.expandAll()
+
             case 'delete_trace':
                 # case is delete the existing trace
 
-                # resets the selected trace index
-                tr_obj_rmv = self.tr_obj[self.i_trace]
+                # field retrieval
+                obj_tr_rmv = self.tr_obj[self.i_trace]
+                has_child = len(obj_tr_rmv.h_child) > 0
 
-                # deletes the trace object
-                tr_obj_rmv.delete()
+                # prompts the user if they want to delete the trace
+                m_str = "Are you sure you want to delete the current trace"
+                u_choice = QMessageBox.question(self, 'Delete Trace(s)?',
+                                                '{0}{1}?'.format(m_str, ' (and descendents)' if has_child else ''),
+                                                cf.q_yes_no, QMessageBox.StandardButton.Yes)
+                if u_choice == QMessageBox.StandardButton.No:
+                    # exit if they cancelled
+                    return
 
-                if tr_obj_rmv.h_parent is None:
+                # deletes the currently selected trace object
+                obj_tr_rmv.delete()
+
+                if obj_tr_rmv.h_parent is None:
                     # if a root node, then reset to the root trace
                     ind_m = np.where(self.obj_para.obj_rcfig.c_id > 0)
                     self.i_trace = self.obj_para.obj_rcfig.c_id[ind_m[0], ind_m[1]][0] - 1
 
                 else:
                     # otherwise, determine the matching trace
-                    self.i_trace = self.get_trace_object_index(tr_obj_rmv.h_parent)
+                    self.i_trace = self.get_trace_object_index(obj_tr_rmv.h_parent)
 
                 # resets the axes limit fields
                 self.obj_para.reset_axis_limit_fields(self.tr_obj[self.i_trace])
@@ -221,26 +269,26 @@ class QPlotWidgetMain(QDialog):
                 self.obj_para.axes_reset.emit(self.obj_para.obj_rcfig)
                 self.obj_para.obj_rcfig.obj_lbl_combo.obj_cbox.setCurrentIndex(self.i_trace)
 
-            case 'clip_trace':
-                # case is clipping the existing trace
+            case 'delete_children':
+                # case is deleting the descendent traces
 
-                # retrieves the parent tree item
-                tr_obj = self.get_trace_object()
-                h_tree_pr = tr_obj.h_tree.parent()
+                # field retrieval
+                obj_tr_sel = self.tr_obj[self.i_trace]
 
-                # determines the tree items row index
-                i_row = next((i for i in range(h_tree_pr.rowCount()) if (h_tree_pr.child(i) == tr_obj.h_tree)))
+                # prompts the user if they want to delete the trace
+                m_str = "Are you sure you want to delete the descendent traces?"
+                u_choice = QMessageBox.question(self, 'Delete Descendent Traces?', m_str,
+                                                cf.q_yes_no, QMessageBox.StandardButton.Yes)
+                if u_choice == QMessageBox.StandardButton.No:
+                    # exit if they cancelled
+                    return
 
-                # swaps the rows
-                item_tmp = h_tree_pr.takeRow(i_row)
-                self.obj_para.obj_ttree.t_model.appendRow(item_tmp)
+                # deletes all the descendent nodes
+                for tr_obj_ch in obj_tr_sel.h_child:
+                    tr_obj_ch.delete()
 
-                # removes parent/child links from the trace object
-                tr_obj.h_parent.h_child.pop(tr_obj.h_parent.h_child.index(tr_obj))
-                tr_obj.h_parent = None
-
-                # re-expands all the tree branches
-                self.obj_para.obj_ttree.obj_tview.expandAll()
+                # disables the pushbutton
+                self.obj_para.findChild(QPushButton, p_str).setEnabled(False)
 
     def update_limits(self, p_str):
         """
@@ -345,6 +393,7 @@ class QPlotWidgetMain(QDialog):
         """
 
         return next((i for i, x in enumerate(self.tr_obj) if (x == tr_obj)))
+
 
 ########################################################################################################################
 #                                                 MAIN WIDGET OBJECTS                                                  #
@@ -518,8 +567,9 @@ class QPlotPara(QWidget):
             'show_child': self.create_para_field('Show Sub-Trace Region', 'checkbox', False),
             'show_parent': self.create_para_field('Show Parent Region', 'checkbox', False),
             'create_trace': self.create_para_field('Create New Sub-Trace', 'pushbutton', None),
-            'delete_trace': self.create_para_field('Delete Current Trace', 'pushbutton', None),
             'clip_trace': self.create_para_field('Clip Highlighted Region', 'pushbutton', None),
+            'delete_trace': self.create_para_field('Delete Current Trace', 'pushbutton', None),
+            'delete_children': self.create_para_field('Delete Descendent Traces', 'pushbutton', None),
         }
 
         # updates the class field
@@ -844,6 +894,7 @@ class QPlotPara(QWidget):
     def reset_axis_limit_fields(self, tr_obj):
         """
 
+        :param tr_obj:
         :return:
         """
 
@@ -916,6 +967,7 @@ class QPlotPara(QWidget):
         """
 
         :param h_widget:
+        :param evnt: not used
         :return:
         """
 
@@ -1090,11 +1142,12 @@ class QPlotPara(QWidget):
         """
 
         # initialisations
-        can_clip, is_child = False, False
+        can_clip, is_child, has_child = False, False, False
 
         # determines if the trace object is a sub-trace/non-root node
         if tr_obj is not None:
-            is_child = tr_obj.i_lvl > 0
+            has_child = len(tr_obj.h_child) > 0
+            is_child = tr_obj.h_parent is not None
             if is_child:
                 can_clip = tr_obj.h_parent is not None
 
@@ -1104,6 +1157,7 @@ class QPlotPara(QWidget):
         # updates the button properties
         h_panel_c.findChild(QPushButton, name='create_trace').setEnabled(self.p_props.show_child)
         h_panel_c.findChild(QPushButton, name='delete_trace').setEnabled(is_child)
+        h_panel_c.findChild(QPushButton, name='delete_children').setEnabled(has_child)
         h_panel_c.findChild(QPushButton, name='clip_trace').setEnabled(can_clip)
         h_panel_c.findChild(QCheckboxHTML, name='show_parent').setEnabled(is_child)
 
@@ -1247,6 +1301,10 @@ class QTraceObject(object):
         self.parent.obj_para.reset_para_props(self)
         self.parent.trace_added(self.plot_obj, tr_name)
 
+    # ----------------------- #
+    # --- EVENT FUNCTIONS --- #
+    # ----------------------- #
+
     def region_moved(self):
         """
 
@@ -1255,13 +1313,21 @@ class QTraceObject(object):
 
         self.parent.obj_para.reset_axis_limit_fields(self)
 
+    # ------------------------------- #
+    # --- MISCELLANEOUS FUNCTIONS --- #
+    # ------------------------------- #
+
     def delete(self):
         """
 
         :return:
         """
 
-        #
+        # deletes any children objects
+        for tr_obj_ch in self.h_child:
+            tr_obj_ch.delete()
+
+        # field initialisations
         self.parent.obj_para.is_updating = True
         i_trace0 = self.parent.get_trace_object_index(self)
 
@@ -1285,6 +1351,7 @@ class QTraceObject(object):
         # resets the parameter update flag
         self.parent.obj_para.is_updating = False
         self.parent.n_trace -= 1
+
 
 ########################################################################################################################
 
@@ -1853,8 +1920,9 @@ class QParaTrace(QWidget):
         self.show_child = False
         self.show_parent = False
         self.create_trace = 0
-        self.delete_trace = 0
         self.clip_trace = 0
+        self.delete_trace = 0
+        self.delete_children = 0
 
         # x/y-axes limit fields
         self.x_min = None
@@ -1918,8 +1986,9 @@ class QParaClass(QParaTrace):
     show_child = cf.ObservableProperty(functools.partial(prop_update, 'show_child'))
     show_parent = cf.ObservableProperty(functools.partial(prop_update, 'show_parent'))
     create_trace = cf.ObservableProperty(functools.partial(prop_update, 'create_trace'))
-    delete_trace = cf.ObservableProperty(functools.partial(prop_update, 'delete_trace'))
     clip_trace = cf.ObservableProperty(functools.partial(prop_update, 'clip_trace'))
+    delete_trace = cf.ObservableProperty(functools.partial(prop_update, 'delete_trace'))
+    delete_children = cf.ObservableProperty(functools.partial(prop_update, 'delete_children'))
 
     # trace property observer properties
     x_min = cf.ObservableProperty(functools.partial(limit_change, 'x_min'))
