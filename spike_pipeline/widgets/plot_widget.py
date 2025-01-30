@@ -86,9 +86,7 @@ class QPlotWidgetMain(QDialog):
         self.tr_obj = [QTraceObject(self, main_name)]
         self.i_trace = 0
 
-    # -------------------------------------- #
-    # --- CLASS INITIALISATION FUNCTIONS --- #
-    # -------------------------------------- #
+    # CLASS INITIALISATION FUNCTIONS -----------------------------------
 
     def setup_dialog(self):
         """
@@ -112,9 +110,7 @@ class QPlotWidgetMain(QDialog):
             self.x = np.arange(0, 4 * np.pi, 1e-6)
             self.y = 1e-2 * np.sin(1e3 * self.x) + np.sin(self.x) + 1e-3 * np.sin(1e10 * self.x)
 
-    # ------------------------------------------ #
-    # --- OBSERVER PARAMETER EVENT FUNCTIONS --- #
-    # ------------------------------------------ #
+    # OBSERVER PARAMETER EVENT FUNCTIONS -------------------------------
 
     def update_trace(self, p_str):
         """
@@ -305,9 +301,7 @@ class QPlotWidgetMain(QDialog):
         obj_tr_sel = self.tr_obj[self.i_trace]
         setattr(obj_tr_sel.plot_para, p_str, getattr(self.obj_para.p_props, p_str))
 
-    # ------------------------------- #
-    # --- MISCELLANEOUS FUNCTIONS --- #
-    # ------------------------------- #
+    # MISCELLANEOUS FUNCTIONS ------------------------------------------
 
     def change_selected_plot(self, tr_obj_p):
         """
@@ -1064,10 +1058,10 @@ class QPlotPara(QWidget):
     # WIDGET EVENT FUNCTIONS --------------------------------------------------
 
     def config_reset(self):
-        '''
+        """
 
         :return:
-        '''
+        """
 
         self.axes_reset.emit(self.obj_rcfig)
 
@@ -1187,9 +1181,7 @@ class QPlotWindow(QWidget):
         # initialises the class fields
         self.init_class_fields()
 
-    # -------------------------------------- #
-    # --- CLASS INITIALISATION FUNCTIONS --- #
-    # -------------------------------------- #
+    # CLASS INITIALISATION FUNCTIONS -----------------------------------
 
     def init_class_fields(self):
         """
@@ -1212,9 +1204,7 @@ class QPlotWindow(QWidget):
         # creates the background widget
         self.bg_widget.setStyleSheet("background-color: black;")
 
-    # -------------------------------------- #
-    # --- CLASS INITIALISATION FUNCTIONS --- #
-    # -------------------------------------- #
+    # CLASS INITIALISATION FUNCTIONS -----------------------------------
 
     def config_reset(self, obj_rcfig):
         """
@@ -1285,9 +1275,7 @@ class QTraceObject(object):
         self.parent.obj_para.reset_para_props(self)
         self.parent.trace_added(self.plot_obj, tr_name)
 
-    # ----------------------- #
-    # --- EVENT FUNCTIONS --- #
-    # ----------------------- #
+    # EVENT FUNCTIONS --------------------------------------------------
 
     def region_moved(self):
         """
@@ -1297,9 +1285,7 @@ class QTraceObject(object):
 
         self.parent.obj_para.reset_axis_limit_fields(self)
 
-    # ------------------------------- #
-    # --- MISCELLANEOUS FUNCTIONS --- #
-    # ------------------------------- #
+    # MISCELLANEOUS FUNCTIONS ------------------------------------------
 
     def delete(self):
         """
@@ -1418,9 +1404,7 @@ class QPlotWidget(QWidget):
         self.setup_plot_buttons()
         self.setup_plot_region()
 
-    # -------------------------- #
-    # --- CLASS WIDGET SETUP --- #
-    # -------------------------- #
+    # CLASS WIDGET SETUP -----------------------------------------------
 
     def setup_plot_widget(self):
         """
@@ -1639,9 +1623,7 @@ class QPlotWidget(QWidget):
         pen_style = cf.pen_style[self.p_props.p_style]
         return pg.mkPen(color=self.p_props.p_col, width=self.p_props.p_width, style=pen_style)
 
-    # --------------------------------- #
-    # --- REGION MOVEMENT FUNCTIONS --- #
-    # --------------------------------- #
+    # REGION MOVEMENT FUNCTIONS ----------------------------------------
 
     def region_current_move(self):
         """
@@ -1700,9 +1682,7 @@ class QPlotWidget(QWidget):
                 self.l_reg_p.setRegion(x_lim_p)
                 self.is_updating = False
 
-    # ------------------------------ #
-    # --- WIDGET EVENT FUNCTIONS --- #
-    # ------------------------------ #
+    # WIDGET EVENT FUNCTIONS -------------------------------------------
 
     def button_plot_click(self):
         """
@@ -1796,9 +1776,7 @@ class QPlotWidget(QWidget):
                 # resets the grid values
                 self.h_plot_item.showGrid(x=y_on, y=x_on, alpha=0.5)
 
-    # ------------------------------- #
-    # --- MISCELLANEOUS FUNCTIONS --- #
-    # ------------------------------- #
+    # MISCELLANEOUS FUNCTIONS ------------------------------------------
 
     def reset_plot_data(self):
         """

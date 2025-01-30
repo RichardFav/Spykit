@@ -3,12 +3,12 @@ from importlib import reload
 
 
 def reload_module(module_name, *names):
-    '''
+    """
 
     :param module_name:
     :param names:
     :return:
-    '''
+    """
 
     if module_name in sys.modules:
         reload(sys.modules[module_name])
