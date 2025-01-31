@@ -117,15 +117,9 @@ class ParaDialog(QMainWindow):
         # sets the object style sheets
         self.set_styles()
 
-    # -------------------------------------- #
-    # --- CLASS INITIALISATION FUNCTIONS --- #
-    # -------------------------------------- #
+    # CLASS INITIALISATION FUNCTIONS ------------------------------------------
 
     def init_class_fields(self):
-        """
-
-        :return:
-        """
 
         # initialises the parameter information fields
         self.setup_para_info_fields()
@@ -165,20 +159,12 @@ class ParaDialog(QMainWindow):
         self.group_layout.addRow(self.search_dlg)
 
     def setup_dialog(self):
-        """
-
-        :return:
-        """
 
         # creates the dialog window
         self.setFixedSize(dlg_width, dlg_height + hdr_height)
         self.setWindowTitle("SpikeInterface Parameters")
 
     def setup_toolbar(self):
-        """
-
-        :return:
-        """
 
         # creates the menubar object
         h_menubar = QMenuBar(self)
@@ -217,12 +203,6 @@ class ParaDialog(QMainWindow):
                 h_menu_file.addAction(h_menu)
 
     def setup_group_objects(self, p, i_tab):
-        """
-
-        :param p:
-        :param i_tab:
-        :return:
-        """
 
         # retrieves the group properties
         grp_name = self.p_info[p]['name']
@@ -267,53 +247,15 @@ class ParaDialog(QMainWindow):
         cb_fcn = functools.partial(self.para_tab_change, p)
         self.h_tab_grp[p].currentChanged.connect(cb_fcn)
 
-    def create_group_text_link(self, name, lbl_name):
-
-        # creates the text labels
-        h_gap = cw.create_text_label(None, '', name=name)
-        h_txt = cw.create_text_label(None, lbl_name, align='left', name=name)
-
-        # sets the label properties
-        h_txt.adjustSize()
-        h_txt.setSizePolicy(QSizePolicy(cf.q_fix, cf.q_fix))
-        h_txt.setStyleSheet("""
-            QLabel {
-                color: rgba(26, 83, 200, 255) ;
-            }
-            QLabel:hover {
-                color: rgba(255, 0, 0, 255) ;
-            }""")
-
-        # sets the gap object properties
-        h_gap.setFixedWidth(5)
-        h_gap.setStyleSheet("background-color: rgba(240, 240, 255, 255) ;")
-
-        # returns the objects
-        return h_gap, h_txt
-
-    # ----------------------------------------- #
-    # --- COLLAPSIBLE PANEL EVENT FUNCTIONS --- #
-    # ----------------------------------------- #
+    # COLLAPSIBLE PANEL EVENT FUNCTIONS ---------------------------------------
 
     def set_panel_events(self, h_panel_c, evnt=None):
-        """
-
-        :param h_panel_c:
-        :param evnt:
-        :return:
-        """
 
         # sets the label click event function
         for h_txt in h_panel_c.findChildren(QLabel):
             h_txt.mousePressEvent = functools.partial(self.link_click, h_txt)
 
     def link_click(self, h_txt, evnt=None):
-        """
-
-        :param h_txt:
-        :param evnt:
-        :return:
-        """
 
         # field retrieval
         h_grpc = cf.get_parent_widget(h_txt, cw.QCollapseGroup)
@@ -330,15 +272,9 @@ class ParaDialog(QMainWindow):
         self.selected_para = ch_list[i_tab]
         self.h_tab_grp[self.selected_group].setCurrentIndex(i_tab)
 
-    # --------------------------------------- #
-    # --- TOOLBAR/MENUBAR EVENT FUNCTIONS --- #
-    # --------------------------------------- #
+    # TOOLBAR/MENUBAR EVENT FUNCTIONS -----------------------------------------
 
     def menu_reset_para(self):
-        """
-
-        :return:
-        """
 
         # prompts the user if they want to reset all the fields
         u_choice = QMessageBox.question(self, 'Reset Parameters?', "Are you sure you want to reset the parameters?",
@@ -355,10 +291,6 @@ class ParaDialog(QMainWindow):
         self.reset_para_fields(self.p_dict, [], is_init=True)
 
     def menu_open_para(self):
-        """
-
-        :return:
-        """
 
         # file dialog properties
         f_path = para_dir
@@ -379,10 +311,6 @@ class ParaDialog(QMainWindow):
             self.reset_para_fields(self.p_dict, [], is_init=True)
 
     def menu_save_para(self):
-        """
-
-        :return:
-        """
 
         # file dialog properties
         f_path = para_dir
@@ -400,10 +328,6 @@ class ParaDialog(QMainWindow):
             self.p_dict0 = deepcopy(self.p_dict)
 
     def close_window(self):
-        """
-
-        :return:
-        """
 
         if (self.p_dict != self.p_dict0) and (self.p_dict0 is not None):
             # if there is a parameter change, then prompt the user if they want to change
@@ -416,18 +340,9 @@ class ParaDialog(QMainWindow):
         # closes the window
         self.close()
 
-    # ------------------------------ #
-    # --- WIDGET SETUP FUNCTIONS --- #
-    # ------------------------------ #
+    # WIDGET SETUP FUNCTIONS --------------------------------------------------
 
     def create_para_tab(self, grp_name, grp_info, sect_name):
-        """
-
-        :param grp_name:
-        :param grp_info:
-        :param sect_name:
-        :return:
-        """
 
         # creates the tab widget
         h_tab = QWidget()
@@ -441,23 +356,12 @@ class ParaDialog(QMainWindow):
         return h_tab
 
     def create_para_object(self, layout, p_name, ps, p_str_l):
-        """
-
-        :param layout:
-        :param p_name:
-        :param ps:
-        :param p_str_l:
-        :return:
-        """
 
         match ps['type']:
-            # ------------------------- #
-            # --- CONTAINER OBJECTS --- #
-            # ------------------------- #
+            # CONTAINER OBJECTS -----------------------------------------------
 
+            # case is a regular panel
             case 'panel':
-                # case is a regular panel
-
                 # creates the panel object
                 h_panel_para = QGroupBox()
                 layout.addWidget(h_panel_para)
@@ -469,9 +373,8 @@ class ParaDialog(QMainWindow):
                 layout = QFormLayout(h_panel_para)
                 layout.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
 
+            # case is a checkbox panel
             case 'checkpanel':
-                # case is a checkbox panel
-
                 # initialisations
                 font_panel = cw.create_font_obj(size=9, is_bold=True, font_weight=QFont.Weight.Bold)
 
@@ -499,9 +402,8 @@ class ParaDialog(QMainWindow):
 
                 # self.group_panel_click(h_panel, p_str_l)
 
+            # case is a tabgroup
             case 'tabgroup':
-                # case is a tabgroup
-
                 # creates the tab-group widget
                 obj_tab_grp = cw.create_tab_group(None)
                 obj_tab_grp.setObjectName(p_name)
@@ -525,9 +427,8 @@ class ParaDialog(QMainWindow):
                 # exits the function
                 return
 
+            # case is a tab widget
             case 'tab':
-                # case is a tab widget
-
                 # creates the tab widget
                 obj_tab = QWidget()
                 obj_tab.setObjectName(p_name)
@@ -557,13 +458,10 @@ class ParaDialog(QMainWindow):
                 # returns the tab object
                 return obj_tab
 
-            # --------------------- #
-            # --- OTHER WIDGETS --- #
-            # --------------------- #
+            # OTHER WIDGETS ---------------------------------------------------
 
+            # case is a editbox
             case 'edit':
-                # case is a editbox
-
                 # creates the label/editbox widget combo
                 obj_lbl = cw.create_text_label(None, '{0}: '.format(ps['name']), font=self.font_lbl)
                 obj_edit = cw.create_line_edit(None, '%g' % (ps['value']), name=p_name, align='left')
@@ -580,9 +478,8 @@ class ParaDialog(QMainWindow):
 
                 # self.edit_para_change(obj_edit, p_str_l)
 
+            # case is a combobox
             case 'combobox':
-                # case is a combobox
-
                 # creates the label/combobox widget combo
                 obj_lbl = cw.create_text_label(None, '{0}: '.format(ps['name']), font=self.font_lbl)
                 obj_cbox = cw.create_combo_box(None, ps['p_list'], name=p_name)
@@ -600,9 +497,8 @@ class ParaDialog(QMainWindow):
 
                 # self.combobox_para_change(obj_cbox, p_str_l)
 
+            # case is a checkbox
             case 'checkbox':
-                # case is a checkbox
-
                 # creates the checkbox widget
                 obj_checkbox = cw.QCheckboxHTML(
                     None, ps['name'], ps['value'], font=self.font_lbl, name=p_name)
@@ -617,9 +513,8 @@ class ParaDialog(QMainWindow):
 
                 # self.checkbox_para_change(obj_checkbox, p_str_l)
 
+            # case is a file selection widget
             case 'filespec':
-                # case is a file selection widget
-
                 # creates the file selection widget
                 obj_fspec = cw.QFileSpec(None, ps['name'], ps['value'], name=p_name, f_mode=ps['p_misc'])
                 layout.addRow(obj_fspec)
@@ -638,34 +533,19 @@ class ParaDialog(QMainWindow):
             for ps_ch in ps['ch_fld']:
                 self.create_para_object(layout, ps_ch, ps['ch_fld'][ps_ch], p_str_l=p_str_l + [ps_ch])
 
-    # ------------------------------ #
-    # --- WIDGET EVENT FUNCTIONS --- #
-    # ------------------------------ #
+    # WIDGET EVENT FUNCTIONS --------------------------------------------------
 
     def tab_change(self, h_tab_grp, p_str_l):
-        """
-
-        :return:
-        """
 
         # updates the selected tab value
         p_tab_sel = h_tab_grp.currentWidget().objectName()
         cf.set_multi_dict_value(self.p_dict, p_str_l + [p_str_l[-1]], p_tab_sel)
 
     def para_tab_change(self, p_str):
-        """
-
-        :return:
-        """
 
         self.selected_para = self.h_tab_grp[p_str].currentWidget().objectName()
 
     def swap_para_tab_group(self, p_str_g):
-        """
-
-        :param p_str_g:
-        :return:
-        """
 
         # resets the select group flag
         self.h_tab_grp[self.selected_group].setParent(None)
@@ -675,12 +555,6 @@ class ParaDialog(QMainWindow):
         self.para_layout.addWidget(self.h_tab_grp[p_str_g])
 
     def edit_para_change(self, h_edit, p_str_l):
-        """
-
-        :param h_edit:
-        :param p_str_l:
-        :return:
-        """
 
         # field retrieval
         nw_val = h_edit.text()
@@ -700,12 +574,6 @@ class ParaDialog(QMainWindow):
             h_edit.setText('%g' % p_val)
 
     def combobox_para_change(self, h_combo, p_str_l):
-        """
-
-        :param h_combo:
-        :param p_str_l:
-        :return:
-        """
 
         # field retrieval
         p_val = h_combo.currentText()
@@ -714,13 +582,6 @@ class ParaDialog(QMainWindow):
         cf.set_multi_dict_value(self.p_dict, p_str_l, p_val)
 
     def checkbox_para_change(self, h_check, p_str_l, evnt=None):
-        """
-        
-        :param h_check:
-        :param p_str_l:
-        :param evnt:
-        :return:
-        """
 
         # if manually updating, then exit
         if self.is_updating:
@@ -744,12 +605,6 @@ class ParaDialog(QMainWindow):
         cf.set_multi_dict_value(self.p_dict, p_str_l, p_val)
 
     def button_file_spec(self, p_str_l, h_fspec):
-        """
-
-        :param p_str_l:
-        :param h_fspec:
-        :return:
-        """
 
         # file dialog properties
         dir_only = h_fspec.f_mode is None
@@ -765,12 +620,6 @@ class ParaDialog(QMainWindow):
             h_fspec.h_edit.setText(file_info[0])
 
     def group_panel_click(self, h_panel, p_str_l):
-        """
-
-        :param h_panel:
-        :param p_str_l:
-        :return:
-        """
 
         # field retrieval
         is_chk = h_panel.isChecked()
@@ -783,35 +632,11 @@ class ParaDialog(QMainWindow):
             if hasattr(h_child, 'setEnabled'):
                 h_child.setEnabled(is_chk)
 
-    # --------------------------------- #
-    # --- PARAMETER FIELD FUNCTIONS --- #
-    # --------------------------------- #
-
-    def create_para_field(self, name, obj_type, value, p_fld=None, p_list=None, p_misc=None, ch_fld=None):
-        """
-
-        :param name:
-        :param obj_type:
-        :param value:
-        :param p_fld:
-        :param p_list:
-        :param ch_fld:
-        :param p_misc:
-        :return:
-        """
-
-        return {'name': name, 'type': obj_type, 'value': value, 'p_fld': p_fld,
-                'p_list': p_list, 'p_misc': p_misc, 'ch_fld': ch_fld}
+    # PARAMETER FIELD FUNCTIONS -----------------------------------------------
 
     def setup_para_info_fields(self):
-        """
 
-        :return:
-        """
-
-        # ------------------------------ #
-        # --- PRE-PROCESSING OBJECTS --- #
-        # ------------------------------ #
+        # PRE-PROCESSING OBJECTS ----------------------------------------------
 
         # subgroup properties
         pp_str = ['phase_shift', 'bandpass_filter', 'common_reference', 'whitening', 'drift_correct', 'sorting']
@@ -879,9 +704,7 @@ class ParaDialog(QMainWindow):
         # updates the class field
         self.p_info['pre_processing'] = {'name': 'Pre-Processing', 'type': 'group', 'ch_fld': p_tmp}
 
-        # ------------------------------ #
-        # --- PRE-PROCESSING OBJECTS --- #
-        # ------------------------------ #
+        # PRE-PROCESSING OBJECTS ----------------------------------------------
 
         # subgroup properties
         pp_str = ['waveforms', 'sparce_opt', 'testing']
@@ -921,15 +744,9 @@ class ParaDialog(QMainWindow):
         # updates the class field
         self.p_info['general'] = {'name': 'General', 'type': 'group', 'ch_fld': p_tmp}
 
-    # ------------------------------- #
-    # --- MISCELLANEOUS FUNCTIONS --- #
-    # ------------------------------- #
+    # MISCELLANEOUS FUNCTIONS -------------------------------------------------
 
     def init_para_dict_fields(self):
-        """
-
-        :return:
-        """
 
         # field initialisation
         self.p_dict = {}
@@ -942,12 +759,6 @@ class ParaDialog(QMainWindow):
             self.init_group_para_fields(self.p_info[g]['ch_fld'], [g])
 
     def init_group_para_fields(self, ps_info, k):
-        """
-
-        :param ps_info:
-        :param k:
-        :return:
-        """
 
         for ps in ps_info:
             # initialises the dictionary field
@@ -982,12 +793,6 @@ class ParaDialog(QMainWindow):
                         cf.set_multi_dict_value(self.p_dict, ks + [ps], ps_info[ps]['value'])
 
     def reset_para_info_value(self, ps, pd):
-        """
-
-        :param ps:
-        :param pd:
-        :return:
-        """
 
         for k in ps.keys():
             # continue if there is not matching parameter field
@@ -1013,14 +818,6 @@ class ParaDialog(QMainWindow):
                 ps[k]['value'] = pd[k]
 
     def reset_para_fields(self, d, kp, h_obj=None, is_init=False):
-        """
-
-        :param d:
-        :param kp:
-        :param h_obj:
-        :param is_init:
-        :return:
-        """
 
         for k in d.keys():
             # case is the root parameter field
@@ -1068,14 +865,40 @@ class ParaDialog(QMainWindow):
                     h_obj_c[0].setCurrentWidget(h_tab_sel)
 
     def set_styles(self):
-        """
-
-        :return:
-        """
 
         # sets the style sheets
         self.group_scroll.setStyleSheet("background-color: rgba(120, 152, 229, 255) ;")
 
+    @staticmethod
+    def create_group_text_link(name, lbl_name):
+
+        # creates the text labels
+        h_gap = cw.create_text_label(None, '', name=name)
+        h_txt = cw.create_text_label(None, lbl_name, align='left', name=name)
+
+        # sets the label properties
+        h_txt.adjustSize()
+        h_txt.setSizePolicy(QSizePolicy(cf.q_fix, cf.q_fix))
+        h_txt.setStyleSheet("""
+            QLabel {
+                color: rgba(26, 83, 200, 255) ;
+            }
+            QLabel:hover {
+                color: rgba(255, 0, 0, 255) ;
+            }""")
+
+        # sets the gap object properties
+        h_gap.setFixedWidth(5)
+        h_gap.setStyleSheet("background-color: rgba(240, 240, 255, 255) ;")
+
+        # returns the objects
+        return h_gap, h_txt
+
+    @staticmethod
+    def create_para_field(name, obj_type, value, p_fld=None, p_list=None, p_misc=None, ch_fld=None):
+
+        return {'name': name, 'type': obj_type, 'value': value, 'p_fld': p_fld,
+                'p_list': p_list, 'p_misc': p_misc, 'ch_fld': ch_fld}
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -1104,10 +927,6 @@ class QSearchWidget(QWidget):
         self.init_class_widgets()
 
     def init_class_fields(self):
-        """
-
-        :return:
-        """
 
         # creates the layout
         self.main_layout.setSpacing(0)
@@ -1115,11 +934,6 @@ class QSearchWidget(QWidget):
         self.setLayout(self.main_layout)
 
     def init_class_widgets(self):
-        """
-
-        :param self:
-        :return:
-        """
 
         # creates the button object
         self.main_layout.addRow(self.h_lbl, self.h_edit)
@@ -1142,10 +956,6 @@ class QSearchWidget(QWidget):
                                   "qproperty-frame: False")
 
     def edit_search_change(self):
-        """
-
-        :return:
-        """
 
         # field retrieval
         s_txt = self.h_edit.text().lower()
@@ -1184,13 +994,6 @@ class QSearchWidget(QWidget):
                 hh.setText(nn)
 
     def append_para_obj(self, h_obj, p_name, g_name):
-        """
-
-        :param h_obj:
-        :param p_name:
-        :param g_name:
-        :return:
-        """
 
         # increments the count
         self.n_para += 1
@@ -1203,13 +1006,6 @@ class QSearchWidget(QWidget):
         self.para_grp.append(g_name)
 
     def append_grp_obj(self, h_obj, g_str, g_name):
-        """
-
-        :param h_obj:
-        :param g_str:
-        :param g_name:
-        :return:
-        """
 
         # increments the count
         self.n_grp += 1
@@ -1220,12 +1016,5 @@ class QSearchWidget(QWidget):
 
     @staticmethod
     def add_highlight(s, i0, n):
-        """
-
-        :param s:
-        :param i0:
-        :param n:
-        :return:
-        """
 
         return '{0}{1}{2}'.format(s[0:i0], cf.set_text_background_colour(s[i0:(i0 + n)], 'yellow'), s[(i0 + n):])

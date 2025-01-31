@@ -89,10 +89,6 @@ class QPlotWidgetMain(QDialog):
     # CLASS INITIALISATION FUNCTIONS -----------------------------------
 
     def setup_dialog(self):
-        """
-
-        :return:
-        """
 
         # creates the dialog window
         self.setWindowTitle("Plotting Widget")
@@ -100,10 +96,6 @@ class QPlotWidgetMain(QDialog):
         self.resize(dlg_width, dlg_height)
 
     def init_class_fields(self):
-        """
-
-        :return:
-        """
 
         if self.x is None:
             # test signals
@@ -113,11 +105,6 @@ class QPlotWidgetMain(QDialog):
     # OBSERVER PARAMETER EVENT FUNCTIONS -------------------------------
 
     def update_trace(self, p_str):
-        """
-
-        :param p_str:
-        :return:
-        """
 
         # if manually updating parameters, then exit
         if self.obj_para.is_updating:
@@ -138,10 +125,6 @@ class QPlotWidgetMain(QDialog):
         self.obj_para.is_updating = False
 
     def trace_operation(self, p_str):
-        """
-
-        :return:
-        """
 
         # if manually updating parameters, then exit
         if self.obj_para.is_updating:
@@ -152,25 +135,26 @@ class QPlotWidgetMain(QDialog):
         setattr(obj_tr_sel.plot_para, p_str, getattr(self.obj_para.p_props, p_str))
 
         match p_str:
+            # case is showing the trace highlight
             case 'show_child':
-                # case is showing the trace highlight
+                # field retrieval
                 is_show = obj_tr_sel.plot_para.show_child
 
                 # shows/hides the linear region object
                 obj_tr_sel.plot_obj.l_reg.show() if is_show else obj_tr_sel.plot_obj.l_reg.hide()
                 self.obj_para.update_button_props(obj_tr_sel)
 
+            # case is showing the trace highlight
             case 'show_parent':
-                # case is showing the trace highlight
+                # field retrieval
                 is_show = obj_tr_sel.plot_para.show_parent
 
                 # shows/hides the linear region object
                 obj_tr_sel.plot_obj.l_reg_p.show() if is_show else obj_tr_sel.plot_obj.l_reg_p.hide()
                 self.obj_para.update_button_props(obj_tr_sel)
 
+            # case is creating a new trace
             case 'create_trace':
-                # case is creating a new trace
-
                 # creates and appends the trace object
                 n_tr_obj = len(self.tr_obj)
                 tr_name = self.get_trace_name(obj_tr_sel)
@@ -186,9 +170,8 @@ class QPlotWidgetMain(QDialog):
                 obj_tr_sel.plot_obj.l_reg.hide()
                 self.obj_para.findChild(QCheckboxHTML, name='show_child').set_check(False)
 
+            # case is clipping the existing trace
             case 'clip_trace':
-                # case is clipping the existing trace
-
                 # prompts the user if they want to reset all the fields
                 u_choice = QMessageBox.question(self, 'Clip Trace?',
                                                 "Are you sure you want to clip the trace from the parent trace?",
@@ -223,9 +206,8 @@ class QPlotWidgetMain(QDialog):
                 # re-expands all the tree branches
                 self.obj_para.obj_ttree.obj_tview.expandAll()
 
+            # case is delete the existing trace
             case 'delete_trace':
-                # case is delete the existing trace
-
                 # field retrieval
                 obj_tr_rmv = self.tr_obj[self.i_trace]
                 has_child = len(obj_tr_rmv.h_child) > 0
@@ -265,9 +247,8 @@ class QPlotWidgetMain(QDialog):
                 self.obj_para.axes_reset.emit(self.obj_para.obj_rcfig)
                 self.obj_para.obj_rcfig.obj_lbl_combo.obj_cbox.setCurrentIndex(self.i_trace)
 
+            # case is deleting the descendent traces
             case 'delete_children':
-                # case is deleting the descendent traces
-
                 # field retrieval
                 obj_tr_sel = self.tr_obj[self.i_trace]
 
@@ -287,11 +268,6 @@ class QPlotWidgetMain(QDialog):
                 self.obj_para.findChild(QPushButton, p_str).setEnabled(False)
 
     def update_limits(self, p_str):
-        """
-
-        :param p_str:
-        :return:
-        """
 
         # if manually updating parameters, then exit
         if self.obj_para.is_updating:
@@ -304,11 +280,6 @@ class QPlotWidgetMain(QDialog):
     # MISCELLANEOUS FUNCTIONS ------------------------------------------
 
     def change_selected_plot(self, tr_obj_p):
-        """
-
-        :param tr_obj_p:
-        :return:
-        """
 
         # removes the current highlight and resets the selected region index
         self.remove_plot_highlight()
@@ -318,12 +289,6 @@ class QPlotWidgetMain(QDialog):
         self.obj_para.reset_para_props(self.tr_obj[self.i_trace])
 
     def trace_added(self, p_obj, tr_name):
-        """
-
-        :param p_obj:
-        :param tr_name:
-        :return:
-        """
 
         # increments the trace counter
         self.n_trace += 1
@@ -336,21 +301,21 @@ class QPlotWidgetMain(QDialog):
         self.obj_plot.main_layout.updateID(self.obj_para.obj_rcfig.c_id, False)
 
     def remove_plot_highlight(self):
-        """
-
-        :return:
-        """
 
         g_box = self.tr_obj[self.i_trace].plot_obj.obj_plot_gbox
         g_box.setObjectName(None)
         g_box.setStyleSheet(g_box.styleSheet())
 
-    def get_trace_name(self, _obj_tr):
-        """
+    def get_trace_object(self):
 
-        :param _obj_tr:
-        :return:
-        """
+        return self.tr_obj[self.i_trace]
+
+    def get_trace_object_index(self, tr_obj):
+
+        return next((i for i, x in enumerate(self.tr_obj) if (x == tr_obj)))
+
+    @staticmethod
+    def get_trace_name(_obj_tr):
 
         if _obj_tr.i_lvl == 0:
             # case is the parent node is the main trace
@@ -370,24 +335,6 @@ class QPlotWidgetMain(QDialog):
 
             # returns the final trace name
             return 'Trace {0}'.format('/'.join([str(x) for x in np.flip(f_id)]))
-
-    def get_trace_object(self):
-        """
-
-        :return:
-        """
-
-        return self.tr_obj[self.i_trace]
-
-    def get_trace_object_index(self, tr_obj):
-        """
-
-        :param tr_obj:
-        :return:
-        """
-
-        return next((i for i, x in enumerate(self.tr_obj) if (x == tr_obj)))
-
 
 # MAIN WIDGET OBJECTS --------------------------------------------------------------------------------------------------
 
@@ -440,10 +387,6 @@ class QPlotPara(QWidget):
     # CLASS INITIALISATION FUNCTIONS ------------------------------------------
 
     def init_class_fields(self):
-        """
-
-        :return:
-        """
 
         # initialises the parameter information fields
         self.setup_para_info_fields()
@@ -459,9 +402,7 @@ class QPlotPara(QWidget):
         self.main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         self.main_layout.addWidget(self.h_scroll)
 
-        # -------------------------------- #
-        # --- SCROLL AREA WIDGET SETUP --- #
-        # -------------------------------- #
+        # SCROLL AREA WIDGET SETUP --------------------------------------------
 
         # sets the scroll area properties
         self.h_scroll.setWidgetResizable(True)
@@ -481,14 +422,8 @@ class QPlotPara(QWidget):
     # PARAMETER WIDGET SETUP --------------------------------------------------
 
     def setup_para_info_fields(self):
-        """
 
-        :return:
-        """
-
-        # ------------------------------- #
-        # --- TRACE STRUCTURE OBJECTS --- #
-        # ------------------------------- #
+        # TRACE STRUCTURE OBJECTS ---------------------------------------------
 
         # sets up the subgroup fields
         p_tmp = {
@@ -498,9 +433,7 @@ class QPlotPara(QWidget):
         # updates the class field
         self.p_info['trace_tree'] = {'name': 'Trace Explorer', 'type': 'v_panel', 'ch_fld': p_tmp}
 
-        # ------------------------------------ #
-        # --- REGION CONFIGURATION OBJECTS --- #
-        # ------------------------------------ #
+        # REGION CONFIGURATION OBJECTS ----------------------------------------
 
         # sets up the subgroup fields
         p_tmp = {
@@ -510,9 +443,7 @@ class QPlotPara(QWidget):
         # updates the class field
         self.p_info['reg_config'] = {'name': 'Region Configuration', 'type': 'v_panel', 'ch_fld': p_tmp}
 
-        # -------------------------------- #
-        # --- TRACE PROPERTIES OBJECTS --- #
-        # -------------------------------- #
+        # TRACE PROPERTIES OBJECTS --------------------------------------------
 
         # group initialisations
         style_list = ['Solid', 'Dash', 'Dot', 'Dash-Dot', 'Dash-Dot-Dot']
@@ -530,9 +461,7 @@ class QPlotPara(QWidget):
         # updates the class field
         self.p_info['tr_prop'] = {'name': 'Current Trace Properties', 'type': 'g_panel', 'ch_fld': p_tmp}
 
-        # -------------------------------- #
-        # --- TRACE OPERATIONS OBJECTS --- #
-        # -------------------------------- #
+        # TRACE OPERATIONS OBJECTS --------------------------------------------
 
         # sets up the subgroup fields
         p_tmp = {
@@ -547,9 +476,7 @@ class QPlotPara(QWidget):
         # updates the class field
         self.p_info['tr_op'] = {'name': 'Trace Operations', 'type': 'v_panel', 'ch_fld': p_tmp}
 
-        # -------------------------------- #
-        # --- TRACE PROPERTIES OBJECTS --- #
-        # -------------------------------- #
+        # TRACE PROPERTIES OBJECTS --------------------------------------------
 
         # sets up the subgroup fields
         p_tmp = {
@@ -560,12 +487,6 @@ class QPlotPara(QWidget):
         self.p_info['tr_limits'] = {'name': 'Current Trace Limits', 'type': 'v_panel', 'ch_fld': p_tmp}
 
     def setup_para_group(self, p, i_grp):
-        """
-
-        :param p:
-        :param i_grp:
-        :return:
-        """
 
         # retrieves the group properties
         grp_type = self.p_info[p]['type']
@@ -599,26 +520,15 @@ class QPlotPara(QWidget):
             self.n_para += 1
 
     def create_para_object(self, layout, p_name, ps, p_str_l):
-        """
-
-        :param layout:
-        :param p_name:
-        :param ps:
-        :param p_str_l:
-        :return:
-        """
 
         # base callback function
         cb_fcn = self.setup_widget_callback()
 
         match ps['type']:
-            # ----------------------- #
-            # --- REGULAR WIDGETS --- #
-            # ----------------------- #
+            # REGULAR WIDGETS -------------------------------------------------
 
+            # case is a text label
             case 'text':
-                # case is a text label
-
                 # creates the label widget combo
                 lbl_str = '%g' % (ps['value'])
                 obj_lbl = cw.create_text_label(None, '{0}: '.format(ps['name']), font=self.font_lbl)
@@ -633,9 +543,8 @@ class QPlotPara(QWidget):
                     # case is another layout type
                     layout.addRow(obj_lbl, obj_lbl)
 
+            # case is an editbox
             case 'edit':
-                # case is an editbox
-
                 # sets the editbox string
                 lbl_str = '{0}: '.format(ps['name'])
                 if isinstance(ps['value'], str):
@@ -661,9 +570,8 @@ class QPlotPara(QWidget):
                     # case is another layout type
                     layout.addRow(obj_lbledit)
 
+            # case is a combobox
             case 'combobox':
-                # case is a combobox
-
                 # creates the label/combobox widget combo
                 lbl_str = '{0}: '.format(ps['name'])
                 obj_lblcombo = QLabelCombo(None, lbl_str, ps['p_list'], ps['value'], name=p_name,
@@ -681,9 +589,8 @@ class QPlotPara(QWidget):
                     # case is another layout type
                     layout.addRow(obj_lblcombo)
 
+            # case is a checkbox
             case 'checkbox':
-                # case is a checkbox
-
                 # creates the checkbox widget
                 obj_checkbox = QCheckboxHTML(
                     None, ps['name'], ps['value'], font=self.font_lbl, name=p_name)
@@ -700,9 +607,8 @@ class QPlotPara(QWidget):
                     # case is another layout type
                     layout.addRow(obj_checkbox)
 
+            # case is a pushbutton
             case 'pushbutton':
-                # case is a pushbutton
-
                 # creates the button widget
                 obj_button = cw.create_push_button(None, ps['name'], self.font_lbl, name=p_name)
 
@@ -718,13 +624,10 @@ class QPlotPara(QWidget):
                     # case is another layout type
                     layout.addRow(obj_button)
 
-            # ----------------------- #
-            # --- SPECIAL WIDGETS --- #
-            # ----------------------- #
+            # SPECIAL WIDGETS -------------------------------------------------
 
+            # case is a tree widget
             case 'tree':
-                # case is a tree widget
-
                 # creates the trace tree widget
                 self.obj_ttree = QTraceTree(self, font=self.font_lbl)
 
@@ -732,9 +635,8 @@ class QPlotPara(QWidget):
                 layout.setSpacing(0)
                 layout.addWidget(self.obj_ttree)
 
+            # case is a region configuration widget
             case 'rconfig':
-                # case is a region configuration widget
-
                 # creates the region configuration widget
                 self.obj_rcfig = QRegionConfig(self, font=self.font_lbl)
 
@@ -745,9 +647,8 @@ class QPlotPara(QWidget):
                 # connects the config widget slot functions
                 self.obj_rcfig.config_reset.connect(self.config_reset)
 
+            # case is a colorpick object
             case 'colorpick':
-                # case is a colorpick object
-
                 # creates the label/editbox widget combo
                 lbl_str = '{0}: '.format(ps['name'])
                 obj_lblbutton = QLabelButton(None, lbl_str, "", name=p_name, font_lbl=self.font_lbl)
@@ -768,16 +669,14 @@ class QPlotPara(QWidget):
                     # case is another layout type
                     layout.addRow(obj_lblbutton)
 
+            # case is the axes limit widget
             case 'axeslimits':
-                # case is the axes limit widget
-
                 # creates the file selection widget
                 self.obj_axlim = cw.QAxesLimits(None, font=self.font_lbl, p_props=self.p_props)
                 layout.addRow(self.obj_axlim)
 
+            # case is a file selection widget
             case 'filespec':
-                # case is a file selection widget
-
                 # creates the file selection widget
                 obj_fspec = QFileSpec(None, ps['name'], ps['value'], name=p_name, f_mode=ps['p_misc'])
                 layout.addRow(obj_fspec)
@@ -787,11 +686,6 @@ class QPlotPara(QWidget):
                 obj_fspec.connect(cb_fcn)
 
     def reset_para_props(self, tr_obj):
-        """
-
-        :param tr_obj:
-        :return:
-        """
 
         # updates the parameter field
         self.is_updating = True
@@ -818,13 +712,6 @@ class QPlotPara(QWidget):
         self.is_updating = False
 
     def reset_widget_values(self, h_group, p_info_grp, _p_props):
-        """
-
-        :param h_group:
-        :param p_info_grp:
-        :param _p_props:
-        :return:
-        """
 
         for i, p_fld in enumerate(p_info_grp['ch_fld'].keys()):
             p_val = getattr(_p_props, p_fld)
@@ -864,11 +751,6 @@ class QPlotPara(QWidget):
                         )
 
     def reset_axis_limit_fields(self, tr_obj):
-        """
-
-        :param tr_obj:
-        :return:
-        """
 
         # flag that manual updating is taking place
         is_updating0 = deepcopy(self.is_updating)
@@ -911,11 +793,6 @@ class QPlotPara(QWidget):
     # COLLAPSIBLE PANEL EVENT FUNCTIONS ---------------------------------------
 
     def expand(self, h_panel_c):
-        """
-
-        :param h_panel_c:
-        :return:
-        """
 
         if self.h_root.was_reset:
             # hack fix - top panel group wants to collapse when editbox value is reset?
@@ -932,12 +809,6 @@ class QPlotPara(QWidget):
     #  PROPERTY WIDGET EVENT FUNCTIONS ----------------------------------------
 
     def widget_para_update(self, h_widget, evnt=None):
-        """
-
-        :param h_widget:
-        :param evnt: not used
-        :return:
-        """
 
         # case is a widget type is not provided
         if isinstance(h_widget, QLineEdit):
@@ -953,12 +824,7 @@ class QPlotPara(QWidget):
             self.pushbutton_para_update(h_widget)
 
     def edit_para_update(self, h_edit):
-        """
-
-        :param h_edit:
-        :return:
-        """
-
+ 
         # if manually updating elsewhere, then exit
         if self.is_updating:
             return
@@ -996,11 +862,6 @@ class QPlotPara(QWidget):
             setattr(self.p_props, p_str, nw_val)
 
     def combobox_para_update(self, h_cbox):
-        """
-
-        :param h_cbox:
-        :return:
-        """
 
         # if manually updating elsewhere, then exit
         if self.is_updating:
@@ -1014,11 +875,6 @@ class QPlotPara(QWidget):
         setattr(self.p_props, p_str, nw_val)
 
     def checkbox_para_update(self, h_chk):
-        """
-
-        :param h_chk:
-        :return:
-        """
 
         # if manually updating elsewhere, then exit
         if self.is_updating:
@@ -1038,11 +894,6 @@ class QPlotPara(QWidget):
                 self.update_button_props(self.h_root.tr_obj[self.h_root.i_trace])
 
     def pushbutton_para_update(self, h_button):
-        """
-
-        :param h_button:
-        :return:
-        """
 
         # if manually updating elsewhere, then exit
         if self.is_updating:
@@ -1058,29 +909,14 @@ class QPlotPara(QWidget):
     # WIDGET EVENT FUNCTIONS --------------------------------------------------
 
     def config_reset(self):
-        """
-
-        :return:
-        """
 
         self.axes_reset.emit(self.obj_rcfig)
 
     def button_file_spec(self, p_str_l, h_fspec):
-        """
-
-        :param p_str_l:
-        :param h_fspec:
-        :return:
-        """
 
         a = 1
 
     def button_color_pick(self, h_button):
-        """
-
-        :param h_button:
-        :return:
-        """
 
         # runs the colour picker dialog
         p_str = h_button.objectName()
@@ -1099,11 +935,6 @@ class QPlotPara(QWidget):
     # MISCELLANEOUS FUNCTIONS -------------------------------------------------
 
     def update_button_props(self, tr_obj=None):
-        """
-
-        :param tr_obj:
-        :return:
-        """
 
         # initialisations
         can_clip, is_child, has_child = False, False, False
@@ -1134,27 +965,12 @@ class QPlotPara(QWidget):
             return functools.partial(self.widget_para_update, h_widget)
 
     def set_styles(self):
-        """
-
-        :return:
-        """
 
         # sets the style sheets
         self.h_scroll.setStyleSheet("background-color: rgba(120, 152, 229, 255) ;")
 
     @staticmethod
     def create_para_field(name, obj_type, value, p_fld=None, p_list=None, p_misc=None, ch_fld=None):
-        """
-
-        :param name:
-        :param obj_type:
-        :param value:
-        :param p_fld:
-        :param p_list:
-        :param ch_fld:
-        :param p_misc:
-        :return:
-        """
 
         return {'name': name, 'type': obj_type, 'value': value, 'p_fld': p_fld,
                 'p_list': p_list, 'p_misc': p_misc, 'ch_fld': ch_fld}
@@ -1184,10 +1000,6 @@ class QPlotWindow(QWidget):
     # CLASS INITIALISATION FUNCTIONS -----------------------------------
 
     def init_class_fields(self):
-        """
-
-        :return:
-        """
 
         # sets the configuration options
         pg.setConfigOptions(antialias=True)
@@ -1207,10 +1019,6 @@ class QPlotWindow(QWidget):
     # CLASS INITIALISATION FUNCTIONS -----------------------------------
 
     def config_reset(self, obj_rcfig):
-        """
-
-        :return:
-        """
 
         # hides all the current plot items
         for items in self.main_layout.items[1:]:
@@ -1278,20 +1086,12 @@ class QTraceObject(object):
     # EVENT FUNCTIONS --------------------------------------------------
 
     def region_moved(self):
-        """
-
-        :return:
-        """
 
         self.parent.obj_para.reset_axis_limit_fields(self)
 
     # MISCELLANEOUS FUNCTIONS ------------------------------------------
 
     def delete(self):
-        """
-
-        :return:
-        """
 
         # deletes any children objects
         for tr_obj_ch in self.h_child:
@@ -1407,10 +1207,6 @@ class QPlotWidget(QWidget):
     # CLASS WIDGET SETUP -----------------------------------------------
 
     def setup_plot_widget(self):
-        """
-
-        :return:
-        """
 
         if not self.is_root:
             self.h_root.remove_plot_highlight()
@@ -1438,10 +1234,6 @@ class QPlotWidget(QWidget):
         self.obj_plot_gbox.mousePressEvent = self.click_plot_region
 
     def click_plot_region(self, evnt):
-        """
-
-        :return:
-        """
 
         if self.region_clicked:
             self.region_clicked = False
@@ -1456,10 +1248,6 @@ class QPlotWidget(QWidget):
             self.obj_plot_gbox.setStyleSheet(self.obj_plot_gbox.styleSheet())
 
     def setup_plot_buttons(self):
-        """
-
-        :return:
-        """
 
         # initialisations
         f_name = ['reset', 'open', 'save', 'close']
@@ -1524,10 +1312,6 @@ class QPlotWidget(QWidget):
         self.plot_layout.addWidget(obj_grp)
 
     def setup_plot_region(self):
-        """
-
-        :return:
-        """
 
         # creates the plot object
         x_plt, y_plt = self.get_plot_values()
@@ -1568,10 +1352,6 @@ class QPlotWidget(QWidget):
             self.setup_linear_region_items(True)
 
     def setup_linear_region_items(self, link_parent=False):
-        """
-
-        :return:
-        """
 
         # sets up the linear region item
         # p_obj = self.h_parent.plot_obj if link_parent else self
@@ -1614,11 +1394,6 @@ class QPlotWidget(QWidget):
             self.h_plot.addItem(self.l_reg)
 
     def setup_plot_pen(self):
-        """
-
-        :param self:
-        :return:
-        """
 
         pen_style = cf.pen_style[self.p_props.p_style]
         return pg.mkPen(color=self.p_props.p_col, width=self.p_props.p_width, style=pen_style)
@@ -1626,19 +1401,11 @@ class QPlotWidget(QWidget):
     # REGION MOVEMENT FUNCTIONS ----------------------------------------
 
     def region_current_move(self):
-        """
-
-        :return:
-        """
 
         x_lim = self.l_reg.getRegion()
         self.i_frm_ch = np.int64(np.ceil(np.array(x_lim) / self.h_root.dx))
 
     def region_parent_moved(self):
-        """
-
-        :return:
-        """
 
         # recalculates the region frame indices
         x_lim = self.l_reg_p.getRegion()
@@ -1652,10 +1419,6 @@ class QPlotWidget(QWidget):
         self.region_moved.emit()
 
     def region_parent_moving(self):
-        """
-
-        :return:
-        """
 
         if self.is_updating:
             return
@@ -1685,19 +1448,10 @@ class QPlotWidget(QWidget):
     # WIDGET EVENT FUNCTIONS -------------------------------------------
 
     def button_plot_click(self):
-        """
-
-        :return:
-        """
 
         cf.show_error('Finish Me!')
 
     def region_mouse_click(self, evnt):
-        """
-
-        :param evnt:
-        :return:
-        """
 
         self.h_parent.plot_obj.region_clicked = True
 
@@ -1713,25 +1467,15 @@ class QPlotWidget(QWidget):
         self.mp_event_click(evnt)
 
     def region_mouse_release(self, evnt):
-        """
-
-        :param evnt:
-        :return:
-        """
 
         # runs the mouse-clicked event
         self.mp_event_release(evnt)
 
     def update_trace(self, p_str):
-        """
-
-        :param p_str:
-        :return:
-        """
 
         match p_str:
+            # case is the trace name
             case 'name':
-                # case is the trace name
 
                 # field retrieval
                 tr_name = self.p_props.name
@@ -1779,10 +1523,6 @@ class QPlotWidget(QWidget):
     # MISCELLANEOUS FUNCTIONS ------------------------------------------
 
     def reset_plot_data(self):
-        """
-
-        :return:
-        """
 
         # updates the plot values
         x_plt, y_plt = self.get_plot_values()
@@ -1800,10 +1540,6 @@ class QPlotWidget(QWidget):
         v_box.setYRange(self.y_lim[0], self.y_lim[1], padding=y_pad)
 
     def reset_current_region(self):
-        """
-
-        :return:
-        """
 
         # initialisations
         is_change = False
@@ -1830,10 +1566,6 @@ class QPlotWidget(QWidget):
             self.l_reg.setRegion(tuple(x_lim))
 
     def get_plot_values(self):
-        """
-
-        :return:
-        """
 
         if self.is_root:
             # case is the root trace
@@ -1849,10 +1581,6 @@ class QPlotWidget(QWidget):
             return self.x[xi_frm], self.y[xi_frm]
 
     def delete(self):
-        """
-
-        :return:
-        """
 
         # removes the plot widget from the plot canvas
         self.h_root.obj_plot.main_layout.removeItem(self)
@@ -1929,18 +1657,6 @@ class QPlotLayout(QLayout):
             return self._items[index]
         return None
 
-    def removeAt(self, index: int):
-        """Removes an item at a given index."""
-        if index < len(self._items):
-            del self._items[index]
-
-    def updateID(self, _g_id, force_update=True):
-        """Updates the grid ID flags"""
-        self.g_id = _g_id
-
-        if force_update:
-            self.invalidate()
-
     def setGeometry(self, rect: QRect):
         """Arranges the widgets in a grid-like fashion."""
         d = self.spacing()
@@ -1982,6 +1698,18 @@ class QPlotLayout(QLayout):
         """Invalidates the layout, forcing it to recalculate its geometry."""
         super().invalidate()
 
+    def removeAt(self, index: int):
+        """Removes an item at a given index."""
+        if index < len(self._items):
+            del self._items[index]
+
+    def updateID(self, _g_id, force_update=True):
+        """Updates the grid ID flags"""
+        self.g_id = _g_id
+
+        if force_update:
+            self.invalidate()
+
     @property
     def items(self):
         return self._items
@@ -1998,32 +1726,20 @@ class QParaClass(QParaTrace):
     def __init__(self, tr_name):
         super(QParaClass, self).__init__(tr_name)
 
+    @staticmethod
     def para_change(p_str, _self):
-        """
-
-        :param p_str:
-        :return:
-        """
 
         if _self.has_init:
             _self.update_props.emit(p_str)
 
+    @staticmethod
     def prop_update(p_str, _self):
-        """
-
-        :param p_str:
-        :return:
-        """
 
         if _self.has_init:
             _self.trace_operation.emit(p_str)
 
+    @staticmethod
     def limit_change(p_str, _self):
-        """
-
-        :param p_str:
-        :return:
-        """
 
         if _self.has_init:
             _self.update_limits.emit(p_str)

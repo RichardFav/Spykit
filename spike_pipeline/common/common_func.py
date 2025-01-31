@@ -2,12 +2,12 @@
 import math
 import colorsys
 import threading
-from copy import deepcopy
 from typing import TypeVar
 
 # pyqt6 module import
 from PyQt6.QtWidgets import (QMessageBox, QSizePolicy)
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QColor
 
 # other initialisations
 q_fix = QSizePolicy.Policy.Fixed
@@ -28,14 +28,13 @@ pen_style = {'Solid': Qt.PenStyle.SolidLine,
              'Dot': Qt.PenStyle.DotLine,
              'Dash-Dot': Qt.PenStyle.DashDotLine,
              'Dash-Dot-Dot': Qt.PenStyle.DashDotDotLine}
-from PyQt6.QtGui import QColor
 
 # widget dimensions
 but_height = 24
 edit_height = 20
 combo_height = 22
 
-# other parmaeters
+# other parameters
 n_col_max = 20
 Cls = TypeVar('Cls')
 
@@ -89,15 +88,6 @@ class ObservableThreadSafe:
 
 
 def check_edit_num(nw_str, is_int=False, min_val=-1e100, max_val=1e10, show_err=True):
-    """
-
-    :param nw_str:
-    :param is_int:
-    :param min_val:
-    :param max_val:
-    :param show_err:
-    :return:
-    """
 
     # initialisations
     nw_val, e_str = None, None
@@ -146,12 +136,6 @@ def check_edit_num(nw_str, is_int=False, min_val=-1e100, max_val=1e10, show_err=
 
 
 def show_error(text, title=""):
-    """
-
-    :param text:
-    :param title:
-    :return:
-    """
 
     # otherwise, create the error message
     err_dlg = QMessageBox()
@@ -164,10 +148,6 @@ def show_error(text, title=""):
 
 
 def get_parent_widget(h_obj, w_type):
-    """
-
-    :return:
-    """
 
     # retrieves the parent object
     h_obj_p = h_obj.parent()
@@ -187,11 +167,6 @@ def get_parent_widget(h_obj, w_type):
 
 
 def get_root_widget(h_obj):
-    """
-
-    :param h_obj:
-    :return:
-    """
 
     # keep searching until there are no more parent widgets
     while True:
@@ -207,23 +182,11 @@ def get_root_widget(h_obj):
 
 
 def get_greek_chr(x):
-    """
-
-    :param x:
-    :return:
-    """
 
     return '<a>&{0};<\a>'.format(x)
 
 
 def set_multi_dict_value(d, k, v):
-    """
-
-    :param d:
-    :param k:
-    :param v:
-    :return:
-    """
 
     if len(k) == 1:
         # case is a leaf level
@@ -235,12 +198,6 @@ def set_multi_dict_value(d, k, v):
 
 
 def get_multi_dict_value(d, k):
-    """
-
-    :param d:
-    :param k:
-    :return:
-    """
 
     # case is the leaf level
     if not k:
@@ -250,33 +207,16 @@ def get_multi_dict_value(d, k):
 
 
 def set_text_colour(text, col='black'):
-    """
-
-    :param text:
-    :param col:
-    :return:
-    """
 
     return '<span style="color:{0}">{1}</span>'.format(col, text)
 
 
 def set_text_background_colour(text, col='black'):
-    """
-
-    :param text:
-    :param col:
-    :return:
-    """
 
     return '<span style="background-color: {0}">{1}</span>'.format(col, text)
 
 
 def arr_chr(is_chk):
-    """
-
-    :param is_chk:
-    :return:
-    """
 
     return '\u2B9F' if is_chk else '\u2B9E'
 
@@ -332,12 +272,6 @@ def get_colour_value(col_id, alpha=255):
 
 
 def lcm(a, b):
-    """
-
-    :param a:
-    :param b:
-    :return:
-    """
 
     return (a * b) // math.gcd(a, b)
 

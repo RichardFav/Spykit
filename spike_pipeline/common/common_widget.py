@@ -20,7 +20,6 @@ edit_style_sheet = "border: 1px solid; border-radius: 2px; padding-left: 5px;"
 
 # ----------------------------------------------------------------------------------------------------------------------
 
-
 # dimensions
 x_gap = 10
 gbox_height0 = 25
@@ -54,9 +53,7 @@ class QRegionConfig(QWidget):
         self.q_cursor = QCursor()
         self.h_root = cf.get_root_widget(self.parent())
 
-        # ------------------------------- #
-        # --- ROW/COLUMN WIDGET SETUP --- #
-        # ------------------------------- #
+        # ROW/COLUMN WIDGET SETUP ---------------------------------------------
 
         # field initialisations
         t_lbl = ['Row', 'Column']
@@ -104,9 +101,7 @@ class QRegionConfig(QWidget):
         self.main_layout.addWidget(self.rc_widget)
         self.main_layout.addWidget(self.obj_lbl_combo)
 
-        # ------------------------------------ #
-        # --- REGION SELECTOR WIDGET SETUP --- #
-        # ------------------------------------ #
+        # REGION SELECTOR WIDGET SETUP ----------------------------------------
 
         # initialisations
         self.gbox_rect = QRect(5, 0, 15, 15)
@@ -137,20 +132,12 @@ class QRegionConfig(QWidget):
         # adds the widget to the class widget
         self.main_layout.addWidget(self.obj_gbox)
 
-    # MOUSE EVENT FUNCTIONS --------------------------------------------------
+    # MOUSE EVENT FUNCTIONS ---------------------------------------------------
 
     def mouse_clicked(self, i_row, i_col, is_press):
-        """
-
-        :param i_row:
-        :param i_col:
-        :param is_press:
-        :return:
-        """
 
         # updates the current flag
         g_idc = np.array([i_row, i_col])
-        i_reg = self.get_region_index(i_row, i_col)
 
         # if pressing the mouse, then set the initial grid coords
         if is_press:
@@ -170,12 +157,6 @@ class QRegionConfig(QWidget):
         self.update_selection_grid(True)
 
     def mouse_leaving(self, i_row, i_col):
-        """
-
-        :param i_row:
-        :param i_col:
-        :return:
-        """
 
         # initialisations
         update_reqd = False
@@ -204,10 +185,6 @@ class QRegionConfig(QWidget):
             self.update_selection_grid(False)
 
     def mouse_released(self):
-        """
-
-        :return:
-        """
 
         # initialisations
         is_feas = True
@@ -274,11 +251,6 @@ class QRegionConfig(QWidget):
     # WIDGET EVENT FUNCTIONS -------------------------------------------------
 
     def panel_group_update(self, evnt):
-        """
-
-        :param evnt:
-        :return:
-        """
 
         # determines if the mouse-click is on the title
         if self.gbox_rect.contains(evnt.pos()):
@@ -292,12 +264,6 @@ class QRegionConfig(QWidget):
             self.obj_gbox.setFixedHeight(self.obj_gbox.height() + d_hght)
 
     def edit_dim_update(self, p_str, h_edit):
-        """
-
-        :param p_str:
-        :param h_edit:
-        :return:
-        """
 
         # field retrieval
         nw_val = h_edit.text()
@@ -321,11 +287,6 @@ class QRegionConfig(QWidget):
             h_edit.setText('%g' % getattr(self, p_str))
 
     def combo_update_trace(self, h_cbox):
-        """
-
-        :param h_cbox:
-        :return:
-        """
 
         # trace index/colour fields
         self.i_trace = h_cbox.currentIndex()
@@ -344,47 +305,19 @@ class QRegionConfig(QWidget):
             h_style.polish(h)
             h.update()
 
-    # INDEXING FUNCTIONS -----------------------------------------------------
+    # INDEXING FUNCTIONS ------------------------------------------------------
 
     def get_region_index(self, i_row, i_col):
-        """
-
-        :param i_row:
-        :param i_col:
-        :return:
-        """
 
         return i_row * self.n_col + i_col
 
     def get_grid_indices(self, i_reg):
-        """
-
-        :param i_reg:
-        :return:
-        """
 
         return i_reg // self.n_col, i_reg % self.n_col
 
-    def get_side_index(self, m_pos, w_sz):
-        """
-
-        :param m_pos:
-        :param w_sz:
-        :return:
-        """
-
-        return [(m_pos.x() >= w_sz.width()) - (m_pos.x() <= 0),
-                (m_pos.y() >= w_sz.height()) - (m_pos.y() <= 0)]
-
-    # TRACE OBJECT I/O FUNCTIONS ---------------------------------------------
+    # TRACE OBJECT I/O FUNCTIONS ----------------------------------------------
 
     def add_new_trace(self, tr_name, n_trace):
-        """
-
-        :param tr_name:
-        :param n_trace:
-        :return:
-        """
 
         # appends the name/colour lists
         self.p_list.append(tr_name)
@@ -420,11 +353,6 @@ class QRegionConfig(QWidget):
         self.obj_lbl_combo.obj_cbox.setCurrentText(tr_name)
 
     def delete_existing_trace(self, tr_obj, i_trace):
-        """
-
-        :param i_trace:
-        :return:
-        """
 
         # initialisations
         reset_region = False
@@ -460,13 +388,9 @@ class QRegionConfig(QWidget):
             # flag that the plot widgets need updating
             self.config_reset.emit()
 
-    # MISCELLANEOUS FUNCTIONS ------------------------------------------------
+    # MISCELLANEOUS FUNCTIONS -------------------------------------------------
 
     def reset_selector_widgets(self):
-        """
-
-        :return:
-        """
 
         # retrieves the
         self.g_id[:] = 0
@@ -509,11 +433,6 @@ class QRegionConfig(QWidget):
                 self.h_rgrid.append(h_grid)
 
     def update_selection_grid(self, is_add):
-        """
-
-        :param is_add:
-        :return:
-        """
 
         # sets the selected row/column indices
         xi_r = range(self.g_id[:, 0].min(), self.g_id[:, 0].max() + 1)
@@ -549,12 +468,6 @@ class QRegionConfig(QWidget):
                 self.is_sel[i_row, i_col] = False
 
     def reshape_group_ids(self, dim_nw, is_row):
-        """
-
-        :param dim_nw:
-        :param is_row:
-        :return:
-        """
 
         if is_row:
             if dim_nw > self.n_row:
@@ -577,12 +490,6 @@ class QRegionConfig(QWidget):
                 self.c_id = self.c_id[:, :dim_nw]
 
     def set_grid_style_sheet(self, h_grid, n_col):
-        """
-
-        :param h_grid:
-        :param n_col:
-        :return:
-        """
 
         tr_col_f = deepcopy(self.tr_col)
         tr_col_f.setAlpha(128)
@@ -604,13 +511,14 @@ class QRegionConfig(QWidget):
 
     @staticmethod
     def get_rgba_string(t_col):
-        """
-
-        :param t_col:
-        :return:
-        """
 
         return 'rgba({0}, {1}, {2}, {3})'.format(t_col.red(), t_col.green(), t_col.blue(), t_col.alpha())
+
+    @staticmethod
+    def get_side_index(m_pos, w_sz):
+
+        return [(m_pos.x() >= w_sz.width()) - (m_pos.x() <= 0),
+                (m_pos.y() >= w_sz.height()) - (m_pos.y() <= 0)]
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -637,19 +545,13 @@ class QAxesLimits(QWidget):
         self.init_class_fields()
 
     def init_class_fields(self):
-        """
-
-        :return:
-        """
 
         # sets up the widget layout
         self.main_layout.setSpacing(0)
         self.main_layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(self.main_layout)
 
-        # -------------------------- #
-        # --- AXIS LIMIT WIDGETS --- #
-        # -------------------------- #
+        # AXIS LIMIT WIDGETS --------------------------------------------------
 
         # creates the limit widgets
         lim_widget = QWidget()
@@ -658,14 +560,13 @@ class QAxesLimits(QWidget):
         lim_layout.setContentsMargins(0, 0, 0, 5)
         lim_widget.setLayout(lim_layout)
 
-        #
+        # creates the min/max header labels
         h_lbl_min = create_text_label(None, 'Min', self.font, align='center')
         h_lbl_max = create_text_label(None, 'Max', self.font, align='center')
         h_lbl_min.setFixedHeight(10)
         h_lbl_max.setFixedHeight(10)
 
         # creates the header row
-        # lim_layout.addWidget(QWidget(), 0, 0, 1, 1)
         lim_layout.addWidget(h_lbl_min, 0, 1, 1, 1)
         lim_layout.addWidget(h_lbl_max, 0, 2, 1, 1)
 
@@ -690,9 +591,7 @@ class QAxesLimits(QWidget):
         # adds the widget to the main widget
         self.main_layout.addWidget(lim_widget)
 
-        # --------------------------- #
-        # --- OTHER CLASS WIDGETS --- #
-        # --------------------------- #
+        # OTHER CLASS WIDGETS -------------------------------------------------
 
         # sets up the label edit widget
         self.obj_lbl_dur = QLabelText(
@@ -700,11 +599,6 @@ class QAxesLimits(QWidget):
         self.main_layout.addWidget(self.obj_lbl_dur)
 
     def edit_limit_para(self, h_edit):
-        """
-
-        :param h_edit:
-        :return:
-        """
 
         # module import
         from spike_pipeline.widgets.plot_widget import QPlotWidgetMain
@@ -805,9 +699,7 @@ class QTraceTree(QWidget):
         self.main_layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(self.main_layout)
 
-        # ------------------------ #
-        # --- TEXT LABEL SETUP --- #
-        # ------------------------ #
+        # TEXT LABEL SETUP ----------------------------------------------------
 
         # creates the text label
         self.obj_txt_lbl = QLabelText(None, 'Trace Count: ', '0', font_lbl=font, name='name')
@@ -816,9 +708,7 @@ class QTraceTree(QWidget):
         # sets the label properties
         self.obj_txt_lbl.obj_lbl.setFixedSize(self.obj_txt_lbl.obj_lbl.sizeHint())
 
-        # ------------------------- #
-        # --- TREE WIDGET SETUP --- #
-        # ------------------------- #
+        # TREE WIDGET SETUP ---------------------------------------------------
 
         # sets up the table model
         self.t_model = QStandardItemModel()
@@ -841,12 +731,6 @@ class QTraceTree(QWidget):
     # TREE ADD/DELETE FUNCTIONS ----------------------------------------------
 
     def add_tree_item(self, n_name, h_parent=None):
-        """
-
-        :param n_name:
-        :param h_parent:
-        :return:
-        """
 
         # creates the tree item
         item = QStandardItem(n_name)
@@ -871,11 +755,6 @@ class QTraceTree(QWidget):
         return item
 
     def delete_tree_item(self, item):
-        """
-
-        :param item:
-        :return:
-        """
 
         # module import
         from spike_pipeline.widgets.plot_widget import QPlotWidgetMain
@@ -898,13 +777,6 @@ class QTraceTree(QWidget):
     # MISCELLANEOUS FUNCTIONS -------------------------------------------------
 
     def node_name_update(self, ind_mod_1, ind_mod_2, roles):
-        """
-
-        :param ind_mod_1:
-        :param ind_mod_2:
-        :param roles:
-        :return:
-        """
 
         from spike_pipeline.widgets.plot_widget import QPlotPara
 
@@ -912,10 +784,6 @@ class QTraceTree(QWidget):
         h_plot_para.p_props.name = ind_mod_1.data()
 
     def reset_tview_props(self):
-        """
-
-        :return:
-        """
 
         self.obj_tview.setFixedHeight(self.n_trace * row_height + 2)
         self.obj_tview.expandAll()
@@ -995,12 +863,6 @@ class QCollapseGroup(QWidget):
     # WIDGET SETUP FUNCTIONS --------------------------------------------------
 
     def add_group_row(self, h_obj1, h_obj2):
-        """
-
-        :param h_obj1:
-        :param h_obj2:
-        :return:
-        """
 
         # adds the object to the layout
         self.form_layout.addRow(h_obj1, h_obj2)
@@ -1016,10 +878,6 @@ class QCollapseGroup(QWidget):
         self.expand_button.clicked.connect(cb_fcn0)
 
     def expand(self, h_root=None):
-        """
-
-        :return:
-        """
 
         if hasattr(self.parent(), 'was_reset') and self.parent().was_reset:
             # hack fix - top panel group wants to collapse when editbox value is reset?
@@ -1037,19 +895,11 @@ class QCollapseGroup(QWidget):
     # MISCELLANEOUS FUNCTIONS -------------------------------------------------
 
     def update_button_text(self):
-        """
-
-        :return:
-        """
 
         self.expand_button.setText(' {0} {1}'.format(cf.arr_chr(self.is_expanded), self.panel_hdr))
         self.group_panel.setMaximumHeight(self.is_expanded * self.orig_hght)
 
     def set_styling(self):
-        """
-
-        :return:
-        """
 
         self.group_panel.setStyleSheet("background-color: rgba(240, 240, 255, 255) ;")
         self.expand_button.setStyleSheet(expand_style)
@@ -1099,15 +949,7 @@ class ClickableRegion(QLabel):
         self.setAcceptDrops(True)
         self.dragstart = None
 
-    def set_grid_indices(self, i_row, i_col):
-        """
-
-        :param i_row:
-        :param i_col:
-        :return:
-        """
-
-        self.i_row, self.i_col = i_row, i_col
+    # MOUSE EVENT FUNCTIONS ---------------------------------------------------
 
     def mousePressEvent(self, event):
         if event.buttons() & Qt.MouseButton.LeftButton:
@@ -1138,6 +980,12 @@ class ClickableRegion(QLabel):
 
     def dragLeaveEvent(self, event):
         self.leaving.emit(self.i_row, self.i_col)
+
+    # MISCELLANEOUS FUNCTIONS -------------------------------------------------
+
+    def set_grid_indices(self, i_row, i_col):
+
+        self.i_row, self.i_col = i_row, i_col
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -1172,11 +1020,6 @@ class QFileSpec(QGroupBox):
         self.h_but.setFixedWidth(25)
 
     def connect(self, cb_fcn0):
-        """
-
-        :param cb_fcn0:
-        :return:
-        """
 
         cb_fcn = functools.partial(cb_fcn0, self)
         self.h_but.clicked.connect(cb_fcn)
@@ -1205,11 +1048,6 @@ class QLabelText(QWidget):
         self.obj_lbl.adjustSize()
 
     def set_label(self, txt_str):
-        """
-
-        :param txt_str:
-        :return:
-        """
 
         self.obj_txt.setText(txt_str)
 
@@ -1242,11 +1080,6 @@ class QLabelEdit(QWidget):
         self.obj_edit.setStyleSheet(edit_style_sheet)
 
     def connect(self, cb_fcn0):
-        """
-
-        :param cb_fcn0:
-        :return:
-        """
 
         cb_fcn = functools.partial(cb_fcn0, self.obj_edit)
         self.obj_edit.editingFinished.connect(cb_fcn)
@@ -1280,11 +1113,6 @@ class QLabelButton(QWidget):
         self.obj_but.setCursor(Qt.CursorShape.PointingHandCursor)
 
     def connect(self, cb_fcn0):
-        """
-
-        :param cb_fcn0:
-        :return:
-        """
 
         cb_fcn = functools.partial(cb_fcn0, self.obj_but)
         self.obj_but.clicked.connect(cb_fcn)
@@ -1320,11 +1148,6 @@ class QLabelCombo(QWidget):
         self.obj_cbox.setStyleSheet('border-radius: 2px; border: 1px solid')
 
     def connect(self, cb_fcn0):
-        """
-
-        :param cb_fcn0:
-        :return:
-        """
 
         cb_fcn = functools.partial(cb_fcn0, self.obj_cbox)
         self.obj_cbox.currentIndexChanged.connect(cb_fcn)
@@ -1360,67 +1183,33 @@ class QCheckboxHTML(QWidget):
         self.layout.addWidget(self.h_chk)
         self.layout.addWidget(self.h_lbl)
 
-    def set_label_text(self, t_lbl):
-        """
-
-        :param t_lbl:
-        :return:
-        """
-
-        self.h_lbl.setText(t_lbl)
-
-    def set_enabled(self, state):
-        """
-
-        :param state:
-        :return:
-        """
-
-        self.h_lbl.setEnabled(state)
-        self.h_chk.setEnabled(state)
-
-    def set_check(self, state):
-        """
-
-        :param state:
-        :return:
-        """
-
-        self.h_chk.setChecked(state)
-
     def connect(self, cb_fcn):
-        """
-
-        :param cb_fcn:
-        :return:
-        """
 
         self.h_chk.stateChanged.connect(cb_fcn)
         self.h_lbl.mousePressEvent = self.label_clicked
 
     def label_clicked(self, evnt):
-        """
-
-        :param evnt:
-        :return:
-        """
 
         self.h_chk.setChecked(not self.h_chk.isChecked())
+
+    def set_label_text(self, t_lbl):
+
+        self.h_lbl.setText(t_lbl)
+
+    def set_enabled(self, state):
+
+        self.h_lbl.setEnabled(state)
+        self.h_chk.setEnabled(state)
+
+    def set_check(self, state):
+
+        self.h_chk.setChecked(state)
 
 
 # ----------------------------------------------------------------------------------------------------------------------
 
 
 def create_text_label(parent, text, font=None, align='right', name=None):
-    """
-
-    :param parent: parent object
-    :param text:
-    :param font:
-    :param align: alignment flag (left, centre or right)
-    :param name: object name
-    :return:
-    """
 
     # sets the label font properties
     if font is None:
@@ -1446,15 +1235,6 @@ def create_text_label(parent, text, font=None, align='right', name=None):
 
 
 def create_line_edit(parent, text, font=None, align='center', name=None):
-    """
-
-    :param parent:
-    :param text:
-    :param font:
-    :param align:
-    :param name:
-    :return:
-    """
 
     # sets the label font properties
     if font is None:
@@ -1484,14 +1264,6 @@ def create_line_edit(parent, text, font=None, align='center', name=None):
 
 
 def create_push_button(parent, text, font=None, name=None):
-    """
-
-    :param parent:
-    :param text:
-    :param font:
-    :param name:
-    :return:
-    """
 
     # creates a default font object (if not provided)
     if font is None:
@@ -1513,14 +1285,6 @@ def create_push_button(parent, text, font=None, name=None):
 
 
 def create_combo_box(parent, text=None, font=None, name=None):
-    """
-
-    :param parent:
-    :param text:
-    :param font:
-    :param name:
-    :return:
-    """
 
     # creates a default font object (if not provided)
     if font is None:
@@ -1549,15 +1313,6 @@ def create_combo_box(parent, text=None, font=None, name=None):
 
 
 def create_check_box(parent, text, state, font=None, name=None):
-    """
-
-    :param parent:
-    :param text:
-    :param state:
-    :param font:
-    :param name:
-    :return:
-    """
 
     # sets the label font properties
     if font is None:
@@ -1580,13 +1335,6 @@ def create_check_box(parent, text, state, font=None, name=None):
 
 
 def create_tab_group(parent, font=None, name=None):
-    """
-
-    :param parent:
-    :param font:
-    :param name:
-    :return:
-    """
 
     # creates a default font object (if not provided)
     if font is None:
@@ -1607,13 +1355,6 @@ def create_tab_group(parent, font=None, name=None):
 
 
 def create_font_obj(size=9, is_bold=False, font_weight=QFont.Weight.Normal):
-    """
-
-    :param size:
-    :param is_bold:
-    :param font_weight:
-    :return:
-    """
 
     # creates the font object
     font = QFont()
