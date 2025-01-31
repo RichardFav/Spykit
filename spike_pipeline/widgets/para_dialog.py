@@ -249,13 +249,13 @@ class ParaDialog(QMainWindow):
 
     # COLLAPSIBLE PANEL EVENT FUNCTIONS ---------------------------------------
 
-    def set_panel_events(self, h_panel_c, evnt=None):
+    def set_panel_events(self, h_panel_c, *_):
 
         # sets the label click event function
         for h_txt in h_panel_c.findChildren(QLabel):
             h_txt.mousePressEvent = functools.partial(self.link_click, h_txt)
 
-    def link_click(self, h_txt, evnt=None):
+    def link_click(self, h_txt, *_):
 
         # field retrieval
         h_grpc = cf.get_parent_widget(h_txt, cw.QCollapseGroup)

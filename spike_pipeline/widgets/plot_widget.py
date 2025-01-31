@@ -1,5 +1,4 @@
 import os
-import time
 import functools
 
 import numpy as np
@@ -49,17 +48,22 @@ min_height = 450
 
 
 class QPlotWidgetMain(QDialog):
-
     def __init__(self, x=None, y=None):
         super(QPlotWidgetMain, self).__init__()
+
+        # scalar class fields
+        self.n_trace = 0
+        self.i_trace = None
+
+        # array class fields
+        self.tr_obj = []
+
+        # boolean class fields
+        self.was_reset = False
 
         # field initialisations
         self.x = x
         self.y = y
-        self.tr_obj = []
-        self.n_trace = 0
-        self.i_trace = None
-        self.was_reset = False
 
         # field initialisation
         self.setup_dialog()
@@ -326,18 +330,18 @@ class QPlotWidgetMain(QDialog):
 
             # initialisations
             h_p = _obj_tr.h_parent
-            f_id = [_obj_tr.n_tr + 1, _obj_tr._id]
+            f_id = [_obj_tr.n_tr + 1, _obj_tr.tr_id]
 
             # retrieves the trace count for each of the upper levels
             while h_p.i_lvl > 0:
-                f_id.append(h_p._id)
+                f_id.append(h_p.tr_id)
                 h_p = h_p.h_parent
 
             # returns the final trace name
             return 'Trace {0}'.format('/'.join([str(x) for x in np.flip(f_id)]))
 
-# MAIN WIDGET OBJECTS --------------------------------------------------------------------------------------------------
 
+# MAIN WIDGET OBJECTS --------------------------------------------------------------------------------------------------
 
 # widget dimensions
 x_gap = 15
@@ -350,11 +354,20 @@ class QPlotPara(QWidget):
     def __init__(self, parent=None):
         super(QPlotPara, self).__init__(parent)
 
-        # field initialisation
+        # field initialisations
         self.n_para = 0
         self.n_trace = 0
         self.p_info = {}
+
+        # widget initialisation
+        self.obj_axlim = None
+        self.obj_rcfig = None
+        self.obj_ttree = None
+
+        # boolean class fields
         self.is_updating = False
+
+        # field initialisation
         self.h_root = cf.get_parent_widget(self, QPlotWidgetMain)
 
         # sets up the properties class object
@@ -808,7 +821,7 @@ class QPlotPara(QWidget):
 
     #  PROPERTY WIDGET EVENT FUNCTIONS ----------------------------------------
 
-    def widget_para_update(self, h_widget, evnt=None):
+    def widget_para_update(self, h_widget, *_):
 
         # case is a widget type is not provided
         if isinstance(h_widget, QLineEdit):
@@ -1035,16 +1048,22 @@ class QTraceObject(object):
     def __init__(self, parent, tr_name, h_parent=None):
         super(QTraceObject, self).__init__()
 
-        # field initialisation
+        # scalar class fields
         self.n_tr = 0
-        self._id = 1
+        self.tr_id = 1
+
+        # array class fields
         self.h_child = []
+
+        # boolean class fields
+        self.has_child = False
+
+        # field initialisation
         self.parent = parent
         self.h_parent = h_parent
         x_0, y_0 = self.parent.x, self.parent.y
 
         # boolean fields
-        self.has_child = False
         self.is_root = h_parent is None
         self.i_lvl = 0 if self.is_root else (self.h_parent.i_lvl + 1)
 
@@ -1077,7 +1096,7 @@ class QTraceObject(object):
             # updates the parent trace object fields
             self.h_parent.n_tr += 1
             self.h_parent.h_child.append(self)
-            self._id = deepcopy(self.h_parent.n_tr)
+            self.tr_id = deepcopy(self.h_parent.n_tr)
 
         # adds to the trace explorer
         self.parent.obj_para.reset_para_props(self)
@@ -1153,36 +1172,49 @@ plot_gbox_style = """
 
 
 class QPlotWidget(QWidget):
+    # signal functions
     region_moved = pyqtSignal()
+
+    # mouse event function fields
+    mp_event_release = None
+    mp_event_click = None
 
     def __init__(self, parent_tr=None, x=None, y=None, hdr=None, p_props=None, h_parent=None):
         super(QPlotWidget, self).__init__()
+
+        # array initialisation
+        self.i_frm = []
+        self.i_frm_ch = []
+        self.x_lim = []
+        self.x_lim0 = []
+        self.y_lim = []
+
+        # widget initialisations
+        self.l_reg = None
+        self.l_reg_p = None
+        self.h_child = None
+        self.h_plot_line = None
+
+        # boolean class fields
+        self.region_clicked = False
+        self.is_updating = False
 
         # field setup
         self.x = x
         self.y = y
         self.hdr = hdr
-        self.i_frm = []
-        self.i_frm_ch = []
         self.p_props = p_props
         self.parent_tr = parent_tr
         self.setParent(parent_tr.parent)
 
         # widget fields
-        self.h_child = None
         self.h_parent = h_parent
         self.pen = self.setup_plot_pen()
 
         # boolean class fields
         self.is_root = h_parent is None
-        self.region_clicked = False
-        self.is_updating = False
 
         # other field initialisations
-        self.l_reg = None
-        self.l_reg_p = None
-        self.h_plot_line = None
-        self.x_lim, self.y_lim = None, None
         self.h_root = cf.get_parent_widget(self, QPlotWidgetMain)
 
         # sets the panel properties
@@ -1233,7 +1265,7 @@ class QPlotWidget(QWidget):
         # sets up the
         self.obj_plot_gbox.mousePressEvent = self.click_plot_region
 
-    def click_plot_region(self, evnt):
+    def click_plot_region(self, *_):
 
         if self.region_clicked:
             self.region_clicked = False
@@ -1719,6 +1751,7 @@ class QPlotLayout(QLayout):
 
 
 class QParaClass(QParaTrace):
+    # signal functions
     update_props = pyqtSignal(str)
     trace_operation = pyqtSignal(str)
     update_limits = pyqtSignal(str)

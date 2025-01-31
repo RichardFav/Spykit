@@ -422,11 +422,8 @@ class QRegionConfig(QWidget):
                     h_grid.setSizePolicy(QSizePolicy(cf.q_exp, cf.q_exp))
 
                 # updates the widget stylesheet
-                try:
-                    g_col = self.p_col[self.c_id[i_row, i_col]]
-                    self.set_grid_style_sheet(h_grid, g_col)
-                except:
-                    a = 1
+                g_col = self.p_col[self.c_id[i_row, i_col]]
+                self.set_grid_style_sheet(h_grid, g_col)
 
                 # appends the widget to the parent widget
                 self.gb_layout.addWidget(h_grid, i_row, i_col)
@@ -527,19 +524,27 @@ class QRegionConfig(QWidget):
 class QAxesLimits(QWidget):
     # initialisations
     ax_del = 1e-8
+
+    # array class fields
     p_str = ['x_min', 'x_max', 'y_min', 'y_max']
 
     def __init__(self, parent=None, font=None, p_props=None):
         super(QAxesLimits, self).__init__(parent)
 
+        # array class fields
+        self.x_lim = []
+        self.y_lim = []
+
+        # widget class fields
+        self.h_edit = []
+        self.obj_lbl_dur = None
+
         # field initialisation
         self.font = font
         self.p_props = p_props
-        self.x_lim, self.y_lim = [], []
 
         # widget initialisations
         self.main_layout = QVBoxLayout()
-        self.h_edit = []
 
         # creates the class field widgets
         self.init_class_fields()
@@ -683,8 +688,12 @@ row_height = 17
 
 
 class QTraceTree(QWidget):
+    # signal functions
     node_added = pyqtSignal()
     node_deleted = pyqtSignal()
+
+    # mouse event function fields
+    mp_event_dclick = None
 
     def __init__(self, parent=None, font=None):
         super(QTraceTree, self).__init__(parent)
@@ -716,6 +725,8 @@ class QTraceTree(QWidget):
 
         # creates the tree-view widget
         self.obj_tview = QTreeView()
+        self.mp_event_dclick = self.obj_tview.mouseDoubleClickEvent
+        self.obj_tview.mouseDoubleClickEvent = self.tree_double_clicked
 
         # sets the tree-view properties
         self.obj_tview.setModel(self.t_model)
@@ -782,6 +793,36 @@ class QTraceTree(QWidget):
 
         h_plot_para = cf.get_parent_widget(self, QPlotPara)
         h_plot_para.p_props.name = ind_mod_1.data()
+
+    def tree_double_clicked(self, evnt):
+        """
+
+        :return:
+        """
+
+        # module import
+        from spike_pipeline.widgets.plot_widget import QPlotWidgetMain
+
+        # retrieves the tree item
+        item = self.obj_tview.selectedIndexes()[0]
+        h_tree = item.model().itemFromIndex(item)
+
+        # determines the index of the currently selected tree item
+        h_root = cf.get_parent_widget(self, QPlotWidgetMain)
+        i_trace_nw = next((i for i, x in enumerate(h_root.tr_obj) if x.h_tree == h_tree))
+
+        # resets the selected trace (if not matching)
+        if h_root.i_trace != i_trace_nw:
+            # resets the selected plot
+            obj_tr_nw = h_root.tr_obj[i_trace_nw]
+            h_root.change_selected_plot(obj_tr_nw)
+
+            # resets the groupbox properties
+            g_box = obj_tr_nw.plot_obj.obj_plot_gbox
+            g_box.setObjectName('selected')
+            g_box.setStyleSheet(g_box.styleSheet())
+
+        self.mp_event_dclick(evnt)
 
     def reset_tview_props(self):
 
@@ -877,7 +918,7 @@ class QCollapseGroup(QWidget):
         # sets the button click event function
         self.expand_button.clicked.connect(cb_fcn0)
 
-    def expand(self, h_root=None):
+    def expand(self, *_):
 
         if hasattr(self.parent(), 'was_reset') and self.parent().was_reset:
             # hack fix - top panel group wants to collapse when editbox value is reset?
