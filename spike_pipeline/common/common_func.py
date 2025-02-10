@@ -1,4 +1,5 @@
 # module import
+import os
 import math
 import colorsys
 import threading
@@ -14,6 +15,8 @@ q_fix = QSizePolicy.Policy.Fixed
 q_exp = QSizePolicy.Policy.Expanding
 q_expm = QSizePolicy.Policy.MinimumExpanding
 q_pref = QSizePolicy.Policy.Preferred
+q_max = QSizePolicy.Policy.Maximum
+q_min = QSizePolicy.Policy.Minimum
 
 q_yes = QMessageBox.StandardButton.Yes
 q_yes_no = QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
@@ -275,18 +278,28 @@ def lcm(a, b):
 
     return (a * b) // math.gcd(a, b)
 
-# ----------------------------------------------------------------------------------------------------------------------
 
-# # This type hint is a dirty lie to make autocomplete and static
-# # analyzers give more useful results. Crazy the stuff you can do
-# # with python...
-# def copy_class(cls: Cls) -> Cls:
-#     copy_cls = type(f'{cls.__name__}Copy', cls.__bases__, dict(cls.__dict__))
-#     for name, attr in cls.__dict__.items():
-#         try:
-#             hash(attr)
-#         except TypeError:
-#             # Assume lack of __hash__ implies mutability. This is NOT
-#             # a bullet proof assumption but good in many cases.
-#             setattr(copy_cls, name, deepcopy(attr))
-#     return copy_cls
+def get_path_matches(f_path, f_str, is_file=False):
+
+    # initialisations
+    f_list = []
+
+    for root, dirs, files in os.walk(f_path):
+        if is_file:
+            # case is a file search
+            for f in files:
+                if f == f_str:
+                    f_list.append(os.path.join(root, f))
+
+        else:
+            # case is a directory search
+            for d in dirs:
+                if d == f_str:
+                    f_list.append(os.path.join(root, d))
+
+    return f_list
+
+
+def get_folder_dir(f_path):
+
+    return [x for x in os.listdir(f_path) if os.path.isdir(os.path.join(f_path, x))]

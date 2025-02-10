@@ -1,6 +1,5 @@
 import os
 import functools
-
 import numpy as np
 import pyqtgraph as pg
 from copy import deepcopy
@@ -22,8 +21,6 @@ from spike_pipeline.common.common_widget import (QCollapseGroup, QLabelEdit, QCh
 font_lbl = cw.create_font_obj(is_bold=True, font_weight=QFont.Weight.Bold)
 font_hdr = cw.create_font_obj(size=9, is_bold=True, font_weight=QFont.Weight.Bold)
 
-# ----------------------------------------------------------------------------------------------------------------------
-
 # file path/filter modes
 icon_dir = os.path.join(os.getcwd(), 'resources', 'icons')
 icon_path = {'pre_processing': os.path.join(icon_dir, 'pre_processing_icon.png'),
@@ -37,7 +34,9 @@ icon_path = {'pre_processing': os.path.join(icon_dir, 'pre_processing_icon.png')
 # main trace root string
 main_name = "Main Trace"
 
-# MAIN WIDGET OBJECTS --------------------------------------------------------------------------------------------------
+# widget dimensions
+x_gap = 15
+grp_width = 250
 
 # object dimensions
 dlg_width = 1650
@@ -45,6 +44,8 @@ dlg_height = 900
 
 min_width = 800
 min_height = 450
+
+# MAIN WIDGET OBJECTS --------------------------------------------------------------------------------------------------
 
 
 class QPlotWidgetMain(QDialog):
@@ -343,12 +344,9 @@ class QPlotWidgetMain(QDialog):
 
 # MAIN WIDGET OBJECTS --------------------------------------------------------------------------------------------------
 
-# widget dimensions
-x_gap = 15
-grp_width = 250
-
 
 class QPlotPara(QWidget):
+    # signal functions
     axes_reset = pyqtSignal(QWidget)
 
     def __init__(self, parent=None):
@@ -988,6 +986,7 @@ class QPlotPara(QWidget):
         return {'name': name, 'type': obj_type, 'value': value, 'p_fld': p_fld,
                 'p_list': p_list, 'p_misc': p_misc, 'ch_fld': ch_fld}
 
+
 # ----------------------------------------------------------------------------------------------------------------------
 
 
@@ -1145,32 +1144,6 @@ class QTraceObject(object):
 # ----------------------------------------------------------------------------------------------------------------------
 
 
-# dimensions
-x_pad = 0.0
-y_pad = 0.0
-x_gap_plt = 2
-but_height_plt = 16
-
-# widget stylesheets
-plot_gbox_style = """
-    QGroupBox {
-        color: white;
-        border: 2px solid white;
-        border-radius: 5px;
-    }
-    QGroupBox::title
-    {
-        padding: 0px 5px;
-        background-color: transparent;
-    }
-    QGroupBox[objectName='selected'] {
-        color: white;
-        border: 2px solid red;
-        border-radius: 5px;
-    }                                    
-"""
-
-
 class QPlotWidget(QWidget):
     # signal functions
     region_moved = pyqtSignal()
@@ -1178,6 +1151,29 @@ class QPlotWidget(QWidget):
     # mouse event function fields
     mp_event_release = None
     mp_event_click = None
+
+    # dimensions
+    x_gap_plt = 2
+    but_height_plt = 16
+
+    # widget stylesheets
+    plot_gbox_style = """
+        QGroupBox {
+            color: white;
+            border: 2px solid white;
+            border-radius: 5px;
+        }
+        QGroupBox::title
+        {
+            padding: 0px 5px;
+            background-color: transparent;
+        }
+        QGroupBox[objectName='selected'] {
+            color: white;
+            border: 2px solid red;
+            border-radius: 5px;
+        }                                    
+    """
 
     def __init__(self, parent_tr=None, x=None, y=None, hdr=None, p_props=None, h_parent=None):
         super(QPlotWidget, self).__init__()
@@ -1249,7 +1245,6 @@ class QPlotWidget(QWidget):
 
         # sets the main layout properties
         self.main_layout.setSpacing(0)
-        # self.main_layout.setContentsMargins(x_gap_plt, x_gap_plt, x_gap_plt, x_gap_plt)
         self.main_layout.setContentsMargins(0, 0, 0, 0)
         self.main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         self.main_layout.addWidget(self.obj_plot_gbox)
@@ -1260,7 +1255,7 @@ class QPlotWidget(QWidget):
         self.obj_plot_gbox.setCheckable(False)
         self.obj_plot_gbox.setSizePolicy(QSizePolicy(cf.q_exp, cf.q_exp))
         self.obj_plot_gbox.setLayout(self.plot_layout)
-        self.obj_plot_gbox.setStyleSheet(plot_gbox_style)
+        self.obj_plot_gbox.setStyleSheet(self.plot_gbox_style)
 
         # sets up the
         self.obj_plot_gbox.mousePressEvent = self.click_plot_region
@@ -1287,7 +1282,7 @@ class QPlotWidget(QWidget):
 
         # sets up the
         gb_layout = QHBoxLayout()
-        gb_layout.setContentsMargins(0, 0, x_gap_plt, 0)
+        gb_layout.setContentsMargins(0, 0, self.x_gap_plt, 0)
 
         # creates the checkbox object
         obj_grp = QWidget()
@@ -1305,13 +1300,13 @@ class QPlotWidget(QWidget):
 
         # frame layout
         frm_layout = QHBoxLayout()
-        frm_layout.setSpacing(x_gap_plt)
-        frm_layout.setContentsMargins(x_gap_plt, x_gap_plt, x_gap_plt, x_gap_plt)
+        frm_layout.setSpacing(self.x_gap_plt)
+        frm_layout.setContentsMargins(self.x_gap_plt, self.x_gap_plt, self.x_gap_plt, self.x_gap_plt)
 
         # frame widget
         obj_frm = QFrame()
         obj_frm.setLayout(frm_layout)
-        obj_frm.setFixedHeight(but_height_plt + 3 * x_gap_plt)
+        obj_frm.setFixedHeight(self.but_height_plt + 3 * self.x_gap_plt)
         obj_frm.setSizePolicy(QSizePolicy(cf.q_fix, cf.q_fix))
         obj_frm.setStyleSheet("""
             border: 1px solid white;
@@ -1321,8 +1316,8 @@ class QPlotWidget(QWidget):
         for fp in f_name:
             obj_but = cw.create_push_button(None, "")
             obj_but.setIcon(QIcon(icon_path[fp]))
-            obj_but.setIconSize(QSize(but_height_plt - 1, but_height_plt - 1))
-            obj_but.setFixedSize(but_height_plt, but_height_plt)
+            obj_but.setIconSize(QSize(self.but_height_plt - 1, self.but_height_plt - 1))
+            obj_but.setFixedSize(self.but_height_plt, self.but_height_plt)
             obj_but.setCursor(Qt.CursorShape.PointingHandCursor)
             obj_but.setToolTip(tt_str)
             obj_but.setObjectName(fp)
@@ -1374,8 +1369,8 @@ class QPlotWidget(QWidget):
         self.i_frm_ch = deepcopy(self.i_frm)
 
         # resets the axis limits
-        v_box.setXRange(x_min, x_max, padding=x_pad)
-        v_box.setYRange(y_min, y_max, padding=y_pad)
+        v_box.setXRange(x_min, x_max)
+        v_box.setYRange(y_min, y_max)
         v_box.setLimits(xMin=p_rng[0][0], xMax=p_rng[0][1], yMin=y_min, yMax=y_max)
 
         # adds the plot widget
@@ -1568,8 +1563,8 @@ class QPlotWidget(QWidget):
         # resets the axis limits
         v_box = self.h_plot.getViewBox()
         v_box.setLimits(xMin=self.x_lim[0], xMax=self.x_lim[1], yMin=self.y_lim[0], yMax=self.y_lim[1])
-        v_box.setXRange(self.x_lim[0], self.x_lim[1], padding=x_pad)
-        v_box.setYRange(self.y_lim[0], self.y_lim[1], padding=y_pad)
+        v_box.setXRange(self.x_lim[0], self.x_lim[1])
+        v_box.setYRange(self.y_lim[0], self.y_lim[1])
 
     def reset_current_region(self):
 

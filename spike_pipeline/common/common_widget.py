@@ -1,4 +1,5 @@
 # module import
+import re
 import textwrap
 import functools
 import numpy as np
@@ -11,22 +12,32 @@ import spike_pipeline.common.common_func as cf
 # pyqt6 module import
 from PyQt6.QtWidgets import (QWidget, QHBoxLayout, QGridLayout, QVBoxLayout, QPushButton, QGroupBox, QTabWidget,
                              QFormLayout, QLabel, QCheckBox, QLineEdit, QComboBox, QSizePolicy, QFileDialog,
-                             QApplication, QTreeView, QFrame)
+                             QApplication, QTreeView, QFrame, QRadioButton, QAbstractItemView)
 from PyQt6.QtGui import QFont, QDrag, QCursor, QStandardItemModel, QStandardItem
-from PyQt6.QtCore import Qt, QRect, QMimeData, pyqtSignal
+from PyQt6.QtCore import Qt, QRect, QMimeData, pyqtSignal, QItemSelectionModel, QModelIndex
 
 # style sheets
 edit_style_sheet = "border: 1px solid; border-radius: 2px; padding-left: 5px;"
 
-# ----------------------------------------------------------------------------------------------------------------------
+#
+sub_flag = QItemSelectionModel.SelectionFlag.ClearAndSelect | QItemSelectionModel.SelectionFlag.Rows
+ses_flag = QItemSelectionModel.SelectionFlag.Select | QItemSelectionModel.SelectionFlag.Rows
 
-# dimensions
-x_gap = 10
-gbox_height0 = 25
+
+# widget dimensions
+x_gap = 5
+row_height = 16.5
+
+# ----------------------------------------------------------------------------------------------------------------------
 
 
 class QRegionConfig(QWidget):
+    # signal functions
     config_reset = pyqtSignal()
+
+    # dimensions
+    x_gap = 10
+    gbox_height0 = 25
 
     def __init__(self, parent=None, font=None):
         super(QRegionConfig, self).__init__(parent)
@@ -110,7 +121,7 @@ class QRegionConfig(QWidget):
         self.obj_gbox = QGroupBox(cf.arr_chr(False))
         self.obj_gbox.setCheckable(False)
         self.obj_gbox.setFont(font)
-        self.obj_gbox.setFixedHeight(gbox_height0)
+        self.obj_gbox.setFixedHeight(self.gbox_height0)
         # self.obj_gbox.setStyleSheet("""
         #     QGroupbox::label {
         #         color: red;
@@ -120,7 +131,7 @@ class QRegionConfig(QWidget):
         # sets up the groupbox layout widget
         self.gb_layout = QGridLayout()
         self.gb_layout.setSpacing(0)
-        self.gb_layout.setContentsMargins(x_gap, 0, x_gap, x_gap)
+        self.gb_layout.setContentsMargins(self.x_gap, 0, self.x_gap, self.x_gap)
 
         # updates the selector widgets
         self.reset_selector_widgets()
@@ -259,7 +270,7 @@ class QRegionConfig(QWidget):
             self.obj_gbox.setTitle(cf.arr_chr(self.is_expanded))
 
             # calculates the widget dimensions
-            d_hght = (2 * self.is_expanded - 1) * (self.obj_gbox.width() - gbox_height0)
+            d_hght = (2 * self.is_expanded - 1) * (self.obj_gbox.width() - self.gbox_height0)
 
             self.obj_gbox.setFixedHeight(self.obj_gbox.height() + d_hght)
 
@@ -668,32 +679,25 @@ class QAxesLimits(QWidget):
 # ----------------------------------------------------------------------------------------------------------------------
 
 
-# widget stylesheets
-tree_style = """
-    QTreeView {
-        font: Arial 8px;
-    }
-    
-    QTreeView::item {
-
-    }    
-            
-    QTreeView::branch:open:has-children:has-siblings {
-
-    }        
-"""
-
-# widget dimensions
-row_height = 17
-
-
 class QTraceTree(QWidget):
     # signal functions
     node_added = pyqtSignal()
     node_deleted = pyqtSignal()
 
-    # mouse event function fields
-    mp_event_dclick = None
+    # widget stylesheets
+    tree_style = """
+        QTreeView {
+            font: Arial 8px;
+        }
+
+        QTreeView::item {
+
+        }    
+
+        QTreeView::branch:open:has-children:has-siblings {
+
+        }        
+    """
 
     def __init__(self, parent=None, font=None):
         super(QTraceTree, self).__init__(parent)
@@ -707,6 +711,9 @@ class QTraceTree(QWidget):
         self.main_layout = QVBoxLayout()
         self.main_layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(self.main_layout)
+
+        # mouse event function fields
+        self.mp_event_dclick = None
 
         # TEXT LABEL SETUP ----------------------------------------------------
 
@@ -730,7 +737,7 @@ class QTraceTree(QWidget):
 
         # sets the tree-view properties
         self.obj_tview.setModel(self.t_model)
-        self.obj_tview.setStyleSheet(tree_style)
+        self.obj_tview.setStyleSheet(self.tree_style)
         self.obj_tview.setItemsExpandable(False)
         self.obj_tview.setIndentation(10)
         self.obj_tview.setHeaderHidden(True)
@@ -787,7 +794,7 @@ class QTraceTree(QWidget):
 
     # MISCELLANEOUS FUNCTIONS -------------------------------------------------
 
-    def node_name_update(self, ind_mod_1, ind_mod_2, roles):
+    def node_name_update(self, ind_mod_1, *_):
 
         from spike_pipeline.widgets.plot_widget import QPlotPara
 
@@ -804,8 +811,8 @@ class QTraceTree(QWidget):
         from spike_pipeline.widgets.plot_widget import QPlotWidgetMain
 
         # retrieves the tree item
-        item = self.obj_tview.selectedIndexes()[0]
-        h_tree = item.model().itemFromIndex(item)
+        item_index = self.obj_tview.selectedIndexes()[0]
+        h_tree = item_index.model().itemFromIndex(item_index)
 
         # determines the index of the currently selected tree item
         h_root = cf.get_parent_widget(self, QPlotWidgetMain)
@@ -826,41 +833,221 @@ class QTraceTree(QWidget):
 
     def reset_tview_props(self):
 
-        self.obj_tview.setFixedHeight(self.n_trace * row_height + 2)
+        self.obj_tview.setFixedHeight(int(self.n_trace * row_height) + 2)
         self.obj_tview.expandAll()
-
-        # # flag that a new node has been added
-        # self.node_added.emit()
 
 
 # ----------------------------------------------------------------------------------------------------------------------
 
 
-# object dimensions
-d_height = 5
-w_space = 10
-txt_height = 16.5
+class QFolderTree(QWidget):
+    # dimensions
+    n_row = 10
 
-expand_style = """
-    text-align:left;
-    background-color: rgba(26, 83, 200, 255);
-    color: rgba(255, 255, 255, 255);
-    border-top-left-radius: 10px;
-    border-top-right-radius: 10px;
-"""
+    # signal functions
+    session_changed = pyqtSignal(QStandardItem)
+    subject_changed = pyqtSignal(QStandardItem)
 
-close_style = """
-    text-align:left;
-    background-color: rgba(26, 83, 200, 255);
-    color: rgba(255, 255, 255, 255);
-    border-top-left-radius: 10px;
-    border-top-right-radius: 10px;
-    border-bottom-left-radius: 10px;
-    border-bottom-right-radius: 10px;
-"""
+    # widget stylesheets
+    tree_style = """
+        QTreeView {
+            font: Arial 8px;
+        }
+        QTreeView::item:selected {
+            color: red;
+            background-color: #9fedab;
+        }    
+    """
+
+    def __init__(self, parent=None, data_dict=None, is_feas_tree=False):
+        super(QFolderTree, self).__init__(parent)
+
+        #
+        self.bold_highlight = create_font_obj(is_bold=True)
+
+        # field initialisations
+        self.t_dict = {}
+        self.root = parent
+        self.data_dict = data_dict
+        self.r_ses = re.compile(r'ses-[0-9]{3}')
+        self.r_sub = re.compile(r'sub-[0-9]{3}')
+
+        # sets up the widget layout
+        self.main_layout = QVBoxLayout()
+        self.main_layout.setContentsMargins(0, 0, 0, 0)
+        self.setLayout(self.main_layout)
+
+        # TREE WIDGET SETUP ---------------------------------------------------
+
+        # sets up the table model
+        self.t_model = QStandardItemModel()
+
+        # creates the tree-view widget
+        self.obj_tview = QTreeView()
+        if is_feas_tree:
+            self.mp_event_dclick = self.obj_tview.mouseDoubleClickEvent
+            self.obj_tview.mouseDoubleClickEvent = self.tree_double_clicked
+
+        # sets the tree-view properties
+        self.obj_tview.setModel(self.t_model)
+        self.obj_tview.setStyleSheet(self.tree_style)
+        self.obj_tview.setIndentation(10)
+        self.obj_tview.setHeaderHidden(True)
+        self.obj_tview.setFrameStyle(QFrame.Shape.WinPanel | QFrame.Shadow.Sunken)
+        self.obj_tview.setSelectionMode(QAbstractItemView.SelectionMode.NoSelection)
+
+        # appends the widget to the main widget
+        self.main_layout.addWidget(self.obj_tview)
+        self.setFixedHeight(int(self.n_row * row_height) + 2)
+        self.setSizePolicy(QSizePolicy(cf.q_exp, cf.q_fix))
+
+    # TREE ADD/DELETE FUNCTIONS ----------------------------------------------
+
+    def reset_tree_items(self, data_dict_new):
+
+        # updates the data dictionary
+        self.data_dict = data_dict_new
+
+        # clears and resets the tree items
+        self.t_model.clear()
+        self.add_all_tree_items()
+
+    def add_all_tree_items(self):
+
+        # creates the tree widgets
+        for dd in self.data_dict:
+            self.t_dict[dd] = self.add_tree_item(dd)
+
+    def add_tree_item(self, s_node):
+
+        # splits the node string
+        s_sp = s_node.rsplit('/', 1)
+
+        # creates the tree item
+        item = QStandardItem(s_sp[1])
+        item.setEditable(False)
+        item.setData('/'.join(s_sp))
+
+        if len(s_sp[0]):
+            # case is the root trace
+            self.t_dict[s_sp[0]].appendRow(item)
+
+        else:
+            # case is the root trace
+            self.t_model.appendRow(item)
+
+        # expands/collapses the tree nodes (so that rawdata folder is the last expanded node)
+        if self.r_sub.findall(s_node):
+            self.obj_tview.collapse(item.index())
+
+        else:
+            self.obj_tview.expand(item.index())
+
+        # returns the tree item
+        return item
+
+    # MISCELLANEOUS FUNCTIONS -------------------------------------------------
+
+    def tree_double_clicked(self, evnt):
+
+        # retrieves the tree item
+        if type(evnt) == QStandardItem:
+            item, item_index = evnt, evnt.index()
+
+        else:
+            item_index = self.obj_tview.indexAt(evnt.pos())
+            item = item_index.model().itemFromIndex(item_index)
+
+        # performs a sequential search for
+        s_path, is_ses_sel = item.data(), False
+        if self.r_ses.findall(s_path):
+            # case a session (or child node) has been selected
+
+            # determines if a new subject was selected
+            sub_path_new = self.get_path(self.r_sub, s_path)
+            is_sub_sel = sub_path_new != self.root.sub_path
+
+            # determines if a new session node was selected
+            ses_path_new = self.get_path(self.r_ses, s_path)
+            is_ses_sel = ses_path_new != self.root.sub_path
+
+        else:
+            # otherwise, determine if a raw node
+            is_ses_sel = False
+            if len(self.r_sub.findall(s_path)):
+                sub_path_new = self.get_path(self.r_sub, s_path)
+                is_sub_sel = sub_path_new != self.root.sub_path
+
+            else:
+                is_sub_sel = False
+
+        if is_sub_sel:
+            # resets the path field
+            self.root.sub_path = sub_path_new
+
+            # rus the subject changed function
+            self.subject_changed.emit(item)
+            self.update_tree_highlights()
+
+        if is_ses_sel:
+            # resets the path field
+            self.root.ses_type = ses_path_new
+
+            # rus the subject changed function
+            self.session_changed.emit(item)
+            self.update_tree_highlights()
+
+    def update_tree_highlights(self):
+
+        # field retrieval
+        t_dict = self.root.h_tab[0].findChild(QFolderTree).t_dict
+
+        # enables the multi-selection property
+        self.obj_tview.setSelectionMode(QAbstractItemView.SelectionMode.MultiSelection)
+
+        # updates the subject selection
+        index_sub = t_dict[self.root.sub_path].index()
+        self.obj_tview.selectionModel().select(index_sub, sub_flag)
+
+        # updates the session selection
+        item_ses = t_dict['/'.join([self.root.sub_path, self.root.ses_type])].index()
+        self.obj_tview.selectionModel().select(item_ses, ses_flag)
+
+        # removes the selection property
+        self.obj_tview.setSelectionMode(QAbstractItemView.SelectionMode.NoSelection)
+
+    @staticmethod
+    def get_path(r, text):
+
+        return r.split(text)[0] + r.findall(text)[0]
+
+# ----------------------------------------------------------------------------------------------------------------------
 
 
 class QCollapseGroup(QWidget):
+    # object dimensions
+    w_space = 10
+
+    # expanded group style-sheet
+    expand_style = """
+        text-align:left;
+        background-color: rgba(26, 83, 200, 255);
+        color: rgba(255, 255, 255, 255);
+        border-top-left-radius: 10px;
+        border-top-right-radius: 10px;
+    """
+
+    # collapsed group style-sheet
+    close_style = """
+        text-align:left;
+        background-color: rgba(26, 83, 200, 255);
+        color: rgba(255, 255, 255, 255);
+        border-top-left-radius: 10px;
+        border-top-right-radius: 10px;
+        border-bottom-left-radius: 10px;
+        border-bottom-right-radius: 10px;
+    """
+
     def __init__(self, parent=None, grp_name=None, is_first=False, f_layout=None):
         super(QCollapseGroup, self).__init__(parent)
 
@@ -875,7 +1062,7 @@ class QCollapseGroup(QWidget):
         # creates the panel objects
         self.main_layout = QVBoxLayout()
         self.main_layout.setSpacing(0)
-        self.main_layout.setContentsMargins(w_space, is_first * w_space, w_space, w_space)
+        self.main_layout.setContentsMargins(self.w_space, is_first * self.w_space, self.w_space, self.w_space)
 
         # creates the expansion button
         self.expand_button = create_push_button(None, '', font=self.font_hdr)
@@ -930,7 +1117,7 @@ class QCollapseGroup(QWidget):
             self.update_button_text()
 
             # sets the button style
-            f_style = expand_style if self.is_expanded else close_style
+            f_style = self.expand_style if self.is_expanded else self.close_style
             self.expand_button.setStyleSheet(f_style)
 
     # MISCELLANEOUS FUNCTIONS -------------------------------------------------
@@ -943,7 +1130,7 @@ class QCollapseGroup(QWidget):
     def set_styling(self):
 
         self.group_panel.setStyleSheet("background-color: rgba(240, 240, 255, 255) ;")
-        self.expand_button.setStyleSheet(expand_style)
+        self.expand_button.setStyleSheet(self.expand_style)
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -1048,17 +1235,24 @@ class QFileSpec(QGroupBox):
         # creates the layout widget
         self.layout = QHBoxLayout()
         self.setLayout(self.layout)
+        self.layout.setContentsMargins(x_gap, x_gap, x_gap, x_gap)
 
         # creates the editbox widget
         self.h_edit = create_line_edit(None, file_path, align='left', name=name)
         self.layout.addWidget(self.h_edit)
         self.h_edit.setReadOnly(True)
         self.h_edit.setObjectName(name)
+        self.h_edit.setToolTip(file_path)
 
         # creates the button widget
         self.h_but = create_push_button(None, '...', font_but)
         self.layout.addWidget(self.h_but)
         self.h_but.setFixedWidth(25)
+
+    def set_text(self, f_str):
+
+        self.h_edit.setText(f_str)
+        self.h_edit.setToolTip(f_str)
 
     def connect(self, cb_fcn0):
 
@@ -1119,6 +1313,14 @@ class QLabelEdit(QWidget):
         # sets up the editbox properties
         self.obj_edit.setFixedHeight(cf.edit_height)
         self.obj_edit.setStyleSheet(edit_style_sheet)
+
+    def get_text(self):
+
+        return self.obj_edit.text()
+
+    def set_text(self, edit_str):
+
+        self.obj_edit.setText(edit_str)
 
     def connect(self, cb_fcn0):
 
@@ -1181,16 +1383,33 @@ class QLabelCombo(QWidget):
 
         # sets up the label properties
         self.obj_lbl.adjustSize()
-        self.obj_lbl.setStyleSheet('padding-top: 2 px;')
+        self.obj_lbl.setStyleSheet('padding-top: 3 px;')
 
         # sets up the slot function
         self.obj_cbox.setFixedHeight(cf.combo_height)
-        self.obj_cbox.setCurrentText(value)
         self.obj_cbox.setStyleSheet('border-radius: 2px; border: 1px solid')
 
-    def connect(self, cb_fcn0):
+        if len(value):
+            self.obj_cbox.setCurrentText(value)
 
-        cb_fcn = functools.partial(cb_fcn0, self.obj_cbox)
+    def current_text(self):
+
+        return self.obj_cbox.currentText()
+
+    def set_current_text(self, c_text):
+
+        self.obj_cbox.setCurrentText(c_text)
+
+    def set_enabled(self, state):
+
+        self.obj_lbl.setEnabled(state)
+        self.obj_cbox.setEnabled(state)
+
+    def connect(self, cb_fcn, add_widget=True):
+
+        if add_widget:
+            cb_fcn = functools.partial(cb_fcn, self.obj_cbox)
+
         self.obj_cbox.currentIndexChanged.connect(cb_fcn)
 
 
@@ -1245,6 +1464,10 @@ class QCheckboxHTML(QWidget):
     def set_check(self, state):
 
         self.h_chk.setChecked(state)
+
+    def get_check(self):
+
+        return self.h_chk.isChecked()
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -1342,9 +1565,6 @@ def create_combo_box(parent, text=None, font=None, name=None):
         for i, t in enumerate(text):
             h_combo.addItem(t)
 
-            # if colour is not None:
-            #     c_model.setData(c_model.index(i, 0), colour[i], Qt.ItemDataRole.BackgroundRole)
-
     # sets the object name string
     if name is not None:
         h_combo.setObjectName(name)
@@ -1373,6 +1593,28 @@ def create_check_box(parent, text, state, font=None, name=None):
 
     # returns the object
     return h_chk
+
+
+def create_radio_button(parent, text, state, font=None, name=None):
+
+    # sets the label font properties
+    if font is None:
+        font = create_font_obj()
+
+    # creates the listbox object
+    h_radio = QRadioButton(parent)
+
+    # sets the object properties
+    h_radio.setText(text)
+    h_radio.setFont(font)
+    h_radio.setChecked(state)
+
+    # sets the object name string
+    if name is not None:
+        h_radio.setObjectName(name)
+
+    # returns the object
+    return h_radio
 
 
 def create_tab_group(parent, font=None, name=None):

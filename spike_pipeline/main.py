@@ -5,15 +5,16 @@ import time
 
 # custom module import
 from testing.testing import Testing
+from spike_pipeline.widgets.main_window import MainWindow
 
 # pyqt6 module import
 from PyQt6.QtWidgets import QApplication, QTreeWidget, QTreeWidgetItem, QTreeView, QProxyStyle, QStyleFactory, QWidget
-from PyQt6.QtCore import QStringListModel, QStringConverter, QAbstractItemModel
-from PyQt6.QtGui import QStandardItemModel, QStandardItem
+# from PyQt6.QtCore import QStringListModel, QStringConverter, QAbstractItemModel
+# from PyQt6.QtGui import QStandardItemModel, QStandardItem
 
 # debugging parameters
 is_testing = True
-test_type = 3
+test_type = 5
 
 data = {"Project A": ["file_a.py", "file_a.txt", "something.xls"],
         "Project B": ["file_b.csv", "photo.jpg"],
@@ -29,63 +30,19 @@ tree_style = """
     }        
 """
 
-# QTreeView::branch
-# {
-#     border - image: url(none.png);
-# }
-
-# if __name__ == '__main__':
-#     app = QApplication(sys.argv)
-#
-#     model = QStandardItemModel()
-#     for row in range(5):
-#         item = QStandardItem("row {0}".format(row))
-#         model.appendRow(item)
-#
-#         for column in range(4):
-#             item_s = QStandardItem("column {0}".format(column))
-#             item.appendRow(item_s)
-#
-#             if row == 1:
-#                 for i in range(5):
-#                     item_ss = QStandardItem("sub-column {0}".format(i))
-#                     item_s.appendRow(item_ss)
-#
-#     app.setStyle('Windows')
-#
-#     v = QTreeView()
-#     v.setModel(model)
-#     v.setStyleSheet(tree_style)
-#     v.expandAll()
-#     v.setItemsExpandable(False)
-#     v.setRootIsDecorated(False)
-#     v.setFixedSize(v.sizeHint())
-#     v.setHeaderHidden(True)
-#
-#     v.show()
-#
-#
-#
-#     sys.exit(app.exec())
-
 if __name__ == '__main__':
-    # Create the Qt Application
-    app = QApplication(sys.argv)
 
-    # app.setStyle('Windows')
+    app = QApplication(sys.argv)
 
     if is_testing:
         # case is running testing mode
         test_obj = Testing(test_type)
-        form = test_obj.run_test()
-        form.show()
+        h_app = test_obj.run_test()
 
     else:
         # case is running full program
-        a = 1
+        h_app = MainWindow()
 
     # Run the main Qt loop
+    h_app.show()
     sys.exit(app.exec())
-
-
-
