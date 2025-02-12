@@ -2,21 +2,30 @@
 import os
 import functools
 import numpy as np
-import pyqtgraph as pg
+from copy import deepcopy
 from pathlib import Path
 from bigtree import dataframe_to_tree, tree_to_dict
+
+# spikewrap modules
+import spikewrap as sw
 
 # custom module import
 import spike_pipeline.common.common_func as cf
 import spike_pipeline.common.common_widget as cw
 import spike_pipeline.common.spikeinterface_func as sf
-from spike_pipeline.common.common_widget import (QLabelEdit, QCheckboxHTML, QFileSpec, QLabelCombo, QFolderTree)
+from spike_pipeline.common.common_widget import (QLabelEdit, QFileSpec, QLabelCombo, QFolderTree)
+
+from spike_pipeline.plotting.probe import ProbePlot
 
 # pyqt6 module import
 from PyQt6.QtWidgets import (QDialog, QHBoxLayout, QVBoxLayout, QWidget, QFormLayout, QSizePolicy, QGridLayout,
-                             QGroupBox, QComboBox, QCheckBox, QLineEdit, QTableWidget, QTableWidgetItem)
-from PyQt6.QtGui import QFont, QIcon, QStandardItem
-from PyQt6.QtCore import Qt, QSize, pyqtSignal, QItemSelectionModel
+                             QGroupBox, QComboBox, QCheckBox, QLineEdit, QTableWidget, QTableWidgetItem, QFrame,
+                             QSpacerItem)
+from PyQt6.QtGui import QFont, QIcon, QStandardItem, QKeySequence
+from PyQt6.QtCore import Qt, QSize, pyqtSignal
+
+# testing modules
+import pyqtgraph as pg
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -24,7 +33,9 @@ from PyQt6.QtCore import Qt, QSize, pyqtSignal, QItemSelectionModel
 x_gap = 5
 x_gap_h = 2
 sz_but = 25
-dlg_width = 800
+dlg_height = 580
+dlg_width = 1100
+file_width = 480
 # dlg_height = 500
 
 # font objects
@@ -57,8 +68,11 @@ class OpenSession(QDialog):
 
         # class widget setup
         self.main_layout = QHBoxLayout()
-        self.info = SessionFile(self)
+        self.file = SessionFile(self)
         self.probe = SessionProbe(self)
+
+        # other class fields
+        self.session = None
 
         # field initialisation
         self.setup_dialog()
@@ -70,34 +84,70 @@ class OpenSession(QDialog):
     # CLASS INITIALISATION FUNCTIONS -----------------------------------
 
     def setup_dialog(self):
+
         # creates the dialog window
         self.setWindowTitle("Session Information")
-        self.setFixedWidth(dlg_width)
+        self.setFixedSize(dlg_width, dlg_height)
 
     def init_class_fields(self):
+
         # sets up the main layout
         self.main_layout.setSpacing(0)
         self.main_layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(self.main_layout)
 
         # adds the session information widget
-        self.main_layout.addWidget(self.info)
+        self.main_layout.addWidget(self.file)
         self.main_layout.addWidget(self.probe)
+
+        # sets the info tab width
+        self.file.setFixedWidth(file_width)
+        self.file.session_loaded.connect(self.post_session_load)
+
+        # creates a dummy button
+        dummy_button = cw.create_push_button(None, '')
+        dummy_button.setDefault(True)
+        dummy_button.setAutoDefault(True)
 
         # disables the probe info panel
         self.probe.setEnabled(False)
 
+    def post_session_load(self):
+
+        #
+        self.probe.setEnabled(True)
+        self.probe.update_probe_info()
+
+    def get_session_run(self, i_run, r_name):
+
+        return self.file.session._runs[i_run]._raw[r_name].get_probe()
+
+    def keyPressEvent(self, evnt) -> None:
+
+        if evnt.matches(QKeySequence.StandardKey.Cancel):
+            self.reject()
+        else:
+            evnt.ignore()
 
 # SESSION FILE WIDGET --------------------------------------------------------------------------------------------------
 
 
 class SessionFile(QWidget):
+    # static class fields
     grp_name = "Recording Data"
+
+    # pyqtsignal functions
+    session_loaded = pyqtSignal()
 
     def __init__(self, parent=None):
         super(SessionFile, self).__init__(parent)
 
+        # class fields
+        self.session = None
+        self.has_session = False
+
         # widget setup
+        self.root = self.parent()
         self.group_panel = QGroupBox(self.grp_name.upper())
         self.main_layout = QVBoxLayout()
         self.form_layout = QVBoxLayout()
@@ -106,13 +156,9 @@ class SessionFile(QWidget):
         self.file_widget = QWidget(self)
         self.file_layout = QVBoxLayout()
 
-        # session information widgets
-        self.prop_widget = QWidget(self)
-        self.prop_layout = QVBoxLayout()
-
         # other widgets
-        self.h_file_tab = SessionNew(self)
-        self.h_file_spec = QFileSpec(None, None, name='session_name')
+        self.new_session = SessionNew(self)
+        self.exist_session = QFileSpec(None, None, name='session_name')
 
         # initialises the class fields
         self.init_class_fields()
@@ -147,6 +193,9 @@ class SessionFile(QWidget):
         self.file_widget.setSizePolicy(QSizePolicy(cf.q_pref, cf.q_exp))
         self.file_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
+        # sets the new session widget properties
+        self.new_session.open_session.connect(self.load_session)
+
         # resets the widget size policies
         self.setSizePolicy(QSizePolicy(cf.q_exp, cf.q_exp))
 
@@ -167,15 +216,15 @@ class SessionFile(QWidget):
             h_radio.append(h_radio_new)
 
         # creates the file spec widget
-        cb_fcn = functools.partial(self.h_file_tab.prop_update, ['existing', 'f_input'])
-        self.h_file_spec.connect(cb_fcn)
-        self.h_file_spec.setEnabled(False)
+        cb_fcn = functools.partial(self.new_session.prop_update, ['existing', 'f_input'])
+        self.exist_session.connect(cb_fcn)
+        self.exist_session.setEnabled(False)
 
         # adds the widget to the layout
         self.file_layout.addWidget(h_radio[0])
-        self.file_layout.addWidget(self.h_file_tab)
+        self.file_layout.addWidget(self.new_session)
         self.file_layout.addWidget(h_radio[1])
-        self.file_layout.addWidget(self.h_file_spec)
+        self.file_layout.addWidget(self.exist_session)
 
     def radio_session_select(self):
 
@@ -185,12 +234,32 @@ class SessionFile(QWidget):
         # check if the radio button is checked
         if rb.isChecked():
             # updates the tab widget properties
-            self.h_file_tab.is_new = rb.objectName() == 'new'
-            self.h_file_tab.setEnabled(self.h_file_tab.is_new)
-            self.h_file_spec.setEnabled(not self.h_file_tab.is_new)
+            self.new_session.is_new = rb.objectName() == 'new'
+            self.new_session.setEnabled(self.new_session.is_new)
+            self.exist_session.setEnabled(not self.new_session.is_new)
 
             # updates the dialog properties
-            self.h_file_tab.update_dialog_props()
+            self.new_session.update_dialog_props()
+
+    def load_session(self):
+
+        # sets the subject path and run names
+        s_obj = self.new_session
+        run_names = "all" if np.all(s_obj.use_run) else s_obj.get_session_run_names()
+
+        # creates the spikewrap session object
+        self.session = sw.Session(
+            subject_path=s_obj.get_subject_path(),
+            session_name=s_obj.get_session_type(),
+            file_format=s_obj.get_format_type(),
+            run_names=run_names,
+        )
+
+        # loads the session object
+        self.session.load_raw_data()
+
+        # emits the signal function
+        self.session_loaded.emit()
 
     # MISCELLANEOUS FUNCTIONS -------------------------------------------------
 
@@ -220,17 +289,61 @@ class SessionFile(QWidget):
 
 
 class SessionProbe(QWidget):
+    # widget dimensions
     x_gap = 5
     x_gap_h = 2
+    sz_roi_min = 5
+
+    # static string fields
     grp_name = "Session Probe"
+
+    # array class fields
+    lbl_str = ['Left:', 'Bottom:', 'Width:', 'Height:']
 
     def __init__(self, parent=None):
         super(SessionProbe, self).__init__(parent)
 
+        # field retrieval
+        self.p = None
+        self.vb = None
+        self.plt_probe_sub = None
+        self.plt_probe_main = None
+        self.root = self.parent()
+
+        # boolean class fields
+        self.is_updating = False
+
         # widget setup
-        self.form_layout = QFormLayout()
+        self.form_layout = QGridLayout()
         self.main_layout = QVBoxLayout()
+        self.info_layout = QFormLayout()
+        self.channel_layout = QVBoxLayout()
+        self.plot_layout = QGridLayout()
         self.group_panel = QGroupBox(self.grp_name.upper())
+
+        # panel widget setup
+        self.edit_dim = []
+        self.info_frame = QFrame()
+        self.channel_frame = QFrame()
+        self.plot_frame = QFrame()
+
+        # plot frame widgets
+        self.plot_frame_prop = QFrame()
+        self.plot_frame_main = QFrame()
+        self.plot_frame_sub = QFrame()
+        self.prop_frame_layout = QGridLayout()
+        self.plot_main_layout = QVBoxLayout()
+        self.plot_sub_layout = QVBoxLayout()
+
+        # main plot widgets
+        self.main_plt_widget = pg.PlotWidget()
+        self.main_plt_item = self.main_plt_widget.getPlotItem()
+        self.main_plt = self.main_plt_widget.plot()
+
+        # inset plot widgets
+        self.sub_plt_widget = pg.PlotWidget()
+        self.sub_plt_item = self.sub_plt_widget.getPlotItem()
+        self.sub_plt = self.sub_plt_widget.plot()
 
         # initialises the class fields
         self.init_class_fields()
@@ -243,16 +356,250 @@ class SessionProbe(QWidget):
         self.main_layout.addWidget(self.group_panel)
 
         # creates the children objects for the current parent object
-        self.form_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        self.form_layout.addWidget(self.info_frame, 0, 0, 1, 1)
+        self.form_layout.addWidget(self.channel_frame, 1, 0, 1, 1)
+        self.form_layout.addWidget(self.plot_frame, 0, 1, 2, 1)
+        self.form_layout.setColumnStretch(0, 55)
+        self.form_layout.setColumnStretch(1, 45)
+        self.form_layout.setRowStretch(0, 1)
+        self.form_layout.setRowStretch(1, 2)
 
         # sets the final layout
         self.group_panel.setLayout(self.form_layout)
         self.group_panel.setFont(font_panel)
         self.setLayout(self.main_layout)
 
-        # resets the collapse panel size policy
-        self.setSizePolicy(QSizePolicy(cf.q_exp, cf.q_exp))
+        # probe information frame properties
+        self.setup_info_frame()
+        self.info_frame.setFrameStyle(QFrame.Shadow.Plain | QFrame.Shape.Box)
 
+        # channel information frame properties
+        self.setup_channel_frame()
+        self.channel_frame.setFrameStyle(QFrame.Shadow.Plain | QFrame.Shape.Box)
+
+        # probe plot frame properties
+        self.setup_plot_frame()
+
+    def setup_info_frame(self):
+
+        # sets the frame properties
+        self.info_frame.setLayout(self.info_layout)
+        self.info_frame.setFrameStyle(QFrame.Shadow.Plain | QFrame.Shape.Box)
+
+        self.channel_layout.addWidget(QWidget())
+
+    def setup_channel_frame(self):
+
+        self.channel_frame.setFrameStyle(QFrame.Shadow.Plain | QFrame.Shape.Box)
+        self.channel_frame.setLayout(self.channel_layout)
+
+        self.channel_layout.addWidget(QWidget())
+
+    def setup_plot_frame(self):
+
+        # sets the plot frame properties
+        self.plot_frame.setFrameStyle(QFrame.Shadow.Plain | QFrame.Shape.Box)
+        self.plot_frame.setLayout(self.plot_layout)
+
+        # sets the layout properties
+        self.plot_layout.addWidget(self.plot_frame_prop, 0, 0, 1, 1)
+        self.plot_layout.addWidget(self.plot_frame_main, 1, 0, 1, 1)
+        self.plot_layout.addWidget(self.plot_frame_sub, 2, 0, 1, 1)
+        self.plot_layout.setRowStretch(0, 10)
+        self.plot_layout.setRowStretch(1, 45)
+        self.plot_layout.setRowStretch(2, 45)
+
+        # plot property frame properties
+        self.plot_frame_prop.setFrameStyle(QFrame.Shadow.Plain | QFrame.Shape.Box)
+        self.plot_frame_prop.setLayout(self.prop_frame_layout)
+        self.prop_frame_layout.setSpacing(x_gap)
+
+        for i, ls in enumerate(self.lbl_str):
+            # row/column index calculations
+            iy, ix = int(np.floor(i / 2)), i % 2
+
+            # creates the label/edit combo object
+            edit_new = QLabelEdit(self, lbl_str=ls, font_lbl=font_lbl, name=ls.lower())
+            edit_new.connect(self.edit_dim_update)
+            edit_new.obj_edit.setAlignment(cf.align_type['center'])
+
+            # adds the widgets to the layout
+            self.prop_frame_layout.addWidget(edit_new.obj_lbl, iy, 2 * ix, 1, 1)
+            self.prop_frame_layout.addWidget(edit_new.obj_edit, iy, 2 * ix + 1, 1, 1)
+            self.edit_dim.append(edit_new)
+
+        # main plot frame properties
+        self.plot_frame_main.setFrameStyle(QFrame.Shadow.Plain | QFrame.Shape.Box)
+        self.plot_frame_main.setLayout(self.plot_main_layout)
+        self.plot_main_layout.addWidget(self.main_plt_widget)
+        self.main_plt_item.hideAxis('left')
+        self.main_plt_item.hideAxis('bottom')
+        self.main_plt_item.setDefaultPadding(0.01)
+
+        # plot inset frame properties
+        self.plot_frame_sub.setFrameStyle(QFrame.Shadow.Plain | QFrame.Shape.Box)
+        self.plot_frame_sub.setLayout(self.plot_sub_layout)
+        self.plot_sub_layout.addWidget(self.sub_plt_widget)
+        self.sub_plt_item.setMouseEnabled(x=False, y=False)
+        self.sub_plt_item.hideAxis('left')
+        self.sub_plt_item.hideAxis('bottom')
+        self.sub_plt_item.setDefaultPadding(0.01)
+
+    def update_probe_info(self):
+
+        # removes any existing plot objects
+        if self.plt_probe_main is not None:
+            self.main_plt_widget.removeItem(self.plt_probe_main)
+            self.sub_plt_widget.removeItem(self.plt_probe_sub)
+
+        # creates the plot probe
+        self.p = self.root.get_session_run(0, 'grouped')
+        self.plt_probe_main = ProbePlot(self.main_plt_widget, self.p)
+        self.plt_probe_sub = ProbePlot(self.sub_plt_widget, self.p)
+
+        # creates the main plot figure
+        self.main_plt_widget.addItem(self.plt_probe_main)
+        self.plt_probe_main.update_roi.connect(self.main_roi_moved)
+        self.plt_probe_main.reset_axes_limits(True)
+
+        # creates the inset figure
+        self.sub_plt_widget.addItem(self.plt_probe_sub)
+        self.plt_probe_sub.reset_axes_limits(False)
+        self.vb = self.plt_probe_sub.getViewBox()
+
+        # create the main image ROI
+        self.plt_probe_main.create_inset_roi(self.plt_probe_sub.x_lim, self.plt_probe_sub.y_lim)
+
+        # resets the dimension editbox string
+        self.is_updating = True
+        for i, h in enumerate(self.edit_dim):
+            p_val = self.get_dim_value(i)
+            h.set_text('%g' % p_val)
+
+        # resets the manual update flag
+        self.is_updating = False
+
+    def edit_dim_update(self, h_edit):
+
+        # if updating manually, then exit
+        if self.is_updating:
+            return
+
+        # field retrieval
+        nw_val = h_edit.text()
+        p_str = h_edit.objectName()[:-1]
+        nw_lim = self.get_dim_limit(p_str)
+
+        # determines if the new value is valid
+        chk_val = cf.check_edit_num(nw_val, min_val=nw_lim[0], max_val=nw_lim[1])
+        if chk_val[1] is None:
+            # if so, then update the axes limits
+            self.is_updating = True
+            self.set_dim_value(p_str, chk_val[0])
+            self.is_updating = False
+
+            # # resets the ROI position
+            # roi_pos = [self.get_dim_value(x) for x in range(4)]
+            # if p_str in ['left', 'bottom']:
+            #     # case is updating the left/bottom roi location
+            #     self.plt_probe_main.roi.setPos(roi_pos[0], roi_pos[1])
+            #
+            # else:
+            #     # case is updating the roi width/height
+            #     self.plt_probe_main.roi.setSize(roi_pos[2], roi_pos[3])
+
+        else:
+            # otherwise, revert to the previous valid value
+            h_edit.setText('%g' % self.get_dim_value(p_str))
+
+    def main_roi_moved(self, p_pos):
+
+        # updates the x-axis limits
+        self.plt_probe_sub.x_lim[0] = p_pos[0]
+        self.plt_probe_sub.x_lim[1] = self.plt_probe_sub.x_lim[0] + p_pos[2].x()
+
+        # updates the y-axis limits
+        self.plt_probe_sub.y_lim[0] = p_pos[1]
+        self.plt_probe_sub.y_lim[1] = self.plt_probe_sub.y_lim[0] + p_pos[2].y()
+
+        # updates the editboxes
+        self.is_updating = True
+        self.edit_dim[0].set_text('%g' % p_pos[0])
+        self.edit_dim[1].set_text('%g' % p_pos[1])
+        self.edit_dim[2].set_text('%g' % p_pos[2].x())
+        self.edit_dim[3].set_text('%g' % p_pos[2].y())
+        self.is_updating = False
+
+        # resets the axis limits
+        self.plt_probe_sub.reset_axes_limits(False)
+
+    def get_dim_limit(self, i_dim):
+
+        pp_s = self.plt_probe_sub
+
+        match i_dim:
+            case i_dim if i_dim in ['left', 0]:
+                # case is the left roi position
+                return [pp_s.x_lim_full[0], (pp_s.width - self.get_dim_value(2))]
+
+            case i_dim if i_dim in ['bottom', 1]:
+                # case is the bottom roi position
+                return [pp_s.y_lim_full[0], (pp_s.height - self.get_dim_value(3))]
+
+            case i_dim if i_dim in ['width', 2]:
+                # case is the roi width
+                return [self.sz_roi_min, (pp_s.width - self.get_dim_value(0))]
+
+            case i_dim if i_dim in ['height', 3]:
+                # case is the roi height
+                return [self.sz_roi_min, (pp_s.height - self.get_dim_value(1))]
+
+    def get_dim_value(self, i_dim):
+
+        vb_rng = self.vb.viewRange()
+
+        match i_dim:
+            case i_dim if i_dim in ['left', 0]:
+                # case is the left location
+                return vb_rng[0][0]
+
+            case i_dim if i_dim in ['bottom', 1]:
+                # case is the bottom location
+                return vb_rng[1][0]
+
+            case i_dim if i_dim in ['width', 2]:
+                # case is the box width
+                return np.diff(vb_rng[0])[0]
+
+            case i_dim if i_dim in ['height', 3]:
+                # case is the box height
+                return np.diff(vb_rng[1])[0]
+
+    def set_dim_value(self, i_dim, p_val):
+
+        pp_s = self.plt_probe_sub
+        pp_m = self.plt_probe_main
+
+        match i_dim:
+            case i_dim if i_dim in ['left', 0]:
+                # case is the left location
+                pp_s.x_lim[0] = p_val
+                pp_m.roi.setPos(pp_s.x_lim[0], pp_s.y_lim[0])
+
+            case i_dim if i_dim in ['bottom', 1]:
+                # case is the bottom location
+                pp_s.y_lim[0] = p_val
+                pp_m.roi.setPos(pp_s.x_lim[0], pp_s.y_lim[0])
+
+            case i_dim if i_dim in ['width', 2]:
+                # case is the box width
+                pp_s.x_lim[1] = pp_s.x_lim[0] + p_val
+                pp_m.roi.setSize(np.diff(pp_s.x_lim), np.diff(pp_s.y_lim))
+
+            case i_dim if i_dim in ['height', 3]:
+                # case is the box height
+                pp_s.y_lim[1] = pp_s.y_lim[0] + p_val
+                pp_m.roi.setSize(np.diff(pp_s.x_lim), np.diff(pp_s.y_lim))
 
 # SESSION NEW WIDGET ---------------------------------------------------------------------------------------------------
 
@@ -262,13 +609,13 @@ class SessionNew(QWidget):
     lbl_width = 150
     n_row_table = 4
     row_height = 22
-    n_col_grid = 4
 
     # field initialisation
     p_list_axis = ['Axis 0', 'Axis 1']
     p_list_type = ['int8', 'int16', 'int32']
     col_hdr = ['Run #', 'Analyse Run?', 'Session Run Name']
 
+    # widget stylesheets
     table_style = """
         QTableWidget {
             font: Arial 6px;
@@ -279,6 +626,9 @@ class SessionNew(QWidget):
             font-weight: 1000;
         }
     """
+
+    # pyqtsignal signal functions
+    open_session = pyqtSignal()
 
     def __init__(self, parent=None):
         super(SessionNew, self).__init__(parent)
@@ -307,9 +657,9 @@ class SessionNew(QWidget):
         self.run_table = QTableWidget(0, 3, None)
 
         # minor class widgets
-        self.button_open = cw.create_push_button(None, '')
-        self.button_reset = cw.create_push_button(None, '')
-        self.h_tab_grp = cw.create_tab_group(None)
+        self.button_open = cw.create_push_button(self, '')
+        self.button_reset = cw.create_push_button(self, '')
+        self.h_tab_grp = cw.create_tab_group(self)
 
         # initialises the class fields
         self.init_prop_fields()
@@ -320,8 +670,6 @@ class SessionNew(QWidget):
         # sets up the file tab property fields
         p_tmp_folder = {
             'f_input': self.create_para_field(None, 'exptfolder', None),
-            # 'f_run': self.create_para_field('Input Folder Paths', 'checktable', None),
-            # 'f_output': self.create_para_field('Output Folder Path', 'filespec', None),
         }
 
         # updates the class field
@@ -374,6 +722,8 @@ class SessionNew(QWidget):
         self.button_open.setToolTip('Open Session')
         self.button_open.setStyleSheet("border: 1px solid;")
         self.button_open.clicked.connect(self.button_open_session)
+        self.button_open.setDefault(False)
+        self.button_open.setAutoDefault(False)
 
         # reset button properties
         self.button_reset.setIcon(QIcon(icon_path['restart']))
@@ -382,6 +732,8 @@ class SessionNew(QWidget):
         self.button_reset.setToolTip('Reset Form')
         self.button_reset.setStyleSheet("border: 1px solid;")
         self.button_reset.clicked.connect(self.button_reset_session)
+        self.button_reset.setDefault(False)
+        self.button_reset.setAutoDefault(False)
 
         # sets up the slot function
         cb_fcn = functools.partial(self.tab_change)
@@ -410,43 +762,43 @@ class SessionNew(QWidget):
                 t_layout = QFormLayout(obj_tab)
                 t_layout.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
                 t_layout.setSpacing(0)
-                t_layout.setContentsMargins(x_gap, x_gap, x_gap, x_gap)
+                t_layout.setContentsMargins(0, 0, 0, 0)
 
                 # creates the panel object
-                h_panel_tab = QGroupBox()
-                t_layout.addWidget(h_panel_tab)
-
-                # sets the panel properties
-                h_panel_tab.setSizePolicy(QSizePolicy(cf.q_exp, cf.q_exp))
+                h_panel_frame = QFrame()
+                h_panel_frame.setFrameStyle(QFrame.Shadow.Plain | QFrame.Shape.Box)
+                # h_panel_frame.setSizePolicy(QSizePolicy(cf.q_exp, cf.q_max))
+                t_layout.addWidget(h_panel_frame)
 
                 # creates the tab parameter objects
+                ch_fld = deepcopy(ps['ch_fld'])
                 if p_str[0] == 'folder':
-                    layout = QFormLayout(h_panel_tab)
+                    # case is a folder data input
+                    layout = QFormLayout(h_panel_frame)
                     layout.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
-
                     layout.setSpacing(x_gap)
                     layout.setContentsMargins(x_gap, x_gap, x_gap, x_gap)
 
                 else:
-                    layout = QGridLayout(h_panel_tab)
+                    # case is a binary file data input
+                    layout = QGridLayout(h_panel_frame)
                     layout.setColumnStretch(0, 4)
                     layout.setColumnStretch(1, 2)
                     layout.setColumnStretch(2, 3)
 
-                    # layout.setSpacing(0)
-                    # layout.setContentsMargins(x_gap, 0, x_gap, 0)
-
-                    # layout.setRowStretch(0, 3)
-                    # for i in range(1, 7):
-                    #     layout.setRowStretch(i, 2)
-
                 # creates the tab parameter objects
                 self.n_para = 0
-                for ps_t in ps['ch_fld']:
+                for ps_t in ch_fld:
                     self.create_para_object(layout, ps_t, ps['ch_fld'][ps_t], p_str=p_str + [ps_t])
                     self.n_para += 1
 
+                if p_str[0] == 'file':
+                    sp_item = QSpacerItem(100, 75, cf.q_min, cf.q_max)
+                    layout.addWidget(QWidget(), self.n_para, 0, 1, 1)
+                    layout.addItem(sp_item)
+
                 # sets the tab layout
+                h_panel_frame.setLayout(layout)
                 obj_tab.setLayout(t_layout)
 
                 # returns the tab object
@@ -525,6 +877,7 @@ class SessionNew(QWidget):
 
                 # creates the file selection widget
                 self.expt_folder = ExptFolder(self)
+                self.expt_folder.init_class_widgets()
 
                 # adds the widget to the layout
                 if isinstance(layout, QFormLayout):
@@ -554,7 +907,7 @@ class SessionNew(QWidget):
     def create_other_widgets(self):
 
         # sets the table properties
-        self.run_table.setFixedWidth(int(dlg_width/2 - 2 * x_gap + sz_but))
+        self.run_table.setFixedWidth(int(file_width - (2 * x_gap + 2 * sz_but)))
         self.run_table.setFixedHeight(int(self.row_height * self.n_row_table) + 2)
         self.run_table.setHorizontalHeaderLabels(self.col_hdr)
         self.run_table.verticalHeader().setVisible(False)
@@ -691,12 +1044,11 @@ class SessionNew(QWidget):
 
     def button_open_session(self):
 
-        print('Opening Session...')
+        self.open_session.emit()
 
     def button_reset_session(self):
 
         self.expt_folder.button_reset_click()
-
 
     def check_run_table(self, h_chk, i_row):
 
@@ -705,10 +1057,33 @@ class SessionNew(QWidget):
 
     # MISCELLANEOUS FUNCTIONS -------------------------------------------------
 
-    def reset_session_run_table(self, run_name):
+    def get_subject_path(self):
+
+        base_dir_sp = self.expt_folder.s_dir.split(os.sep)
+        return '/'.join(base_dir_sp) + self.expt_folder.sub_path[2:]
+
+    def get_session_run_names(self):
+
+        # retrieves the subject/session dictionary field
+        ex_f = self.expt_folder
+        ses_dict = ex_f.obj_dir.sub_dict[ex_f.sub_path][ex_f.ses_type]
+
+        # returns the run-name list
+        return [x.split('/')[-1] for x in np.array(ex_f.obj_dir.f_pd[0]['path'])[ses_dict]]
+
+    def get_session_type(self):
+
+        return self.expt_folder.ses_type
+
+    def get_format_type(self):
+
+        return self.expt_folder.format_type
+
+    def reset_session_run_table(self, get_run_names):
 
         # clears the table
         self.run_table.clear()
+        run_name = self.get_session_run_names() if get_run_names else []
 
         # resets the table dimensions
         n_run = len(run_name)
@@ -783,8 +1158,8 @@ class ExptFolder(QWidget):
         self.ses_type = None
         self.sub_path = None
         self.s_dir = data_dir
-        self.f_form = self.f_format[0]
-        self.obj_dir = sf.DirectoryCheck(self.s_dir, self.f_form)
+        self.format_type = self.f_format[0]
+        self.obj_dir = sf.DirectoryCheck(self.s_dir, self.format_type)
 
         # class layout setup
         self.h_tab = []
@@ -798,7 +1173,7 @@ class ExptFolder(QWidget):
         self.para_group = QWidget(self)
         self.tab_group = cw.create_tab_group(None)
         self.file_spec = QFileSpec(None, 'Parent Search Folder', file_path=self.s_dir, name='data_folder')
-        self.f_type = QLabelCombo(None, 'Recording Format:', self.f_format, self.f_form, font_lbl)
+        self.f_type = QLabelCombo(None, 'Recording Format:', self.f_format, self.format_type, font_lbl)
         self.s_type = QLabelCombo(None, 'Session Name:', [], [], font_lbl)
 
         # boolean class fields
@@ -806,7 +1181,6 @@ class ExptFolder(QWidget):
 
         # initialises the class fields
         self.init_class_fields()
-        self.init_class_widgets()
 
         # # sets the widget styling
         # self.set_styling()
@@ -864,7 +1238,6 @@ class ExptFolder(QWidget):
         # creates the tab widget
         obj_tab = QWidget()
         obj_tab.setObjectName(tab_name)
-        # h_folder_tree.setStyleSheet("border: 1px solid;")
 
         # creates the tab widget layout
         t_layout = QVBoxLayout(obj_tab)
@@ -939,7 +1312,7 @@ class ExptFolder(QWidget):
                     # clears the session/run table widgets
                     self.is_updating = True
                     self.s_type.obj_cbox.clear()
-                    self.h_root.reset_session_run_table([])
+                    self.h_root.reset_session_run_table(False)
                     self.is_updating = False
 
             # updates the enabled properties
@@ -953,8 +1326,8 @@ class ExptFolder(QWidget):
             return
 
         # updates the format string
-        self.f_form = h_obj.currentText()
-        self.obj_dir.set_format(self.f_form)
+        self.format_type = h_obj.currentText()
+        self.obj_dir.set_format(self.format_type)
 
         # resets the folder trees
         self.setup_folder_tree_views()
@@ -1011,11 +1384,9 @@ class ExptFolder(QWidget):
 
         # updates the session type
         self.ses_type = self.s_type.current_text()
-        ses_dict = self.obj_dir.sub_dict[self.sub_path][self.ses_type]
 
         # resets the session run table
-        run_name = [x.split('/')[-1] for x in np.array(self.obj_dir.f_pd[0]['path'])[ses_dict]]
-        self.h_root.reset_session_run_table(run_name)
+        self.h_root.reset_session_run_table(True)
 
         # updates the tree highlight (if combobox was update)
         if not isinstance(item, QStandardItem):
@@ -1028,7 +1399,8 @@ class ExptFolder(QWidget):
 
     # MISCELLANEOUS FUNCTIONS ---------------------------------------------
 
-    def reset_selected_subject(self, obj_tree, sub_path):
+    @staticmethod
+    def reset_selected_subject(obj_tree, sub_path):
 
         # updates the subject path
         obj_tree.tree_double_clicked(obj_tree.t_dict[sub_path])

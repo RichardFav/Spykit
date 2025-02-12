@@ -1260,20 +1260,6 @@ class QPlotWidget(QWidget):
         # sets up the
         self.obj_plot_gbox.mousePressEvent = self.click_plot_region
 
-    def click_plot_region(self, *_):
-
-        if self.region_clicked:
-            self.region_clicked = False
-            return
-
-        if self.h_root.get_trace_object() != self.parent_tr:
-            # if the selected trace index doesn't match the plot widget, then update
-            self.h_root.change_selected_plot(self.parent_tr)
-
-            # resets the s
-            self.obj_plot_gbox.setObjectName('selected')
-            self.obj_plot_gbox.setStyleSheet(self.obj_plot_gbox.styleSheet())
-
     def setup_plot_buttons(self):
 
         # initialisations
@@ -1474,9 +1460,19 @@ class QPlotWidget(QWidget):
 
     # WIDGET EVENT FUNCTIONS -------------------------------------------
 
-    def button_plot_click(self):
+    def click_plot_region(self, *_):
 
-        cf.show_error('Finish Me!')
+        if self.region_clicked:
+            self.region_clicked = False
+            return
+
+        if self.h_root.get_trace_object() != self.parent_tr:
+            # if the selected trace index doesn't match the plot widget, then update
+            self.h_root.change_selected_plot(self.parent_tr)
+
+            # resets the s
+            self.obj_plot_gbox.setObjectName('selected')
+            self.obj_plot_gbox.setStyleSheet(self.obj_plot_gbox.styleSheet())
 
     def region_mouse_click(self, evnt):
 
@@ -1497,6 +1493,10 @@ class QPlotWidget(QWidget):
 
         # runs the mouse-clicked event
         self.mp_event_release(evnt)
+
+    def button_plot_click(self):
+
+        cf.show_error('Finish Me!')
 
     def update_trace(self, p_str):
 
