@@ -98,8 +98,8 @@ class ProbePlot(pg.GraphicsObject):
         p_sz = [np.diff(x_lim_s), np.diff(y_lim_s)]
         p_lim = QRectF(self.x_lim_full[0], self.y_lim_full[0], self.width, self.height)
 
-        self.roi = pg.RectROI(p_0, p_sz, pen=self.pen, hoverPen=self.pen_h,
-                              handlePen=self.pen, handleHoverPen=self.pen_h, maxBounds=p_lim)
+        self.roi = pg.ROI(p_0, p_sz, pen=self.pen, hoverPen=self.pen_h,
+                          handlePen=self.pen, handleHoverPen=self.pen_h, maxBounds=p_lim)
         self.roi.addTranslateHandle([0, 0])
         self.roi.addScaleHandle([1, 1], [0, 0])
         self.roi.addScaleHandle([0, 1], [1, 0])

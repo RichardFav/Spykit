@@ -22,7 +22,7 @@ from PyQt6.QtWidgets import (QDialog, QHBoxLayout, QVBoxLayout, QWidget, QFormLa
                              QGroupBox, QComboBox, QCheckBox, QLineEdit, QTableWidget, QTableWidgetItem, QFrame,
                              QSpacerItem)
 from PyQt6.QtGui import QFont, QIcon, QStandardItem, QKeySequence
-from PyQt6.QtCore import Qt, QSize, pyqtSignal
+from PyQt6.QtCore import Qt, QSize, QSizeF, pyqtSignal
 
 # testing modules
 import pyqtgraph as pg
@@ -104,17 +104,11 @@ class OpenSession(QDialog):
         self.file.setFixedWidth(file_width)
         self.file.session_loaded.connect(self.post_session_load)
 
-        # creates a dummy button
-        dummy_button = cw.create_push_button(None, '')
-        dummy_button.setDefault(True)
-        dummy_button.setAutoDefault(True)
-
         # disables the probe info panel
         self.probe.setEnabled(False)
 
     def post_session_load(self):
 
-        #
         self.probe.setEnabled(True)
         self.probe.update_probe_info()
 
@@ -311,6 +305,7 @@ class SessionProbe(QWidget):
         self.root = self.parent()
 
         # boolean class fields
+        self.has_plot = False
         self.is_updating = False
 
         # widget setup
@@ -354,6 +349,12 @@ class SessionProbe(QWidget):
         self.main_layout.setSpacing(0)
         self.main_layout.setContentsMargins(x_gap_h, x_gap, x_gap, x_gap)
         self.main_layout.addWidget(self.group_panel)
+
+        self.main_plt_item.hideButtons()
+        self.sub_plt_item.hideButtons()
+
+        # self.main_plt_widget.setAspectLocked()
+        # self.sub_plt_widget.setAspectLocked()
 
         # creates the children objects for the current parent object
         self.form_layout.addWidget(self.info_frame, 0, 0, 1, 1)
@@ -448,7 +449,9 @@ class SessionProbe(QWidget):
     def update_probe_info(self):
 
         # removes any existing plot objects
-        if self.plt_probe_main is not None:
+        if self.has_plot:
+            # removes the plot widgets
+            self.plt_probe_main.roi.deleteLater()
             self.main_plt_widget.removeItem(self.plt_probe_main)
             self.sub_plt_widget.removeItem(self.plt_probe_sub)
 
@@ -477,6 +480,7 @@ class SessionProbe(QWidget):
             h.set_text('%g' % p_val)
 
         # resets the manual update flag
+        self.has_plot = True
         self.is_updating = False
 
     def edit_dim_update(self, h_edit):
@@ -497,16 +501,6 @@ class SessionProbe(QWidget):
             self.is_updating = True
             self.set_dim_value(p_str, chk_val[0])
             self.is_updating = False
-
-            # # resets the ROI position
-            # roi_pos = [self.get_dim_value(x) for x in range(4)]
-            # if p_str in ['left', 'bottom']:
-            #     # case is updating the left/bottom roi location
-            #     self.plt_probe_main.roi.setPos(roi_pos[0], roi_pos[1])
-            #
-            # else:
-            #     # case is updating the roi width/height
-            #     self.plt_probe_main.roi.setSize(roi_pos[2], roi_pos[3])
 
         else:
             # otherwise, revert to the previous valid value
@@ -594,12 +588,12 @@ class SessionProbe(QWidget):
             case i_dim if i_dim in ['width', 2]:
                 # case is the box width
                 pp_s.x_lim[1] = pp_s.x_lim[0] + p_val
-                pp_m.roi.setSize(np.diff(pp_s.x_lim), np.diff(pp_s.y_lim))
+                pp_m.roi.setSize(QSizeF(np.diff(pp_s.x_lim)[0], np.diff(pp_s.y_lim)[0]))
 
             case i_dim if i_dim in ['height', 3]:
                 # case is the box height
                 pp_s.y_lim[1] = pp_s.y_lim[0] + p_val
-                pp_m.roi.setSize(np.diff(pp_s.x_lim), np.diff(pp_s.y_lim))
+                pp_m.roi.setSize(QSizeF(np.diff(pp_s.x_lim)[0], np.diff(pp_s.y_lim)[0]))
 
 # SESSION NEW WIDGET ---------------------------------------------------------------------------------------------------
 
