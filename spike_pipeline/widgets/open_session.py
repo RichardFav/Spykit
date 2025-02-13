@@ -20,7 +20,7 @@ from spike_pipeline.plotting.probe import ProbePlot
 # pyqt6 module import
 from PyQt6.QtWidgets import (QDialog, QHBoxLayout, QVBoxLayout, QWidget, QFormLayout, QSizePolicy, QGridLayout,
                              QGroupBox, QComboBox, QCheckBox, QLineEdit, QTableWidget, QTableWidgetItem, QFrame,
-                             QSpacerItem, QTableView, QHeaderView)
+                             QSpacerItem, QTableView, QMainWindow, QHeaderView)
 from PyQt6.QtGui import QFont, QIcon, QStandardItem, QKeySequence
 from PyQt6.QtCore import Qt, QSize, QSizeF, pyqtSignal
 
@@ -63,12 +63,14 @@ icon_path = {
 # OPEN SESSION WIDGET --------------------------------------------------------------------------------------------------
 
 
-class OpenSession(QDialog):
+class OpenSession(QMainWindow):
     def __init__(self, parent=None):
         super(OpenSession, self).__init__(parent)
 
         # class widget setup
         self.main_layout = QGridLayout()
+        self.main_widget = QWidget(self)
+        self.frame_layout = QGridLayout()
         self.file = SessionFile(self)
         self.probe = SessionProbe(self)
 
@@ -79,6 +81,9 @@ class OpenSession(QDialog):
         # field initialisation
         self.setup_dialog()
         self.init_class_fields()
+
+        # sets the central widget
+        self.setCentralWidget(self.main_widget)
 
         # opens the dialog
         self.show()
@@ -98,11 +103,16 @@ class OpenSession(QDialog):
         self.main_layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(self.main_layout)
 
+        # sets the main widget layout
+        self.main_widget.setLayout(self.frame_layout)
+
         # adds the session information widgets
-        self.main_layout.addWidget(self.file, 0, 0, 1, 1)
-        self.main_layout.addWidget(self.probe, 0, 1, 1, 1)
-        self.main_layout.setColumnStretch(0, file_width)
-        self.main_layout.setColumnStretch(1, 0)
+        self.frame_layout.setSpacing(0)
+        self.frame_layout.setContentsMargins(0, 0, 0, 0)
+        self.frame_layout.addWidget(self.file, 0, 0, 1, 1)
+        self.frame_layout.addWidget(self.probe, 0, 1, 1, 1)
+        self.frame_layout.setColumnStretch(0, file_width)
+        self.frame_layout.setColumnStretch(1, 0)
 
         # sets the info tab width
         self.file.setFixedWidth(file_width)
@@ -341,6 +351,18 @@ class SessionProbe(QWidget):
                 'Sampling Freq', 'Shank Count',
                 'Channel Count', 'Spatial Units']
 
+    # widget stylesheets
+    table_style = """
+        QTableView {
+            font: Arial 6px;        
+            border : 1px solid;
+        }    
+        QHeaderView {
+            font: Arial 6px;
+            font-weight: 1000;
+        }
+    """
+
     def __init__(self, parent=None):
         super(SessionProbe, self).__init__(parent)
 
@@ -476,8 +498,9 @@ class SessionProbe(QWidget):
         self.channel_layout.addWidget(self.channel_table)
 
         # sets the table column event function
-        self.channel_table.setStyleSheet("QTableView{border : 1px solid}")
+        self.channel_table.setStyleSheet(self.table_style)
         self.table_col.item_clicked.connect(self.check_table_header)
+
 
     def setup_plot_frame(self):
 
@@ -546,10 +569,10 @@ class SessionProbe(QWidget):
         self.edit_dim[1].set_text('%g' % p_pos[1])
         self.edit_dim[2].set_text('%g' % p_pos[2].x())
         self.edit_dim[3].set_text('%g' % p_pos[2].y())
-        self.is_updating = False
 
         # resets the axis limits
         self.plt_probe_sub.reset_axes_limits(False)
+        self.is_updating = False
 
     def edit_dim_update(self, h_edit):
 
@@ -658,6 +681,7 @@ class SessionProbe(QWidget):
 
         # clears the table field
         self.channel_table.reset()
+        self.table_col.clear()
 
         # clears the probe plots
         self.clear_probe_plots()
@@ -731,6 +755,7 @@ class SessionProbe(QWidget):
             self.channel_table.setColumnHidden(i, not is_show)
 
         self.channel_table.resizeColumnsToContents()
+        self.channel_table.resizeRowsToContents()
 
         # INFORMATION FIELD UPDATE ----------------------------------------
 
@@ -889,7 +914,6 @@ class SessionNew(QWidget):
         # sets the widget layout properties
         self.main_layout.setSpacing(0)
         self.main_layout.setContentsMargins(0, 0, 0, 0)
-        # self.main_layout.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
         self.main_layout.addRow(self.h_tab_grp)
         self.main_layout.addRow(self.run_table, self.button_group)
 
@@ -1534,8 +1558,11 @@ class ExptFolder(QWidget):
         if file_dlg.exec() == QDialog.DialogCode.Accepted:
             # if the user accepted, then update the parameter/widget fields
             file_info = file_dlg.selectedFiles()
-            self.obj_dir.set_path(Path(file_info[0]))
-            self.file_spec.set_text(file_info[0])
+
+            # field reset
+            self.s_dir = file_info[0]
+            self.obj_dir.set_path(Path(self.s_dir))
+            self.file_spec.set_text(self.s_dir)
 
             # resets the folder trees
             self.setup_folder_tree_views()

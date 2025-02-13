@@ -1022,6 +1022,7 @@ class QFolderTree(QWidget):
 
         return r.split(text)[0] + r.findall(text)[0]
 
+
 # ----------------------------------------------------------------------------------------------------------------------
 
 
@@ -1419,6 +1420,7 @@ class QLabelCombo(QWidget):
 
 # ----------------------------------------------------------------------------------------------------------------------
 
+
 class QCheckCombo(QComboBox):
     # pyqtsignal functions
     item_clicked = pyqtSignal(QStandardItem)
@@ -1501,6 +1503,16 @@ class QCheckCombo(QComboBox):
         painter.drawComplexControl(QStyle.ComplexControl.CC_ComboBox, opt)
         painter.drawControl(QStyle.ControlElement.CE_ComboBoxLabel, opt)
 
+    def clear(self):
+
+        # removes all items from the combobox
+        for i in range(self.n_item):
+            self.removeItem(0)
+
+        # resets the other fields
+        self.n_item = 0
+        self.n_sel = 0
+
 # ----------------------------------------------------------------------------------------------------------------------
 
 
@@ -1548,6 +1560,10 @@ class QLabelCheckCombo(QWidget):
     def check_update(self, item):
 
         self.item_clicked.emit(item)
+
+    def clear(self):
+
+        self.h_combo.clear()
 
 # ----------------------------------------------------------------------------------------------------------------------
 

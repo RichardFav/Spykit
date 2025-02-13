@@ -132,7 +132,9 @@ class ProbePlot(GraphicsObject):
         vb = self.getViewBox()
         vb.setXRange(_x_lim[0], _x_lim[1])
         vb.setYRange(_y_lim[0], _y_lim[1])
-        vb.setLimits(xMin=_x_lim[0], xMax=_x_lim[1], yMin=_y_lim[0], yMax=_y_lim[1])
+
+        if is_full:
+            vb.setLimits(xMin=_x_lim[0], xMax=_x_lim[1], yMin=_y_lim[0], yMax=_y_lim[1])
 
     def get_axes_limits(self, probe):
 
