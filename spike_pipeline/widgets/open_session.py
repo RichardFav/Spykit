@@ -13,14 +13,14 @@ import spikewrap as sw
 import spike_pipeline.common.common_func as cf
 import spike_pipeline.common.common_widget as cw
 import spike_pipeline.common.spikeinterface_func as sf
-from spike_pipeline.common.common_widget import (QLabelEdit, QFileSpec, QLabelCombo, QFolderTree)
+from spike_pipeline.common.common_widget import (QLabelEdit, QFileSpec, QLabelCombo, QFolderTree, QLabelCheckCombo)
 
 from spike_pipeline.plotting.probe import ProbePlot
 
 # pyqt6 module import
 from PyQt6.QtWidgets import (QDialog, QHBoxLayout, QVBoxLayout, QWidget, QFormLayout, QSizePolicy, QGridLayout,
                              QGroupBox, QComboBox, QCheckBox, QLineEdit, QTableWidget, QTableWidgetItem, QFrame,
-                             QSpacerItem)
+                             QSpacerItem, QTableView, QHeaderView)
 from PyQt6.QtGui import QFont, QIcon, QStandardItem, QKeySequence
 from PyQt6.QtCore import Qt, QSize, QSizeF, pyqtSignal
 
@@ -34,8 +34,9 @@ x_gap = 5
 x_gap_h = 2
 sz_but = 25
 dlg_height = 580
-dlg_width = 1100
+dlg_width = 1200
 file_width = 480
+
 # dlg_height = 500
 
 # font objects
@@ -67,12 +68,13 @@ class OpenSession(QDialog):
         super(OpenSession, self).__init__(parent)
 
         # class widget setup
-        self.main_layout = QHBoxLayout()
+        self.main_layout = QGridLayout()
         self.file = SessionFile(self)
         self.probe = SessionProbe(self)
 
         # other class fields
         self.session = None
+        self.probe_width = dlg_width - (file_width + 2 * x_gap)
 
         # field initialisation
         self.setup_dialog()
@@ -87,7 +89,7 @@ class OpenSession(QDialog):
 
         # creates the dialog window
         self.setWindowTitle("Session Information")
-        self.setFixedSize(dlg_width, dlg_height)
+        self.setFixedHeight(dlg_height)
 
     def init_class_fields(self):
 
@@ -96,25 +98,56 @@ class OpenSession(QDialog):
         self.main_layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(self.main_layout)
 
-        # adds the session information widget
-        self.main_layout.addWidget(self.file)
-        self.main_layout.addWidget(self.probe)
+        # adds the session information widgets
+        self.main_layout.addWidget(self.file, 0, 0, 1, 1)
+        self.main_layout.addWidget(self.probe, 0, 1, 1, 1)
+        self.main_layout.setColumnStretch(0, file_width)
+        self.main_layout.setColumnStretch(1, 0)
 
         # sets the info tab width
         self.file.setFixedWidth(file_width)
-        self.file.session_loaded.connect(self.post_session_load)
+        self.file.session_loaded.connect(self.session_load)
+        self.file.session_reset.connect(self.session_reset)
 
         # disables the probe info panel
+        self.probe.setVisible(False)
         self.probe.setEnabled(False)
 
-    def post_session_load(self):
+        # reset the dialog width
+        self.reset_dialog_width(False)
 
-        self.probe.setEnabled(True)
+    def session_load(self):
+
+        # updates the probe properties
         self.probe.update_probe_info()
+        self.probe.setEnabled(True)
+        self.probe.setVisible(True)
+
+        # resets the dialog width
+        self.reset_dialog_width(True)
+
+    def session_reset(self):
+
+        if self.probe.has_probe:
+            self.probe.clear_probe_frame()
+            self.reset_dialog_width(False)
+
+    def reset_dialog_width(self, is_open):
+
+        p_width = self.probe_width if is_open else 0
+
+        self.setFixedWidth(p_width + file_width)
+        self.main_layout.setColumnStretch(1, p_width)
 
     def get_session_run(self, i_run, r_name):
 
-        return self.file.session._runs[i_run]._raw[r_name].get_probe()
+        rec_probe = self.file.session._runs[i_run]._raw[r_name]
+        return rec_probe.get_probe(), rec_probe
+
+    def get_session_files(self):
+
+        exp_f = self.file.new_session.expt_folder
+        return exp_f.sub_path.split('/')[-1], exp_f.ses_type
 
     def keyPressEvent(self, evnt) -> None:
 
@@ -122,6 +155,7 @@ class OpenSession(QDialog):
             self.reject()
         else:
             evnt.ignore()
+
 
 # SESSION FILE WIDGET --------------------------------------------------------------------------------------------------
 
@@ -131,6 +165,7 @@ class SessionFile(QWidget):
     grp_name = "Recording Data"
 
     # pyqtsignal functions
+    session_reset = pyqtSignal()
     session_loaded = pyqtSignal()
 
     def __init__(self, parent=None):
@@ -189,6 +224,7 @@ class SessionFile(QWidget):
 
         # sets the new session widget properties
         self.new_session.open_session.connect(self.load_session)
+        self.new_session.reset_session.connect(self.reset_session)
 
         # resets the widget size policies
         self.setSizePolicy(QSizePolicy(cf.q_exp, cf.q_exp))
@@ -255,6 +291,11 @@ class SessionFile(QWidget):
         # emits the signal function
         self.session_loaded.emit()
 
+    def reset_session(self):
+
+        # emits the signal function
+        self.session_reset.emit()
+
     # MISCELLANEOUS FUNCTIONS -------------------------------------------------
 
     def set_styling(self):
@@ -292,7 +333,13 @@ class SessionProbe(QWidget):
     grp_name = "Session Probe"
 
     # array class fields
-    lbl_str = ['Left:', 'Bottom:', 'Width:', 'Height:']
+    dim_lbl = ['Left:', 'Bottom:', 'Width:', 'Height:']
+    def_col = ['contact_ids', 'shank_ids', 'device_channel_indices']
+    info_lbl = ['Subject Name', 'Title',
+                'Session Name', 'Manufacturer',
+                'Frame Count', 'Model',
+                'Sampling Freq', 'Shank Count',
+                'Channel Count', 'Spatial Units']
 
     def __init__(self, parent=None):
         super(SessionProbe, self).__init__(parent)
@@ -300,29 +347,40 @@ class SessionProbe(QWidget):
         # field retrieval
         self.p = None
         self.vb = None
+        self.p_rec = None
+        self.p_dframe = None
         self.plt_probe_sub = None
         self.plt_probe_main = None
         self.root = self.parent()
 
         # boolean class fields
         self.has_plot = False
+        self.has_probe = False
         self.is_updating = False
 
         # widget setup
         self.form_layout = QGridLayout()
         self.main_layout = QVBoxLayout()
-        self.info_layout = QFormLayout()
+        self.info_layout = QGridLayout()
         self.channel_layout = QVBoxLayout()
         self.plot_layout = QGridLayout()
         self.group_panel = QGroupBox(self.grp_name.upper())
 
         # panel widget setup
-        self.edit_dim = []
         self.info_frame = QFrame()
         self.channel_frame = QFrame()
         self.plot_frame = QFrame()
 
+        # session/probe information fields
+        self.info_text = []
+        self.info_lbl_dict = {}
+
+        # channel information widgets
+        self.table_col = QLabelCheckCombo(None, lbl='Information Table Columns:', font=font_lbl)
+        self.channel_table = QTableView(None)
+
         # plot frame widgets
+        self.edit_dim = []
         self.plot_frame_prop = QFrame()
         self.plot_frame_main = QFrame()
         self.plot_frame_sub = QFrame()
@@ -343,6 +401,8 @@ class SessionProbe(QWidget):
         # initialises the class fields
         self.init_class_fields()
 
+    # CLASS INITIALISATION FUNCTIONS ------------------------------------
+
     def init_class_fields(self):
 
         # creates the panel objects
@@ -360,10 +420,10 @@ class SessionProbe(QWidget):
         self.form_layout.addWidget(self.info_frame, 0, 0, 1, 1)
         self.form_layout.addWidget(self.channel_frame, 1, 0, 1, 1)
         self.form_layout.addWidget(self.plot_frame, 0, 1, 2, 1)
-        self.form_layout.setColumnStretch(0, 55)
-        self.form_layout.setColumnStretch(1, 45)
+        self.form_layout.setColumnStretch(0, 3)
+        self.form_layout.setColumnStretch(1, 2)
         self.form_layout.setRowStretch(0, 1)
-        self.form_layout.setRowStretch(1, 2)
+        self.form_layout.setRowStretch(1, 4)
 
         # sets the final layout
         self.group_panel.setLayout(self.form_layout)
@@ -386,15 +446,38 @@ class SessionProbe(QWidget):
         # sets the frame properties
         self.info_frame.setLayout(self.info_layout)
         self.info_frame.setFrameStyle(QFrame.Shadow.Plain | QFrame.Shape.Box)
+        self.info_layout.setSpacing(x_gap)
 
-        self.channel_layout.addWidget(QWidget())
+        # creates the information label/text combo widgets
+        for i, d in enumerate(self.info_lbl):
+            # creates the text label object
+            lbl_str = '{}:'.format(d)
+            lbl = cw.QLabelText(None, lbl_str, "", font_lbl=font_lbl, name=d)
+            lbl.setContentsMargins(0, 0, 0, 0)
+
+            # adds the widget to the layout
+            i_r, i_c = int(i / 2), i % 2
+            self.info_layout.addWidget(lbl.obj_lbl, i_r, 2 * i_c, 1, 1)
+            self.info_layout.addWidget(lbl.obj_txt, i_r, 2 * i_c + 1, 1, 1)
+
+            # stores the text widget
+            self.info_text.append(lbl)
 
     def setup_channel_frame(self):
 
+        # sets the channel frame properties
         self.channel_frame.setFrameStyle(QFrame.Shadow.Plain | QFrame.Shape.Box)
         self.channel_frame.setLayout(self.channel_layout)
 
-        self.channel_layout.addWidget(QWidget())
+        # sets the channel information table properties
+        self.channel_layout.setSpacing(x_gap)
+        self.channel_layout.setContentsMargins(x_gap, x_gap, x_gap, x_gap)
+        self.channel_layout.addWidget(self.table_col)
+        self.channel_layout.addWidget(self.channel_table)
+
+        # sets the table column event function
+        self.channel_table.setStyleSheet("QTableView{border : 1px solid}")
+        self.table_col.item_clicked.connect(self.check_table_header)
 
     def setup_plot_frame(self):
 
@@ -415,7 +498,8 @@ class SessionProbe(QWidget):
         self.plot_frame_prop.setLayout(self.prop_frame_layout)
         self.prop_frame_layout.setSpacing(x_gap)
 
-        for i, ls in enumerate(self.lbl_str):
+        # creates the roi dimension QLineEdit widgets
+        for i, ls in enumerate(self.dim_lbl):
             # row/column index calculations
             iy, ix = int(np.floor(i / 2)), i % 2
 
@@ -432,7 +516,6 @@ class SessionProbe(QWidget):
         # main plot frame properties
         self.plot_frame_main.setFrameStyle(QFrame.Shadow.Plain | QFrame.Shape.Box)
         self.plot_frame_main.setLayout(self.plot_main_layout)
-        self.plot_main_layout.addWidget(self.main_plt_widget)
         self.main_plt_item.hideAxis('left')
         self.main_plt_item.hideAxis('bottom')
         self.main_plt_item.setDefaultPadding(0.01)
@@ -440,48 +523,33 @@ class SessionProbe(QWidget):
         # plot inset frame properties
         self.plot_frame_sub.setFrameStyle(QFrame.Shadow.Plain | QFrame.Shape.Box)
         self.plot_frame_sub.setLayout(self.plot_sub_layout)
-        self.plot_sub_layout.addWidget(self.sub_plt_widget)
         self.sub_plt_item.setMouseEnabled(x=False, y=False)
         self.sub_plt_item.hideAxis('left')
         self.sub_plt_item.hideAxis('bottom')
         self.sub_plt_item.setDefaultPadding(0.01)
 
-    def update_probe_info(self):
+    # CLASS EVENT FUNCTIONS ---------------------------------------------
 
-        # removes any existing plot objects
-        if self.has_plot:
-            # removes the plot widgets
-            self.plt_probe_main.roi.deleteLater()
-            self.main_plt_widget.removeItem(self.plt_probe_main)
-            self.sub_plt_widget.removeItem(self.plt_probe_sub)
+    def main_roi_moved(self, p_pos):
 
-        # creates the plot probe
-        self.p = self.root.get_session_run(0, 'grouped')
-        self.plt_probe_main = ProbePlot(self.main_plt_widget, self.p)
-        self.plt_probe_sub = ProbePlot(self.sub_plt_widget, self.p)
+        # updates the x-axis limits
+        self.plt_probe_sub.x_lim[0] = p_pos[0]
+        self.plt_probe_sub.x_lim[1] = self.plt_probe_sub.x_lim[0] + p_pos[2].x()
 
-        # creates the main plot figure
-        self.main_plt_widget.addItem(self.plt_probe_main)
-        self.plt_probe_main.update_roi.connect(self.main_roi_moved)
-        self.plt_probe_main.reset_axes_limits(True)
+        # updates the y-axis limits
+        self.plt_probe_sub.y_lim[0] = p_pos[1]
+        self.plt_probe_sub.y_lim[1] = self.plt_probe_sub.y_lim[0] + p_pos[2].y()
 
-        # creates the inset figure
-        self.sub_plt_widget.addItem(self.plt_probe_sub)
-        self.plt_probe_sub.reset_axes_limits(False)
-        self.vb = self.plt_probe_sub.getViewBox()
-
-        # create the main image ROI
-        self.plt_probe_main.create_inset_roi(self.plt_probe_sub.x_lim, self.plt_probe_sub.y_lim)
-
-        # resets the dimension editbox string
+        # updates the editboxes
         self.is_updating = True
-        for i, h in enumerate(self.edit_dim):
-            p_val = self.get_dim_value(i)
-            h.set_text('%g' % p_val)
-
-        # resets the manual update flag
-        self.has_plot = True
+        self.edit_dim[0].set_text('%g' % p_pos[0])
+        self.edit_dim[1].set_text('%g' % p_pos[1])
+        self.edit_dim[2].set_text('%g' % p_pos[2].x())
+        self.edit_dim[3].set_text('%g' % p_pos[2].y())
         self.is_updating = False
+
+        # resets the axis limits
+        self.plt_probe_sub.reset_axes_limits(False)
 
     def edit_dim_update(self, h_edit):
 
@@ -506,26 +574,7 @@ class SessionProbe(QWidget):
             # otherwise, revert to the previous valid value
             h_edit.setText('%g' % self.get_dim_value(p_str))
 
-    def main_roi_moved(self, p_pos):
-
-        # updates the x-axis limits
-        self.plt_probe_sub.x_lim[0] = p_pos[0]
-        self.plt_probe_sub.x_lim[1] = self.plt_probe_sub.x_lim[0] + p_pos[2].x()
-
-        # updates the y-axis limits
-        self.plt_probe_sub.y_lim[0] = p_pos[1]
-        self.plt_probe_sub.y_lim[1] = self.plt_probe_sub.y_lim[0] + p_pos[2].y()
-
-        # updates the editboxes
-        self.is_updating = True
-        self.edit_dim[0].set_text('%g' % p_pos[0])
-        self.edit_dim[1].set_text('%g' % p_pos[1])
-        self.edit_dim[2].set_text('%g' % p_pos[2].x())
-        self.edit_dim[3].set_text('%g' % p_pos[2].y())
-        self.is_updating = False
-
-        # resets the axis limits
-        self.plt_probe_sub.reset_axes_limits(False)
+    # ROI DIMENSION FUNCTIONS --------------------------------------------
 
     def get_dim_limit(self, i_dim):
 
@@ -595,6 +644,144 @@ class SessionProbe(QWidget):
                 pp_s.y_lim[1] = pp_s.y_lim[0] + p_val
                 pp_m.roi.setSize(QSizeF(np.diff(pp_s.x_lim)[0], np.diff(pp_s.y_lim)[0]))
 
+    # MISCELLANEOUS FUNCTIONS --------------------------------------------
+
+    def clear_probe_frame(self):
+
+        # resets the boolean flags
+        self.has_plot = False
+        self.has_probe = False
+        self.is_updating = True
+
+        # clears the information fields
+        [x.set_label("") for x in self.info_text]
+
+        # clears the table field
+        self.channel_table.reset()
+
+        # clears the probe plots
+        self.clear_probe_plots()
+        self.plot_sub_layout.removeWidget(self.sub_plt_widget)
+        self.plot_main_layout.removeWidget(self.main_plt_widget)
+        [x.set_text("") for x in self.edit_dim]
+
+        # disables the widget
+        self.setEnabled(False)
+        self.setVisible(False)
+
+        # resets the update flag
+        self.is_updating = False
+
+    def clear_probe_plots(self):
+
+        self.plt_probe_main.roi.deleteLater()
+        self.main_plt_widget.removeItem(self.plt_probe_main)
+        self.sub_plt_widget.removeItem(self.plt_probe_sub)
+
+    def update_probe_info(self):
+
+        # removes any existing plot objects
+        if self.has_plot:
+            # removes the plot widgets
+            self.clear_probe_plots()
+
+        else:
+            self.plot_sub_layout.addWidget(self.sub_plt_widget)
+            self.plot_main_layout.addWidget(self.main_plt_widget)
+
+        # probe information retrieval
+        self.p, self.p_rec = self.root.get_session_run(0, 'grouped')
+        self.p_dframe = self.p.to_dataframe(complete=True)
+
+        # PROBE PLOT SETUP ----------------------------------------------
+
+        # creates the plot probe
+        self.plt_probe_main = ProbePlot(self.main_plt_widget, self.p)
+        self.plt_probe_sub = ProbePlot(self.sub_plt_widget, self.p)
+
+        # creates the main plot figure
+        self.main_plt_widget.addItem(self.plt_probe_main)
+        self.plt_probe_main.update_roi.connect(self.main_roi_moved)
+        self.plt_probe_main.reset_axes_limits(True)
+
+        # creates the inset figure
+        self.sub_plt_widget.addItem(self.plt_probe_sub)
+        self.plt_probe_sub.reset_axes_limits(False)
+        self.vb = self.plt_probe_sub.getViewBox()
+
+        # create the main image ROI
+        self.plt_probe_main.create_inset_roi(self.plt_probe_sub.x_lim, self.plt_probe_sub.y_lim)
+
+        # resets the dimension editbox string
+        self.is_updating = True
+        for i, h in enumerate(self.edit_dim):
+            p_val = self.get_dim_value(i)
+            h.set_text('%g' % p_val)
+
+        # CHANNEL INFORMATION UPDATE --------------------------------------
+
+        # creates the table model
+        t_model = cw.PandasModel(self.p_dframe)
+        self.channel_table.setModel(t_model)
+
+        # adds the items to the combobox
+        for i, cl in enumerate(list(self.p_dframe)):
+            is_show = cl in self.def_col
+            self.table_col.add_item(cl, is_show)
+            self.channel_table.setColumnHidden(i, not is_show)
+
+        self.channel_table.resizeColumnsToContents()
+
+        # INFORMATION FIELD UPDATE ----------------------------------------
+
+        # retrieves the session files
+        sub_name, ses_name = self.root.get_session_files()
+
+        # information label dictionary
+        self.info_lbl_dict = {
+            'Subject Name': sub_name,
+            'Session Name': ses_name,
+            'Frame Count': self.p_rec.get_num_frames(),
+            'Sampling Freq': self.p_rec.get_sampling_frequency(),
+            'Channel Count': self.p.get_contact_count(),
+            'Title': self.p.get_title(),
+            'Manufacturer': self.p.manufacturer,
+            'Model': self.p.model_name,
+            'Shank Count': self.p.get_shank_count(),
+            'Spatial Units': self.p.si_units,
+        }
+
+        # resets the information labels
+        for h in self.info_text:
+            # sets up the label string
+            val_lbl = self.info_lbl_dict[h.objectName()]
+            if val_lbl is None:
+                # case is the field is empty
+                val_str = 'N/A'
+
+            elif isinstance(val_lbl, str):
+                # case is the property is a string
+                val_str = val_lbl
+
+            else:
+                # case is the property is numeric
+                val_str = '%g' % val_lbl
+
+            # updates the label string
+            h.set_label(val_str)
+
+        # resets the manual update flag
+        self.has_plot = True
+        self.has_probe = True
+        self.is_updating = False
+
+    def check_table_header(self, item):
+
+        is_sel = item.checkState() == Qt.CheckState.Checked
+        i_col = list(self.p_dframe.columns).index(item.text())
+        self.channel_table.setColumnHidden(i_col, not is_sel)
+        self.channel_table.resizeColumnToContents(i_col)
+
 # SESSION NEW WIDGET ---------------------------------------------------------------------------------------------------
 
 
@@ -623,6 +810,7 @@ class SessionNew(QWidget):
 
     # pyqtsignal signal functions
     open_session = pyqtSignal()
+    reset_session = pyqtSignal()
 
     def __init__(self, parent=None):
         super(SessionNew, self).__init__(parent)
@@ -638,6 +826,9 @@ class SessionNew(QWidget):
         # string class fields
         self.n_para = None
         self.f_type = 'folder'
+
+        # widget initialisations
+        self.expt_folder = None
 
         # boolean class fields
         self.use_run = None
@@ -1043,6 +1234,7 @@ class SessionNew(QWidget):
     def button_reset_session(self):
 
         self.expt_folder.button_reset_click()
+        self.reset_session.emit()
 
     def check_run_table(self, h_chk, i_row):
 
@@ -1386,10 +1578,6 @@ class ExptFolder(QWidget):
         if not isinstance(item, QStandardItem):
             obj_tree = self.h_tab[0].findChild(QFolderTree)
             obj_tree.update_tree_highlights()
-
-    def connect(self, cb_fcn, p_str):
-
-        a = 1
 
     # MISCELLANEOUS FUNCTIONS ---------------------------------------------
 

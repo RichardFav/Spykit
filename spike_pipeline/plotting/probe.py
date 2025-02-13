@@ -1,6 +1,6 @@
 # module import
 import numpy as np
-import pyqtgraph as pg
+from pyqtgraph import GraphicsObject, ROI, mkPen, mkBrush
 
 import spike_pipeline.common.common_func as cf
 
@@ -9,13 +9,13 @@ from PyQt6.QtCore import QRectF, QPointF, pyqtSignal
 from PyQt6.QtGui import QPolygonF, QPicture, QPainter
 
 
-class ProbePlot(pg.GraphicsObject):
+class ProbePlot(GraphicsObject):
     # parameters
     dp = 0.1
 
     # plot pen widgets
-    pen = pg.mkPen(width=2, color='b')
-    pen_h = pg.mkPen(width=2, color='g')
+    pen = mkPen(width=2, color='b')
+    pen_h = mkPen(width=2, color='g')
 
     # pyqtsignal functions
     update_roi = pyqtSignal(object)
@@ -79,13 +79,13 @@ class ProbePlot(pg.GraphicsObject):
         p = QPainter(self.picture)
 
         # probe shape plot
-        p.setPen(pg.mkPen(p_col_probe))
-        p.setBrush(pg.mkBrush(p_col_probe))
+        p.setPen(mkPen(p_col_probe))
+        p.setBrush(mkBrush(p_col_probe))
         p.drawPolygon(p_poly)
 
         # probe contact plots
-        p.setPen(pg.mkPen(c_col_probe))
-        p.setBrush(pg.mkBrush(c_col_probe))
+        p.setPen(mkPen(c_col_probe))
+        p.setBrush(mkBrush(c_col_probe))
         for c_p in c_poly:
             p.drawPolygon(c_p)
 
@@ -94,25 +94,27 @@ class ProbePlot(pg.GraphicsObject):
 
     def create_inset_roi(self, x_lim_s, y_lim_s):
 
+        # pre-calculations
         p_0 = [x_lim_s[0], y_lim_s[0]]
         p_sz = [np.diff(x_lim_s), np.diff(y_lim_s)]
         p_lim = QRectF(self.x_lim_full[0], self.y_lim_full[0], self.width, self.height)
 
-        self.roi = pg.ROI(p_0, p_sz, pen=self.pen, hoverPen=self.pen_h,
-                          handlePen=self.pen, handleHoverPen=self.pen_h, maxBounds=p_lim)
+        # creates the roi object
+        self.roi = ROI(p_0, p_sz, pen=self.pen, hoverPen=self.pen_h,
+                       handlePen=self.pen, handleHoverPen=self.pen_h, maxBounds=p_lim)
         self.roi.addTranslateHandle([0, 0])
         self.roi.addScaleHandle([1, 1], [0, 0])
         self.roi.addScaleHandle([0, 1], [1, 0])
         self.roi.addScaleHandle([1, 0], [0, 1])
         self.roi.sigRegionChanged.connect(self.roi_moved)
 
+        # adds the roi to the parent plot widget
         self.parent().addItem(self.roi)
 
     # ROI MOVEMENT FUNCTIONS -----------------------------------------------
 
     def roi_moved(self, h_roi):
 
-        #
         x0, y0, p_sz = h_roi.x(), h_roi.y(), h_roi.size()
         self.update_roi.emit([x0, y0, p_sz])
 
@@ -161,9 +163,7 @@ class ProbePlot(pg.GraphicsObject):
         p.drawPicture(0, 0, self.picture)
 
     def boundingRect(self):
-        ## boundingRect _must_ indicate the entire area that will be drawn on
-        ## or else we will get artifacts and possibly crashing.
-        ## (in this case, QPicture does all the work of computing the bouning rect for us)
+
         return QRectF(self.picture.boundingRect())
 
     @staticmethod

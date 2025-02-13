@@ -100,7 +100,7 @@ def check_edit_num(nw_str, is_int=False, min_val=-1e100, max_val=1e10, show_err=
         try:
             nw_val = int(nw_str)
 
-        except:
+        except ValueError:
             try:
                 # if there was an error, then determine if the string was a float
                 nw_val = float(nw_str)
@@ -110,14 +110,16 @@ def check_edit_num(nw_str, is_int=False, min_val=-1e100, max_val=1e10, show_err=
                 else:
                     # otherwise,
                     e_str = 'Entered value is not an integer.'
-            except:
+
+            except ValueError:
                 # case is the string was not a valid number
                 e_str = 'Entered value is not a valid number.'
     else:
         # case is the string must be a float
         try:
             nw_val = float(nw_str)
-        except:
+
+        except ValueError:
             # case is the string is not a valid number
             e_str = 'Entered value is not a valid number.'
 
@@ -269,9 +271,9 @@ def get_colour_value(col_id, alpha=255):
 
         case _:
             # case is a number
-            p_HSV = (col_id * 1.0 / n_col_max, 0.5, 0.5)
-            p_RGB = [int(255 * x) for x in list(colorsys.hsv_to_rgb(*p_HSV))]
-            return QColor(p_RGB[0], p_RGB[1], p_RGB[2], alpha)
+            p_hsv = (col_id * 1.0 / n_col_max, 0.5, 0.5)
+            p_rgb = [int(255 * x) for x in list(colorsys.hsv_to_rgb(*p_hsv))]
+            return QColor(p_rgb[0], p_rgb[1], p_rgb[2], alpha)
 
 
 def lcm(a, b):

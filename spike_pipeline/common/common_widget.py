@@ -12,9 +12,10 @@ import spike_pipeline.common.common_func as cf
 # pyqt6 module import
 from PyQt6.QtWidgets import (QWidget, QHBoxLayout, QGridLayout, QVBoxLayout, QPushButton, QGroupBox, QTabWidget,
                              QFormLayout, QLabel, QCheckBox, QLineEdit, QComboBox, QSizePolicy, QFileDialog,
-                             QApplication, QTreeView, QFrame, QRadioButton, QAbstractItemView)
-from PyQt6.QtGui import QFont, QDrag, QCursor, QStandardItemModel, QStandardItem
-from PyQt6.QtCore import Qt, QRect, QMimeData, pyqtSignal, QItemSelectionModel, QModelIndex
+                             QApplication, QTreeView, QFrame, QRadioButton, QAbstractItemView,
+                             QStylePainter, QStyleOptionComboBox, QStyle)
+from PyQt6.QtGui import QFont, QDrag, QCursor, QStandardItemModel, QStandardItem, QPalette
+from PyQt6.QtCore import Qt, QRect, QMimeData, pyqtSignal, QItemSelectionModel, QAbstractTableModel
 
 # style sheets
 edit_style_sheet = "border: 1px solid; border-radius: 2px; padding-left: 5px;"
@@ -1267,6 +1268,9 @@ class QLabelText(QWidget):
     def __init__(self, parent=None, lbl_str=None, text_str=None, font_lbl=None, font_txt=None, name=None):
         super(QLabelText, self).__init__(parent)
 
+        if name is not None:
+            self.setObjectName(name)
+
         # creates the layout widget
         self.layout = QHBoxLayout()
         self.layout.setSpacing(3)
@@ -1415,6 +1419,138 @@ class QLabelCombo(QWidget):
 
 # ----------------------------------------------------------------------------------------------------------------------
 
+class QCheckCombo(QComboBox):
+    # pyqtsignal functions
+    item_clicked = pyqtSignal(QStandardItem)
+
+    def __init__(self, parent=None):
+        super(QCheckCombo, self).__init__(parent)
+        self.view().pressed.connect(self.item_selected)
+
+        # field initialisation
+        self.n_item = 0
+        self.n_sel = 0
+
+        # sets the widget model and event functions
+        self.combo_model = QStandardItemModel(self)
+
+        # creates the checkbox object
+        self.setFixedHeight(cf.combo_height)
+        self.setStyleSheet('border-radius: 2px; border: 1px solid')
+        self.setModel(self.combo_model)
+
+    def item_selected(self, index):
+
+        item = self.combo_model.itemFromIndex(index)
+        if item.checkState() == Qt.CheckState.Checked:
+            self.n_sel -= 1
+            item.setCheckState(Qt.CheckState.Unchecked)
+        else:
+            self.n_sel += 1
+            item.setCheckState(Qt.CheckState.Checked)
+
+        # runs the clicked item
+        self.reset_title()
+        self.item_clicked.emit(item)
+
+    def get_selected_items(self):
+
+        s_list = []
+        for i in range(self.n_item):
+            item = self.combo_model.item(i)
+            if item.checkState() == Qt.CheckState.Checked:
+                s_list.append(item.text())
+
+        return s_list
+
+    def add_item(self, t, state=False):
+
+        # adds the item to the combobox
+        self.addItem(t)
+
+        # sets the item properties
+        item = self.model().item(self.n_item, 0)
+        item.setEditable(False)
+        item.setCheckState(Qt.CheckState.Checked if state else Qt.CheckState.Unchecked)
+
+        # increments the item/selection counters
+        self.n_item += 1
+        self.n_sel += int(state)
+        self.reset_title()
+
+        # returns the widget
+        return item
+
+    def reset_title(self):
+
+        # resets the title
+        self._title = '{0} Items Selected'.format(self.n_sel)
+        self.repaint()
+
+    def title(self):
+
+        return self._title
+
+    def paintEvent(self, event):
+
+        painter = QStylePainter(self)
+        painter.setPen(self.palette().color(QPalette.ColorRole.Text))
+        opt = QStyleOptionComboBox()
+        self.initStyleOption(opt)
+        opt.currentText = self._title
+        painter.drawComplexControl(QStyle.ComplexControl.CC_ComboBox, opt)
+        painter.drawControl(QStyle.ControlElement.CE_ComboBoxLabel, opt)
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+
+class QLabelCheckCombo(QWidget):
+    # pyqtsignal functions
+    item_clicked = pyqtSignal(QStandardItem)
+
+    def __init__(self, parent=None, lbl=None, text=None, index_on=None, font=None, name=None):
+        super(QLabelCheckCombo, self).__init__(parent)
+
+        # field initialisation
+        self._title = 'Finish Me!'
+        self.index_on = index_on
+
+        # creates the layout widget
+        self.layout = QHBoxLayout()
+        self.layout.setSpacing(3)
+        self.layout.setContentsMargins(0, 0, 0, 0)
+        self.setLayout(self.layout)
+
+        # creates the label object
+        self.h_lbl = create_text_label(None, lbl, font, align='right')
+        self.h_lbl.setStyleSheet('padding-top: 3px;')
+        self.h_lbl.adjustSize()
+
+        # sets the widget model and event functions
+        self.combo_model = QStandardItemModel(self)
+
+        # creates the checkbox object
+        self.h_combo = QCheckCombo(None)
+        self.h_combo.item_clicked.connect(self.check_update)
+
+        # adds the widgets to the layout
+        self.layout.addWidget(self.h_lbl)
+        self.layout.addWidget(self.h_combo)
+
+    def add_item(self, t, state=False):
+
+        self.h_combo.add_item(t, state)
+
+    def get_selected_items(self):
+
+        return self.h_combo.get_selected_items()
+
+    def check_update(self, item):
+
+        self.item_clicked.emit(item)
+
+# ----------------------------------------------------------------------------------------------------------------------
+
 
 class QCheckboxHTML(QWidget):
     def __init__(self, parent=None, text=None, state=False, font=None, name=None):
@@ -1429,15 +1565,15 @@ class QCheckboxHTML(QWidget):
         if name is not None:
             self.setObjectName(name)
 
-        # creates the checkbox object
-        self.h_chk = create_check_box(None, '', state, name=name)
-        self.h_chk.adjustSize()
-        self.h_chk.setSizePolicy(QSizePolicy(cf.q_fix, cf.q_fix))
-
         # creates the label object
         self.h_lbl = create_text_label(None, text, font, align='left')
         self.h_lbl.setStyleSheet('padding-bottom: 2px;')
         self.h_lbl.adjustSize()
+
+        # creates the checkbox object
+        self.h_chk = create_check_box(None, '', state, name=name)
+        self.h_chk.adjustSize()
+        self.h_chk.setSizePolicy(QSizePolicy(cf.q_fix, cf.q_fix))
 
         # adds the widgets to the layout
         self.layout.addWidget(self.h_chk)
@@ -1468,6 +1604,40 @@ class QCheckboxHTML(QWidget):
     def get_check(self):
 
         return self.h_chk.isChecked()
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+
+class PandasModel(QAbstractTableModel):
+    """
+    Class to populate a table view with a pandas dataframe
+    """
+    def __init__(self, data, parent=None):
+        QAbstractTableModel.__init__(self, parent)
+        self._data = data
+
+    def rowCount(self, parent=None):
+
+        return len(self._data.values)
+
+    def columnCount(self, parent=None):
+
+        return self._data.columns.size
+
+    def data(self, index, role=Qt.ItemDataRole.DisplayRole):
+
+        if index.isValid():
+            if role == Qt.ItemDataRole.DisplayRole:
+                return str(self._data.iloc[index.row()][self._data.columns[index.column()]])
+        return None
+
+    def headerData(self, col, orientation, role):
+
+        if orientation == Qt.Orientation.Horizontal and role == Qt.ItemDataRole.DisplayRole:
+            return self._data.columns[col]
+
+        return None
 
 
 # ----------------------------------------------------------------------------------------------------------------------
