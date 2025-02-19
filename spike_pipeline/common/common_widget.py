@@ -1373,6 +1373,12 @@ class QLabelCombo(QWidget):
     def __init__(self, parent=None, lbl_str=None, list_str=None, value=None, font_lbl=None, name=None):
         super(QLabelCombo, self).__init__(parent)
 
+        if value is None:
+            value = []
+
+        if name is not None:
+            self.setObjectName(name)
+
         # creates the layout widget
         self.layout = QHBoxLayout()
         self.layout.setSpacing(1)
@@ -1396,6 +1402,8 @@ class QLabelCombo(QWidget):
 
         if len(value):
             self.obj_cbox.setCurrentText(value)
+        else:
+            self.obj_cbox.setEnabled(False)
 
     def current_text(self):
 
@@ -1410,6 +1418,11 @@ class QLabelCombo(QWidget):
         self.obj_lbl.setEnabled(state)
         self.obj_cbox.setEnabled(state)
 
+    def clear(self):
+
+        self.obj_cbox.clear()
+        self.obj_cbox.setEnabled(False)
+
     def connect(self, cb_fcn, add_widget=True):
 
         if add_widget:
@@ -1417,6 +1430,17 @@ class QLabelCombo(QWidget):
 
         self.obj_cbox.currentIndexChanged.connect(cb_fcn)
 
+    def addItem(self, item):
+
+        self.obj_cbox.addItem(item)
+
+    def addItems(self, items, clear_items=False):
+
+        if clear_items:
+            self.clear()
+
+        for t in items:
+            self.addItem(t)
 
 # ----------------------------------------------------------------------------------------------------------------------
 

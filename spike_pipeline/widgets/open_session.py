@@ -1,6 +1,8 @@
 # module import
 import os
 import functools
+import time
+
 import numpy as np
 from copy import deepcopy
 from pathlib import Path
@@ -20,12 +22,24 @@ from spike_pipeline.plotting.probe import ProbePlot
 # pyqt6 module import
 from PyQt6.QtWidgets import (QDialog, QHBoxLayout, QVBoxLayout, QWidget, QFormLayout, QSizePolicy, QGridLayout,
                              QGroupBox, QComboBox, QCheckBox, QLineEdit, QTableWidget, QTableWidgetItem, QFrame,
-                             QSpacerItem, QTableView, QMainWindow, QHeaderView)
-from PyQt6.QtGui import QFont, QIcon, QStandardItem, QKeySequence
-from PyQt6.QtCore import Qt, QSize, QSizeF, pyqtSignal
+                             QSpacerItem, QTableView, QMainWindow, QMenuBar, QApplication)
+from PyQt6.QtGui import QFont, QIcon, QStandardItem, QKeySequence, QAction
+from PyQt6.QtCore import Qt, QSize, QSizeF, pyqtSignal, QObject
 
 # testing modules
 import pyqtgraph as pg
+
+# widget stylesheets
+toolbar_style = """
+    QToolBar {
+        background-color: white;
+        spacing : 1px;
+    }
+    QToolBar QToolButton{
+        color: white;
+        font-size : 14px;
+    }
+"""
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -62,6 +76,7 @@ icon_path = {
 
 # OPEN SESSION WIDGET --------------------------------------------------------------------------------------------------
 
+# Dialog window for interacting with session I/O
 
 class OpenSession(QMainWindow):
     def __init__(self, parent=None):
@@ -76,10 +91,12 @@ class OpenSession(QMainWindow):
 
         # other class fields
         self.session = None
+        self.scr_sz = QApplication.primaryScreen().size()
         self.probe_width = dlg_width - (file_width + 2 * x_gap)
 
         # field initialisation
         self.setup_dialog()
+        self.setup_menubar()
         self.init_class_fields()
 
         # sets the central widget
@@ -95,6 +112,36 @@ class OpenSession(QMainWindow):
         # creates the dialog window
         self.setWindowTitle("Session Information")
         self.setFixedHeight(dlg_height)
+
+    def setup_menubar(self):
+
+        # creates the menubar object
+        h_menubar = QMenuBar(self)
+        self.setMenuBar(h_menubar)
+        h_menu_file = h_menubar.addMenu('File')
+
+        # initialisations
+        p_str = ['close']
+        p_lbl = ['Close Window']
+        cb_fcn = [self.close_window]
+
+        # menu/toolbar item creation
+        for pl, ps, cbf in zip(p_lbl, p_str, cb_fcn):
+            if ps is None:
+                # adds separators
+                # h_toolbar.addSeparator()
+                h_menu_file.addSeparator()
+
+            else:
+                # # creates the menu item
+                # h_tool = QAction(QIcon(icon_path[ps]), pl, self)
+                # h_tool.triggered.connect(cbf)
+                # h_toolbar.addAction(h_tool)
+
+                # creates the menu item
+                h_menu = QAction(pl, self)
+                h_menu.triggered.connect(cbf)
+                h_menu_file.addAction(h_menu)
 
     def init_class_fields(self):
 
@@ -124,11 +171,14 @@ class OpenSession(QMainWindow):
         self.probe.setEnabled(False)
 
         # reset the dialog width
-        self.reset_dialog_width(False)
+        self.reset_dialog_width(False, False)
+
+    # SESSION I/O FUNCTIONS -----------------------------------------------------
 
     def session_load(self):
 
         # updates the probe properties
+        self.probe.update_name_fields()
         self.probe.update_probe_info()
         self.probe.setEnabled(True)
         self.probe.setVisible(True)
@@ -142,22 +192,19 @@ class OpenSession(QMainWindow):
             self.probe.clear_probe_frame()
             self.reset_dialog_width(False)
 
-    def reset_dialog_width(self, is_open):
+    # MENUBAR EVENT FUNCTIONS --------------------------------------------------
 
-        p_width = self.probe_width if is_open else 0
+    def close_window(self):
 
-        self.setFixedWidth(p_width + file_width)
-        self.main_layout.setColumnStretch(1, p_width)
+        #
+        self.setVisible(False)
+        time.sleep(0.5)
 
-    def get_session_run(self, i_run, r_name):
+        # closes the window
+        self.parent().setVisible(True)
+        self.close()
 
-        rec_probe = self.file.session._runs[i_run]._raw[r_name]
-        return rec_probe.get_probe(), rec_probe
-
-    def get_session_files(self):
-
-        exp_f = self.file.new_session.expt_folder
-        return exp_f.sub_path.split('/')[-1], exp_f.ses_type
+    # WIDGET EVENT FUNCTIONS ----------------------------------------------------
 
     def keyPressEvent(self, evnt) -> None:
 
@@ -165,6 +212,161 @@ class OpenSession(QMainWindow):
             self.reject()
         else:
             evnt.ignore()
+
+    # MISCELLANEOUS FUNCTIONS ----------------------------------------------------
+
+    def reset_dialog_width(self, is_open, reset_pos=True):
+
+        # parameters
+        x_max = 50
+
+        # field retrieval
+        dlg_pos = self.geometry()
+        p_width, x0 = self.probe_width if is_open else 0, dlg_pos.x()
+        dlg_width = p_width + file_width
+
+        if reset_pos:
+            if is_open:
+                # case is opening the probe data
+                l_dlg = min(max(x_max, x0 - p_width / 2.), self.scr_sz.width() - (x_max + dlg_width))
+                dlg_pos.setX(int(l_dlg))
+
+            else:
+                # case is clearing the probe data
+                dlg_pos.setX(int(x0 + self.probe_width / 2.))
+
+            # resets the dialog geometry
+            dlg_pos.setWidth(dlg_width)
+            self.setGeometry(dlg_pos)
+
+        # resets the other dialog widget properties
+        self.setFixedWidth(p_width + file_width)
+        self.main_layout.setColumnStretch(1, p_width)
+
+    def get_session_run(self, i_run, r_name):
+
+        rec_probe = self.session.get_session_runs(i_run, r_name)
+        return rec_probe.get_probe(), rec_probe
+
+    def get_session_files(self):
+
+        exp_f = self.file.new_session.expt_folder
+        return exp_f.sub_path.split('/')[-1], exp_f.ses_type
+
+
+# SESSION OBJECT -------------------------------------------------------------------------------------------------------
+
+# Wrapper object for the session object created by SpikeWrap/SpikeInterface
+
+class SessionObject(QObject):
+    def __init__(self, subject_path, session_name, file_format, run_names, output_path=None):
+        super(SessionObject, self).__init__()
+
+        # class field initialisations
+        self._s = None
+
+        # sets th
+        self._subject_path = subject_path
+        self._session_name = session_name
+        self._file_format = file_format
+        self._run_names = run_names
+        self._output_path = output_path
+
+        # loads the session object
+        self.load_session()
+        self.load_raw_data()
+
+    # ---------------------------------------------------------------------------
+    # Session I/O Functions
+    # ---------------------------------------------------------------------------
+
+    def load_session(self):
+
+        # creates the spikewrap session object
+        self._s = sw.Session(
+            subject_path=self._subject_path,
+            session_name=self._session_name,
+            file_format=self._file_format,
+            run_names=self._run_names,
+            output_path=self._output_path,
+        )
+
+    def load_raw_data(self):
+
+        self._s.load_raw_data()
+
+    # ---------------------------------------------------------------------------
+    # Session wrapper functions
+    # ---------------------------------------------------------------------------
+
+    def get_session_runs(self, i_run, r_name=None):
+
+        if isinstance(i_run, str):
+            run_names = self.get_run_names()
+            i_run = run_names.index(i_run)
+
+        if r_name is not None:
+            return self._s._runs[i_run]._raw[r_name]
+
+        else:
+            return self._s._runs[i_run]
+
+    def get_session_names(self, i_run):
+
+        ses_run = self.get_session_runs(i_run)
+        return list(ses_run._raw.keys())
+
+    def get_run_names(self, *_):
+
+        return [x._run_name for x in self._s._runs]
+
+    # ---------------------------------------------------------------------------
+    # Protected Properties
+    # ---------------------------------------------------------------------------
+
+    @property
+    def subject_path(self):
+        return self._subject_path
+
+    @property
+    def session_name(self):
+        return self._session_name
+
+    @property
+    def file_format(self):
+        return self._file_format
+
+    @property
+    def run_names(self):
+        return self._run_names
+
+    @property
+    def output_path(self):
+        return self._output_path
+
+    # ---------------------------------------------------------------------------
+    # Protected Property Setter Functions
+    # ---------------------------------------------------------------------------
+
+    @subject_path.setter
+    def subject_path(self, new_path):
+        self._subject_path = new_path
+
+    @session_name.setter
+    def session_name(self, new_name):
+        self._session_name = new_name
+
+    @file_format.setter
+    def file_format(self, new_format):
+        self._file_format = new_format
+
+    @run_names.setter
+    def run_names(self, new_names):
+        self._run_names = new_names
+
+    @output_path.setter
+    def output_path(self, new_path):
+        self._output_path = new_path
 
 
 # SESSION FILE WIDGET --------------------------------------------------------------------------------------------------
@@ -285,18 +487,13 @@ class SessionFile(QWidget):
 
         # sets the subject path and run names
         s_obj = self.new_session
-        run_names = "all" if np.all(s_obj.use_run) else s_obj.get_session_run_names()
 
-        # creates the spikewrap session object
-        self.session = sw.Session(
+        self.root.session = SessionObject(
             subject_path=s_obj.get_subject_path(),
             session_name=s_obj.get_session_type(),
             file_format=s_obj.get_format_type(),
-            run_names=run_names,
+            run_names=s_obj.get_run_names(),
         )
-
-        # loads the session object
-        self.session.load_raw_data()
 
         # emits the signal function
         self.session_loaded.emit()
@@ -343,13 +540,14 @@ class SessionProbe(QWidget):
     grp_name = "Session Probe"
 
     # array class fields
-    dim_lbl = ['Left:', 'Bottom:', 'Width:', 'Height:']
+    dim_lbl = ['L:', 'B:', 'W:', 'H:']
     def_col = ['contact_ids', 'shank_ids', 'device_channel_indices']
     info_lbl = ['Subject Name', 'Title',
                 'Session Name', 'Manufacturer',
                 'Frame Count', 'Model',
                 'Sampling Freq', 'Shank Count',
                 'Channel Count', 'Spatial Units']
+    combo_lbl = ['Current Run', 'Current Session']
 
     # widget stylesheets
     table_style = """
@@ -375,6 +573,10 @@ class SessionProbe(QWidget):
         self.plt_probe_main = None
         self.root = self.parent()
 
+        # current run/session flags
+        self.current_run = None
+        self.current_ses = None
+
         # boolean class fields
         self.has_plot = False
         self.has_probe = False
@@ -395,7 +597,9 @@ class SessionProbe(QWidget):
 
         # session/probe information fields
         self.info_text = []
+        self.info_combo = []
         self.info_lbl_dict = {}
+        self.info_combo_dict = {}
 
         # channel information widgets
         self.table_col = QLabelCheckCombo(None, lbl='Information Table Columns:', font=font_lbl)
@@ -485,6 +689,22 @@ class SessionProbe(QWidget):
             # stores the text widget
             self.info_text.append(lbl)
 
+        # creates the combobox group
+        i_r0 = i_r + 1
+        for i, d in enumerate(self.combo_lbl):
+            # creates the text label object
+            combo_str = '{}:'.format(d)
+            combo = QLabelCombo(None, combo_str, font_lbl=font_lbl, name=d)
+            combo.connect(self.combo_info_change)
+
+            # adds the widget to the layout
+            i_r, i_c = i_r0 + int(i / 2), i % 2
+            self.info_layout.addWidget(combo.obj_lbl, i_r, 2 * i_c, 1, 1)
+            self.info_layout.addWidget(combo.obj_cbox, i_r, 2 * i_c + 1, 1, 1)
+
+            # stores the text widget
+            self.info_combo.append(combo)
+
     def setup_channel_frame(self):
 
         # sets the channel frame properties
@@ -500,7 +720,6 @@ class SessionProbe(QWidget):
         # sets the table column event function
         self.channel_table.setStyleSheet(self.table_style)
         self.table_col.item_clicked.connect(self.check_table_header)
-
 
     def setup_plot_frame(self):
 
@@ -597,6 +816,35 @@ class SessionProbe(QWidget):
             # otherwise, revert to the previous valid value
             h_edit.setText('%g' % self.get_dim_value(p_str))
 
+    def combo_info_change(self, h_combo):
+
+        # if updating manually, then exit
+        if self.is_updating:
+            return
+
+        # field retrieval
+        p_str = h_combo.objectName()
+        nw_val = h_combo.currentText()
+        self.info_combo_dict[p_str] = nw_val
+
+        # updates the property specific fields
+        if p_str == "Current Run":
+            # case is current run combobox
+            nw_list = self.get_session_name_list()
+            self.current_ses, self.current_run = nw_list[0], nw_val
+
+            # resets the session combobox fields
+            self.is_updating = True
+            self.info_combo[1].addItems(nw_list, True)
+            self.is_updating = False
+
+        else:
+            # case is the current session combobox
+            self.current_ses = nw_val
+
+        # updates the probe information
+        self.update_probe_info(False)
+
     # ROI DIMENSION FUNCTIONS --------------------------------------------
 
     def get_dim_limit(self, i_dim):
@@ -604,19 +852,19 @@ class SessionProbe(QWidget):
         pp_s = self.plt_probe_sub
 
         match i_dim:
-            case i_dim if i_dim in ['left', 0]:
+            case i_dim if i_dim in ['l', 'left', 0]:
                 # case is the left roi position
                 return [pp_s.x_lim_full[0], (pp_s.width - self.get_dim_value(2))]
 
-            case i_dim if i_dim in ['bottom', 1]:
+            case i_dim if i_dim in ['b', 'bottom', 1]:
                 # case is the bottom roi position
                 return [pp_s.y_lim_full[0], (pp_s.height - self.get_dim_value(3))]
 
-            case i_dim if i_dim in ['width', 2]:
+            case i_dim if i_dim in ['w', 'width', 2]:
                 # case is the roi width
                 return [self.sz_roi_min, (pp_s.width - self.get_dim_value(0))]
 
-            case i_dim if i_dim in ['height', 3]:
+            case i_dim if i_dim in ['h', 'height', 3]:
                 # case is the roi height
                 return [self.sz_roi_min, (pp_s.height - self.get_dim_value(1))]
 
@@ -625,19 +873,19 @@ class SessionProbe(QWidget):
         vb_rng = self.vb.viewRange()
 
         match i_dim:
-            case i_dim if i_dim in ['left', 0]:
+            case i_dim if i_dim in ['l', 'left', 0]:
                 # case is the left location
                 return vb_rng[0][0]
 
-            case i_dim if i_dim in ['bottom', 1]:
+            case i_dim if i_dim in ['b', 'bottom', 1]:
                 # case is the bottom location
                 return vb_rng[1][0]
 
-            case i_dim if i_dim in ['width', 2]:
+            case i_dim if i_dim in ['w', 'width', 2]:
                 # case is the box width
                 return np.diff(vb_rng[0])[0]
 
-            case i_dim if i_dim in ['height', 3]:
+            case i_dim if i_dim in ['h', 'height', 3]:
                 # case is the box height
                 return np.diff(vb_rng[1])[0]
 
@@ -647,62 +895,58 @@ class SessionProbe(QWidget):
         pp_m = self.plt_probe_main
 
         match i_dim:
-            case i_dim if i_dim in ['left', 0]:
+            case i_dim if i_dim in ['l', 'left', 0]:
                 # case is the left location
                 pp_s.x_lim[0] = p_val
                 pp_m.roi.setPos(pp_s.x_lim[0], pp_s.y_lim[0])
 
-            case i_dim if i_dim in ['bottom', 1]:
+            case i_dim if i_dim in ['b', 'bottom', 1]:
                 # case is the bottom location
                 pp_s.y_lim[0] = p_val
                 pp_m.roi.setPos(pp_s.x_lim[0], pp_s.y_lim[0])
 
-            case i_dim if i_dim in ['width', 2]:
+            case i_dim if i_dim in ['w', 'width', 2]:
                 # case is the box width
                 pp_s.x_lim[1] = pp_s.x_lim[0] + p_val
                 pp_m.roi.setSize(QSizeF(np.diff(pp_s.x_lim)[0], np.diff(pp_s.y_lim)[0]))
 
-            case i_dim if i_dim in ['height', 3]:
+            case i_dim if i_dim in ['h', 'height', 3]:
                 # case is the box height
                 pp_s.y_lim[1] = pp_s.y_lim[0] + p_val
                 pp_m.roi.setSize(QSizeF(np.diff(pp_s.x_lim)[0], np.diff(pp_s.y_lim)[0]))
 
     # MISCELLANEOUS FUNCTIONS --------------------------------------------
 
-    def clear_probe_frame(self):
+    def get_session_name_list(self):
 
-        # resets the boolean flags
-        self.has_plot = False
-        self.has_probe = False
-        self.is_updating = True
+        r_txt = self.info_combo[0].current_text()
+        return self.root.session.get_session_names(r_txt)
 
-        # clears the information fields
-        [x.set_label("") for x in self.info_text]
+    def get_current_run_list(self):
 
-        # clears the table field
-        self.channel_table.reset()
-        self.table_col.clear()
+        return self.root.session.get_run_names()
 
-        # clears the probe plots
-        self.clear_probe_plots()
-        self.plot_sub_layout.removeWidget(self.sub_plt_widget)
-        self.plot_main_layout.removeWidget(self.main_plt_widget)
-        [x.set_text("") for x in self.edit_dim]
+    def update_name_fields(self):
 
-        # disables the widget
-        self.setEnabled(False)
-        self.setVisible(False)
+        # retrieves the probe run/session names
+        run_names = self.root.session.get_run_names()
+        ses_names = self.root.session.get_session_names(run_names[0])
+        self.combo_list = [run_names, ses_names]
 
-        # resets the update flag
-        self.is_updating = False
+        # updates the current run/session fields
+        self.current_run = run_names[0]
+        self.current_ses = ses_names[0]
 
-    def clear_probe_plots(self):
+        # resets the information combo boxes
+        for i, h in enumerate(self.info_combo):
+            # sets up the combobox list
+            for t in self.combo_list[i]:
+                h.addItem(t)
 
-        self.plt_probe_main.roi.deleteLater()
-        self.main_plt_widget.removeItem(self.plt_probe_main)
-        self.sub_plt_widget.removeItem(self.plt_probe_sub)
+            # enables the combo box
+            h.set_enabled(len(self.combo_list[i]) > 1)
 
-    def update_probe_info(self):
+    def update_probe_info(self, is_init=True):
 
         # removes any existing plot objects
         if self.has_plot:
@@ -714,7 +958,7 @@ class SessionProbe(QWidget):
             self.plot_main_layout.addWidget(self.main_plt_widget)
 
         # probe information retrieval
-        self.p, self.p_rec = self.root.get_session_run(0, 'grouped')
+        self.p, self.p_rec = self.root.get_session_run(self.current_run, self.current_ses)
         self.p_dframe = self.p.to_dataframe(complete=True)
 
         # PROBE PLOT SETUP ----------------------------------------------
@@ -751,9 +995,12 @@ class SessionProbe(QWidget):
         # adds the items to the combobox
         for i, cl in enumerate(list(self.p_dframe)):
             is_show = cl in self.def_col
-            self.table_col.add_item(cl, is_show)
             self.channel_table.setColumnHidden(i, not is_show)
 
+            if is_init:
+                self.table_col.add_item(cl, is_show)
+
+        # resizes the table columns
         self.channel_table.resizeColumnsToContents()
         self.channel_table.resizeRowsToContents()
 
@@ -774,6 +1021,12 @@ class SessionProbe(QWidget):
             'Model': self.p.model_name,
             'Shank Count': self.p.get_shank_count(),
             'Spatial Units': self.p.si_units,
+        }
+
+        # information label dictionary
+        self.info_combo_dict = {
+            'Current Run': self.current_run,
+            'Current Session': self.current_ses,
         }
 
         # resets the information labels
@@ -800,12 +1053,47 @@ class SessionProbe(QWidget):
         self.has_probe = True
         self.is_updating = False
 
+    def clear_probe_frame(self):
+
+        # resets the boolean flags
+        self.has_plot = False
+        self.has_probe = False
+        self.is_updating = True
+
+        # clears the information fields
+        [x.set_label("") for x in self.info_text]
+        [x.clear() for x in self.info_combo]
+
+        # clears the table field
+        self.channel_table.reset()
+        self.table_col.clear()
+
+        # clears the probe plots
+        self.clear_probe_plots()
+        self.plot_sub_layout.removeWidget(self.sub_plt_widget)
+        self.plot_main_layout.removeWidget(self.main_plt_widget)
+        [x.set_text("") for x in self.edit_dim]
+
+        # disables the widget
+        self.setEnabled(False)
+        self.setVisible(False)
+
+        # resets the update flag
+        self.is_updating = False
+
+    def clear_probe_plots(self):
+
+        self.plt_probe_main.roi.deleteLater()
+        self.main_plt_widget.removeItem(self.plt_probe_main)
+        self.sub_plt_widget.removeItem(self.plt_probe_sub)
+
     def check_table_header(self, item):
 
         is_sel = item.checkState() == Qt.CheckState.Checked
         i_col = list(self.p_dframe.columns).index(item.text())
         self.channel_table.setColumnHidden(i_col, not is_sel)
         self.channel_table.resizeColumnToContents(i_col)
+
 
 # SESSION NEW WIDGET ---------------------------------------------------------------------------------------------------
 
@@ -1288,6 +1576,10 @@ class SessionNew(QWidget):
     def get_format_type(self):
 
         return self.expt_folder.format_type
+
+    def get_run_names(self):
+
+        return "all" if np.all(self.use_run) else self.get_session_run_names()
 
     def reset_session_run_table(self, get_run_names):
 

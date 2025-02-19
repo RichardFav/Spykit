@@ -220,7 +220,8 @@ class MenuBar(QMenuBar):
 
     def menu_testing(self):
 
-        OpenSession(self)
+        self.h_main.setVisible(False)
+        OpenSession(self.h_main)
 
     def close_window(self):
 

@@ -166,6 +166,11 @@ class ParaDialog(QMainWindow):
 
     def setup_toolbar(self):
 
+        # initialisations
+        p_str = ['reset', 'open', 'save', None, 'close']
+        p_lbl = ['Reset Parameters', 'Open Parameters', 'Save Parameters', None, 'Close Window']
+        cb_fcn = [self.menu_reset_para, self.menu_open_para, self.menu_save_para, None, self.close_window]
+
         # creates the menubar object
         h_menubar = QMenuBar(self)
         self.setMenuBar(h_menubar)
@@ -178,11 +183,6 @@ class ParaDialog(QMainWindow):
         h_toolbar.setIconSize(QSize(cf.but_height + 1, cf.but_height + 1))
         self.addToolBar(Qt.ToolBarArea.TopToolBarArea, h_toolbar)
         self.addToolBarBreak()
-
-        # initialisations
-        p_str = ['reset', 'open', 'save', None, 'close']
-        p_lbl = ['Reset Parameters', 'Open Parameters', 'Save Parameters', None, 'Close Window']
-        cb_fcn = [self.menu_reset_para, self.menu_open_para, self.menu_save_para, None, self.close_window]
 
         # menu/toolbar item creation
         for pl, ps, cbf in zip(p_lbl, p_str, cb_fcn):
