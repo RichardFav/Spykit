@@ -28,9 +28,19 @@ class SessionWorkBook(QObject):
 
         # class field initialisations
         self.session = None
+        self.current_run = None
+        self.current_ses = None
 
         # initialisations
         self.has_init = True
+
+    # ---------------------------------------------------------------------------
+    # Getter Functions
+    # ---------------------------------------------------------------------------
+
+    def get_current_probe(self):
+
+        return self.session.get_session_runs(self.current_run, self.current_ses)
 
     # ---------------------------------------------------------------------------
     # Protected Properties
@@ -38,6 +48,10 @@ class SessionWorkBook(QObject):
 
     @staticmethod
     def update_session(_self):
+
+        # resets the current run/session names
+        _self.current_run = _self.session.get_run_names()[0]
+        _self.current_ses = _self.session.get_session_names(0)[0]
 
         if _self.has_init:
             _self.session_change.emit()

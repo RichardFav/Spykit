@@ -13,7 +13,7 @@ import spike_pipeline.common.common_widget as cw
 import spike_pipeline.common.spikeinterface_func as sf
 from spike_pipeline.common.property_classes import SessionObject
 from spike_pipeline.common.common_widget import (QLabelEdit, QFileSpec, QLabelCombo, QFolderTree, QLabelCheckCombo)
-from spike_pipeline.plotting.probe import ProbePlot
+from spike_pipeline.plotting.probe import ProbeView
 
 # pyqt6 module import
 from PyQt6.QtWidgets import (QDialog, QHBoxLayout, QVBoxLayout, QWidget, QFormLayout, QSizePolicy, QGridLayout,
@@ -82,11 +82,11 @@ class OpenSession(QMainWindow):
     # parameters
     x_max = 50
 
-    def __init__(self, parent=None, work_book=None):
+    def __init__(self, parent=None, session_obj=None):
         super(OpenSession, self).__init__(parent)
 
         # input arguments
-        self.work_book = work_book
+        self.session_obj = session_obj
 
         # creates the toolbar widgets
         self.h_toolbar = QToolBar('ToolBar', self)
@@ -232,6 +232,9 @@ class OpenSession(QMainWindow):
 
     def close_window(self):
 
+        # initialisations
+        update_session = False
+
         # if there is a session loaded, then prompt the user if they want to update
         if self.parent() is not None:
             if (self.session is not None) and self.is_changed:
@@ -245,11 +248,15 @@ class OpenSession(QMainWindow):
 
                 elif u_choice == cf.q_yes:
                     # otherwise, update the session in the workbook
-                    self.work_book.session = self.session
+                    update_session = True
 
         # closes the dialog window
         self.setVisible(False)
         time.sleep(0.25)
+
+        # updates the session class field
+        if update_session:
+            self.session_obj.session = self.session
 
         # sets the parent widget to be visible (if available)
         if self.parent() is not None:
@@ -500,6 +507,7 @@ class SessionProbe(QWidget):
 
     # array class fields
     dim_lbl = ['L:', 'B:', 'W:', 'H:']
+    dim_ttip = ['Left', 'Bottom', 'Width', 'Height']
     def_col = ['contact_ids', 'shank_ids', 'device_channel_indices']
     info_lbl = ['Subject Name', 'Title',
                 'Session Name', 'Manufacturer',
@@ -598,11 +606,9 @@ class SessionProbe(QWidget):
         self.main_layout.setContentsMargins(x_gap_h, x_gap, x_gap, x_gap)
         self.main_layout.addWidget(self.group_panel)
 
+        # hides the buttons from the plots
         self.main_plt_item.hideButtons()
         self.sub_plt_item.hideButtons()
-
-        # self.main_plt_widget.setAspectLocked()
-        # self.sub_plt_widget.setAspectLocked()
 
         # creates the children objects for the current parent object
         self.form_layout.addWidget(self.info_frame, 0, 0, 1, 1)
@@ -713,6 +719,7 @@ class SessionProbe(QWidget):
             edit_new = QLabelEdit(self, lbl_str=ls, font_lbl=font_lbl, name=ls.lower())
             edit_new.connect(self.edit_dim_update)
             edit_new.obj_edit.setAlignment(cf.align_type['center'])
+            edit_new.set_tooltip(self.dim_ttip[i])
 
             # adds the widgets to the layout
             self.prop_frame_layout.addWidget(edit_new.obj_lbl, iy, 2 * ix, 1, 1)
@@ -735,7 +742,7 @@ class SessionProbe(QWidget):
         self.sub_plt_item.setDefaultPadding(0.01)
 
     # ---------------------------------------------------------------------------
-    # Class Widget Setup Functions
+    # Widget Event Functions
     # ---------------------------------------------------------------------------
 
     def main_roi_moved(self, p_pos):
@@ -811,7 +818,9 @@ class SessionProbe(QWidget):
         # updates the probe information
         self.update_probe_info(False)
 
-    # ROI DIMENSION FUNCTIONS --------------------------------------------
+    # ---------------------------------------------------------------------------
+    # ROI Dimension Functions
+    # ---------------------------------------------------------------------------
 
     def get_dim_limit(self, i_dim):
 
@@ -930,8 +939,8 @@ class SessionProbe(QWidget):
         # PROBE PLOT SETUP ----------------------------------------------
 
         # creates the plot probe
-        self.plt_probe_main = ProbePlot(self.main_plt_widget, self.p)
-        self.plt_probe_sub = ProbePlot(self.sub_plt_widget, self.p)
+        self.plt_probe_main = ProbeView(self.main_plt_widget, self.p)
+        self.plt_probe_sub = ProbeView(self.sub_plt_widget, self.p)
 
         # creates the main plot figure
         self.main_plt_widget.addItem(self.plt_probe_main)

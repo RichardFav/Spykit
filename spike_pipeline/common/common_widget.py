@@ -1327,6 +1327,10 @@ class QLabelEdit(QWidget):
 
         self.obj_edit.setText(edit_str)
 
+    def set_tooltip(self, tt_str):
+
+        self.obj_lbl.setToolTip(tt_str)
+
     def connect(self, cb_fcn0):
 
         cb_fcn = functools.partial(cb_fcn0, self.obj_edit)

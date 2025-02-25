@@ -64,8 +64,8 @@ class MainWindow(QMainWindow):
         self.setup_main_window()
         self.init_class_fields()
 
-        # REMOVE ME LATER
-        self.testing()
+        # # REMOVE ME LATER
+        # self.testing()
 
     # ---------------------------------------------------------------------------
     # Class Widget Setup Functions
@@ -100,8 +100,17 @@ class MainWindow(QMainWindow):
         if self.has_session:
             a = 1
 
-        #
+        # retrieves/initialises the probe view
+        plot_trace = self.plot_manager.get_plot_view('trace')
 
+        # retrieves/initialises the probe view
+        plot_probe = self.plot_manager.get_plot_view('probe')
+
+        # resets the plot view to include only the trace/probe views
+        i_plot_trace = self.plot_manager.get_plot_index('trace')
+        i_plot_probe = self.plot_manager.get_plot_index('probe')
+        c_id = np.array([[i_plot_trace, i_plot_trace, i_plot_probe]])
+        self.plot_manager.update_plot_config(c_id)
 
         # resets the session flag
         self.has_session = True
@@ -182,7 +191,7 @@ class MenuBar(QMenuBar):
     def open_session(self):
 
         self.main_obj.setVisible(False)
-        OpenSession(self.main_obj)
+        OpenSession(self.main_obj, self.main_obj.session_obj)
 
     def close_window(self):
 

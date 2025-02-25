@@ -115,6 +115,25 @@ class PlotManager(QWidget):
         self.types[p_type] = self.n_plot
         self.plots.append(plot_new)
 
+    def get_plot_view(self, p_type, is_add=True):
+
+        # determines if the plot type exists in the view list
+        if p_type not in self.types:
+            if is_add:
+                # if missing, then add the plot type (if required)
+                self.add_plot_view(p_type)
+
+            else:
+                # otherwise, return a None object
+                return None
+
+        # returns the plot view
+        return self.plots[self.types[p_type] - 1]
+
+    def get_plot_index(self, p_type):
+
+        return self.types[p_type]
+
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
     # ---------------------------------------------------------------------------
@@ -126,7 +145,11 @@ class PlotManager(QWidget):
             items.widget().hide()
 
         # field retrieval
-        self.main_layout.updateID(obj_rcfig.c_id)
+        self.update_plot_config(obj_rcfig.c_id)
+
+    def update_plot_config(self, c_id):
+
+        self.main_layout.updateID(c_id)
 
     def reset_plot_highlight(self, plot):
 
@@ -422,6 +445,8 @@ class PlotWidget(QWidget):
         self.obj_plot_gbox.setStyleSheet(self.plot_gbox_style)
 
         # sets the plot widget layout
+        self.plot_layout.setSpacing(5)
+        self.plot_layout.setContentsMargins(0, 0, 0, 0)
         self.plot_widget.setLayout(self.plot_layout)
 
         # sets up the

@@ -1,6 +1,23 @@
+# module import
+import numpy as np
+import pyqtgraph as pg
+
+# pyqt6 module import
+from PyQt6.QtCore import QRectF, QPointF, pyqtSignal
+from PyQt6.QtGui import QPolygonF, QPicture, QPainter
+
 # spike pipeline imports
+import spike_pipeline.common.common_func as cf
 from spike_pipeline.plotting.utils import PlotWidget, PlotPara
 
+# testing modules
+from pyqtgraph import GraphicsObject, ROI, mkPen, mkBrush
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+"""
+    ProbePlotPara:
+"""
 
 class ProbePlotPara(PlotPara):
     def __init__(self):
@@ -8,10 +25,20 @@ class ProbePlotPara(PlotPara):
         a = 1
 
 
+# ----------------------------------------------------------------------------------------------------------------------
+
+"""
+    ProbePlotWidget:
+"""
+
+
 class ProbePlotWidget(PlotWidget):
     def __init__(self):
         super(ProbePlotWidget, self).__init__('probe')
         a = 1
+
+
+# ----------------------------------------------------------------------------------------------------------------------
 
 
 class ProbePlot(ProbePlotPara, ProbePlotWidget):
@@ -22,188 +49,320 @@ class ProbePlot(ProbePlotPara, ProbePlotWidget):
         # main class fields
         self.session_info = session_info
 
+        # probe class fields
+        self.probe = None
+        self.probe_dframe = None
+
+        # plotting widget class fields
+        self.main_view = None
+        self.sub_view = None
+        self.vb_sub = None
+
         # sets up the plot regions
         self.setup_subplots(2, 1)
 
-# # module import
-# import numpy as np
-# from pyqtgraph import GraphicsObject, ROI, mkPen, mkBrush
-#
-# import spike_pipeline.common.common_func as cf
-#
-# # pyqt6 module import
-# from PyQt6.QtCore import QRectF, QPointF, pyqtSignal
-# from PyQt6.QtGui import QPolygonF, QPicture, QPainter
-#
-#
-# class ProbePlot(GraphicsObject):
-#     # parameters
-#     dp = 0.1
-#
-#     # plot pen widgets
-#     pen = mkPen(width=2, color='b')
-#     pen_h = mkPen(width=2, color='g')
-#
-#     # pyqtsignal functions
-#     update_roi = pyqtSignal(object)
-#
-#     def __init__(self, parent, probe):
-#         super(ProbePlot, self).__init__()
-#
-#         self.setParent(parent)
-#
-#         # field initialisation
-#         self.roi = None
-#         self.width = None
-#         self.height = None
-#         self.x_lim = None
-#         self.y_lim = None
-#         self.x_lim_full = None
-#         self.y_lim_full = None
-#
-#         # field retrieval
-#         self.n_dim = probe.ndim
-#         self.n_contact = probe.get_contact_count()
-#         self.si_units = probe.si_units
-#
-#         # contact property fields
-#         self.c_id = probe.contact_ids
-#         self.c_index = probe.device_channel_indices
-#         self.c_pos = probe.contact_positions
-#         self.c_vert = self.setup_contact_coords(probe.get_contact_vertices())
-#
-#         # probe properties
-#         self.p_title = probe.get_title()
-#         self.p_vert = self.vert_to_pointf(probe.probe_planar_contour)
-#         self.p_ax = probe.contact_plane_axes
-#
-#         # sets up the axes limits
-#         self.get_axes_limits(probe)
-#
-#         # plot widgets
-#         self.picture = QPicture()
-#
-#         # creates the probe plot
-#         self.create_probe_plot()
-#
-#     # INITIALISATION FUNCTIONS ---------------------------------------------
-#
-#     def setup_contact_coords(self, vert0):
-#
-#         # sets up the contact polygon objects
-#         return [self.vert_to_pointf(v) for v in vert0]
-#
-#     def create_probe_plot(self):
-#
-#         # polygon setup
-#         p_poly = QPolygonF(self.p_vert)
-#         c_poly = [QPolygonF(x) for x in self.c_vert]
-#
-#         p_col_probe = cf.get_colour_value('r', 128)
-#         c_col_probe = cf.get_colour_value('y', 128)
-#
-#         # painter object setup
-#         p = QPainter(self.picture)
-#
-#         # probe shape plot
-#         p.setPen(mkPen(p_col_probe))
-#         p.setBrush(mkBrush(p_col_probe))
-#         p.drawPolygon(p_poly)
-#
-#         # probe contact plots
-#         p.setPen(mkPen(c_col_probe))
-#         p.setBrush(mkBrush(c_col_probe))
-#         for c_p in c_poly:
-#             p.drawPolygon(c_p)
-#
-#         # ends the drawing
-#         p.end()
-#
-#     def create_inset_roi(self, x_lim_s, y_lim_s):
-#
-#         # pre-calculations
-#         p_0 = [x_lim_s[0], y_lim_s[0]]
-#         p_sz = [np.diff(x_lim_s), np.diff(y_lim_s)]
-#         p_lim = QRectF(self.x_lim_full[0], self.y_lim_full[0], self.width, self.height)
-#
-#         # creates the roi object
-#         self.roi = ROI(p_0, p_sz, pen=self.pen, hoverPen=self.pen_h,
-#                        handlePen=self.pen, handleHoverPen=self.pen_h, maxBounds=p_lim)
-#         self.roi.addTranslateHandle([0, 0])
-#         self.roi.addScaleHandle([1, 1], [0, 0])
-#         self.roi.addScaleHandle([0, 1], [1, 0])
-#         self.roi.addScaleHandle([1, 0], [0, 1])
-#         self.roi.sigRegionChanged.connect(self.roi_moved)
-#
-#         # adds the roi to the parent plot widget
-#         self.parent().addItem(self.roi)
-#
-#     # ROI MOVEMENT FUNCTIONS -----------------------------------------------
-#
-#     def roi_moved(self, h_roi):
-#
-#         x0, y0, p_sz = h_roi.x(), h_roi.y(), h_roi.size()
-#         self.update_roi.emit([x0, y0, p_sz])
-#
-#     # MISCELLANEOUS FUNCTIONS ----------------------------------------------
-#
-#     def reset_axes_limits(self, is_full=True):
-#
-#         if is_full:
-#             _x_lim, _y_lim = self.x_lim_full, self.y_lim_full
-#
-#         else:
-#             _x_lim, _y_lim = self.x_lim, self.y_lim
-#
-#         # updates the figure limits
-#         vb = self.getViewBox()
-#         vb.setXRange(_x_lim[0], _x_lim[1])
-#         vb.setYRange(_y_lim[0], _y_lim[1])
-#
-#         if is_full:
-#             vb.setLimits(xMin=_x_lim[0], xMax=_x_lim[1], yMin=_y_lim[0], yMax=_y_lim[1])
-#
-#     def get_axes_limits(self, probe):
-#
-#         # calculates the contact vertex range
-#         c_vert_tot = np.vstack(probe.get_contact_vertices())
-#         c_min_ex, c_max_ex = self.calc_expanded_limits(c_vert_tot, np.array([0.1, 0.1]))
-#
-#         # calculates the probe shape vertefx range
-#         p_min0 = np.vstack((np.min(probe.probe_planar_contour, axis=0), c_min_ex))
-#         p_max0 = np.vstack((np.max(probe.probe_planar_contour, axis=0), c_max_ex))
-#         p_lim_tot = np.vstack((p_min0, p_max0))
-#         p_min_ex, p_max_ex = self.calc_expanded_limits(p_lim_tot, np.array([0.1, 0.0]))
-#
-#         # sets the contact x/y axes limits
-#         self.x_lim = [c_min_ex[0], c_max_ex[0]]
-#         self.y_lim = [c_min_ex[1], c_max_ex[1]]
-#         self.x_lim_full = [p_min_ex[0], p_max_ex[0]]
-#         self.y_lim_full = [p_min_ex[1], p_max_ex[1]]
-#
-#         # calculates the full width/height dimensions
-#         self.width = self.x_lim_full[1] - self.x_lim_full[0]
-#         self.height = self.y_lim_full[1] - self.y_lim_full[0]
-#
-#     # FUNCTION OVERRIDES  ---------------------------------------------------
-#
-#     def paint(self, p, *args):
-#
-#         p.drawPicture(0, 0, self.picture)
-#
-#     def boundingRect(self):
-#
-#         return QRectF(self.picture.boundingRect())
-#
-#     @staticmethod
-#     def calc_expanded_limits(y, dy):
-#
-#         y_min = np.min(y, axis=0)
-#         y_rng = np.max(y, axis=0) - y_min
-#
-#         return y_min - np.multiply(dy, y_rng), y_min + np.multiply(1 + dy, y_rng)
-#
-#     @staticmethod
-#     def vert_to_pointf(v):
-#
-#         return [QPointF(x[0], x[1]) for x in v]
+        # initialises the other class fields
+        self.init_class_fields()
+
+    def init_class_fields(self):
+
+        # main plot frame properties
+        main_plot_item = self.h_plot[0, 0].getPlotItem()
+        main_plot_item.hideAxis('left')
+        main_plot_item.hideAxis('bottom')
+        main_plot_item.setDefaultPadding(0.05)
+
+        # plot inset frame properties
+        sub_plot_item = self.h_plot[1, 0].getPlotItem()
+        sub_plot_item.setMouseEnabled(x=False, y=False)
+        sub_plot_item.hideAxis('left')
+        sub_plot_item.hideAxis('bottom')
+        sub_plot_item.setDefaultPadding(0.05)
+
+        # sets the viewbox borders
+        self.v_box[0, 0].setBorder((255, 255, 255))
+        self.v_box[1, 0].setBorder((255, 255, 255))
+
+        # main class fields
+        self.probe_rec = self.session_info.get_current_probe()
+
+    def setup_probe_views(self):
+
+        # clears any existing plots
+        if self.main_view is not None:
+            a = 1
+
+        # creates the main/inset views
+        self.main_view = ProbeView(self.h_plot[0, 0], self.probe)
+        self.sub_view = ProbeView(self.h_plot[1, 0], self.probe)
+
+        # sets the main probe view properties
+        self.h_plot[0, 0].addItem(self.main_view)
+        self.main_view.update_roi.connect(self.main_roi_moved)
+        self.main_view.reset_axes_limits(False)
+
+        # resets the main axis limits
+        self.v_box[0, 0].setLimits(
+            xMin=self.main_view.x_lim[0], xMax=self.main_view.x_lim[1],
+            yMin=self.main_view.y_lim[0], yMax=self.main_view.y_lim[1],
+        )
+
+        # sets the inset probe view properties\
+        self.h_plot[1, 0].addItem(self.sub_view)
+
+        # create the main view ROI
+        self.main_view.create_inset_roi(
+            self.sub_view.x_lim_shank[0], self.sub_view.y_lim_shank[0], False)
+
+        # sets up the probe dataframe
+        self.sub_view.reset_axes_limits(False, i_shank=0)
+        self.probe_dframe = self.probe.to_dataframe(complete=True)
+
+    # ---------------------------------------------------------------------------
+    # Widget Event Functions
+    # ---------------------------------------------------------------------------
+
+    def main_roi_moved(self, p_pos):
+
+        # updates the x-axis limits
+        self.sub_view.x_lim[0] = p_pos[0]
+        self.sub_view.x_lim[1] = self.sub_view.x_lim[0] + p_pos[2].x()
+
+        # updates the y-axis limits
+        self.sub_view.y_lim[0] = p_pos[1]
+        self.sub_view.y_lim[1] = self.sub_view.y_lim[0] + p_pos[2].y()
+
+        # # resets the axis limits
+        # self.v_box[1, 0].setXRange(self.sub_view.x_lim[0], self.sub_view.x_lim[1])
+        # self.v_box[1, 0].setYRange(self.sub_view.y_lim[0], self.sub_view.y_lim[1])
+
+        # resets the axis limits
+        self.sub_view.reset_axes_limits(False)
+
+    @staticmethod
+    def update_probe(_self):
+        _self.probe = _self.probe_rec.get_probe()
+        _self.setup_probe_views()
+
+    # trace property observer properties
+    probe_rec = cf.ObservableProperty(update_probe)
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+
+class ProbeView(GraphicsObject):
+    # parameters
+    dp = 0.1
+
+    # plot pen widgets
+    pen = mkPen(width=2, color='b')
+    pen_h = mkPen(width=2, color='g')
+
+    # pyqtsignal functions
+    update_roi = pyqtSignal(object)
+
+    def __init__(self, parent, probe):
+        super(ProbeView, self).__init__()
+
+        self.setParent(parent)
+
+        # field initialisation
+        self.roi = None
+        self.width = None
+        self.height = None
+        self.x_lim = None
+        self.y_lim = None
+        self.x_lim_full = None
+        self.y_lim_full = None
+        self.x_lim_shank = []
+        self.y_lim_shank = []
+
+        # field retrieval
+        self.n_dim = probe.ndim
+        self.n_contact = probe.get_contact_count()
+        self.n_shank = probe.get_shank_count()
+        self.si_units = probe.si_units
+
+        # contact property fields
+        self.c_id = probe.contact_ids
+        self.c_index = probe.device_channel_indices
+        self.c_pos = probe.contact_positions
+        self.c_vert = self.setup_contact_coords(probe.get_contact_vertices())
+
+        # probe properties
+        self.p_title = probe.get_title()
+        self.p_vert = self.vert_to_pointf(probe.probe_planar_contour)
+        self.p_ax = probe.contact_plane_axes
+
+        # sets up the axes limits
+        self.get_axes_limits(probe)
+
+        # plot widgets
+        self.picture = QPicture()
+
+        # creates the probe plot
+        self.create_probe_plot()
+
+    # ---------------------------------------------------------------------------
+    # Class Widget Setup Functions
+    # ---------------------------------------------------------------------------
+
+    def setup_contact_coords(self, vert0):
+
+        # sets up the contact polygon objects
+        return [self.vert_to_pointf(v) for v in vert0]
+
+    def create_probe_plot(self):
+
+        # polygon setup
+        p_poly = QPolygonF(self.p_vert)
+        c_poly = [QPolygonF(x) for x in self.c_vert]
+
+        p_col_probe = cf.get_colour_value('r', 128)
+        c_col_probe = cf.get_colour_value('y', 128)
+
+        # painter object setup
+        p = QPainter(self.picture)
+
+        # probe shape plot
+        p.setPen(mkPen(p_col_probe))
+        p.setBrush(mkBrush(p_col_probe))
+        p.drawPolygon(p_poly)
+
+        # probe contact plots
+        p.setPen(mkPen(c_col_probe))
+        p.setBrush(mkBrush(c_col_probe))
+        for c_p in c_poly:
+            p.drawPolygon(c_p)
+
+        # ends the drawing
+        p.end()
+
+    def create_inset_roi(self, x_lim_s, y_lim_s, is_full=True):
+
+        # pre-calculations
+        p_0 = [x_lim_s[0], y_lim_s[0]]
+        p_sz = [np.diff(x_lim_s)[0], np.diff(y_lim_s)[0]]
+
+        if is_full:
+            p_lim = QRectF(self.x_lim_full[0], self.y_lim_full[0], self.width, self.height)
+
+        else:
+            p_lim = QRectF(self.x_lim[0], self.y_lim[0], np.diff(self.x_lim)[0], np.diff(self.y_lim)[0])
+
+        # creates the roi object
+        self.roi = ROI(p_0, p_sz, pen=self.pen, hoverPen=self.pen_h,
+                       handlePen=self.pen, handleHoverPen=self.pen_h, maxBounds=p_lim)
+        self.roi.addTranslateHandle([0, 0])
+        self.roi.addScaleHandle([1, 1], [0, 0])
+        self.roi.addScaleHandle([0, 1], [1, 0])
+        self.roi.addScaleHandle([1, 0], [0, 1])
+        self.roi.sigRegionChanged.connect(self.roi_moved)
+
+        # adds the roi to the parent plot widget
+        self.parent().addItem(self.roi)
+
+    # ---------------------------------------------------------------------------
+    # ROI Movement Functions
+    # ---------------------------------------------------------------------------
+
+    def roi_moved(self, h_roi):
+
+        x0, y0, p_sz = h_roi.x(), h_roi.y(), h_roi.size()
+        self.update_roi.emit([x0, y0, p_sz])
+
+    # ---------------------------------------------------------------------------
+    # Miscellaneous Functions
+    # ---------------------------------------------------------------------------
+
+    def reset_axes_limits(self, is_full=True, i_shank=None):
+
+        if i_shank is not None:
+            # case is using domain reduced to a single shank
+            _x_lim, _y_lim = self.x_lim_shank[i_shank], self.y_lim_shank[i_shank]
+
+        elif is_full:
+            # case is using the full probe domain
+            _x_lim, _y_lim = self.x_lim_full, self.y_lim_full
+
+        else:
+            # case is using domain reduced to a all shanks
+            _x_lim, _y_lim = self.x_lim, self.y_lim
+
+        # updates the figure limits
+        vb = self.getViewBox()
+        vb.setXRange(_x_lim[0], _x_lim[1], padding=0)
+        vb.setYRange(_y_lim[0], _y_lim[1], padding=0)
+
+        if is_full:
+            vb.setLimits(xMin=_x_lim[0], xMax=_x_lim[1], yMin=_y_lim[0], yMax=_y_lim[1])
+
+    def get_axes_limits(self, probe):
+
+        # calculates the contact vertex range
+        c_vert = np.array(probe.get_contact_vertices())
+        c_vert_tot = np.vstack(c_vert)
+        c_min_ex, c_max_ex = self.calc_expanded_limits(c_vert_tot, np.array([0.1, 0.1]))
+
+        # calculates the probe shape vertex range
+        p_pos = probe.probe_planar_contour
+        p_min_ex, p_max_ex = self.calc_reduced_limits(p_pos, c_min_ex, c_max_ex)
+
+        # sets the contact x/y axes limits
+        self.x_lim = [c_min_ex[0], c_max_ex[0]]
+        self.y_lim = [c_min_ex[1], c_max_ex[1]]
+        self.x_lim_full = [p_min_ex[0], p_max_ex[0]]
+        self.y_lim_full = [p_min_ex[1], p_max_ex[1]]
+
+        # sets the shank coordinate limits
+        for sh in probe.get_shanks():
+            c_vert_sh = np.vstack(c_vert[sh.device_channel_indices])
+            sh_min_ex, sh_max_ex = self.calc_reduced_limits(c_vert_sh)
+            self.x_lim_shank.append([sh_min_ex[0], sh_max_ex[0]])
+            self.y_lim_shank.append([sh_min_ex[1], sh_max_ex[1]])
+
+        # calculates the full width/height dimensions
+        self.width = self.x_lim_full[1] - self.x_lim_full[0]
+        self.height = self.y_lim_full[1] - self.y_lim_full[0]
+
+    def calc_reduced_limits(self, p, c_min=None, c_max=None):
+
+        if c_min is None:
+            p_min0 = np.min(p, axis=0)
+            p_max0 = np.max(p, axis=0)
+
+        else:
+            p_min0 = np.vstack((np.min(p, axis=0), c_min))
+            p_max0 = np.vstack((np.max(p, axis=0), c_max))
+
+        p_lim_tot = np.vstack((p_min0, p_max0))
+        return self.calc_expanded_limits(p_lim_tot, np.array([0.1, 0.05]))
+
+    # ---------------------------------------------------------------------------
+    # Function Overrides
+    # ---------------------------------------------------------------------------
+
+    def paint(self, p, *args):
+
+        p.drawPicture(0, 0, self.picture)
+
+    def boundingRect(self):
+
+        return QRectF(self.picture.boundingRect())
+
+    # ---------------------------------------------------------------------------
+    # Static Methods
+    # ---------------------------------------------------------------------------
+
+    @staticmethod
+    def calc_expanded_limits(y, dy):
+
+        y_min = np.min(y, axis=0)
+        y_rng = np.max(y, axis=0) - y_min
+
+        return y_min - np.multiply(dy, y_rng), y_min + np.multiply(1 + dy, y_rng)
+
+    @staticmethod
+    def vert_to_pointf(v):
+
+        return [QPointF(x[0], x[1]) for x in v]
