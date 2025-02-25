@@ -1,20 +1,20 @@
 # module import
-import os
-import functools
+# import os
+# import functools
 import numpy as np
-import pyqtgraph as pg
+# import pyqtgraph as pg
 
 # pyqt6 module import
 from PyQt6.QtWidgets import (QMainWindow, QHBoxLayout, QFormLayout, QWidget,
                              QScrollArea, QSizePolicy, QStatusBar, QMenuBar, QDockWidget)
-from PyQt6.QtCore import Qt, QSize, QRect, pyqtSignal, QObject
+# from PyQt6.QtCore import Qt, QSize, QRect, pyqtSignal, QObject
 from PyQt6.QtGui import QFont, QColor, QIcon, QAction
 
 # custom module import
-import spike_pipeline.common.common_widget as cw
 import spike_pipeline.common.common_func as cf
-from spike_pipeline.plotting.utils import PlotManager
+import spike_pipeline.common.common_widget as cw
 from spike_pipeline.info.utils import InfoManager
+from spike_pipeline.plotting.utils import PlotManager
 from spike_pipeline.common.property_classes import SessionWorkBook
 from spike_pipeline.widgets.open_session import OpenSession
 
@@ -33,6 +33,11 @@ font_lbl = cw.create_font_obj(is_bold=True, font_weight=QFont.Weight.Bold)
 font_hdr = cw.create_font_obj(size=9, is_bold=True, font_weight=QFont.Weight.Bold)
 
 # MAIN WINDOW WIDGET ---------------------------------------------------------------------------------------------------
+
+"""
+    MainWindow: spike pipeline main GUI window. controls the flow of information/communication
+                between the information/plotting managers
+"""
 
 
 class MainWindow(QMainWindow):
@@ -107,15 +112,25 @@ class MainWindow(QMainWindow):
 
     def testing(self):
 
+        # INFORMATION MANAGER TESTING
+
+
+
+        # PLOT MANAGER TESTING
+
         # adds the plot views
         self.plot_manager.add_plot_view('trace')
         self.plot_manager.add_plot_view('probe')
 
         # test
-        c_id = np.array([[1, 1, 2],[1, 1, 2]])
+        c_id = np.array([[1, 1, 2], [1, 1, 2]])
         self.plot_manager.main_layout.updateID(c_id)
 
 # MENUBAR WIDGET -------------------------------------------------------------------------------------------------------
+
+"""
+    MenuBar: class object that controls the main window menu/toolbars
+"""
 
 
 class MenuBar(QMenuBar):

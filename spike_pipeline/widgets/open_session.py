@@ -72,7 +72,11 @@ icon_path = {
 
 # OPEN SESSION WIDGET --------------------------------------------------------------------------------------------------
 
-# Dialog window for interacting with session I/O
+"""
+    OpenSession: dialog window that provides the means for users to interact
+                 and load experimental recording sessions 
+"""
+
 
 class OpenSession(QMainWindow):
     # parameters
@@ -113,7 +117,9 @@ class OpenSession(QMainWindow):
         # opens the dialog
         self.show()
 
-    # CLASS INITIALISATION FUNCTIONS -----------------------------------
+    # ---------------------------------------------------------------------------
+    # Class Widget Setup Functions
+    # ---------------------------------------------------------------------------
 
     def setup_dialog(self):
 
@@ -182,7 +188,9 @@ class OpenSession(QMainWindow):
         # reset the dialog width
         self.reset_dialog_width(False, False)
 
-    # SESSION I/O FUNCTIONS -----------------------------------------------------
+    # ---------------------------------------------------------------------------
+    # Toolbar/Menubar Functions
+    # ---------------------------------------------------------------------------
 
     def session_load(self):
 
@@ -250,7 +258,9 @@ class OpenSession(QMainWindow):
         # closes the window
         self.close()
 
-    # WIDGET EVENT FUNCTIONS ----------------------------------------------------
+    # ---------------------------------------------------------------------------
+    # Widget Event Functions
+    # ---------------------------------------------------------------------------
 
     def keyPressEvent(self, evnt) -> None:
 
@@ -259,7 +269,9 @@ class OpenSession(QMainWindow):
         else:
             evnt.ignore()
 
-    # MISCELLANEOUS FUNCTIONS ----------------------------------------------------
+    # ---------------------------------------------------------------------------
+    # Miscellaneous Functions
+    # ---------------------------------------------------------------------------
 
     def reset_dialog_width(self, is_open, reset_pos=True):
 
@@ -303,6 +315,10 @@ class OpenSession(QMainWindow):
 
 
 # SESSION FILE WIDGET --------------------------------------------------------------------------------------------------
+
+"""
+    SessionFile: 
+"""
 
 
 class SessionFile(QWidget):
@@ -348,7 +364,9 @@ class SessionFile(QWidget):
         # sets the widget styling
         self.set_styling()
 
-    # CLASS INITIALISATION FUNCTIONS ------------------------------------------
+    # ---------------------------------------------------------------------------
+    # Class Widget Setup Functions
+    # ---------------------------------------------------------------------------
 
     def init_class_fields(self):
 
@@ -438,7 +456,9 @@ class SessionFile(QWidget):
             run_names=s_obj.get_run_names(),
         )
 
-    # MISCELLANEOUS FUNCTIONS -------------------------------------------------
+    # ---------------------------------------------------------------------------
+    # Miscellaneous Functions
+    # ---------------------------------------------------------------------------
 
     def set_styling(self):
 
@@ -463,6 +483,10 @@ class SessionFile(QWidget):
 
 
 # SESSION PROBE WIDGET -------------------------------------------------------------------------------------------------
+
+"""
+    SessionProbe: 
+"""
 
 
 class SessionProbe(QWidget):
@@ -563,7 +587,9 @@ class SessionProbe(QWidget):
         # initialises the class fields
         self.init_class_fields()
 
-    # CLASS INITIALISATION FUNCTIONS ------------------------------------
+    # ---------------------------------------------------------------------------
+    # Class Widget Setup Functions
+    # ---------------------------------------------------------------------------
 
     def init_class_fields(self):
 
@@ -708,7 +734,9 @@ class SessionProbe(QWidget):
         self.sub_plt_item.hideAxis('bottom')
         self.sub_plt_item.setDefaultPadding(0.01)
 
-    # CLASS EVENT FUNCTIONS ---------------------------------------------
+    # ---------------------------------------------------------------------------
+    # Class Widget Setup Functions
+    # ---------------------------------------------------------------------------
 
     def main_roi_moved(self, p_pos):
 
@@ -853,7 +881,9 @@ class SessionProbe(QWidget):
                 pp_s.y_lim[1] = pp_s.y_lim[0] + p_val
                 pp_m.roi.setSize(QSizeF(np.diff(pp_s.x_lim)[0], np.diff(pp_s.y_lim)[0]))
 
-    # MISCELLANEOUS FUNCTIONS --------------------------------------------
+    # ---------------------------------------------------------------------------
+    # Miscellaneous Functions
+    # ---------------------------------------------------------------------------
 
     def get_session_name_list(self):
 
@@ -1033,6 +1063,11 @@ class SessionProbe(QWidget):
 
 # SESSION NEW WIDGET ---------------------------------------------------------------------------------------------------
 
+"""
+    SessionNew: widget that provides the means to open a new experimental session 
+                (either via raw data file or folder formats)
+"""
+
 
 class SessionNew(QWidget):
     # widget dimensions
@@ -1089,6 +1124,10 @@ class SessionNew(QWidget):
         # initialises the class fields
         self.init_prop_fields()
         self.init_class_fields()
+
+    # ---------------------------------------------------------------------------
+    # Class Widget Setup Functions
+    # ---------------------------------------------------------------------------
 
     def init_prop_fields(self):
 
@@ -1319,7 +1358,9 @@ class SessionNew(QWidget):
         # updates the dialog properties
         self.is_updating = False
 
-    # WIDGET EVENT FUNCTIONS --------------------------------------------------
+    # ---------------------------------------------------------------------------
+    # Widget Event Functions
+    # ---------------------------------------------------------------------------
 
     def tab_change(self):
 
@@ -1440,7 +1481,9 @@ class SessionNew(QWidget):
         h_root = cf.get_parent_widget(self, OpenSession)
         h_root.set_toolbar_props('open', np.any(self.use_run))
 
-    # MISCELLANEOUS FUNCTIONS -------------------------------------------------
+    # ---------------------------------------------------------------------------
+    # Miscellaneous Functions
+    # ---------------------------------------------------------------------------
 
     def get_subject_path(self):
 
@@ -1513,6 +1556,10 @@ class SessionNew(QWidget):
 
             self.run_table.setRowHeight(i, self.row_height)
 
+    # ---------------------------------------------------------------------------
+    # Static Methods
+    # ---------------------------------------------------------------------------
+
     @staticmethod
     def create_para_field(name, obj_type, value, p_fld=None, p_list=None, p_misc=None, ch_fld=None):
 
@@ -1521,6 +1568,10 @@ class SessionNew(QWidget):
 
 
 # EXPERIMENT FOLDER WIDGET ---------------------------------------------------------------------------------------------
+
+"""
+    ExptFolder: 
+"""
 
 
 class ExptFolder(QWidget):
@@ -1561,6 +1612,10 @@ class ExptFolder(QWidget):
 
         # # sets the widget styling
         # self.set_styling()
+
+    # ---------------------------------------------------------------------------
+    # Class Widget Setup Functions
+    # ---------------------------------------------------------------------------
 
     def init_class_fields(self):
 
@@ -1695,7 +1750,9 @@ class ExptFolder(QWidget):
             # updates the enabled properties
             self.tab_group.setTabEnabled(i, len(fd) > 0)
 
-    # WIDGET EVENT FUNCTIONS ---------------------------------------------
+    # ---------------------------------------------------------------------------
+    # Widget Event Functions
+    # ---------------------------------------------------------------------------
 
     def combo_format_change(self, h_obj):
 
@@ -1734,7 +1791,7 @@ class ExptFolder(QWidget):
             # resets the folder trees
             self.setup_folder_tree_views()
 
-    def subject_changed(self, item=None):
+    def subject_changed(self, *_):
 
         # field retrieval
         sub_dict = self.obj_dir.sub_dict[self.sub_path]
@@ -1773,7 +1830,9 @@ class ExptFolder(QWidget):
             obj_tree = self.h_tab[0].findChild(QFolderTree)
             obj_tree.update_tree_highlights()
 
-    # MISCELLANEOUS FUNCTIONS ---------------------------------------------
+    # ---------------------------------------------------------------------------
+    # Static Methods
+    # ---------------------------------------------------------------------------
 
     @staticmethod
     def reset_selected_subject(obj_tree, sub_path):

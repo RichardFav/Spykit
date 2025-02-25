@@ -69,7 +69,7 @@ class PlotManager(QWidget):
         self.init_class_fields()
 
     # ---------------------------------------------------------------------------
-    # Class Initialisation Functions
+    # Class Widget Setup Functions
     # ---------------------------------------------------------------------------
 
     def init_class_fields(self):
@@ -267,6 +267,10 @@ class PlotLayout(QLayout):
 
 
 # ----------------------------------------------------------------------------------------------------------------------
+
+"""
+    PlotWidget: 
+"""
 
 
 class PlotWidget(QWidget):
@@ -478,6 +482,10 @@ class PlotWidget(QWidget):
 
 # ----------------------------------------------------------------------------------------------------------------------
 
+"""
+    PlotParaBase: 
+"""
+
 
 class PlotParaBase(QWidget):
     def __init__(self, tr_name):
@@ -513,6 +521,10 @@ class PlotParaBase(QWidget):
 
 # ----------------------------------------------------------------------------------------------------------------------
 
+"""
+    PlotPara: 
+"""
+
 
 class PlotPara(PlotParaBase):
     # signal functions
@@ -522,6 +534,10 @@ class PlotPara(PlotParaBase):
 
     def __init__(self, tr_name):
         super(PlotPara, self).__init__(tr_name)
+
+    # ---------------------------------------------------------------------------
+    # Parameter Update Event Functions
+    # ---------------------------------------------------------------------------
 
     @staticmethod
     def para_change(p_str, _self):
@@ -540,6 +556,10 @@ class PlotPara(PlotParaBase):
 
         if _self.has_init:
             _self.update_limits.emit(p_str)
+
+    # ---------------------------------------------------------------------------
+    # Parameter Observer Properties
+    # ---------------------------------------------------------------------------
 
     # trace property observer properties
     name = cf.ObservableProperty(functools.partial(para_change, 'name'))
@@ -565,5 +585,5 @@ class PlotPara(PlotParaBase):
 
 # ----------------------------------------------------------------------------------------------------------------------
 
-
+# module imports (required here as will cause circular import error)
 import spike_pipeline.plotting.view_type as vt
