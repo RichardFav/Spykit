@@ -41,7 +41,6 @@ grp_width = 250
 # object dimensions
 dlg_width = 1650
 dlg_height = 900
-
 min_width = 800
 min_height = 450
 
@@ -180,8 +179,8 @@ class QPlotWidgetMain(QDialog):
                 # prompts the user if they want to reset all the fields
                 u_choice = QMessageBox.question(self, 'Clip Trace?',
                                                 "Are you sure you want to clip the trace from the parent trace?",
-                                                cf.q_yes_no, QMessageBox.StandardButton.Yes)
-                if u_choice == QMessageBox.StandardButton.No:
+                                                cf.q_yes_no, cf.q_yes)
+                if u_choice == cf.q_no:
                     # exit if they cancelled
                     return
 
@@ -221,8 +220,8 @@ class QPlotWidgetMain(QDialog):
                 m_str = "Are you sure you want to delete the current trace"
                 u_choice = QMessageBox.question(self, 'Delete Trace(s)?',
                                                 '{0}{1}?'.format(m_str, ' (and descendents)' if has_child else ''),
-                                                cf.q_yes_no, QMessageBox.StandardButton.Yes)
-                if u_choice == QMessageBox.StandardButton.No:
+                                                cf.q_yes_no, cf.q_yes)
+                if u_choice == cf.q_no:
                     # exit if they cancelled
                     return
 
@@ -260,8 +259,8 @@ class QPlotWidgetMain(QDialog):
                 # prompts the user if they want to delete the trace
                 m_str = "Are you sure you want to delete the descendent traces?"
                 u_choice = QMessageBox.question(self, 'Delete Descendent Traces?', m_str,
-                                                cf.q_yes_no, QMessageBox.StandardButton.Yes)
-                if u_choice == QMessageBox.StandardButton.No:
+                                                cf.q_yes_no, cf.q_yes)
+                if u_choice == cf.q_no:
                     # exit if they cancelled
                     return
 

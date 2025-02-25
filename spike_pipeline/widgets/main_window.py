@@ -6,18 +6,21 @@ import pyqtgraph as pg
 
 # pyqt6 module import
 from PyQt6.QtWidgets import (QMainWindow, QHBoxLayout, QFormLayout, QWidget,
-                             QScrollArea, QSizePolicy, QStatusBar, QMenuBar)
-from PyQt6.QtCore import Qt, QSize, QRect, pyqtSignal
+                             QScrollArea, QSizePolicy, QStatusBar, QMenuBar, QDockWidget)
+from PyQt6.QtCore import Qt, QSize, QRect, pyqtSignal, QObject
 from PyQt6.QtGui import QFont, QColor, QIcon, QAction
 
 # custom module import
 import spike_pipeline.common.common_widget as cw
 import spike_pipeline.common.common_func as cf
+from spike_pipeline.plotting.utils import PlotManager
+from spike_pipeline.info.utils import InfoManager
+from spike_pipeline.common.property_classes import SessionWorkBook
 from spike_pipeline.widgets.open_session import OpenSession
 
 # widget dimensions
 x_gap = 15
-grp_width = 250
+info_width = 250
 
 # object dimensions
 dlg_width = 1650
@@ -36,24 +39,32 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super(MainWindow, self).__init__()
 
-        # field initialisation
-
-
         # sets up the main layout
         self.central_widget = QWidget()
         self.main_layout = QHBoxLayout()
         self.central_widget.setLayout(self.main_layout)
         self.setCentralWidget(self.central_widget)
 
-        # sets up the information/display panel widgets
-        self.obj_info = InfoPanel(self)
-        self.obj_disp = DisplayPanel(self)
+        # session workbook object
+        self.session_obj = SessionWorkBook()
+
+        # sets up the information/plot manager widgets
+        self.info_manager = InfoManager(self, info_width, self.session_obj)
+        self.plot_manager = PlotManager(self, dlg_width - info_width, self.session_obj)
+
+        # boolean class fields
+        self.has_session = False
 
         # sets up the main window widgets
         self.setup_main_window()
         self.init_class_fields()
 
-    # CLASS INITIALISATION FUNCTIONS -----------------------------------
+        # REMOVE ME LATER
+        self.testing()
+
+    # ---------------------------------------------------------------------------
+    # Class Widget Setup Functions
+    # ---------------------------------------------------------------------------
 
     def setup_main_window(self):
 
@@ -65,130 +76,61 @@ class MainWindow(QMainWindow):
     def init_class_fields(self):
 
         # plot parameter widget setup
-        self.main_layout.addWidget(self.obj_info)
-        self.main_layout.addWidget(self.obj_disp)
+        self.main_layout.addWidget(self.info_manager)
+        self.main_layout.addWidget(self.plot_manager)
+
+        # connects workbook signal functions
+        self.session_obj.session_change.connect(self.new_session)
 
         # sets up the menu bar items
         self.setMenuBar(MenuBar(self))
 
-# INFORMATION PANEL WIDGET ---------------------------------------------------------------------------------------------
+    # ---------------------------------------------------------------------------
+    # Signal Slot Functions
+    # ---------------------------------------------------------------------------
+
+    def new_session(self):
+
+        # if there is a session already loaded, then clear the main window
+        if self.has_session:
+            a = 1
+
+        #
 
 
-class InfoPanel(QWidget):
-    def __init__(self, parent=None):
-        super(InfoPanel, self).__init__(parent)
+        # resets the session flag
+        self.has_session = True
 
-        # boolean class fields
-        self.is_updating = False
+    # ---------------------------------------------------------------------------
+    # Miscellaneous Functions
+    # ---------------------------------------------------------------------------
 
-        # field initialisation
-        self.h_main = cf.get_parent_widget(self, MainWindow)
+    def testing(self):
 
-        # widget setup
-        self.main_layout = QFormLayout()
-        self.h_scroll = QScrollArea(self)
-        self.h_widget_scroll = QWidget()
-        self.scroll_layout = QFormLayout()
-        self.status_bar = QStatusBar()
+        # adds the plot views
+        self.plot_manager.add_plot_view('trace')
+        self.plot_manager.add_plot_view('probe')
 
-        # initialises the class fields
-        self.init_class_fields()
-
-    # CLASS INITIALISATION FUNCTIONS ------------------------------------------
-
-    def init_class_fields(self):
-
-        # # initialises the parameter information fields
-        # self.setup_para_info_fields()
-
-        # sets the main widget properties
-        self.setFixedWidth(grp_width + x_gap)
-        self.setSizePolicy(QSizePolicy(cf.q_fix, cf.q_exp))
-        self.setLayout(self.main_layout)
-
-        # sets the widget layout properties
-        self.main_layout.setSpacing(0)
-        self.main_layout.setContentsMargins(0, 0, 0, 0)
-        self.main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-        self.main_layout.addWidget(self.h_scroll)
-
-        # SCROLL AREA WIDGET SETUP --------------------------------------------
-
-        # sets the scroll area properties
-        self.h_scroll.setWidgetResizable(True)
-        self.h_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
-        self.h_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self.h_scroll.setStyleSheet("background-color: rgba(120, 152, 229, 255) ;")
-        self.h_scroll.setSizePolicy(QSizePolicy(cf.q_exp, cf.q_exp))
-        self.h_scroll.setWidget(self.h_widget_scroll)
-
-        # sets the scroll widget layout widget
-        self.h_widget_scroll.setLayout(self.scroll_layout)
-
-        # sets the scroll widget layout properties
-        self.scroll_layout.setSpacing(0)
-        self.scroll_layout.setContentsMargins(0, 0, 0, 0)
-
-        # creates the text label object
-        self.h_status = cw.create_text_label(None, 'Waiting for process...', font_lbl, align='left')
-        self.main_layout.addWidget(self.h_status)
-
-    # MISCELLANEOUS FUNCTIONS -------------------------------------------------
-
-    def set_styles(self):
-
-        # sets the style sheets
-        self.h_scroll.setStyleSheet("background-color: rgba(120, 152, 229, 255) ;")
-
-
-# DISPLAY PANEL WIDGET -------------------------------------------------------------------------------------------------
-
-
-class DisplayPanel(QWidget):
-    def __init__(self, parent=None):
-        super(DisplayPanel, self).__init__(parent)
-
-        # field initialisation
-        self.h_main = cf.get_parent_widget(self, MainWindow)
-
-        # widget setup
-        self.main_layout = QHBoxLayout(self)
-        self.bg_widget = QWidget()
-
-        # initialises the class fields
-        self.init_class_fields()
-
-    # CLASS INITIALISATION FUNCTIONS -----------------------------------
-
-    def init_class_fields(self):
-
-        # sets the configuration options
-        pg.setConfigOptions(antialias=True)
-
-        # sets the main widget properties
-        self.setSizePolicy(QSizePolicy(cf.q_exp, cf.q_exp))
-        self.setLayout(self.main_layout)
-
-        # sets the widget layout properties
-        self.main_layout.setSpacing(0)
-        self.main_layout.setContentsMargins(0, 0, 0, 0)
-        self.main_layout.addWidget(self.bg_widget)
-
-        # creates the background widget
-        self.bg_widget.setStyleSheet("background-color: black;")
-
+        # test
+        c_id = np.array([[1, 1, 2],[1, 1, 2]])
+        self.plot_manager.main_layout.updateID(c_id)
 
 # MENUBAR WIDGET -------------------------------------------------------------------------------------------------------
 
+
 class MenuBar(QMenuBar):
-    def __init__(self, parent=None):
-        super(MenuBar, self).__init__(parent)
+    def __init__(self, main_obj):
+        super(MenuBar, self).__init__()
 
         # field retrieval
-        self.h_main = cf.get_parent_widget(self, MainWindow)
+        self.main_obj = main_obj
 
         # initialises the class fields
         self.init_class_fields()
+
+    # ---------------------------------------------------------------------------
+    # Class Widget Setup Functions
+    # ---------------------------------------------------------------------------
 
     def init_class_fields(self):
         """
@@ -202,9 +144,9 @@ class MenuBar(QMenuBar):
         # FILE MENU ITEMS -----------------------------------------------------------------------------
 
         # initialisations
-        p_str = ['test', None, 'close']
-        p_lbl = ['Testing', None, 'Close Window']
-        cb_fcn = [self.menu_testing, None, self.close_window]
+        p_str = ['open_session', None, 'close']
+        p_lbl = ['Open Session', None, 'Close Window']
+        cb_fcn = [self.open_session, None, self.close_window]
 
         # menu/toolbar item creation
         for pl, ps, cbf in zip(p_lbl, p_str, cb_fcn):
@@ -218,12 +160,16 @@ class MenuBar(QMenuBar):
                 h_menu.triggered.connect(cbf)
                 h_menu_file.addAction(h_menu)
 
-    def menu_testing(self):
+    # ---------------------------------------------------------------------------
+    # File Menubar Functions
+    # ---------------------------------------------------------------------------
 
-        self.h_main.setVisible(False)
-        OpenSession(self.h_main)
+    def open_session(self):
+
+        self.main_obj.setVisible(False)
+        OpenSession(self.main_obj)
 
     def close_window(self):
 
         # closes the window
-        self.h_main.close()
+        self.main_obj.close()

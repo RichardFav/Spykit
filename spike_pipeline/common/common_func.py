@@ -18,8 +18,14 @@ q_pref = QSizePolicy.Policy.Preferred
 q_max = QSizePolicy.Policy.Maximum
 q_min = QSizePolicy.Policy.Minimum
 
+# messagebox flags
+q_no = QMessageBox.StandardButton.No
 q_yes = QMessageBox.StandardButton.Yes
-q_yes_no = QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+q_cancel = QMessageBox.StandardButton.Cancel
+
+# combined messagebox flags
+q_yes_no = q_yes | q_no
+q_yes_no_cancel = q_yes_no | q_cancel
 
 # common parameters
 align_type = {'center': Qt.AlignmentFlag.AlignCenter,

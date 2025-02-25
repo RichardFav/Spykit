@@ -2,29 +2,25 @@
 import os
 import functools
 import time
-
 import numpy as np
 from copy import deepcopy
 from pathlib import Path
 from bigtree import dataframe_to_tree, tree_to_dict
 
-# spikewrap modules
-import spikewrap as sw
-
 # custom module import
 import spike_pipeline.common.common_func as cf
 import spike_pipeline.common.common_widget as cw
 import spike_pipeline.common.spikeinterface_func as sf
+from spike_pipeline.common.property_classes import SessionObject
 from spike_pipeline.common.common_widget import (QLabelEdit, QFileSpec, QLabelCombo, QFolderTree, QLabelCheckCombo)
-
 from spike_pipeline.plotting.probe import ProbePlot
 
 # pyqt6 module import
 from PyQt6.QtWidgets import (QDialog, QHBoxLayout, QVBoxLayout, QWidget, QFormLayout, QSizePolicy, QGridLayout,
                              QGroupBox, QComboBox, QCheckBox, QLineEdit, QTableWidget, QTableWidgetItem, QFrame,
-                             QSpacerItem, QTableView, QMainWindow, QMenuBar, QApplication)
+                             QSpacerItem, QTableView, QMainWindow, QApplication, QToolBar, QMessageBox)
 from PyQt6.QtGui import QFont, QIcon, QStandardItem, QKeySequence, QAction
-from PyQt6.QtCore import Qt, QSize, QSizeF, pyqtSignal, QObject
+from PyQt6.QtCore import Qt, QSize, QSizeF, pyqtSignal
 
 # testing modules
 import pyqtgraph as pg
@@ -79,24 +75,36 @@ icon_path = {
 # Dialog window for interacting with session I/O
 
 class OpenSession(QMainWindow):
-    def __init__(self, parent=None):
+    # parameters
+    x_max = 50
+
+    def __init__(self, parent=None, work_book=None):
         super(OpenSession, self).__init__(parent)
 
-        # class widget setup
+        # input arguments
+        self.work_book = work_book
+
+        # creates the toolbar widgets
+        self.h_toolbar = QToolBar('ToolBar', self)
+        self.setup_menubar()
+
+        # other class widget setup
         self.main_layout = QGridLayout()
         self.main_widget = QWidget(self)
         self.frame_layout = QGridLayout()
+
+        # main class widget setup
         self.file = SessionFile(self)
         self.probe = SessionProbe(self)
 
         # other class fields
         self.session = None
+        self.is_changed = True
         self.scr_sz = QApplication.primaryScreen().size()
         self.probe_width = dlg_width - (file_width + 2 * x_gap)
 
         # field initialisation
         self.setup_dialog()
-        self.setup_menubar()
         self.init_class_fields()
 
         # sets the central widget
@@ -115,33 +123,34 @@ class OpenSession(QMainWindow):
 
     def setup_menubar(self):
 
-        # creates the menubar object
-        h_menubar = QMenuBar(self)
-        self.setMenuBar(h_menubar)
-        h_menu_file = h_menubar.addMenu('File')
+        # creates the toolbar object
+        self.h_toolbar.setMovable(False)
+        self.h_toolbar.setStyleSheet(toolbar_style)
+        self.h_toolbar.setIconSize(QSize(cf.but_height + 1, cf.but_height + 1))
+        self.addToolBar(Qt.ToolBarArea.TopToolBarArea, self.h_toolbar)
+        self.addToolBarBreak()
 
         # initialisations
-        p_str = ['close']
-        p_lbl = ['Close Window']
-        cb_fcn = [self.close_window]
+        p_str = ['open', 'restart', None, 'close']
+        p_lbl = ['Load Session', 'Clear Session', None, 'Close Window']
+        cb_fcn = [self.session_load, self.session_reset, None, self.close_window]
 
         # menu/toolbar item creation
         for pl, ps, cbf in zip(p_lbl, p_str, cb_fcn):
             if ps is None:
                 # adds separators
-                # h_toolbar.addSeparator()
-                h_menu_file.addSeparator()
+                self.h_toolbar.addSeparator()
 
             else:
-                # # creates the menu item
-                # h_tool = QAction(QIcon(icon_path[ps]), pl, self)
-                # h_tool.triggered.connect(cbf)
-                # h_toolbar.addAction(h_tool)
-
                 # creates the menu item
-                h_menu = QAction(pl, self)
-                h_menu.triggered.connect(cbf)
-                h_menu_file.addAction(h_menu)
+                h_tool = QAction(QIcon(icon_path[ps]), pl, self)
+                h_tool.triggered.connect(cbf)
+                h_tool.setObjectName(ps)
+                self.h_toolbar.addAction(h_tool)
+
+                # disables the toolbar items
+                if ps in ['open', 'restart']:
+                    h_tool.setEnabled(False)
 
     def init_class_fields(self):
 
@@ -177,8 +186,22 @@ class OpenSession(QMainWindow):
 
     def session_load(self):
 
+        if self.file.is_new:
+            self.file.load_session()
+
+        else:
+            a = 1
+
+        # field retrieval
+        run_names = self.session.get_run_names()
+        ses_names = self.session.get_session_names(run_names[0])
+
+        # resets the toolbar properties
+        self.is_changed = True
+        self.set_toolbar_props('restart', True)
+
         # updates the probe properties
-        self.probe.update_name_fields()
+        self.probe.update_name_fields(run_names, ses_names)
         self.probe.update_probe_info()
         self.probe.setEnabled(True)
         self.probe.setVisible(True)
@@ -188,20 +211,43 @@ class OpenSession(QMainWindow):
 
     def session_reset(self):
 
+        # clears the session field
+        self.session = None
+        self.is_changed = True
+        self.set_toolbar_props('restart', False)
+        self.file.new_session.expt_folder.button_reset_click()
+
+        # clears the probe fields (if set)
         if self.probe.has_probe:
             self.probe.clear_probe_frame()
             self.reset_dialog_width(False)
 
-    # MENUBAR EVENT FUNCTIONS --------------------------------------------------
-
     def close_window(self):
 
-        #
+        # if there is a session loaded, then prompt the user if they want to update
+        if self.parent() is not None:
+            if (self.session is not None) and self.is_changed:
+                # prompts the user if they want to delete the trace
+                m_str = "Do you want to update the loaded session?"
+                u_choice = QMessageBox.question(self, 'Update Loaded Session?', m_str,
+                                                cf.q_yes_no_cancel, cf.q_yes)
+                if u_choice == cf.q_cancel:
+                    # exit if they cancelled
+                    return
+
+                elif u_choice == cf.q_yes:
+                    # otherwise, update the session in the workbook
+                    self.work_book.session = self.session
+
+        # closes the dialog window
         self.setVisible(False)
-        time.sleep(0.5)
+        time.sleep(0.25)
+
+        # sets the parent widget to be visible (if available)
+        if self.parent() is not None:
+            self.parent().setVisible(True)
 
         # closes the window
-        self.parent().setVisible(True)
         self.close()
 
     # WIDGET EVENT FUNCTIONS ----------------------------------------------------
@@ -217,9 +263,6 @@ class OpenSession(QMainWindow):
 
     def reset_dialog_width(self, is_open, reset_pos=True):
 
-        # parameters
-        x_max = 50
-
         # field retrieval
         dlg_pos = self.geometry()
         p_width, x0 = self.probe_width if is_open else 0, dlg_pos.x()
@@ -228,7 +271,8 @@ class OpenSession(QMainWindow):
         if reset_pos:
             if is_open:
                 # case is opening the probe data
-                l_dlg = min(max(x_max, x0 - p_width / 2.), self.scr_sz.width() - (x_max + dlg_width))
+                l_dlg = min(max(self.x_max, x0 - p_width / 2.),
+                            self.scr_sz.width() - (self.x_max + dlg_width))
                 dlg_pos.setX(int(l_dlg))
 
             else:
@@ -253,120 +297,9 @@ class OpenSession(QMainWindow):
         exp_f = self.file.new_session.expt_folder
         return exp_f.sub_path.split('/')[-1], exp_f.ses_type
 
+    def set_toolbar_props(self, name, state):
 
-# SESSION OBJECT -------------------------------------------------------------------------------------------------------
-
-# Wrapper object for the session object created by SpikeWrap/SpikeInterface
-
-class SessionObject(QObject):
-    def __init__(self, subject_path, session_name, file_format, run_names, output_path=None):
-        super(SessionObject, self).__init__()
-
-        # class field initialisations
-        self._s = None
-
-        # sets th
-        self._subject_path = subject_path
-        self._session_name = session_name
-        self._file_format = file_format
-        self._run_names = run_names
-        self._output_path = output_path
-
-        # loads the session object
-        self.load_session()
-        self.load_raw_data()
-
-    # ---------------------------------------------------------------------------
-    # Session I/O Functions
-    # ---------------------------------------------------------------------------
-
-    def load_session(self):
-
-        # creates the spikewrap session object
-        self._s = sw.Session(
-            subject_path=self._subject_path,
-            session_name=self._session_name,
-            file_format=self._file_format,
-            run_names=self._run_names,
-            output_path=self._output_path,
-        )
-
-    def load_raw_data(self):
-
-        self._s.load_raw_data()
-
-    # ---------------------------------------------------------------------------
-    # Session wrapper functions
-    # ---------------------------------------------------------------------------
-
-    def get_session_runs(self, i_run, r_name=None):
-
-        if isinstance(i_run, str):
-            run_names = self.get_run_names()
-            i_run = run_names.index(i_run)
-
-        if r_name is not None:
-            return self._s._runs[i_run]._raw[r_name]
-
-        else:
-            return self._s._runs[i_run]
-
-    def get_session_names(self, i_run):
-
-        ses_run = self.get_session_runs(i_run)
-        return list(ses_run._raw.keys())
-
-    def get_run_names(self, *_):
-
-        return [x._run_name for x in self._s._runs]
-
-    # ---------------------------------------------------------------------------
-    # Protected Properties
-    # ---------------------------------------------------------------------------
-
-    @property
-    def subject_path(self):
-        return self._subject_path
-
-    @property
-    def session_name(self):
-        return self._session_name
-
-    @property
-    def file_format(self):
-        return self._file_format
-
-    @property
-    def run_names(self):
-        return self._run_names
-
-    @property
-    def output_path(self):
-        return self._output_path
-
-    # ---------------------------------------------------------------------------
-    # Protected Property Setter Functions
-    # ---------------------------------------------------------------------------
-
-    @subject_path.setter
-    def subject_path(self, new_path):
-        self._subject_path = new_path
-
-    @session_name.setter
-    def session_name(self, new_name):
-        self._session_name = new_name
-
-    @file_format.setter
-    def file_format(self, new_format):
-        self._file_format = new_format
-
-    @run_names.setter
-    def run_names(self, new_names):
-        self._run_names = new_names
-
-    @output_path.setter
-    def output_path(self, new_path):
-        self._output_path = new_path
+        self.findChild(QAction, name).setEnabled(state)
 
 
 # SESSION FILE WIDGET --------------------------------------------------------------------------------------------------
@@ -384,8 +317,15 @@ class SessionFile(QWidget):
         super(SessionFile, self).__init__(parent)
 
         # class fields
+        self.is_new = True
         self.session = None
-        self.has_session = False
+
+        # properties class field
+        self.props = {
+            'folder': {},
+            'file': {},
+            'existing': {'f_input': None},
+        }
 
         # widget setup
         self.root = self.parent()
@@ -398,7 +338,7 @@ class SessionFile(QWidget):
         self.file_layout = QVBoxLayout()
 
         # other widgets
-        self.new_session = SessionNew(self)
+        self.new_session = SessionNew(self, self.props)
         self.exist_session = QFileSpec(None, None, name='session_name')
 
         # initialises the class fields
@@ -434,9 +374,9 @@ class SessionFile(QWidget):
         self.file_widget.setSizePolicy(QSizePolicy(cf.q_pref, cf.q_exp))
         self.file_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
-        # sets the new session widget properties
-        self.new_session.open_session.connect(self.load_session)
-        self.new_session.reset_session.connect(self.reset_session)
+        # # sets the new session widget properties
+        # self.new_session.open_session.connect(self.load_session)
+        # self.new_session.reset_session.connect(self.reset_session)
 
         # resets the widget size policies
         self.setSizePolicy(QSizePolicy(cf.q_exp, cf.q_exp))
@@ -475,13 +415,16 @@ class SessionFile(QWidget):
 
         # check if the radio button is checked
         if rb.isChecked():
-            # updates the tab widget properties
-            self.new_session.is_new = rb.objectName() == 'new'
-            self.new_session.setEnabled(self.new_session.is_new)
-            self.exist_session.setEnabled(not self.new_session.is_new)
+            # clears the session (if one loaded)
+            if self.root.session is not None:
+                self.session_reset.emit()
 
-            # updates the dialog properties
-            self.new_session.update_dialog_props()
+            # sets the new session widget properties
+            self.is_new = rb.objectName() == 'new'
+            self.new_session.setEnabled(self.is_new)
+
+            # sets the existing session widget properties
+            self.exist_session.setEnabled(not self.is_new)
 
     def load_session(self):
 
@@ -494,14 +437,6 @@ class SessionFile(QWidget):
             file_format=s_obj.get_format_type(),
             run_names=s_obj.get_run_names(),
         )
-
-        # emits the signal function
-        self.session_loaded.emit()
-
-    def reset_session(self):
-
-        # emits the signal function
-        self.session_reset.emit()
 
     # MISCELLANEOUS FUNCTIONS -------------------------------------------------
 
@@ -607,6 +542,7 @@ class SessionProbe(QWidget):
 
         # plot frame widgets
         self.edit_dim = []
+        self.combo_list = []
         self.plot_frame_prop = QFrame()
         self.plot_frame_main = QFrame()
         self.plot_frame_sub = QFrame()
@@ -675,6 +611,7 @@ class SessionProbe(QWidget):
         self.info_layout.setSpacing(x_gap)
 
         # creates the information label/text combo widgets
+        n_r = 0
         for i, d in enumerate(self.info_lbl):
             # creates the text label object
             lbl_str = '{}:'.format(d)
@@ -688,9 +625,10 @@ class SessionProbe(QWidget):
 
             # stores the text widget
             self.info_text.append(lbl)
+            n_r = i_r
 
         # creates the combobox group
-        i_r0 = i_r + 1
+        i_r0 = n_r + 1
         for i, d in enumerate(self.combo_lbl):
             # creates the text label object
             combo_str = '{}:'.format(d)
@@ -926,11 +864,9 @@ class SessionProbe(QWidget):
 
         return self.root.session.get_run_names()
 
-    def update_name_fields(self):
+    def update_name_fields(self, run_names, ses_names):
 
         # retrieves the probe run/session names
-        run_names = self.root.session.get_run_names()
-        ses_names = self.root.session.get_session_names(run_names[0])
         self.combo_list = [run_names, ses_names]
 
         # updates the current run/session fields
@@ -1125,16 +1061,12 @@ class SessionNew(QWidget):
     open_session = pyqtSignal()
     reset_session = pyqtSignal()
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, props=None):
         super(SessionNew, self).__init__(parent)
 
         # field initialisations
+        self.props = props
         self.prop_fld = {}
-        self.props = {
-            'folder': {},
-            'file': {},
-            'existing': {'f_input': None},
-        }
 
         # string class fields
         self.n_para = None
@@ -1145,18 +1077,13 @@ class SessionNew(QWidget):
 
         # boolean class fields
         self.use_run = None
-        self.is_new = True
         self.is_updating = True
 
         # main class widgets
         self.main_layout = QFormLayout()
-        self.button_group = QWidget()
-        self.button_layout = QVBoxLayout()
         self.run_table = QTableWidget(0, 3, None)
 
         # minor class widgets
-        self.button_open = cw.create_push_button(self, '')
-        self.button_reset = cw.create_push_button(self, '')
         self.h_tab_grp = cw.create_tab_group(self)
 
         # initialises the class fields
@@ -1203,34 +1130,7 @@ class SessionNew(QWidget):
         self.main_layout.setSpacing(0)
         self.main_layout.setContentsMargins(0, 0, 0, 0)
         self.main_layout.addRow(self.h_tab_grp)
-        self.main_layout.addRow(self.run_table, self.button_group)
-
-        # button group properties
-        self.button_group.setLayout(self.button_layout)
-        self.button_layout.addWidget(self.button_open)
-        self.button_layout.addWidget(self.button_reset)
-        self.button_layout.setSpacing(0)
-        self.button_layout.setContentsMargins(5, 0, 0, 0)
-
-        # open button properties
-        self.button_open.setIcon(QIcon(icon_path['open']))
-        self.button_open.setIconSize(QSize(sz_but - 2, sz_but - 2))
-        self.button_open.setFixedSize(sz_but, sz_but)
-        self.button_open.setToolTip('Open Session')
-        self.button_open.setStyleSheet("border: 1px solid;")
-        self.button_open.clicked.connect(self.button_open_session)
-        self.button_open.setDefault(False)
-        self.button_open.setAutoDefault(False)
-
-        # reset button properties
-        self.button_reset.setIcon(QIcon(icon_path['restart']))
-        self.button_reset.setIconSize(QSize(sz_but - 2, sz_but - 2))
-        self.button_reset.setFixedSize(sz_but, sz_but)
-        self.button_reset.setToolTip('Reset Form')
-        self.button_reset.setStyleSheet("border: 1px solid;")
-        self.button_reset.clicked.connect(self.button_reset_session)
-        self.button_reset.setDefault(False)
-        self.button_reset.setAutoDefault(False)
+        self.main_layout.addRow(self.run_table)
 
         # sets up the slot function
         cb_fcn = functools.partial(self.tab_change)
@@ -1404,7 +1304,6 @@ class SessionNew(QWidget):
     def create_other_widgets(self):
 
         # sets the table properties
-        self.run_table.setFixedWidth(int(file_width - (2 * x_gap + 2 * sz_but)))
         self.run_table.setFixedHeight(int(self.row_height * self.n_row_table) + 2)
         self.run_table.setHorizontalHeaderLabels(self.col_hdr)
         self.run_table.verticalHeader().setVisible(False)
@@ -1419,7 +1318,6 @@ class SessionNew(QWidget):
 
         # updates the dialog properties
         self.is_updating = False
-        self.update_dialog_props()
 
     # WIDGET EVENT FUNCTIONS --------------------------------------------------
 
@@ -1430,7 +1328,6 @@ class SessionNew(QWidget):
             return
 
         self.f_type = self.h_tab_grp.currentWidget().objectName()
-        self.update_dialog_props()
 
     def prop_update(self, p_str, h_obj):
 
@@ -1459,7 +1356,6 @@ class SessionNew(QWidget):
         if p_str in str_para:
             # case is a string field
             cf.set_multi_dict_value(self.props, p_str, nw_val)
-            self.update_dialog_props()
 
         else:
             # determines if the new value is valid
@@ -1467,7 +1363,6 @@ class SessionNew(QWidget):
             if chk_val[1] is None:
                 # case is the value is valid
                 cf.set_multi_dict_value(self.props, p_str, chk_val[0])
-                self.update_dialog_props()
 
             else:
                 # otherwise, reset the previous value
@@ -1484,13 +1379,11 @@ class SessionNew(QWidget):
 
         # updates the dictionary field
         cf.set_multi_dict_value(self.props, p_str, h_obj.currentText())
-        self.update_dialog_props()
 
     def check_prop_update(self, h_obj, p_str):
 
         # updates the dictionary field
         cf.set_multi_dict_value(self.props, p_str, h_obj.isChecked())
-        self.update_dialog_props()
 
     def button_file_spec(self, h_obj, p_str):
 
@@ -1536,22 +1429,16 @@ class SessionNew(QWidget):
             cf.set_multi_dict_value(self.props, p_str, file_info[0])
             h_obj.set_text(file_info[0])
 
-            # updates the dialog properties
-            self.update_dialog_props()
-
     def button_open_session(self):
 
         self.open_session.emit()
 
-    def button_reset_session(self):
-
-        self.expt_folder.button_reset_click()
-        self.reset_session.emit()
-
     def check_run_table(self, h_chk, i_row):
 
         self.use_run[i_row] = h_chk.isChecked()
-        self.button_open.setEnabled(np.any(self.use_run))
+
+        h_root = cf.get_parent_widget(self, OpenSession)
+        h_root.set_toolbar_props('open', np.any(self.use_run))
 
     # MISCELLANEOUS FUNCTIONS -------------------------------------------------
 
@@ -1595,7 +1482,10 @@ class SessionNew(QWidget):
 
         # memory allocation
         self.use_run = np.ones(n_run, dtype=bool)
-        self.button_open.setEnabled(True)
+
+        # enables the open session toolbar item
+        h_root = cf.get_parent_widget(self, OpenSession)
+        h_root.set_toolbar_props('open', True)
 
         # creates the new table widgets
         for i in range(n_run):
@@ -1622,21 +1512,6 @@ class SessionNew(QWidget):
             self.run_table.setItem(i, 2, h_cell_run)
 
             self.run_table.setRowHeight(i, self.row_height)
-
-    def update_dialog_props(self):
-
-        if self.is_new:
-            # case is a new session is selected
-
-            # determines if all fields have been set correctly
-            is_feas = next((False for x in self.props[self.f_type].values() if (x is None)), True)
-
-        else:
-            # case is an existing session is selected
-            is_feas = self.props['existing']['f_input'] is not None
-
-        # updates the control buttons
-        a = 1
 
     @staticmethod
     def create_para_field(name, obj_type, value, p_fld=None, p_list=None, p_misc=None, ch_fld=None):
@@ -1843,7 +1718,7 @@ class ExptFolder(QWidget):
         # resets the folder trees
         self.setup_folder_tree_views()
 
-    def button_parent_dir(self, h_obj):
+    def button_parent_dir(self, *_):
 
         # runs the file dialog
         file_dlg = cw.FileDialogModal(caption='Set Search Folder', dir_only=True, f_directory=str(self.obj_dir.f_path))

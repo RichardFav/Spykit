@@ -278,8 +278,8 @@ class ParaDialog(QMainWindow):
 
         # prompts the user if they want to reset all the fields
         u_choice = QMessageBox.question(self, 'Reset Parameters?', "Are you sure you want to reset the parameters?",
-                                        cf.q_yes_no, QMessageBox.StandardButton.Yes)
-        if u_choice == QMessageBox.StandardButton.No:
+                                        cf.q_yes_no, cf.q_yes)
+        if u_choice == cf.q_no:
             # exit if they cancelled
             return
 
@@ -333,7 +333,7 @@ class ParaDialog(QMainWindow):
             # if there is a parameter change, then prompt the user if they want to change
             q_str = 'There are outstanding changes which have not been save.\nDo you still want to close the window?'
             u_choice = QMessageBox.question(self, 'Reset Parameters?', q_str, cf.q_yes_no, cf.q_yes)
-            if u_choice == QMessageBox.StandardButton.No:
+            if u_choice == cf.q_no:
                 # exit if they cancelled
                 return
 

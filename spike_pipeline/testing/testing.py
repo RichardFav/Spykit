@@ -1,17 +1,17 @@
 # package import
-import os
-import sys
-from importlib import reload
+import numpy as np
+# import os
+# import sys
+# from importlib import reload
 
 # pyqt6 module import
-from PyQt6.QtWidgets import QDialog, QVBoxLayout
+from PyQt6.QtWidgets import QDialog, QVBoxLayout, QMainWindow, QWidget, QHBoxLayout
 
 # other imports
-import spike_pipeline.common.misc_func as mf
+# import spike_pipeline.common.misc_func as mf
 import spike_pipeline.common.common_widget as cw
-from spike_pipeline.widgets.para_dialog import ParaDialog
-from spike_pipeline.widgets.plot_widget import QPlotWidgetMain
-from spike_pipeline.widgets.open_session import OpenSession
+
+#
 import spike_pipeline.common.memory_map as mm
 import spike_pipeline.common.spikeinterface_func as sf
 
@@ -68,6 +68,10 @@ class Testing(object):
                 # case is the directory check test
                 return self.run_directory_check_test()
 
+            case 7:
+                # case is the plot dock test
+                return self.run_plot_dock_test()
+
     def run_dialog_test(self, title_str="My Dialog"):
         """
 
@@ -110,6 +114,8 @@ class Testing(object):
         :return:
         """
 
+        from spike_pipeline.widgets.para_dialog import ParaDialog
+
         # creates the parameter panel object
         return ParaDialog()
 
@@ -118,6 +124,8 @@ class Testing(object):
 
         :return:
         """
+
+        from spike_pipeline.widgets.plot_widget import QPlotWidgetMain
 
         # creates the parameter panel object
         return QPlotWidgetMain()
@@ -128,6 +136,8 @@ class Testing(object):
         return mm.MemMapDialog()
 
     def run_open_session_test(self):
+
+        from spike_pipeline.widgets.open_session import OpenSession
 
         # creates and returns the dialog window
         return OpenSession()
@@ -148,3 +158,51 @@ class Testing(object):
         obj_chk = sf.DirectoryCheck(f_path, f_format)
 
         return None
+
+    def run_plot_dock_test(self):
+
+        from spike_pipeline.plotting.utils import PlotManager
+        from spike_pipeline.info.utils import InfoManager
+
+        # parameters
+        dlg_wid, dlg_hght = 1650, 900
+        info_wid = 300
+
+        dock_ss = """
+            QWidget {
+                border: 1px solid;
+            }            
+        """
+
+        # main window widget
+        h_app = QMainWindow()
+        h_app.setFixedSize(dlg_wid, dlg_hght)
+
+        # creates the central widget
+        h_central = QWidget()
+        h_app.setCentralWidget(h_central)
+
+        # creates the plot layout
+        h_layout = QHBoxLayout()
+        h_layout.setSpacing(0)
+        h_layout.setContentsMargins(0, 0, 0, 0)
+        h_central.setLayout(h_layout)
+
+        # creates the information panel widget
+        info_manager = InfoManager(h_app, info_wid)
+        plt_manager = PlotManager(h_app, dlg_wid - info_wid)
+
+        # adds the widgets to the layout
+        h_layout.addWidget(info_manager)
+        h_layout.addWidget(plt_manager)
+
+        # adds the plot views
+        plt_manager.add_plot_view('trace')
+        plt_manager.add_plot_view('probe')
+
+        # test
+        c_id = np.array([[1, 1, 2],[1, 1, 2]])
+        plt_manager.main_layout.updateID(c_id)
+
+        # return the main window widget
+        return h_app
