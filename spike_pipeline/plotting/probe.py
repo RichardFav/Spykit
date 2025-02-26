@@ -3,7 +3,7 @@ import numpy as np
 import pyqtgraph as pg
 
 # pyqt6 module import
-from PyQt6.QtCore import QRectF, QPointF, pyqtSignal
+from PyQt6.QtCore import QRectF, QPointF, pyqtSignal, Qt
 from PyQt6.QtGui import QPolygonF, QPicture, QPainter
 
 # spike pipeline imports
@@ -18,6 +18,7 @@ from pyqtgraph import GraphicsObject, ROI, mkPen, mkBrush
 """
     ProbePlotPara:
 """
+
 
 class ProbePlotPara(PlotPara):
     def __init__(self):
@@ -57,6 +58,8 @@ class ProbePlot(ProbePlotPara, ProbePlotWidget):
         self.main_view = None
         self.sub_view = None
         self.vb_sub = None
+        self.sub_xhair = None
+        self.sub_label = None
 
         # sets up the plot regions
         self.setup_subplots(2, 1)
@@ -71,6 +74,7 @@ class ProbePlot(ProbePlotPara, ProbePlotWidget):
         main_plot_item.hideAxis('left')
         main_plot_item.hideAxis('bottom')
         main_plot_item.setDefaultPadding(0.05)
+        main_plot_item.hideButtons()
 
         # plot inset frame properties
         sub_plot_item = self.h_plot[1, 0].getPlotItem()
@@ -78,13 +82,19 @@ class ProbePlot(ProbePlotPara, ProbePlotWidget):
         sub_plot_item.hideAxis('left')
         sub_plot_item.hideAxis('bottom')
         sub_plot_item.setDefaultPadding(0.05)
+        sub_plot_item.hideButtons()
 
-        # sets the viewbox borders
+        # sets the view box borders
         self.v_box[0, 0].setBorder((255, 255, 255))
         self.v_box[1, 0].setBorder((255, 255, 255))
 
         # main class fields
         self.probe_rec = self.session_info.get_current_probe()
+
+        # adds the contact text label
+        self.sub_label = pg.TextItem(color=(0, 0, 0, 255), fill=(255, 255, 255, 255), ensureInBounds=True)
+        self.sub_label.setVisible(False)
+        self.h_plot[1, 0].addItem(self.sub_label)
 
     def setup_probe_views(self):
 
@@ -93,8 +103,9 @@ class ProbePlot(ProbePlotPara, ProbePlotWidget):
             a = 1
 
         # creates the main/inset views
-        self.main_view = ProbeView(self.h_plot[0, 0], self.probe)
-        self.sub_view = ProbeView(self.h_plot[1, 0], self.probe)
+        ch_data = self.session_info.channel_data
+        self.main_view = ProbeView(self.h_plot[0, 0], self.probe, ch_data)
+        self.sub_view = ProbeView(self.h_plot[1, 0], self.probe, ch_data)
 
         # sets the main probe view properties
         self.h_plot[0, 0].addItem(self.main_view)
@@ -109,6 +120,13 @@ class ProbePlot(ProbePlotPara, ProbePlotWidget):
 
         # sets the inset probe view properties\
         self.h_plot[1, 0].addItem(self.sub_view)
+        self.h_plot[1, 0].scene().sigMouseMoved.connect(self.sub_mouse_move)
+        self.h_plot[1, 0].scene().sigMouseClicked.connect(self.sub_mouse_click)
+        # self.sub_xhair = PlotCrossHair(self.h_plot[1, 0], self.v_box[1, 0])
+
+        # resets the plot enter/leave events
+        self.h_plot[1, 0].enterEvent = self.enter_sub_view
+        self.h_plot[1, 0].leaveEvent = self.leave_sub_view
 
         # create the main view ROI
         self.main_view.create_inset_roi(
@@ -117,6 +135,20 @@ class ProbePlot(ProbePlotPara, ProbePlotWidget):
         # sets up the probe dataframe
         self.sub_view.reset_axes_limits(False, i_shank=0)
         self.probe_dframe = self.probe.to_dataframe(complete=True)
+
+    # ---------------------------------------------------------------------------
+    # Inset View Mouse Event Functions
+    # ---------------------------------------------------------------------------
+
+    def enter_sub_view(self, *_):
+
+        # self.sub_xhair.set_visible(True)
+        pass
+
+    def leave_sub_view(self, *_):
+
+        # self.sub_xhair.set_visible(False)
+        self.sub_label.setVisible(False)
 
     # ---------------------------------------------------------------------------
     # Widget Event Functions
@@ -132,12 +164,54 @@ class ProbePlot(ProbePlotPara, ProbePlotWidget):
         self.sub_view.y_lim[0] = p_pos[1]
         self.sub_view.y_lim[1] = self.sub_view.y_lim[0] + p_pos[2].y()
 
-        # # resets the axis limits
-        # self.v_box[1, 0].setXRange(self.sub_view.x_lim[0], self.sub_view.x_lim[1])
-        # self.v_box[1, 0].setYRange(self.sub_view.y_lim[0], self.sub_view.y_lim[1])
-
         # resets the axis limits
         self.sub_view.reset_axes_limits(False)
+
+    def sub_mouse_move(self, p_pos):
+
+        # updates the crosshair position
+        m_pos = self.v_box[1, 0].mapSceneToView(p_pos)
+        # self.sub_xhair.set_position(m_pos)
+
+        i_contact = self.sub_view.inside_polygon(m_pos)
+        if i_contact is not None:
+            if self.sub_view.i_sel_contact is None:
+                self.sub_view.i_sel_contact = i_contact
+                self.sub_view.create_probe_plot()
+
+                # updates the label properties
+                self.sub_label.setVisible(True)
+                self.sub_label.setText('Contact #{}'.format(i_contact))
+                self.sub_label.update()
+
+            # repositions the label
+            dy_pos = self.convert_coords()
+            self.sub_label.setPos(m_pos + QPointF(0, dy_pos))
+
+        elif self.sub_view.i_sel_contact is not None:
+            self.sub_view.i_sel_contact = None
+            self.sub_view.create_probe_plot()
+            self.sub_label.setVisible(False)
+
+    def sub_mouse_click(self, *_):
+
+        # if no contact is highlighted, then exit
+        if self.sub_view.i_sel_contact is None:
+            return
+
+        # toggles the selection flag
+        self.session_info.toggle_channel_flag(self.sub_view.i_sel_contact)
+
+        self.main_view.create_probe_plot()
+        self.sub_view.create_probe_plot()
+
+    def convert_coords(self):
+
+        y_scale = np.diff(self.sub_view.y_lim)[0]
+        plt_height = self.h_plot[1, 0].height()
+        lbl_height = self.sub_label.boundingRect().height()
+
+        return y_scale * lbl_height / plt_height
 
     @staticmethod
     def update_probe(_self):
@@ -146,6 +220,7 @@ class ProbePlot(ProbePlotPara, ProbePlotWidget):
 
     # trace property observer properties
     probe_rec = cf.ObservableProperty(update_probe)
+
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -158,13 +233,20 @@ class ProbeView(GraphicsObject):
     pen = mkPen(width=2, color='b')
     pen_h = mkPen(width=2, color='g')
 
+    # probe polygon colours
+    p_col_probe = cf.get_colour_value('r', 128)
+    c_col_probe = cf.get_colour_value('y', 128)
+    c_col_hover = cf.get_colour_value('b', 220)
+    c_col_selected = cf.get_colour_value('g', 128)
+
     # pyqtsignal functions
     update_roi = pyqtSignal(object)
 
-    def __init__(self, parent, probe):
+    def __init__(self, main_obj, probe, channel_data=None):
         super(ProbeView, self).__init__()
 
-        self.setParent(parent)
+        # sets the parent object
+        self.setParent(main_obj)
 
         # field initialisation
         self.roi = None
@@ -176,6 +258,8 @@ class ProbeView(GraphicsObject):
         self.y_lim_full = None
         self.x_lim_shank = []
         self.y_lim_shank = []
+        self.i_sel_contact = None
+        self.channel_data = channel_data
 
         # field retrieval
         self.n_dim = probe.ndim
@@ -188,6 +272,7 @@ class ProbeView(GraphicsObject):
         self.c_index = probe.device_channel_indices
         self.c_pos = probe.contact_positions
         self.c_vert = self.setup_contact_coords(probe.get_contact_vertices())
+        self.c_poly = [QPolygonF(x) for x in self.c_vert]
 
         # probe properties
         self.p_title = probe.get_title()
@@ -216,27 +301,37 @@ class ProbeView(GraphicsObject):
 
         # polygon setup
         p_poly = QPolygonF(self.p_vert)
-        c_poly = [QPolygonF(x) for x in self.c_vert]
-
-        p_col_probe = cf.get_colour_value('r', 128)
-        c_col_probe = cf.get_colour_value('y', 128)
 
         # painter object setup
         p = QPainter(self.picture)
 
         # probe shape plot
-        p.setPen(mkPen(p_col_probe))
-        p.setBrush(mkBrush(p_col_probe))
+        p.setPen(mkPen(self.p_col_probe))
+        p.setBrush(mkBrush(self.p_col_probe))
         p.drawPolygon(p_poly)
 
         # probe contact plots
-        p.setPen(mkPen(c_col_probe))
-        p.setBrush(mkBrush(c_col_probe))
-        for c_p in c_poly:
-            p.drawPolygon(c_p)
+        p.setPen(mkPen(self.c_col_probe))
+        for i_p, c_p in enumerate(self.c_poly):
+            if i_p == self.i_sel_contact:
+                # case is the contact is being hovered over
+                p.setBrush(mkBrush(self.c_col_hover))
+                p.drawPolygon(c_p)
+
+            if (self.channel_data is not None) and self.channel_data.is_selected[i_p]:
+                # case is the contact has been selected
+                p.setBrush(mkBrush(self.c_col_selected))
+                p.drawPolygon(c_p)
+
+            else:
+                # case is a normal polygon
+                p.setBrush(mkBrush(self.c_col_probe))
+                p.drawPolygon(c_p)
 
         # ends the drawing
         p.end()
+
+        self.update()
 
     def create_inset_roi(self, x_lim_s, y_lim_s, is_full=True):
 
@@ -338,6 +433,10 @@ class ProbeView(GraphicsObject):
         p_lim_tot = np.vstack((p_min0, p_max0))
         return self.calc_expanded_limits(p_lim_tot, np.array([0.1, 0.05]))
 
+    def inside_polygon(self, m_pos):
+
+        return next((i for i, cp in enumerate(self.c_poly) if self.has_point(cp, m_pos)), None)
+
     # ---------------------------------------------------------------------------
     # Function Overrides
     # ---------------------------------------------------------------------------
@@ -366,3 +465,8 @@ class ProbeView(GraphicsObject):
     def vert_to_pointf(v):
 
         return [QPointF(x[0], x[1]) for x in v]
+
+    @staticmethod
+    def has_point(cp, m_pos):
+
+        return cp.containsPoint(m_pos, Qt.FillRule.OddEvenFill)

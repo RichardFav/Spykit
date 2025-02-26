@@ -1,7 +1,6 @@
 # custom module imports
 import spike_pipeline.common.common_func as cf
 import spike_pipeline.common.common_widget as cw
-import spike_pipeline.plotting.view_type as vt
 
 # pyqt imports
 from PyQt6.QtWidgets import (QWidget, QScrollArea, QFormLayout, QStatusBar, QSizePolicy)
@@ -44,7 +43,7 @@ class InfoManager(QWidget):
         self.status_bar = QStatusBar()
 
         # other widget setup
-        self.status_lbl = cw.create_text_label(None, 'Waiting for process...', vt.font_lbl, align='left')
+        self.status_lbl = cw.create_text_label(None, 'Waiting for process...', cw.font_lbl, align='left')
 
         # initialises the class fields
         self.init_class_fields()

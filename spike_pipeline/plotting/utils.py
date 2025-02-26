@@ -14,13 +14,10 @@ from PyQt6.QtGui import QIcon, QColor
 
 # pyqtgraph module imports
 import pyqtgraph as pg
-from pyqtgraph.dockarea.Dock import Dock
-from pyqtgraph.dockarea.DockArea import DockArea
-import spikewrap as sw
 
 # widget dimensions
 x_gap = 15
-info_width = 250
+info_width = 400
 
 # parameters
 dlg_width = 1650
@@ -63,7 +60,7 @@ class PlotManager(QWidget):
         self.bg_widget = QWidget()
 
         # # creates the region configuration widget
-        # self.r_config = cw.QRegionConfig(self, vt.font_lbl)
+        # self.r_config = cw.QRegionConfig(self, cw.font_lbl)
 
         # initialises the class fields
         self.init_class_fields()
@@ -94,6 +91,11 @@ class PlotManager(QWidget):
     # ---------------------------------------------------------------------------
 
     def add_plot_view(self, p_type):
+
+        # if the plot type exists in the list, then exit
+        if p_type in self.types:
+            self.clear_plot_view(p_type)
+            return
 
         # increments the plot count
         self.n_plot += 1
@@ -129,6 +131,10 @@ class PlotManager(QWidget):
 
         # returns the plot view
         return self.plots[self.types[p_type] - 1]
+
+    def clear_plot_view(self, p_type):
+
+        a = 1
 
     def get_plot_index(self, p_type):
 
@@ -401,7 +407,7 @@ class PlotWidget(QWidget):
         for fp in f_name:
             # creates the button widget
             obj_but = cw.create_push_button(None, "")
-            obj_but.setIcon(QIcon(vt.icon_path[fp]))
+            obj_but.setIcon(QIcon(cw.icon_path[fp]))
             obj_but.setIconSize(QSize(self.but_height_plt - 1, self.but_height_plt - 1))
             obj_but.setFixedSize(self.but_height_plt, self.but_height_plt)
             obj_but.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -433,12 +439,12 @@ class PlotWidget(QWidget):
         # sets the main layout properties
         self.main_layout.setSpacing(0)
         self.main_layout.setContentsMargins(0, 0, 0, 0)
-        self.main_layout.setAlignment(vt.align_flag['top'])
+        self.main_layout.setAlignment(cw.align_flag['top'])
         self.main_layout.addWidget(self.obj_plot_gbox)
 
         # sets the groupbox properties
         self.obj_plot_gbox.setObjectName('selected')
-        self.obj_plot_gbox.setFont(vt.font_hdr)
+        self.obj_plot_gbox.setFont(cw.font_hdr)
         self.obj_plot_gbox.setCheckable(False)
         self.obj_plot_gbox.setSizePolicy(QSizePolicy(cf.q_exp, cf.q_exp))
         self.obj_plot_gbox.setLayout(self.group_layout)

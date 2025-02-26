@@ -813,9 +813,6 @@ class QPlotPara(QWidget):
             h_panel_c.is_expanded = h_panel_c.is_expanded ^ True
             h_panel_c.update_button_text()
 
-            f_style = cw.expand_style if h_panel_c.is_expanded else cw.close_style
-            h_panel_c.expand_button.setStyleSheet(f_style)
-
     #  PROPERTY WIDGET EVENT FUNCTIONS ----------------------------------------
 
     def widget_para_update(self, h_widget, *_):

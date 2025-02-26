@@ -1,8 +1,10 @@
 # module import
+import os
 import re
 import textwrap
 import functools
 import numpy as np
+import pyqtgraph as pg
 from copy import deepcopy
 from skimage.measure import label, regionprops
 
@@ -15,7 +17,7 @@ from PyQt6.QtWidgets import (QWidget, QHBoxLayout, QGridLayout, QVBoxLayout, QPu
                              QApplication, QTreeView, QFrame, QRadioButton, QAbstractItemView,
                              QStylePainter, QStyleOptionComboBox, QStyle)
 from PyQt6.QtGui import QFont, QDrag, QCursor, QStandardItemModel, QStandardItem, QPalette
-from PyQt6.QtCore import Qt, QRect, QMimeData, pyqtSignal, QItemSelectionModel, QAbstractTableModel
+from PyQt6.QtCore import Qt, QRect, QMimeData, pyqtSignal, QItemSelectionModel, QAbstractTableModel, QObject
 
 # style sheets
 edit_style_sheet = "border: 1px solid; border-radius: 2px; padding-left: 5px;"
@@ -24,6 +26,43 @@ edit_style_sheet = "border: 1px solid; border-radius: 2px; padding-left: 5px;"
 sub_flag = QItemSelectionModel.SelectionFlag.ClearAndSelect | QItemSelectionModel.SelectionFlag.Rows
 ses_flag = QItemSelectionModel.SelectionFlag.Select | QItemSelectionModel.SelectionFlag.Rows
 
+# widget stylesheets
+toolbar_style = """
+    QToolBar {
+        background-color: white;
+        spacing : 1px;
+    }
+    QToolBar QToolButton{
+        color: white;
+        font-size : 14px;
+    }
+"""
+
+# alignment flags
+align_flag = {
+    'top': Qt.AlignmentFlag.AlignTop,
+    'bottom': Qt.AlignmentFlag.AlignBottom,
+    'left': Qt.AlignmentFlag.AlignLeft,
+    'right': Qt.AlignmentFlag.AlignRight,
+    'center': Qt.AlignmentFlag.AlignCenter,
+}
+
+# file path/filter modes
+f_mode_ssf = "Spike Pipeline Session File (*.ssf)"
+
+# parameter/resource folder paths
+data_dir = "C:\\Work\\Other Projects\\EPhys Project\\Data"
+icon_dir = os.path.join(os.getcwd(), 'resources', 'icons')
+para_dir = os.path.join(os.getcwd(), 'resources', 'parameters').replace('\\', '/')
+
+# icon paths
+icon_path = {
+    'open': os.path.join(icon_dir, 'open_icon.png'),
+    'restart': os.path.join(icon_dir, 'restart_icon.png'),
+    'close': os.path.join(icon_dir, 'close_icon.png'),
+    'reset': os.path.join(icon_dir, 'reset_icon.png'),
+    'save': os.path.join(icon_dir, 'save_icon.png'),
+}
 
 # widget dimensions
 x_gap = 5
@@ -1129,6 +1168,10 @@ class QCollapseGroup(QWidget):
         self.expand_button.setText(' {0} {1}'.format(cf.arr_chr(self.is_expanded), self.panel_hdr))
         self.group_panel.setMaximumHeight(self.is_expanded * self.orig_hght)
 
+        # resets the button stylesheet
+        f_style = self.expand_style if self.is_expanded else self.close_style
+        self.expand_button.setStyleSheet(f_style)
+
     def set_styling(self):
 
         self.group_panel.setStyleSheet("background-color: rgba(240, 240, 255, 255) ;")
@@ -1446,6 +1489,7 @@ class QLabelCombo(QWidget):
         for t in items:
             self.addItem(t)
 
+
 # ----------------------------------------------------------------------------------------------------------------------
 
 
@@ -1540,6 +1584,7 @@ class QCheckCombo(QComboBox):
         # resets the other fields
         self.n_item = 0
         self.n_sel = 0
+
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -1683,6 +1728,39 @@ class PandasModel(QAbstractTableModel):
             return self._data.columns[col]
 
         return None
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+
+class PlotCrossHair(QObject):
+    def __init__(self, h_plot, v_box):
+        super(PlotCrossHair, self).__init__()
+
+        # main class fields
+        self.h_plot = h_plot
+        self.v_box = v_box
+
+        # creates the vertical/horizontal lines
+        self.h_line = pg.InfiniteLine(angle=0, movable=False)
+        self.v_line = pg.InfiniteLine(angle=90, movable=False)
+
+        # adds the lines to the plot
+        self.h_plot.addItem(self.v_line, ignoreBounds=True)
+        self.h_plot.addItem(self.h_line, ignoreBounds=True)
+
+        # disables the crosshair
+        self.set_visible(False)
+
+    def set_position(self, m_pos):
+
+        self.v_line.setPos(m_pos.x())
+        self.h_line.setPos(m_pos.y())
+
+    def set_visible(self, state):
+
+        self.h_line.setVisible(state)
+        self.v_line.setVisible(state)
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -1864,3 +1942,11 @@ def create_font_obj(size=9, is_bold=False, font_weight=QFont.Weight.Normal):
 
     # returns the font object
     return font
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+# label/header font objects
+font_lbl = create_font_obj(is_bold=True, font_weight=QFont.Weight.Bold)
+font_hdr = create_font_obj(size=9, is_bold=True, font_weight=QFont.Weight.Bold)
+font_panel = create_font_obj(size=9, is_bold=True, font_weight=QFont.Weight.Bold)

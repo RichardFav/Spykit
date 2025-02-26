@@ -6,8 +6,8 @@ import numpy as np
 
 # pyqt6 module import
 from PyQt6.QtWidgets import (QMainWindow, QHBoxLayout, QFormLayout, QWidget,
-                             QScrollArea, QSizePolicy, QStatusBar, QMenuBar, QDockWidget)
-# from PyQt6.QtCore import Qt, QSize, QRect, pyqtSignal, QObject
+                             QScrollArea, QSizePolicy, QStatusBar, QMenuBar, QToolBar)
+from PyQt6.QtCore import Qt, QSize, QRect, pyqtSignal, QObject
 from PyQt6.QtGui import QFont, QColor, QIcon, QAction
 
 # custom module import
@@ -20,7 +20,7 @@ from spike_pipeline.widgets.open_session import OpenSession
 
 # widget dimensions
 x_gap = 15
-info_width = 250
+info_width = 300
 
 # object dimensions
 dlg_width = 1650
@@ -52,6 +52,9 @@ class MainWindow(QMainWindow):
 
         # session workbook object
         self.session_obj = SessionWorkBook()
+
+        # sets up the menu bar items
+        self.menu_bar = MenuBar(self)
 
         # sets up the information/plot manager widgets
         self.info_manager = InfoManager(self, info_width, self.session_obj)
@@ -87,9 +90,6 @@ class MainWindow(QMainWindow):
         # connects workbook signal functions
         self.session_obj.session_change.connect(self.new_session)
 
-        # sets up the menu bar items
-        self.setMenuBar(MenuBar(self))
-
     # ---------------------------------------------------------------------------
     # Signal Slot Functions
     # ---------------------------------------------------------------------------
@@ -100,11 +100,12 @@ class MainWindow(QMainWindow):
         if self.has_session:
             a = 1
 
-        # retrieves/initialises the probe view
-        plot_trace = self.plot_manager.get_plot_view('trace')
+        # enables the menubar items
+        self.menu_bar.set_menu_enabled('save', True)
 
-        # retrieves/initialises the probe view
-        plot_probe = self.plot_manager.get_plot_view('probe')
+        # sets up the trace/probe views
+        self.plot_manager.get_plot_view('trace')
+        self.plot_manager.get_plot_view('probe')
 
         # resets the plot view to include only the trace/probe views
         i_plot_trace = self.plot_manager.get_plot_index('trace')
@@ -142,12 +143,19 @@ class MainWindow(QMainWindow):
 """
 
 
-class MenuBar(QMenuBar):
+class MenuBar(QObject):
+    # field initialisations
+    disabled_list = ['save']
+
     def __init__(self, main_obj):
         super(MenuBar, self).__init__()
 
         # field retrieval
         self.main_obj = main_obj
+
+        # tool/menubar setup
+        self.menu_bar = None
+        self.tool_bar = None
 
         # initialises the class fields
         self.init_class_fields()
@@ -162,27 +170,58 @@ class MenuBar(QMenuBar):
         :return:
         """
 
-        # parent menu widgets
-        h_menu_file = self.addMenu('File')
+        # adds the menubar to the main window
+        self.menu_bar = QMenuBar(self.main_obj)
+        self.main_obj.setMenuBar(self.menu_bar)
 
-        # FILE MENU ITEMS -----------------------------------------------------------------------------
+        # parent menu widgets
+        h_menu_file = self.menu_bar.addMenu('File')
+
+        # ---------------------------------------------------------------------------
+        # Toolbar Setup
+        # ---------------------------------------------------------------------------
+
+        # creates the toolbar object
+        self.tool_bar = QToolBar(self.main_obj)
+        self.tool_bar.setMovable(False)
+        self.tool_bar.setStyleSheet(cw.toolbar_style)
+        self.tool_bar.setIconSize(QSize(cf.but_height + 1, cf.but_height + 1))
+
+        # adds the toolbar to the main window
+        self.main_obj.addToolBarBreak()
+        self.main_obj.addToolBar(Qt.ToolBarArea.TopToolBarArea, self.tool_bar)
+
+        # ---------------------------------------------------------------------------
+        # File Menubar Event Functions
+        # ---------------------------------------------------------------------------
 
         # initialisations
-        p_str = ['open_session', None, 'close']
-        p_lbl = ['Open Session', None, 'Close Window']
-        cb_fcn = [self.open_session, None, self.close_window]
+        p_str = ['open', 'save', None, 'close']
+        p_lbl = ['Open Session', 'Save Session', None, 'Close Window']
+        cb_fcn = [self.open_session, self.save_session, None, self.close_window]
 
         # menu/toolbar item creation
         for pl, ps, cbf in zip(p_lbl, p_str, cb_fcn):
             if ps is None:
                 # adds separators
+                self.tool_bar.addSeparator()
                 h_menu_file.addSeparator()
 
             else:
                 # creates the menu item
+                h_tool = QAction(QIcon(cw.icon_path[ps]), pl, self)
+                h_tool.triggered.connect(cbf)
+                h_tool.setObjectName(ps)
+                self.tool_bar.addAction(h_tool)
+
+                # creates the menu item
                 h_menu = QAction(pl, self)
+                h_menu.setObjectName(ps)
                 h_menu.triggered.connect(cbf)
                 h_menu_file.addAction(h_menu)
+
+        # disables the required menu items
+        [self.set_menu_enabled(x, False) for x in self.disabled_list]
 
     # ---------------------------------------------------------------------------
     # File Menubar Functions
@@ -193,7 +232,24 @@ class MenuBar(QMenuBar):
         self.main_obj.setVisible(False)
         OpenSession(self.main_obj, self.main_obj.session_obj)
 
+    def save_session(self):
+
+        pass
+
     def close_window(self):
 
         # closes the window
         self.main_obj.close()
+
+    # ---------------------------------------------------------------------------
+    # Miscellaneous Functions
+    # ---------------------------------------------------------------------------
+
+    def set_menu_enabled(self, menu_name, state):
+
+        h_menu_new = self.get_menu_item(menu_name)
+        [x.setEnabled(state) for x in h_menu_new]
+
+    def get_menu_item(self, menu_name):
+
+        return self.findChildren(QAction, name=menu_name)

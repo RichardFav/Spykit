@@ -3,6 +3,7 @@ import os
 import functools
 
 # pyqt6 module import
+import numpy as np
 from PyQt6.QtWidgets import (QMainWindow, QHBoxLayout, QFormLayout, QWidget,
                              QScrollArea, QSizePolicy, QStatusBar, QMenuBar)
 from PyQt6.QtCore import Qt, QSize, QRect, pyqtSignal, QObject
@@ -23,16 +24,24 @@ class SessionWorkBook(QObject):
     def __init__(self):
         super(SessionWorkBook, self).__init__()
 
-        # initialisations
+        # initialisation flag
         self.has_init = False
 
-        # class field initialisations
+        # main class widgets
         self.session = None
+        self.channel_data = None
+
+        # other class field
         self.current_run = None
         self.current_ses = None
+        self.n_channels = None
 
-        # initialisations
+        # resets the initialisation flag
         self.has_init = True
+
+    def toggle_channel_flag(self, i_channel):
+
+        self.channel_data.toggle_channel_flag(i_channel)
 
     # ---------------------------------------------------------------------------
     # Getter Functions
@@ -53,6 +62,10 @@ class SessionWorkBook(QObject):
         _self.current_run = _self.session.get_run_names()[0]
         _self.current_ses = _self.session.get_session_names(0)[0]
 
+        # sets up the channel data object
+        _self.channel_data = ChannelData(_self.get_current_probe())
+
+        # runs the session change signal function
         if _self.has_init:
             _self.session_change.emit()
 
@@ -176,3 +189,23 @@ class SessionObject:
     @output_path.setter
     def output_path(self, new_path):
         self._output_path = new_path
+
+
+# CHANNEL INFO OBJECT --------------------------------------------------------------------------------------------------
+
+
+class ChannelData:
+    def __init__(
+        self,
+        probe,
+    ):
+
+        # class field initialisations
+        self.n_channel = probe.get_num_channels()
+
+        # memory allocation
+        self.is_selected = np.zeros(self.n_channel, dtype=bool)
+
+    def toggle_channel_flag(self, i_channel):
+
+        self.is_selected[i_channel] ^= True
