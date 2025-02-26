@@ -1,12 +1,14 @@
 # module import
 # import os
 # import functools
+import pickle
 import numpy as np
+
 # import pyqtgraph as pg
 
 # pyqt6 module import
 from PyQt6.QtWidgets import (QMainWindow, QHBoxLayout, QFormLayout, QWidget,
-                             QScrollArea, QSizePolicy, QStatusBar, QMenuBar, QToolBar)
+                             QScrollArea, QSizePolicy, QDialog, QMenuBar, QToolBar)
 from PyQt6.QtCore import Qt, QSize, QRect, pyqtSignal, QObject
 from PyQt6.QtGui import QFont, QColor, QIcon, QAction
 
@@ -32,7 +34,7 @@ min_height = 450
 font_lbl = cw.create_font_obj(is_bold=True, font_weight=QFont.Weight.Bold)
 font_hdr = cw.create_font_obj(size=9, is_bold=True, font_weight=QFont.Weight.Bold)
 
-# MAIN WINDOW WIDGET ---------------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
 
 """
     MainWindow: spike pipeline main GUI window. controls the flow of information/communication
@@ -47,21 +49,18 @@ class MainWindow(QMainWindow):
         # sets up the main layout
         self.central_widget = QWidget()
         self.main_layout = QHBoxLayout()
-        self.central_widget.setLayout(self.main_layout)
-        self.setCentralWidget(self.central_widget)
 
-        # session workbook object
+        # main class object setup
         self.session_obj = SessionWorkBook()
 
-        # sets up the menu bar items
+        # main class widget setup
         self.menu_bar = MenuBar(self)
-
-        # sets up the information/plot manager widgets
         self.info_manager = InfoManager(self, info_width, self.session_obj)
         self.plot_manager = PlotManager(self, dlg_width - info_width, self.session_obj)
 
         # boolean class fields
         self.has_session = False
+        self.can_close = False
 
         # sets up the main window widgets
         self.setup_main_window()
@@ -75,6 +74,10 @@ class MainWindow(QMainWindow):
     # ---------------------------------------------------------------------------
 
     def setup_main_window(self):
+
+        # sets the central widget
+        self.central_widget.setLayout(self.main_layout)
+        self.setCentralWidget(self.central_widget)
 
         # creates the dialog window
         self.setWindowTitle("Spike Interface Pipeline")
@@ -117,16 +120,21 @@ class MainWindow(QMainWindow):
         self.has_session = True
 
     # ---------------------------------------------------------------------------
+    # Override Functions
+    # ---------------------------------------------------------------------------
+
+    def closeEvent(self, evnt):
+        if self.can_close:
+            super(MainWindow, self).closeEvent(evnt)
+
+        else:
+            evnt.ignore()
+
+    # ---------------------------------------------------------------------------
     # Miscellaneous Functions
     # ---------------------------------------------------------------------------
 
     def testing(self):
-
-        # INFORMATION MANAGER TESTING
-
-
-
-        # PLOT MANAGER TESTING
 
         # adds the plot views
         self.plot_manager.add_plot_view('trace')
@@ -136,7 +144,8 @@ class MainWindow(QMainWindow):
         c_id = np.array([[1, 1, 2], [1, 1, 2]])
         self.plot_manager.main_layout.updateID(c_id)
 
-# MENUBAR WIDGET -------------------------------------------------------------------------------------------------------
+
+# ----------------------------------------------------------------------------------------------------------------------
 
 """
     MenuBar: class object that controls the main window menu/toolbars
@@ -196,9 +205,9 @@ class MenuBar(QObject):
         # ---------------------------------------------------------------------------
 
         # initialisations
-        p_str = ['open', 'save', None, 'close']
-        p_lbl = ['Open Session', 'Save Session', None, 'Close Window']
-        cb_fcn = [self.open_session, self.save_session, None, self.close_window]
+        p_str = ['new', 'open', 'save', None, 'close']
+        p_lbl = ['New Session', 'Load Session', 'Save Session', None, 'Close Window']
+        cb_fcn = [self.new_session, self.load_session, self.save_session, None, self.close_window]
 
         # menu/toolbar item creation
         for pl, ps, cbf in zip(p_lbl, p_str, cb_fcn):
@@ -227,18 +236,40 @@ class MenuBar(QObject):
     # File Menubar Functions
     # ---------------------------------------------------------------------------
 
-    def open_session(self):
+    def new_session(self):
 
         self.main_obj.setVisible(False)
         OpenSession(self.main_obj, self.main_obj.session_obj)
 
+    def load_session(self):
+
+        # runs the save file dialog
+        file_dlg = cw.FileDialogModal(None, 'Select Session File', cw.f_mode_ssf, cw.data_dir, is_save=False)
+        if file_dlg.exec() == QDialog.DialogCode.Accepted:
+            # saves the session data to file
+            file_info = file_dlg.selectedFiles()
+            with open(file_info[0], 'wb') as f:
+                session_data = pickle.load(f)
+
+            a = 1
+
     def save_session(self):
 
-        pass
+        # runs the save file dialog
+        file_dlg = cw.FileDialogModal(None, 'Set Session Filename', cw.f_mode_ssf, cw.data_dir, is_save=True)
+        if file_dlg.exec() == QDialog.DialogCode.Accepted:
+            # retrieves the current session data
+            session_data = self.main_obj.session_obj.get_session_save_data()
+
+            # saves the session data to file
+            file_info = file_dlg.selectedFiles()
+            with open(file_info[0], 'wb') as f:
+                pickle.dump(session_data, f)
 
     def close_window(self):
 
         # closes the window
+        self.main_obj.can_close = True
         self.main_obj.close()
 
     # ---------------------------------------------------------------------------

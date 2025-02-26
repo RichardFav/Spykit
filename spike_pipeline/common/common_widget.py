@@ -22,7 +22,7 @@ from PyQt6.QtCore import Qt, QRect, QMimeData, pyqtSignal, QItemSelectionModel, 
 # style sheets
 edit_style_sheet = "border: 1px solid; border-radius: 2px; padding-left: 5px;"
 
-#
+# subject/session model flags
 sub_flag = QItemSelectionModel.SelectionFlag.ClearAndSelect | QItemSelectionModel.SelectionFlag.Rows
 ses_flag = QItemSelectionModel.SelectionFlag.Select | QItemSelectionModel.SelectionFlag.Rows
 
@@ -60,7 +60,7 @@ icon_path = {
     'open': os.path.join(icon_dir, 'open_icon.png'),
     'restart': os.path.join(icon_dir, 'restart_icon.png'),
     'close': os.path.join(icon_dir, 'close_icon.png'),
-    'reset': os.path.join(icon_dir, 'reset_icon.png'),
+    'new': os.path.join(icon_dir, 'new_icon.png'),
     'save': os.path.join(icon_dir, 'save_icon.png'),
 }
 

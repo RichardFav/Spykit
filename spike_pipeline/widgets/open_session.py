@@ -103,9 +103,12 @@ class OpenSession(QMainWindow):
 
         # other class fields
         self.session = None
-        self.is_changed = True
         self.scr_sz = QApplication.primaryScreen().size()
         self.probe_width = dlg_width - (file_width + 2 * x_gap)
+
+        # boolean class fields
+        self.is_changed = True
+        self.can_close = False
 
         # field initialisation
         self.setup_dialog()
@@ -263,16 +266,24 @@ class OpenSession(QMainWindow):
             self.parent().setVisible(True)
 
         # closes the window
+        self.can_close = True
         self.close()
 
     # ---------------------------------------------------------------------------
-    # Widget Event Functions
+    # Override Functions
     # ---------------------------------------------------------------------------
 
     def keyPressEvent(self, evnt) -> None:
 
         if evnt.matches(QKeySequence.StandardKey.Cancel):
             self.reject()
+        else:
+            evnt.ignore()
+
+    def closeEvent(self, evnt):
+        if self.can_close:
+            super(OpenSession, self).closeEvent(evnt)
+
         else:
             evnt.ignore()
 

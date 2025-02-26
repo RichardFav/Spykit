@@ -374,7 +374,7 @@ class PlotWidget(QWidget):
     def setup_plot_buttons(self):
 
         # initialisations
-        f_name = ['reset', 'open', 'save', 'close']
+        f_name = ['new', 'open', 'save', 'close']
         tt_str = 'Finish Me!'
 
         # sets up the

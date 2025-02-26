@@ -14,7 +14,11 @@ import spikewrap as sw
 # custom module import
 import spike_pipeline.common.common_func as cf
 
-# WORKBOOK OBJECT ------------------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
+
+"""
+    SessionWorkBook:
+"""
 
 
 class SessionWorkBook(QObject):
@@ -39,10 +43,6 @@ class SessionWorkBook(QObject):
         # resets the initialisation flag
         self.has_init = True
 
-    def toggle_channel_flag(self, i_channel):
-
-        self.channel_data.toggle_channel_flag(i_channel)
-
     # ---------------------------------------------------------------------------
     # Getter Functions
     # ---------------------------------------------------------------------------
@@ -51,8 +51,22 @@ class SessionWorkBook(QObject):
 
         return self.session.get_session_runs(self.current_run, self.current_ses)
 
+    def get_session_save_data(self):
+
+        a = 1
+
+        return a
+
     # ---------------------------------------------------------------------------
-    # Protected Properties
+    # Miscellaneous Functions
+    # ---------------------------------------------------------------------------
+
+    def toggle_channel_flag(self, i_channel):
+
+        self.channel_data.toggle_channel_flag(i_channel)
+
+    # ---------------------------------------------------------------------------
+    # Static Methods
     # ---------------------------------------------------------------------------
 
     @staticmethod
@@ -73,7 +87,11 @@ class SessionWorkBook(QObject):
     session = cf.ObservableProperty(update_session)
 
 
-# SESSION OBJECT -------------------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
+
+"""
+    SessionObject:
+"""
 
 
 class SessionObject:
@@ -191,14 +209,15 @@ class SessionObject:
         self._output_path = new_path
 
 
-# CHANNEL INFO OBJECT --------------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
+
+"""
+    ChannelData: 
+"""
 
 
 class ChannelData:
-    def __init__(
-        self,
-        probe,
-    ):
+    def __init__(self, probe):
 
         # class field initialisations
         self.n_channel = probe.get_num_channels()
