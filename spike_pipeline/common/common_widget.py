@@ -882,7 +882,7 @@ class QTraceTree(QWidget):
 
 class QFolderTree(QWidget):
     # dimensions
-    n_row = 10
+    n_row = 14
 
     # signal functions
     session_changed = pyqtSignal(QStandardItem)
@@ -938,8 +938,8 @@ class QFolderTree(QWidget):
 
         # appends the widget to the main widget
         self.main_layout.addWidget(self.obj_tview)
-        self.setFixedHeight(int(self.n_row * row_height) + 2)
-        self.setSizePolicy(QSizePolicy(cf.q_exp, cf.q_fix))
+        # self.setFixedHeight(int(self.n_row * row_height))
+        self.setSizePolicy(QSizePolicy(cf.q_exp, cf.q_exp))
 
     # TREE ADD/DELETE FUNCTIONS ----------------------------------------------
 

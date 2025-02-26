@@ -29,11 +29,13 @@ class SessionWorkBook(QObject):
         super(SessionWorkBook, self).__init__()
 
         # initialisation flag
+        self.state = 0
         self.has_init = False
 
         # main class widgets
         self.session = None
         self.channel_data = None
+        self.calculated_data = None
 
         # other class field
         self.current_run = None
@@ -53,9 +55,16 @@ class SessionWorkBook(QObject):
 
     def get_session_save_data(self):
 
-        a = 1
+        # sets up the session save data dictionary
+        save_data = {
+            'state': self.state,
+            'session_props': self.session.get_session_props(),
+            'channel_data': self.channel_data,
+            'calculated_data': self.calculated_data,
+        }
 
-        return a
+        # returns the data struct
+        return save_data
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
@@ -64,6 +73,16 @@ class SessionWorkBook(QObject):
     def toggle_channel_flag(self, i_channel):
 
         self.channel_data.toggle_channel_flag(i_channel)
+
+    def reset_session(self, ses_data):
+
+        # resets the session object
+        self.session = SessionObject(ses_data['session_props'])
+
+        # resets the other class fields
+        self.state = ses_data['state']
+        self.channel_data = ses_data['channel_data']
+        self.calculated_data = ses_data['calculated_data']
 
     # ---------------------------------------------------------------------------
     # Static Methods
@@ -95,22 +114,15 @@ class SessionWorkBook(QObject):
 
 
 class SessionObject:
-    def __init__(
-        self,
-        subject_path,
-        session_name,
-        file_format,
-        run_names,
-        output_path=None
-    ):
+    def __init__(self, s_props):
 
         # class field initialisations
         self._s = None
-        self._subject_path = subject_path
-        self._session_name = session_name
-        self._file_format = file_format
-        self._run_names = run_names
-        self._output_path = output_path
+        self._s_props = s_props
+
+        # creates the session property fields from the input dictionary
+        for sp in s_props:
+            setattr(self, sp, s_props[sp])
 
         # loads the session object
         self.load_session()
@@ -122,14 +134,24 @@ class SessionObject:
 
     def load_session(self):
 
-        # creates the spikewrap session object
-        self._s = sw.Session(
-            subject_path=self._subject_path,
-            session_name=self._session_name,
-            file_format=self._file_format,
-            run_names=self._run_names,
-            output_path=self._output_path,
-        )
+        match self.format_type:
+            case 'folder':
+                # case is loading from folder format
+
+                # creates the spikewrap session object
+                self._s = sw.Session(
+                    subject_path=self.subject_path,
+                    session_name=self.session_name,
+                    file_format=self.file_format,
+                    run_names=self.run_names,
+                    output_path=self.output_path,
+                )
+
+            case 'file':
+                # case is loading from raw data file
+
+                # FINISH ME!
+                pass
 
     def load_raw_data(self):
 
@@ -160,9 +182,17 @@ class SessionObject:
 
         return [x._run_name for x in self._s._runs]
 
+    def get_session_props(self):
+
+        return self._s_props
+
     # ---------------------------------------------------------------------------
     # Protected Properties
     # ---------------------------------------------------------------------------
+
+    @property
+    def format_type(self):
+        return self._format_type
 
     @property
     def subject_path(self):
@@ -187,6 +217,10 @@ class SessionObject:
     # ---------------------------------------------------------------------------
     # Protected Property Setter Functions
     # ---------------------------------------------------------------------------
+
+    @format_type.setter
+    def format_type(self, new_format):
+        self._format_type = new_format
 
     @subject_path.setter
     def subject_path(self, new_path):
@@ -228,3 +262,17 @@ class ChannelData:
     def toggle_channel_flag(self, i_channel):
 
         self.is_selected[i_channel] ^= True
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+"""
+    CalculatedData: 
+"""
+
+
+class CalculatedData:
+    def __init__(self):
+
+        # FINISH ME!
+        a = 1

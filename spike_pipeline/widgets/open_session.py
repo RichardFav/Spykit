@@ -47,8 +47,6 @@ dlg_height = 580
 dlg_width = 1200
 file_width = 480
 
-# dlg_height = 500
-
 # font objects
 font_lbl = cw.create_font_obj(is_bold=True, font_weight=QFont.Weight.Bold)
 font_hdr = cw.create_font_obj(size=9, is_bold=True, font_weight=QFont.Weight.Bold)
@@ -69,8 +67,7 @@ icon_path = {
     'close': os.path.join(icon_dir, 'close_icon.png'),
 }
 
-
-# OPEN SESSION WIDGET --------------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
 
 """
     OpenSession: dialog window that provides the means for users to interact
@@ -197,11 +194,8 @@ class OpenSession(QMainWindow):
 
     def session_load(self):
 
-        if self.file.is_new:
-            self.file.load_session()
-
-        else:
-            a = 1
+        # loads the current session
+        self.file.load_session()
 
         # field retrieval
         run_names = self.session.get_run_names()
@@ -226,7 +220,7 @@ class OpenSession(QMainWindow):
         self.session = None
         self.is_changed = True
         self.set_toolbar_props('restart', False)
-        self.file.new_session.expt_folder.button_reset_click()
+        self.file.expt_folder.button_reset_click()
 
         # clears the probe fields (if set)
         if self.probe.has_probe:
@@ -324,7 +318,7 @@ class OpenSession(QMainWindow):
 
     def get_session_files(self):
 
-        exp_f = self.file.new_session.expt_folder
+        exp_f = self.file.expt_folder
         return exp_f.sub_path.split('/')[-1], exp_f.ses_type
 
     def set_toolbar_props(self, name, state):
@@ -332,7 +326,7 @@ class OpenSession(QMainWindow):
         self.findChild(QAction, name).setEnabled(state)
 
 
-# SESSION FILE WIDGET --------------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
 
 """
     SessionFile: 
@@ -340,41 +334,76 @@ class OpenSession(QMainWindow):
 
 
 class SessionFile(QWidget):
-    # static class fields
-    grp_name = "Recording Data"
-
     # pyqtsignal functions
     session_reset = pyqtSignal()
     session_loaded = pyqtSignal()
+    open_session = pyqtSignal()
+    reset_session = pyqtSignal()
+
+    # widget dimensions
+    lbl_width = 150
+    n_row_table = 4
+    row_height = 22
+
+    # field initialisation
+    grp_name = "Recording Data"
+    p_list_axis = ['Axis 0', 'Axis 1']
+    p_list_type = ['int8', 'int16', 'int32']
+    col_hdr = ['Run #', 'Analyse Run?', 'Session Run Name']
+
+    # widget stylesheets
+    table_style = """
+        QTableWidget {
+            font: Arial 6px;
+            border: 1px solid;
+        }
+        QHeaderView {
+            font: Arial 6px;
+            font-weight: 1000;
+        }
+    """
 
     def __init__(self, parent=None):
         super(SessionFile, self).__init__(parent)
 
         # class fields
+        self.n_para = None
+        self.use_run = None
+        self.f_type = 'folder'
+
+        # boolean class fields
         self.is_new = True
-        self.session = None
+        self.is_updating = True
 
         # properties class field
+        self.prop_fld = {}
         self.props = {
             'folder': {},
             'file': {},
         }
 
-        # widget setup
-        self.root = self.parent()
-        self.group_panel = QGroupBox(self.grp_name.upper())
+        # class layout fields
         self.main_layout = QVBoxLayout()
         self.form_layout = QVBoxLayout()
+
+        # class widget fields
+        self.expt_folder = None
+        self.main_widget = self.parent()
+        self.run_table = QTableWidget(0, 3, None)
+        self.tab_group = cw.create_tab_group(self)
+        self.group_panel = QGroupBox(self.grp_name.upper())
+
+        # class object fields
+        self.session = None
 
         # session information widgets
         self.file_widget = QWidget(self)
         self.file_layout = QVBoxLayout()
 
-        # other widgets
-        self.new_session = SessionNew(self, self.props)
-
         # initialises the class fields
+        self.init_prop_fields()
         self.init_class_fields()
+        self.init_file_explorer()
 
         # sets the widget styling
         self.set_styling()
@@ -383,10 +412,38 @@ class SessionFile(QWidget):
     # Class Widget Setup Functions
     # ---------------------------------------------------------------------------
 
-    def init_class_fields(self):
+    def init_prop_fields(self):
 
-        # adds the widget to the layout
-        self.file_layout.addWidget(self.new_session)
+        # sets up the file tab property fields
+        p_tmp_folder = {
+            'f_input': self.create_para_field(None, 'exptfolder', None),
+        }
+
+        # updates the class field
+        self.prop_fld['folder'] = {'name': 'Folder', 'type': 'tab', 'ch_fld': p_tmp_folder}
+
+        # sets up the file tab property fields
+        p_tmp_file = {
+            'f_input': self.create_para_field('Input File Path', 'filespec', None, p_misc=f_mode_ssf),
+            'n_channel': self.create_para_field('Channel Count', 'edit', None),
+            's_freq': self.create_para_field('Sampling Frequency (Hz)', 'edit', None),
+            'gain_to_uV': self.create_para_field('Signal Gain (uV)', 'edit', None),
+            'offset_to_uV': self.create_para_field('Signal Offset (uV)', 'edit', None),
+            'd_type': self.create_para_field(
+                'Signal Offset (uV)', 'combobox', self.p_list_type[1], p_list=self.p_list_type),
+            't_axis': self.create_para_field('Time Axis', 'combobox', self.p_list_axis[0], p_list=self.p_list_axis),
+            'is_filtered': self.create_para_field('Recording Filtered?', 'checkbox', False),
+        }
+
+        # updates the class field
+        self.prop_fld['file'] = {'name': 'File', 'type': 'tab', 'ch_fld': p_tmp_file}
+
+        # initialises the fields for all properties
+        for i, pf in enumerate(self.prop_fld):
+            for pf_c in self.prop_fld[pf]['ch_fld'].keys():
+                self.props[pf][pf_c] = self.prop_fld[pf]['ch_fld'][pf_c]['value']
+
+    def init_class_fields(self):
 
         # creates the panel objects
         self.main_layout.setSpacing(0)
@@ -408,30 +465,439 @@ class SessionFile(QWidget):
         self.file_widget.setLayout(self.file_layout)
         self.file_widget.setObjectName('panel')
         self.file_widget.setSizePolicy(QSizePolicy(cf.q_pref, cf.q_exp))
-        self.file_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
-        # # sets the new session widget properties
-        # self.new_session.open_session.connect(self.load_session)
-        # self.new_session.reset_session.connect(self.reset_session)
+        # sets up the session file layout properties/widgets
+        self.file_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self.file_layout.addWidget(self.tab_group)
+        self.file_layout.addWidget(self.run_table)
+        self.file_layout.setSpacing(0)
+        self.file_layout.setContentsMargins(x_gap, x_gap, x_gap, x_gap)
 
         # resets the widget size policies
         self.setSizePolicy(QSizePolicy(cf.q_exp, cf.q_exp))
 
-    def load_session(self):
+        # # sets the new session widget properties
+        # self.open_session.connect(self.load_session)
+        # self.reset_session.connect(self.reset_session)
 
-        # sets the subject path and run names
-        s_obj = self.new_session
+    def init_file_explorer(self):
 
-        self.root.session = SessionObject(
-            subject_path=s_obj.get_subject_path(),
-            session_name=s_obj.get_session_type(),
-            file_format=s_obj.get_format_type(),
-            run_names=s_obj.get_run_names(),
-        )
+        # ---------------------------------------------------------------------------
+        # Tab Widget Setup
+        # ---------------------------------------------------------------------------
+
+        # sets up the slot function
+        cb_fcn = functools.partial(self.tab_change)
+        self.tab_group.currentChanged.connect(cb_fcn)
+        self.tab_group.setContentsMargins(0, 0, 0, 0)
+
+        # creates the tab-objects
+        for ps_t in self.prop_fld:
+            h_tab = self.create_para_object(None, ps_t, self.prop_fld[ps_t], [ps_t])
+            self.tab_group.addTab(h_tab, self.prop_fld[ps_t]['name'])
+
+        # ---------------------------------------------------------------------------
+        # Session Run Table Widget Setup
+        # ---------------------------------------------------------------------------
+
+        # sets the table properties
+        self.run_table.setFixedHeight(int(self.row_height * self.n_row_table) + 2)
+        self.run_table.setHorizontalHeaderLabels(self.col_hdr)
+        self.run_table.verticalHeader().setVisible(False)
+        self.run_table.setStyleSheet(self.table_style)
+
+        # table column resizing
+        self.run_table.resizeRowsToContents()
+        self.run_table.resizeColumnToContents(0)
+        self.run_table.resizeColumnToContents(1)
+        self.run_table.horizontalHeader().setStretchLastSection(True)
+        # self.run_table.setSizePolicy(QSizePolicy(cf.q_exp, cf.q_exp))
+
+        # updates the dialog properties
+        self.is_updating = False
+
+    def create_para_object(self, layout, p_name, ps, p_str):
+
+        match ps['type']:
+            case 'tab':
+                # case is a tab widget
+
+                # creates the tab widget
+                obj_tab = QWidget()
+                obj_tab.setObjectName(p_name)
+
+                # creates the children objects for the current parent object
+                t_layout = QFormLayout(obj_tab)
+                t_layout.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
+                t_layout.setSpacing(0)
+                t_layout.setContentsMargins(0, 0, 0, 0)
+
+                # creates the panel object
+                h_panel_frame = QFrame()
+                h_panel_frame.setFrameStyle(QFrame.Shadow.Plain | QFrame.Shape.Box)
+                # h_panel_frame.setSizePolicy(QSizePolicy(cf.q_exp, cf.q_max))
+                t_layout.addWidget(h_panel_frame)
+
+                # creates the tab parameter objects
+                ch_fld = deepcopy(ps['ch_fld'])
+                if p_str[0] == 'folder':
+                    # case is a folder data input
+                    layout = QFormLayout(h_panel_frame)
+                    layout.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
+                    layout.setSpacing(x_gap)
+                    layout.setContentsMargins(x_gap, x_gap, x_gap, x_gap)
+
+                else:
+                    # case is a binary file data input
+                    layout = QGridLayout(h_panel_frame)
+                    layout.setColumnStretch(0, 4)
+                    layout.setColumnStretch(1, 2)
+                    layout.setColumnStretch(2, 3)
+
+                # creates the tab parameter objects
+                self.n_para = 0
+                for ps_t in ch_fld:
+                    self.create_para_object(layout, ps_t, ps['ch_fld'][ps_t], p_str=p_str + [ps_t])
+                    self.n_para += 1
+
+                if p_str[0] == 'file':
+                    sp_item = QSpacerItem(100, 150, cf.q_min, cf.q_max)
+                    layout.addWidget(QWidget(), self.n_para, 0, 1, 1)
+                    layout.addItem(sp_item)
+
+                # sets the tab layout
+                h_panel_frame.setLayout(layout)
+                obj_tab.setLayout(t_layout)
+
+                # returns the tab object
+                return obj_tab
+
+            case 'edit':
+                # sets up the editbox string
+                lbl_str = '{0}: '.format(ps['name'])
+                if ps['value'] is None:
+                    # parameter string is empty
+                    edit_str = ''
+
+                elif isinstance(ps['value'], str):
+                    # parameter is a string
+                    edit_str = ps['value']
+
+                else:
+                    # parameter is numeric
+                    edit_str = '%g' % (ps['value'])
+
+                # creates the label/editbox widget combo
+                obj_edit = QLabelEdit(None, lbl_str, edit_str, name=p_name, font_lbl=font_lbl)
+                obj_edit.obj_lbl.setFixedWidth(self.lbl_width)
+
+                # adds the widget to the layout
+                if isinstance(layout, QFormLayout):
+                    layout.addRow(obj_edit)
+
+                else:
+                    layout.addWidget(obj_edit.obj_lbl, self.n_para, 0, 1, 1)
+                    layout.addWidget(obj_edit.obj_edit, self.n_para, 1, 1, 1)
+
+                # sets up the label/editbox slot function
+                cb_fcn = functools.partial(self.prop_update, p_str)
+                obj_edit.connect(cb_fcn)
+
+            # case is a checkbox
+            case 'checkbox':
+                # creates the checkbox widget
+                obj_checkbox = cw.create_check_box(
+                    None, ps['name'], ps['value'], font=font_lbl, name=p_name)
+
+                # adds the widget to the layout
+                if isinstance(layout, QFormLayout):
+                    layout.addRow(obj_checkbox)
+
+                else:
+                    layout.addWidget(obj_checkbox, self.n_para, 0, 1, 2)
+
+                # sets up the slot function
+                cb_fcn = functools.partial(self.prop_update, p_str)
+                obj_checkbox.stateChanged.connect(cb_fcn)
+
+            # case is a combobox
+            case 'combobox':
+                # creates the label/combobox widget combo
+                lbl_str = '{0}: '.format(ps['name'])
+                obj_combo = QLabelCombo(None, lbl_str, ps['p_list'], ps['value'], name=p_name,
+                                        font_lbl=font_lbl)
+                obj_combo.obj_lbl.setFixedWidth(self.lbl_width)
+
+                # adds the widget to the layout
+                if isinstance(layout, QFormLayout):
+                    layout.addRow(obj_combo)
+
+                else:
+                    layout.addWidget(obj_combo.obj_lbl, self.n_para, 0, 1, 1)
+                    layout.addWidget(obj_combo.obj_cbox, self.n_para, 1, 1, 1)
+
+                # sets up the slot function
+                cb_fcn = functools.partial(self.prop_update, p_str)
+                obj_combo.connect(cb_fcn)
+
+            case 'exptfolder':
+                # case is the experiment folder widget
+
+                # creates the file selection widget
+                self.expt_folder = ExptFolder(self)
+                self.expt_folder.init_class_widgets()
+
+                # adds the widget to the layout
+                if isinstance(layout, QFormLayout):
+                    layout.addRow(self.expt_folder)
+
+                # # sets up the slot function
+                # obj_expt_folder.connect(self.prop_update, p_str)
+
+            case 'filespec':
+                # case is a file selection widget
+
+                # creates the file selection widget
+                obj_file_spec = QFileSpec(None, ps['name'], ps['value'], name=p_name, f_mode=ps['p_misc'])
+
+                # adds the widget to the layout
+                if isinstance(layout, QFormLayout):
+                    layout.addRow(obj_file_spec)
+
+                else:
+                    obj_file_spec.setSizePolicy(QSizePolicy(cf.q_exp, cf.q_max))
+                    layout.addWidget(obj_file_spec, self.n_para, 0, 1, 3)
+
+                # sets up the slot function
+                cb_fcn = functools.partial(self.prop_update, p_str)
+                obj_file_spec.connect(cb_fcn)
+
+    # ---------------------------------------------------------------------------
+    # Widget Event Functions
+    # ---------------------------------------------------------------------------
+
+    def tab_change(self):
+
+        # if manually updating elsewhere, then exit
+        if self.is_updating:
+            return
+
+        self.f_type = self.tab_group.currentWidget().objectName()
+
+    def prop_update(self, p_str, h_obj):
+
+        # if manually updating elsewhere, then exit
+        if self.is_updating:
+            return
+
+        if isinstance(h_obj, QFileSpec):
+            self.button_file_spec(h_obj, p_str)
+
+        elif isinstance(h_obj, QCheckBox):
+            self.check_prop_update(h_obj, p_str)
+
+        elif isinstance(h_obj, QLineEdit):
+            self.edit_prop_update(h_obj, p_str)
+
+        elif isinstance(h_obj, QComboBox):
+            self.combo_prop_update(h_obj, p_str)
+
+    def button_file_spec(self, h_obj, p_str):
+
+        # file dialog properties
+        dir_only = h_obj.f_mode is None
+        caption = 'Select Directory' if dir_only else 'Select File'
+
+        # sets the initial search path
+        f_path = cf.get_multi_dict_value(self.props, p_str)
+        if f_path is None:
+            f_path = data_dir
+
+        # runs the file dialog
+        file_dlg = cw.FileDialogModal(caption=caption, dir_only=dir_only, f_filter=h_obj.f_mode, f_directory=f_path)
+        if file_dlg.exec() == QDialog.DialogCode.Accepted:
+            # if the user accepted, then update the parameter/widget fields
+            file_info = file_dlg.selectedFiles()
+
+            match p_str[0]:
+                case 'folder':
+                    # case is the folder format
+
+                    # determines if the new folder is feasible
+                    f_format = self.props['folder']['f_format']
+                    if not sf.check_folder_structure(file_info[0], f_format):
+                        # if not, output an error message to screen
+                        f_error = sf.get_data_folder_structure(f_format)
+                        err_str = (
+                            'The selected folder does not adhere to the "{0}" directory structure.'.format(f_format),
+                            'The directory structure should be as follows:', '', f_error, '',
+                            'Either retry with another file format or select a feasible directory.',
+                        )
+                        cf.show_error('\n'.join(err_str), 'Invalid Data Directory')
+
+                        # exits the function
+                        return
+
+                case 'file':
+                    # case
+                    a = 1
+
+            # updates the property value and editbox string
+            cf.set_multi_dict_value(self.props, p_str, file_info[0])
+            h_obj.set_text(file_info[0])
+
+    def check_prop_update(self, h_obj, p_str):
+
+        # updates the dictionary field
+        cf.set_multi_dict_value(self.props, p_str, h_obj.isChecked())
+
+    def edit_prop_update(self, h_obj, p_str):
+
+        # field retrieval
+        nw_val = h_obj.text()
+        str_para = []
+
+        if p_str in str_para:
+            # case is a string field
+            cf.set_multi_dict_value(self.props, p_str, nw_val)
+
+        else:
+            # determines if the new value is valid
+            chk_val = cf.check_edit_num(nw_val, min_val=0)
+            if chk_val[1] is None:
+                # case is the value is valid
+                cf.set_multi_dict_value(self.props, p_str, chk_val[0])
+
+            else:
+                # otherwise, reset the previous value
+                p_val_pr = self.props[p_str[0]][p_str[1]]
+                if (p_val_pr is None) or isinstance(p_val_pr, str):
+                    # case is the parameter is empty
+                    h_obj.setText('')
+
+                else:
+                    # otherwise, update the numeric string
+                    h_obj.setText('%g' % p_val_pr)
+
+    def combo_prop_update(self, h_obj, p_str):
+
+        # updates the dictionary field
+        cf.set_multi_dict_value(self.props, p_str, h_obj.currentText())
+
+    def button_open_session(self):
+
+        self.open_session.emit()
+
+    # ---------------------------------------------------------------------------
+    # Getter Functions
+    # ---------------------------------------------------------------------------
+
+    def get_subject_path(self):
+
+        base_dir_sp = self.expt_folder.s_dir.split(os.sep)
+        return '/'.join(base_dir_sp) + self.expt_folder.sub_path[2:]
+
+    def get_session_run_names(self):
+
+        # retrieves the subject/session dictionary field
+        ex_f = self.expt_folder
+        ses_dict = ex_f.obj_dir.sub_dict[ex_f.sub_path][ex_f.ses_type]
+
+        # returns the run-name list
+        return [x.split('/')[-1] for x in np.array(ex_f.obj_dir.f_pd[0]['path'])[ses_dict]]
+
+    def get_session_type(self):
+
+        return self.expt_folder.ses_type
+
+    def get_format_type(self):
+
+        return self.expt_folder.format_type
+
+    def get_run_names(self):
+
+        return "all" if np.all(self.use_run) else self.get_session_run_names()
+
+    def get_output_path(self):
+
+        return None
+
+    def reset_session_run_table(self, get_run_names):
+
+        # clears the table
+        self.run_table.clear()
+        run_name = self.get_session_run_names() if get_run_names else []
+
+        # resets the table dimensions
+        n_run = len(run_name)
+        self.run_table.setRowCount(n_run)
+        self.run_table.setHorizontalHeaderLabels(self.col_hdr)
+        self.run_table.resizeRowsToContents()
+
+        # memory allocation
+        self.use_run = np.ones(n_run, dtype=bool)
+
+        # enables the open session toolbar item
+        h_root = cf.get_parent_widget(self, OpenSession)
+        h_root.set_toolbar_props('open', True)
+
+        # creates the new table widgets
+        for i in range(n_run):
+            # creates the run index
+            h_cell_num = QTableWidgetItem(str(i + 1))
+            h_cell_num.setFlags(~Qt.ItemFlag.ItemIsEditable)
+            h_cell_num.setTextAlignment(cf.align_type['center'])
+            # h_cell_num.setFont(self.table_font)
+            self.run_table.setItem(i, 0, h_cell_num)
+
+            # creates include checkbox
+            h_cell_chk = cw.create_check_box(None, '', True)
+            h_cell_chk.setStyleSheet("margin-left:50%; margin-right:50%;")
+            self.run_table.setCellWidget(i, 1, h_cell_chk)
+
+            # sets the checkbox event
+            cb_fcn = functools.partial(self.check_run_table, h_cell_chk, i)
+            h_cell_chk.stateChanged.connect(cb_fcn)
+
+            # creates the run name field
+            h_cell_run = QTableWidgetItem(run_name[i])
+            h_cell_run.setFlags(~Qt.ItemFlag.ItemIsEditable)
+            # h_cell_run.setFont(self.table_font)
+            self.run_table.setItem(i, 2, h_cell_run)
+
+            self.run_table.setRowHeight(i, self.row_height)
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
     # ---------------------------------------------------------------------------
+
+    def load_session(self):
+
+        # dictionary setup
+        s_props = {'format_type': self.f_type}
+
+        match self.f_type:
+            case 'folder':
+                # case is a folder format
+
+                # sets the session property fields
+                s_props['subject_path'] = self.get_subject_path()
+                s_props['session_name'] = self.get_session_type()
+                s_props['file_format'] = self.get_format_type()
+                s_props['run_names'] = self.get_run_names()
+                s_props['output_path'] = self.get_output_path()
+
+            case 'file':
+                # case is a raw file format
+                pass
+
+        # creates the session object
+        self.main_widget.session = SessionObject(s_props)
+
+    def check_run_table(self, h_chk, i_row):
+
+        self.use_run[i_row] = h_chk.isChecked()
+        self.main_widget.set_toolbar_props('open', np.any(self.use_run))
 
     def set_styling(self):
 
@@ -454,8 +920,18 @@ class SessionFile(QWidget):
         #     }
         # """)
 
+    # ---------------------------------------------------------------------------
+    # Static Methods
+    # ---------------------------------------------------------------------------
 
-# SESSION PROBE WIDGET -------------------------------------------------------------------------------------------------
+    @staticmethod
+    def create_para_field(name, obj_type, value, p_fld=None, p_list=None, p_misc=None, ch_fld=None):
+
+        return {'name': name, 'type': obj_type, 'value': value, 'p_fld': p_fld,
+                'p_list': p_list, 'p_misc': p_misc, 'ch_fld': ch_fld}
+
+
+# ----------------------------------------------------------------------------------------------------------------------
 
 """
     SessionProbe: 
@@ -1036,513 +1512,7 @@ class SessionProbe(QWidget):
         self.channel_table.resizeColumnToContents(i_col)
 
 
-# SESSION NEW WIDGET ---------------------------------------------------------------------------------------------------
-
-"""
-    SessionNew: widget that provides the means to open a new experimental session 
-                (either via raw data file or folder formats)
-"""
-
-
-class SessionNew(QWidget):
-    # widget dimensions
-    lbl_width = 150
-    n_row_table = 4
-    row_height = 22
-
-    # field initialisation
-    p_list_axis = ['Axis 0', 'Axis 1']
-    p_list_type = ['int8', 'int16', 'int32']
-    col_hdr = ['Run #', 'Analyse Run?', 'Session Run Name']
-
-    # widget stylesheets
-    table_style = """
-        QTableWidget {
-            font: Arial 6px;
-            border: 1px solid;
-        }
-        QHeaderView {
-            font: Arial 6px;
-            font-weight: 1000;
-        }
-    """
-
-    # pyqtsignal signal functions
-    open_session = pyqtSignal()
-    reset_session = pyqtSignal()
-
-    def __init__(self, parent=None, props=None):
-        super(SessionNew, self).__init__(parent)
-
-        # field initialisations
-        self.props = props
-        self.prop_fld = {}
-
-        # string class fields
-        self.n_para = None
-        self.f_type = 'folder'
-
-        # widget initialisations
-        self.expt_folder = None
-
-        # boolean class fields
-        self.use_run = None
-        self.is_updating = True
-
-        # main class widgets
-        self.main_layout = QFormLayout()
-        self.run_table = QTableWidget(0, 3, None)
-
-        # minor class widgets
-        self.h_tab_grp = cw.create_tab_group(self)
-
-        # initialises the class fields
-        self.init_prop_fields()
-        self.init_class_fields()
-
-    # ---------------------------------------------------------------------------
-    # Class Widget Setup Functions
-    # ---------------------------------------------------------------------------
-
-    def init_prop_fields(self):
-
-        # sets up the file tab property fields
-        p_tmp_folder = {
-            'f_input': self.create_para_field(None, 'exptfolder', None),
-        }
-
-        # updates the class field
-        self.prop_fld['folder'] = {'name': 'Folder', 'type': 'tab', 'ch_fld': p_tmp_folder}
-
-        # sets up the file tab property fields
-        p_tmp_file = {
-            'f_input': self.create_para_field('Input File Path', 'filespec', None, p_misc=f_mode_ssf),
-            'n_channel': self.create_para_field('Channel Count', 'edit', None),
-            's_freq': self.create_para_field('Sampling Frequency (Hz)', 'edit', None),
-            'gain_to_uV': self.create_para_field('Signal Gain (uV)', 'edit', None),
-            'offset_to_uV': self.create_para_field('Signal Offset (uV)', 'edit', None),
-            'd_type': self.create_para_field(
-                'Signal Offset (uV)', 'combobox', self.p_list_type[1], p_list=self.p_list_type),
-            't_axis': self.create_para_field('Time Axis', 'combobox', self.p_list_axis[0], p_list=self.p_list_axis),
-            'is_filtered': self.create_para_field('Recording Filtered?', 'checkbox', False),
-        }
-
-        # updates the class field
-        self.prop_fld['file'] = {'name': 'File', 'type': 'tab', 'ch_fld': p_tmp_file}
-
-        # initialises the fields for all properties
-        for i, pf in enumerate(self.prop_fld):
-            for pf_c in self.prop_fld[pf]['ch_fld'].keys():
-                self.props[pf][pf_c] = self.prop_fld[pf]['ch_fld'][pf_c]['value']
-
-    def init_class_fields(self):
-
-        # sets the widget layout
-        self.setLayout(self.main_layout)
-
-        # sets the widget layout properties
-        self.main_layout.setSpacing(0)
-        self.main_layout.setContentsMargins(0, 0, 0, 0)
-        self.main_layout.addRow(self.h_tab_grp)
-        self.main_layout.addRow(self.run_table)
-
-        # sets up the slot function
-        cb_fcn = functools.partial(self.tab_change)
-        self.h_tab_grp.currentChanged.connect(cb_fcn)
-        self.h_tab_grp.setContentsMargins(0, 0, 0, 0)
-
-        # creates the tab-objects
-        for ps_t in self.prop_fld:
-            h_tab = self.create_para_object(None, ps_t, self.prop_fld[ps_t], [ps_t])
-            self.h_tab_grp.addTab(h_tab, self.prop_fld[ps_t]['name'])
-
-        # creates the session run table
-        self.create_other_widgets()
-
-    def create_para_object(self, layout, p_name, ps, p_str):
-
-        match ps['type']:
-            case 'tab':
-                # case is a tab widget
-
-                # creates the tab widget
-                obj_tab = QWidget()
-                obj_tab.setObjectName(p_name)
-
-                # creates the children objects for the current parent object
-                t_layout = QFormLayout(obj_tab)
-                t_layout.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
-                t_layout.setSpacing(0)
-                t_layout.setContentsMargins(0, 0, 0, 0)
-
-                # creates the panel object
-                h_panel_frame = QFrame()
-                h_panel_frame.setFrameStyle(QFrame.Shadow.Plain | QFrame.Shape.Box)
-                # h_panel_frame.setSizePolicy(QSizePolicy(cf.q_exp, cf.q_max))
-                t_layout.addWidget(h_panel_frame)
-
-                # creates the tab parameter objects
-                ch_fld = deepcopy(ps['ch_fld'])
-                if p_str[0] == 'folder':
-                    # case is a folder data input
-                    layout = QFormLayout(h_panel_frame)
-                    layout.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
-                    layout.setSpacing(x_gap)
-                    layout.setContentsMargins(x_gap, x_gap, x_gap, x_gap)
-
-                else:
-                    # case is a binary file data input
-                    layout = QGridLayout(h_panel_frame)
-                    layout.setColumnStretch(0, 4)
-                    layout.setColumnStretch(1, 2)
-                    layout.setColumnStretch(2, 3)
-
-                # creates the tab parameter objects
-                self.n_para = 0
-                for ps_t in ch_fld:
-                    self.create_para_object(layout, ps_t, ps['ch_fld'][ps_t], p_str=p_str + [ps_t])
-                    self.n_para += 1
-
-                if p_str[0] == 'file':
-                    sp_item = QSpacerItem(100, 75, cf.q_min, cf.q_max)
-                    layout.addWidget(QWidget(), self.n_para, 0, 1, 1)
-                    layout.addItem(sp_item)
-
-                # sets the tab layout
-                h_panel_frame.setLayout(layout)
-                obj_tab.setLayout(t_layout)
-
-                # returns the tab object
-                return obj_tab
-
-            case 'edit':
-                # sets up the editbox string
-                lbl_str = '{0}: '.format(ps['name'])
-                if ps['value'] is None:
-                    # parameter string is empty
-                    edit_str = ''
-
-                elif isinstance(ps['value'], str):
-                    # parameter is a string
-                    edit_str = ps['value']
-
-                else:
-                    # parameter is numeric
-                    edit_str = '%g' % (ps['value'])
-
-                # creates the label/editbox widget combo
-                obj_edit = QLabelEdit(None, lbl_str, edit_str, name=p_name, font_lbl=font_lbl)
-                obj_edit.obj_lbl.setFixedWidth(self.lbl_width)
-
-                # adds the widget to the layout
-                if isinstance(layout, QFormLayout):
-                    layout.addRow(obj_edit)
-
-                else:
-                    layout.addWidget(obj_edit.obj_lbl, self.n_para, 0, 1, 1)
-                    layout.addWidget(obj_edit.obj_edit, self.n_para, 1, 1, 1)
-
-                # sets up the label/editbox slot function
-                cb_fcn = functools.partial(self.prop_update, p_str)
-                obj_edit.connect(cb_fcn)
-
-            # case is a checkbox
-            case 'checkbox':
-                # creates the checkbox widget
-                obj_checkbox = cw.create_check_box(
-                    None, ps['name'], ps['value'], font=font_lbl, name=p_name)
-
-                # adds the widget to the layout
-                if isinstance(layout, QFormLayout):
-                    layout.addRow(obj_checkbox)
-
-                else:
-                    layout.addWidget(obj_checkbox, self.n_para, 0, 1, 2)
-
-                # sets up the slot function
-                cb_fcn = functools.partial(self.prop_update, p_str)
-                obj_checkbox.stateChanged.connect(cb_fcn)
-
-            # case is a combobox
-            case 'combobox':
-                # creates the label/combobox widget combo
-                lbl_str = '{0}: '.format(ps['name'])
-                obj_combo = QLabelCombo(None, lbl_str, ps['p_list'], ps['value'], name=p_name,
-                                        font_lbl=font_lbl)
-                obj_combo.obj_lbl.setFixedWidth(self.lbl_width)
-
-                # adds the widget to the layout
-                if isinstance(layout, QFormLayout):
-                    layout.addRow(obj_combo)
-
-                else:
-                    layout.addWidget(obj_combo.obj_lbl, self.n_para, 0, 1, 1)
-                    layout.addWidget(obj_combo.obj_cbox, self.n_para, 1, 1, 1)
-
-                # sets up the slot function
-                cb_fcn = functools.partial(self.prop_update, p_str)
-                obj_combo.connect(cb_fcn)
-
-            case 'exptfolder':
-                # case is the experiment folder widget
-
-                # creates the file selection widget
-                self.expt_folder = ExptFolder(self)
-                self.expt_folder.init_class_widgets()
-
-                # adds the widget to the layout
-                if isinstance(layout, QFormLayout):
-                    layout.addRow(self.expt_folder)
-
-                # # sets up the slot function
-                # obj_expt_folder.connect(self.prop_update, p_str)
-
-            case 'filespec':
-                # case is a file selection widget
-
-                # creates the file selection widget
-                obj_file_spec = QFileSpec(None, ps['name'], ps['value'], name=p_name, f_mode=ps['p_misc'])
-
-                # adds the widget to the layout
-                if isinstance(layout, QFormLayout):
-                    layout.addRow(obj_file_spec)
-
-                else:
-                    obj_file_spec.setSizePolicy(QSizePolicy(cf.q_exp, cf.q_max))
-                    layout.addWidget(obj_file_spec, self.n_para, 0, 1, 3)
-
-                # sets up the slot function
-                cb_fcn = functools.partial(self.prop_update, p_str)
-                obj_file_spec.connect(cb_fcn)
-
-    def create_other_widgets(self):
-
-        # sets the table properties
-        self.run_table.setFixedHeight(int(self.row_height * self.n_row_table) + 2)
-        self.run_table.setHorizontalHeaderLabels(self.col_hdr)
-        self.run_table.verticalHeader().setVisible(False)
-        self.run_table.setStyleSheet(self.table_style)
-
-        # table column resizing
-        self.run_table.resizeRowsToContents()
-        self.run_table.resizeColumnToContents(0)
-        self.run_table.resizeColumnToContents(1)
-        self.run_table.horizontalHeader().setStretchLastSection(True)
-        # self.run_table.setSizePolicy(QSizePolicy(cf.q_exp, cf.q_exp))
-
-        # updates the dialog properties
-        self.is_updating = False
-
-    # ---------------------------------------------------------------------------
-    # Widget Event Functions
-    # ---------------------------------------------------------------------------
-
-    def tab_change(self):
-
-        # if manually updating elsewhere, then exit
-        if self.is_updating:
-            return
-
-        self.f_type = self.h_tab_grp.currentWidget().objectName()
-
-    def prop_update(self, p_str, h_obj):
-
-        # if manually updating elsewhere, then exit
-        if self.is_updating:
-            return
-
-        if isinstance(h_obj, QFileSpec):
-            self.button_file_spec(h_obj, p_str)
-
-        elif isinstance(h_obj, QCheckBox):
-            self.check_prop_update(h_obj, p_str)
-
-        elif isinstance(h_obj, QLineEdit):
-            self.edit_prop_update(h_obj, p_str)
-
-        elif isinstance(h_obj, QComboBox):
-            self.combo_prop_update(h_obj, p_str)
-
-    def edit_prop_update(self, h_obj, p_str):
-
-        # field retrieval
-        nw_val = h_obj.text()
-        str_para = []
-
-        if p_str in str_para:
-            # case is a string field
-            cf.set_multi_dict_value(self.props, p_str, nw_val)
-
-        else:
-            # determines if the new value is valid
-            chk_val = cf.check_edit_num(nw_val, min_val=0)
-            if chk_val[1] is None:
-                # case is the value is valid
-                cf.set_multi_dict_value(self.props, p_str, chk_val[0])
-
-            else:
-                # otherwise, reset the previous value
-                p_val_pr = self.props[p_str[0]][p_str[1]]
-                if (p_val_pr is None) or isinstance(p_val_pr, str):
-                    # case is the parameter is empty
-                    h_obj.setText('')
-
-                else:
-                    # otherwise, update the numeric string
-                    h_obj.setText('%g' % p_val_pr)
-
-    def combo_prop_update(self, h_obj, p_str):
-
-        # updates the dictionary field
-        cf.set_multi_dict_value(self.props, p_str, h_obj.currentText())
-
-    def check_prop_update(self, h_obj, p_str):
-
-        # updates the dictionary field
-        cf.set_multi_dict_value(self.props, p_str, h_obj.isChecked())
-
-    def button_file_spec(self, h_obj, p_str):
-
-        # file dialog properties
-        dir_only = h_obj.f_mode is None
-        caption = 'Select Directory' if dir_only else 'Select File'
-
-        # sets the initial search path
-        f_path = cf.get_multi_dict_value(self.props, p_str)
-        if f_path is None:
-            f_path = data_dir
-
-        # runs the file dialog
-        file_dlg = cw.FileDialogModal(caption=caption, dir_only=dir_only, f_filter=h_obj.f_mode, f_directory=f_path)
-        if file_dlg.exec() == QDialog.DialogCode.Accepted:
-            # if the user accepted, then update the parameter/widget fields
-            file_info = file_dlg.selectedFiles()
-
-            match p_str[0]:
-                case 'folder':
-                    # case is the folder format
-
-                    # determines if the new folder is feasible
-                    f_format = self.props['folder']['f_format']
-                    if not sf.check_data_folder_structure(file_info[0], f_format):
-                        # if not, output an error message to screen
-                        f_error = sf.get_data_folder_structure(f_format)
-                        err_str = (
-                            'The selected folder does not adhere to the "{0}" directory structure.'.format(f_format),
-                            'The directory structure should be as follows:', '', f_error, '',
-                            'Either retry with another file format or select a feasible directory.',
-                        )
-                        cf.show_error('\n'.join(err_str), 'Invalid Data Directory')
-
-                        # exits the function
-                        return
-
-                case 'file':
-                    # case
-                    a = 1
-
-            # updates the property value and editbox string
-            cf.set_multi_dict_value(self.props, p_str, file_info[0])
-            h_obj.set_text(file_info[0])
-
-    def button_open_session(self):
-
-        self.open_session.emit()
-
-    def check_run_table(self, h_chk, i_row):
-
-        self.use_run[i_row] = h_chk.isChecked()
-
-        h_root = cf.get_parent_widget(self, OpenSession)
-        h_root.set_toolbar_props('open', np.any(self.use_run))
-
-    # ---------------------------------------------------------------------------
-    # Miscellaneous Functions
-    # ---------------------------------------------------------------------------
-
-    def get_subject_path(self):
-
-        base_dir_sp = self.expt_folder.s_dir.split(os.sep)
-        return '/'.join(base_dir_sp) + self.expt_folder.sub_path[2:]
-
-    def get_session_run_names(self):
-
-        # retrieves the subject/session dictionary field
-        ex_f = self.expt_folder
-        ses_dict = ex_f.obj_dir.sub_dict[ex_f.sub_path][ex_f.ses_type]
-
-        # returns the run-name list
-        return [x.split('/')[-1] for x in np.array(ex_f.obj_dir.f_pd[0]['path'])[ses_dict]]
-
-    def get_session_type(self):
-
-        return self.expt_folder.ses_type
-
-    def get_format_type(self):
-
-        return self.expt_folder.format_type
-
-    def get_run_names(self):
-
-        return "all" if np.all(self.use_run) else self.get_session_run_names()
-
-    def reset_session_run_table(self, get_run_names):
-
-        # clears the table
-        self.run_table.clear()
-        run_name = self.get_session_run_names() if get_run_names else []
-
-        # resets the table dimensions
-        n_run = len(run_name)
-        self.run_table.setRowCount(n_run)
-        self.run_table.setHorizontalHeaderLabels(self.col_hdr)
-        self.run_table.resizeRowsToContents()
-
-        # memory allocation
-        self.use_run = np.ones(n_run, dtype=bool)
-
-        # enables the open session toolbar item
-        h_root = cf.get_parent_widget(self, OpenSession)
-        h_root.set_toolbar_props('open', True)
-
-        # creates the new table widgets
-        for i in range(n_run):
-            # creates the run index
-            h_cell_num = QTableWidgetItem(str(i + 1))
-            h_cell_num.setFlags(~Qt.ItemFlag.ItemIsEditable)
-            h_cell_num.setTextAlignment(cf.align_type['center'])
-            # h_cell_num.setFont(self.table_font)
-            self.run_table.setItem(i, 0, h_cell_num)
-
-            # creates the include checkbox
-            h_cell_chk = cw.create_check_box(None, '', True)
-            h_cell_chk.setStyleSheet("margin-left:50%; margin-right:50%;")
-            self.run_table.setCellWidget(i, 1, h_cell_chk)
-
-            # sets the checkbox event
-            cb_fcn = functools.partial(self.check_run_table, h_cell_chk, i)
-            h_cell_chk.stateChanged.connect(cb_fcn)
-
-            # creates the run name field
-            h_cell_run = QTableWidgetItem(run_name[i])
-            h_cell_run.setFlags(~Qt.ItemFlag.ItemIsEditable)
-            # h_cell_run.setFont(self.table_font)
-            self.run_table.setItem(i, 2, h_cell_run)
-
-            self.run_table.setRowHeight(i, self.row_height)
-
-    # ---------------------------------------------------------------------------
-    # Static Methods
-    # ---------------------------------------------------------------------------
-
-    @staticmethod
-    def create_para_field(name, obj_type, value, p_fld=None, p_list=None, p_misc=None, ch_fld=None):
-
-        return {'name': name, 'type': obj_type, 'value': value, 'p_fld': p_fld,
-                'p_list': p_list, 'p_misc': p_misc, 'ch_fld': ch_fld}
-
-
-# EXPERIMENT FOLDER WIDGET ---------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
 
 """
     ExptFolder: 

@@ -17,7 +17,7 @@ import spike_pipeline.common.common_func as cf
 import spike_pipeline.common.common_widget as cw
 from spike_pipeline.info.utils import InfoManager
 from spike_pipeline.plotting.utils import PlotManager
-from spike_pipeline.common.property_classes import SessionWorkBook
+from spike_pipeline.common.property_classes import SessionWorkBook, SessionObject
 from spike_pipeline.widgets.open_session import OpenSession
 
 # widget dimensions
@@ -116,7 +116,8 @@ class MainWindow(QMainWindow):
         c_id = np.array([[i_plot_trace, i_plot_trace, i_plot_probe]])
         self.plot_manager.update_plot_config(c_id)
 
-        # resets the session flag
+        # resets the session flags
+        self.session_obj.state = 1
         self.has_session = True
 
     # ---------------------------------------------------------------------------
@@ -248,10 +249,11 @@ class MenuBar(QObject):
         if file_dlg.exec() == QDialog.DialogCode.Accepted:
             # saves the session data to file
             file_info = file_dlg.selectedFiles()
-            with open(file_info[0], 'wb') as f:
-                session_data = pickle.load(f)
+            with open(file_info[0], 'rb') as f:
+                ses_data = pickle.load(f)
 
-            a = 1
+            # creates the session data
+            self.main_obj.session_obj.reset_session(ses_data)
 
     def save_session(self):
 
