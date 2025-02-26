@@ -358,7 +358,6 @@ class SessionFile(QWidget):
         self.props = {
             'folder': {},
             'file': {},
-            'existing': {'f_input': None},
         }
 
         # widget setup
@@ -373,11 +372,9 @@ class SessionFile(QWidget):
 
         # other widgets
         self.new_session = SessionNew(self, self.props)
-        self.exist_session = QFileSpec(None, None, name='session_name')
 
         # initialises the class fields
         self.init_class_fields()
-        self.init_open_file_fields()
 
         # sets the widget styling
         self.set_styling()
@@ -387,6 +384,9 @@ class SessionFile(QWidget):
     # ---------------------------------------------------------------------------
 
     def init_class_fields(self):
+
+        # adds the widget to the layout
+        self.file_layout.addWidget(self.new_session)
 
         # creates the panel objects
         self.main_layout.setSpacing(0)
@@ -416,51 +416,6 @@ class SessionFile(QWidget):
 
         # resets the widget size policies
         self.setSizePolicy(QSizePolicy(cf.q_exp, cf.q_exp))
-
-    def init_open_file_fields(self):
-
-        # field initialisations
-        r_lbl = ['Start New Session', 'Open Existing Session']
-        r_name = ['new', 'existing']
-
-        # creates the radio buttons
-        h_radio = []
-        for _rl, _rn in zip(r_lbl, r_name):
-            # creates the new radio button
-            h_radio_new = cw.create_radio_button(None, _rl, _rn == 'new', font_lbl, _rn)
-            h_radio_new.toggled.connect(self.radio_session_select)
-
-            # appends it to the list
-            h_radio.append(h_radio_new)
-
-        # creates the file spec widget
-        cb_fcn = functools.partial(self.new_session.prop_update, ['existing', 'f_input'])
-        self.exist_session.connect(cb_fcn)
-        self.exist_session.setEnabled(False)
-
-        # adds the widget to the layout
-        self.file_layout.addWidget(h_radio[0])
-        self.file_layout.addWidget(self.new_session)
-        self.file_layout.addWidget(h_radio[1])
-        self.file_layout.addWidget(self.exist_session)
-
-    def radio_session_select(self):
-
-        # get the radio button
-        rb = self.sender()
-
-        # check if the radio button is checked
-        if rb.isChecked():
-            # clears the session (if one loaded)
-            if self.root.session is not None:
-                self.session_reset.emit()
-
-            # sets the new session widget properties
-            self.is_new = rb.objectName() == 'new'
-            self.new_session.setEnabled(self.is_new)
-
-            # sets the existing session widget properties
-            self.exist_session.setEnabled(not self.is_new)
 
     def load_session(self):
 
