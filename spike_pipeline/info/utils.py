@@ -116,21 +116,15 @@ class InfoManager(QWidget):
         self.main_layout.setSpacing(0)
         self.main_layout.setContentsMargins(0, 0, 0, 0)
         self.main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-        self.main_layout.addWidget(self.group_props)
-        self.main_layout.addWidget(self.group_table)
-        self.main_layout.addWidget(self.status_lbl)
 
         # sets the outer group-box properties
         self.group_props.setLayout(self.props_layout)
         self.group_props.setFont(cw.font_panel)
-        # self.group_props.setContentsMargins(x_gap, 2 * x_gap, x_gap, x_gap)
-        # self.group_props.setSizePolicy(QSizePolicy(cf.q_exp, cf.q_min))
 
         # sets the outer group-box properties
         self.group_table.setLayout(self.table_layout)
         self.group_table.setFont(cw.font_panel)
         self.group_table.setSizePolicy(QSizePolicy(cf.q_exp, cf.q_exp))
-        # self.group_table.setContentsMargins(0, x_gap, 0, 0)
 
     def init_props_group(self):
 
@@ -209,6 +203,12 @@ class InfoManager(QWidget):
 
             # appends the tab to the tab group
             self.tab_group_table.addTab(tab_widget, t_lbl)
+
+    def add_info_widgets(self):
+
+        self.main_layout.addWidget(self.group_props)
+        self.main_layout.addWidget(self.group_table)
+        self.main_layout.addWidget(self.status_lbl)
 
     # ---------------------------------------------------------------------------
     # Class Property Widget Setup Functions

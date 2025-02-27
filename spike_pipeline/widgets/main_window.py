@@ -108,6 +108,9 @@ class MainWindow(QMainWindow):
         if self.has_session:
             a = 1
 
+        # adds the widgets to the information panel
+        self.info_manager.add_info_widgets()
+
         # -----------------------------------------------------------------------
         # Plot View Setup
         # -----------------------------------------------------------------------
