@@ -164,6 +164,7 @@ class MainWindow(QMainWindow):
     def update_channel(self, i_row):
 
         self.session_obj.toggle_channel_flag(i_row)
+        self.plot_manager.reset_trace_views()
         self.plot_manager.reset_probe_views()
 
     def update_unit(self, i_row):

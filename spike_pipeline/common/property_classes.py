@@ -36,6 +36,7 @@ class SessionWorkBook(QObject):
         self.session = None
         self.channel_data = None
         self.calculated_data = None
+        self.session_props = None
 
         # other class field
         self.current_run = None
@@ -71,6 +72,25 @@ class SessionWorkBook(QObject):
         probe = self.get_current_recording_probe().get_probe()
         return probe.to_dataframe(complete=True)
 
+    def get_channel_ids(self, i_ch=None):
+
+        probe_rec = self.get_current_recording_probe()
+
+        if i_ch is None:
+            return probe_rec.channel_ids
+
+        else:
+            return probe_rec.channel_ids[i_ch]
+
+    def get_traces(self, **kwargs):
+
+        probe_rec = self.get_current_recording_probe()
+        return probe_rec.get_traces(**kwargs)
+
+    def get_selected_channels(self):
+
+        return np.where(self.channel_data.is_selected)[0]
+
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
     # ---------------------------------------------------------------------------
@@ -101,7 +121,9 @@ class SessionWorkBook(QObject):
         _self.current_ses = _self.session.get_session_names(0)[0]
 
         # sets up the channel data object
-        _self.channel_data = ChannelData(_self.get_current_recording_probe())
+        _probe_current = _self.get_current_recording_probe()
+        _self.channel_data = ChannelData(_probe_current)
+        _self.session_props = SessionProps(_probe_current)
 
         # runs the session change signal function
         if _self.has_init:
@@ -259,6 +281,7 @@ class ChannelData:
     def __init__(self, probe):
 
         # class field initialisations
+        self.channel_ids = probe.channel_ids
         self.n_channel = probe.get_num_channels()
 
         # memory allocation
@@ -281,3 +304,18 @@ class CalculatedData:
 
         # FINISH ME!
         a = 1
+
+
+class SessionProps:
+    def __init__(self, probe_rec):
+
+        # retrieves the
+        self.n_samples = probe_rec.get_num_frames()
+        self.n_channels = probe_rec.get_num_channels()
+        self.n_segment = probe_rec.get_num_segments()
+        self.t_dur = probe_rec.get_duration()
+        self.s_freq = probe_rec.get_sampling_frequency()
+
+    def get_value(self, p_str):
+
+        return getattr(self, p_str)

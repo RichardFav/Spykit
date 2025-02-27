@@ -163,11 +163,17 @@ class PlotManager(QWidget):
 
         value = self.session_obj.channel_data.is_selected[i_row]
         self.main_obj.info_manager.update_table_value("Channel Info", i_row, value)
+        self.main_obj.plot_manager.reset_trace_views()
 
     def reset_probe_views(self):
 
         plt_probe = self.plots[self.types['probe'] - 1]
         plt_probe.reset_probe_views()
+
+    def reset_trace_views(self):
+
+        plt_trace = self.plots[self.types['trace'] - 1]
+        plt_trace.reset_trace_view()
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
@@ -422,6 +428,10 @@ class PlotWidget(QWidget):
                 # adds the plot widget to the layout
                 self.h_plot[i, j].setContentsMargins(0, 20, 0, 0)
                 self.plot_layout.addWidget(self.h_plot[i, j], i, j, 1, 1)
+
+        if n_r * n_c == 1:
+            self.v_box = self.v_box[0, 0]
+            self.h_plot = self.h_plot[0, 0]
 
     # ---------------------------------------------------------------------------
     # Widget Event Functions
