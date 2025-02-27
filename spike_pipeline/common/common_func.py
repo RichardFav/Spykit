@@ -232,7 +232,7 @@ def arr_chr(is_chk):
     return '\u2B9F' if is_chk else '\u2B9E'
 
 
-def get_colour_value(col_id, alpha=255):
+def get_colour_value(col_id, alpha=255, n_col_new=None):
 
     match col_id:
         case col_id if col_id in ['red', 'r']:
@@ -277,7 +277,8 @@ def get_colour_value(col_id, alpha=255):
 
         case _:
             # case is a number
-            p_hsv = (col_id * 1.0 / n_col_max, 0.5, 0.5)
+            n_col = n_col_max if n_col_new is None else n_col_new
+            p_hsv = (col_id * 1.0 / n_col, 0.5, 0.5)
             p_rgb = [int(255 * x) for x in list(colorsys.hsv_to_rgb(*p_hsv))]
             return QColor(p_rgb[0], p_rgb[1], p_rgb[2], alpha)
 

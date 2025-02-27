@@ -445,6 +445,9 @@ class SessionFile(QWidget):
 
     def init_class_fields(self):
 
+        # sets the class widget layout
+        self.setLayout(self.main_layout)
+
         # creates the panel objects
         self.main_layout.setSpacing(0)
         self.main_layout.setContentsMargins(x_gap, x_gap, x_gap_h, x_gap)
@@ -453,7 +456,6 @@ class SessionFile(QWidget):
         # sets the outer group-box properties
         self.group_panel.setLayout(self.form_layout)
         self.group_panel.setFont(font_panel)
-        self.setLayout(self.main_layout)
 
         # adds the session file/property widgets
         self.form_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)

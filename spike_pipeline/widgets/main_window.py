@@ -59,8 +59,8 @@ class MainWindow(QMainWindow):
         self.plot_manager = PlotManager(self, dlg_width - info_width, self.session_obj)
 
         # boolean class fields
-        self.has_session = False
         self.can_close = False
+        self.has_session = False
 
         # sets up the main window widgets
         self.setup_main_window()
@@ -137,13 +137,8 @@ class MainWindow(QMainWindow):
 
     def testing(self):
 
-        # adds the plot views
-        self.plot_manager.add_plot_view('trace')
-        self.plot_manager.add_plot_view('probe')
-
-        # test
-        c_id = np.array([[1, 1, 2], [1, 1, 2]])
-        self.plot_manager.main_layout.updateID(c_id)
+        f_file = 'C:/Work/Other Projects/EPhys Project/Data/z - session_files/test.ssf'
+        self.menu_bar.load_session(f_file)
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -175,10 +170,6 @@ class MenuBar(QObject):
     # ---------------------------------------------------------------------------
 
     def init_class_fields(self):
-        """
-
-        :return:
-        """
 
         # adds the menubar to the main window
         self.menu_bar = QMenuBar(self.main_obj)
@@ -242,18 +233,25 @@ class MenuBar(QObject):
         self.main_obj.setVisible(False)
         OpenSession(self.main_obj, self.main_obj.session_obj)
 
-    def load_session(self):
+    def load_session(self, file_info=None):
 
-        # runs the save file dialog
-        file_dlg = cw.FileDialogModal(None, 'Select Session File', cw.f_mode_ssf, cw.data_dir, is_save=False)
-        if file_dlg.exec() == QDialog.DialogCode.Accepted:
-            # saves the session data to file
-            file_info = file_dlg.selectedFiles()
-            with open(file_info[0], 'rb') as f:
-                ses_data = pickle.load(f)
+        # runs the save file dialog (if file path not given)
+        if file_info is None:
+            file_dlg = cw.FileDialogModal(None, 'Select Session File', cw.f_mode_ssf, cw.data_dir, is_save=False)
+            if file_dlg.exec() == QDialog.DialogCode.Accepted:
+                # if successful, then retrieve the file name
+                file_info = file_dlg.selectedFiles()[0]
 
-            # creates the session data
-            self.main_obj.session_obj.reset_session(ses_data)
+            else:
+                # otherwise, exit the function
+                return
+
+        # loads data from the file
+        with open(file_info, 'rb') as f:
+            ses_data = pickle.load(f)
+
+        # creates the session data
+        self.main_obj.session_obj.reset_session(ses_data)
 
     def save_session(self):
 

@@ -46,8 +46,6 @@ class PlotManager(QWidget):
         self.session_obj = session_obj
 
         # field initialisation
-        self.n_col = 1
-        self.n_row = 1
         self.n_plot = 0
         self.plots = []
         self.types = {}

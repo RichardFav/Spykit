@@ -79,20 +79,30 @@ class QRegionConfig(QWidget):
     x_gap = 10
     gbox_height0 = 25
 
-    def __init__(self, parent=None, font=None):
+    def __init__(self, parent=None, font=None, is_expanded=False, can_close=True, p_list0=None):
         super(QRegionConfig, self).__init__(parent)
 
+        if p_list0 is None:
+            p_list0, p_col0 = [], []
+
+        else:
+            n_col = len(p_list0)
+            p_col0 = [cf.get_colour_value(x + 1, n_col_new=n_col) for x in range(n_col)]
+
         # field initialisations
-        self.h_rgrid = []
+        self.is_sel = None
         self.n_row = 1
         self.n_col = 1
-        self.is_expanded = False
-        self.is_mouse_down = False
         self.tr_col = cf.get_colour_value('w')
 
-        self.is_sel = None
+        # array class fields
+        self.h_rgrid = []
         self.g_id = np.zeros((2, 2), dtype=int)
         self.c_id = np.zeros((self.n_row, self.n_col), dtype=int)
+
+        # boolean class fields
+        self.is_mouse_down = False
+        self.is_expanded = is_expanded
 
         # sets up the widget layout
         self.main_layout = QVBoxLayout()
@@ -136,9 +146,10 @@ class QRegionConfig(QWidget):
             obj_lbl_edit.connect(cb_fcn_rc)
 
         # adds the combo object
-        self.p_list = ['(No Trace)']
-        self.p_col = [cf.get_colour_value('lg')]
-        self.obj_lbl_combo = QLabelCombo(None, 'Trace Name: ', self.p_list, self.p_list[0], font_lbl=font)
+        self.p_list = ['(No Plot)'] + p_list0
+        self.p_col = [cf.get_colour_value('lg')] + p_col0
+        self.obj_lbl_combo = QLabelCombo(
+            None, 'Plot Type: ', self.p_list, self.p_list[0], font_lbl=font)
 
         # sets the label properties
         self.obj_lbl_combo.obj_lbl.setFixedWidth(80)
@@ -161,12 +172,21 @@ class QRegionConfig(QWidget):
         self.obj_gbox = QGroupBox(cf.arr_chr(False))
         self.obj_gbox.setCheckable(False)
         self.obj_gbox.setFont(font)
-        self.obj_gbox.setFixedHeight(self.gbox_height0)
-        # self.obj_gbox.setStyleSheet("""
-        #     QGroupbox::label {
-        #         color: red;
-        #     }
-        # """)
+        self.obj_gbox.update()
+
+        # adds the widget to the class widget
+        self.main_layout.addWidget(self.obj_gbox)
+
+        # sets the initial config groupbox height
+        if is_expanded:
+            # case is the groupbox is expanded
+            sz_main = self.main_layout.sizeHint()
+            gbox_height = sz_main.width() - (sz_main.height() - self.gbox_height0)
+            self.obj_gbox.setFixedHeight(gbox_height)
+
+        else:
+            # case is the groupbox is collapsed
+            self.obj_gbox.setFixedHeight(self.gbox_height0)
 
         # sets up the groupbox layout widget
         self.gb_layout = QGridLayout()
@@ -178,10 +198,8 @@ class QRegionConfig(QWidget):
 
         # sets the groupbox properties
         self.obj_gbox.setLayout(self.gb_layout)
-        self.obj_gbox.mousePressEvent = self.panel_group_update
-
-        # adds the widget to the class widget
-        self.main_layout.addWidget(self.obj_gbox)
+        if can_close:
+            self.obj_gbox.mousePressEvent = self.panel_group_update
 
     # MOUSE EVENT FUNCTIONS ---------------------------------------------------
 
@@ -261,20 +279,6 @@ class QRegionConfig(QWidget):
                 break
 
         if is_feas:
-            # if removing traces, then hide the linear regions for all plots to be removed
-            if self.i_trace == 0:
-                for cid in np.unique(self.c_id[self.is_sel]):
-                    tr_obj = self.h_root.tr_obj[cid - 1]
-                    if tr_obj.plot_para.show_parent:
-                        # hides the region object and resets the flag
-                        tr_obj.plot_para.show_parent = False
-                        tr_obj.plot_obj.l_reg_p.hide()
-
-                        # unchecks the parent region checkbox (if currently set)
-                        if cid == (self.h_root.i_trace + 1):
-                            h_chk = self.h_root.obj_para.findChild(QWidget, name='show_parent')
-                            h_chk.set_check(False)
-
             # if feasible, then update the parameter fields and other properties
             ind_sel = np.where(self.is_sel)
             for i_r, i_c in zip(ind_sel[0], ind_sel[1]):
@@ -301,7 +305,7 @@ class QRegionConfig(QWidget):
 
     # WIDGET EVENT FUNCTIONS -------------------------------------------------
 
-    def panel_group_update(self, evnt):
+    def panel_group_update(self, evnt, force_update=False):
 
         # determines if the mouse-click is on the title
         if self.gbox_rect.contains(evnt.pos()):
@@ -310,9 +314,16 @@ class QRegionConfig(QWidget):
             self.obj_gbox.setTitle(cf.arr_chr(self.is_expanded))
 
             # calculates the widget dimensions
-            d_hght = (2 * self.is_expanded - 1) * (self.obj_gbox.width() - self.gbox_height0)
+            self.reset_config_group_height()
 
-            self.obj_gbox.setFixedHeight(self.obj_gbox.height() + d_hght)
+    def reset_config_group_height(self):
+
+        d_hght = self.calc_groupbox_height()
+        self.obj_gbox.setFixedHeight(self.obj_gbox.height() + d_hght)
+
+    def calc_groupbox_height(self):
+
+        return (2 * self.is_expanded - 1) * (self.obj_gbox.width() - self.gbox_height0)
 
     def edit_dim_update(self, p_str, h_edit):
 
@@ -1446,6 +1457,11 @@ class QLabelCombo(QWidget):
         # sets up the slot function
         self.obj_cbox.setFixedHeight(cf.combo_height)
         self.obj_cbox.setStyleSheet('border-radius: 2px; border: 1px solid')
+
+        # if p_col is not None:
+        #     cb_model = self.obj_cbox.model()
+        #     for i_c, p_c in enumerate(p_col):
+        #         cb_model.setData(cb_model.index(i_c, 0), p_c, Qt.ItemDataRole.BackgroundRole)
 
         if len(value):
             self.obj_cbox.setCurrentText(value)

@@ -976,6 +976,10 @@ class QPlotPara(QWidget):
         # sets the style sheets
         self.h_scroll.setStyleSheet("background-color: rgba(120, 152, 229, 255) ;")
 
+    # ---------------------------------------------------------------------------
+    # Static Methods
+    # ---------------------------------------------------------------------------
+
     @staticmethod
     def create_para_field(name, obj_type, value, p_fld=None, p_list=None, p_misc=None, ch_fld=None):
 
