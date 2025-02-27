@@ -1,4 +1,5 @@
 # module import
+import functools
 import numpy as np
 import pyqtgraph as pg
 
@@ -23,8 +24,6 @@ from pyqtgraph import GraphicsObject, ROI, mkPen, mkBrush
 class ProbePlotPara(PlotPara):
     def __init__(self):
         super(ProbePlotPara, self).__init__('Probe')
-        a = 1
-
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -36,14 +35,13 @@ class ProbePlotPara(PlotPara):
 class ProbePlotWidget(PlotWidget):
     def __init__(self):
         super(ProbePlotWidget, self).__init__('probe')
-        a = 1
-
 
 # ----------------------------------------------------------------------------------------------------------------------
 
 
 class ProbePlot(ProbePlotPara, ProbePlotWidget):
     # pyqtsignal functions
+    hide_plot = pyqtSignal()
     probe_clicked = pyqtSignal(object)
 
     def __init__(self, session_info):
@@ -99,6 +97,11 @@ class ProbePlot(ProbePlotPara, ProbePlotWidget):
         self.sub_label.setVisible(False)
         self.h_plot[1, 0].addItem(self.sub_label)
 
+        # sets the plot button callback functions
+        for pb in self.plot_but:
+            cb_fcn = functools.partial(self.plot_button_clicked, pb.objectName())
+            pb.clicked.connect(cb_fcn)
+
     def setup_probe_views(self):
 
         # clears any existing plots
@@ -144,13 +147,34 @@ class ProbePlot(ProbePlotPara, ProbePlotWidget):
 
     def enter_sub_view(self, *_):
 
-        # self.sub_xhair.set_visible(True)
         pass
 
     def leave_sub_view(self, *_):
 
-        # self.sub_xhair.set_visible(False)
         self.sub_label.setVisible(False)
+
+    # ---------------------------------------------------------------------------
+    # Plot Button Event Functions
+    # ---------------------------------------------------------------------------
+
+    def plot_button_clicked(self, b_str):
+
+        match b_str:
+            case 'new':
+                # case is the new button
+                cf.show_error('Finish Me!')
+
+            case 'open':
+                # case is the open button
+                cf.show_error('Finish Me!')
+
+            case 'save':
+                # case is the save button
+                cf.show_error('Finish Me!')
+
+            case 'close':
+                # case is the close button
+                self.hide_plot.emit()
 
     # ---------------------------------------------------------------------------
     # Widget Event Functions

@@ -22,7 +22,7 @@ from spike_pipeline.widgets.open_session import OpenSession
 
 # widget dimensions
 x_gap = 15
-info_width = 250
+info_width = 275
 
 # object dimensions
 dlg_width = 1650

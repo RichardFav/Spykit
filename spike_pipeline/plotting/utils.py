@@ -115,6 +115,10 @@ class PlotManager(QWidget):
         self.types[p_type] = self.n_plot
         self.plots.append(plot_new)
 
+        # connects the hide button
+        cb_fcn = functools.partial(self.clear_plot_view, p_type)
+        plot_new.hide_plot.connect(cb_fcn)
+
         match p_type:
             case 'probe':
                 # case is the probe view
@@ -137,12 +141,19 @@ class PlotManager(QWidget):
 
     def clear_plot_view(self, p_type):
 
-        a = 1
+        # removes the current plot from the configuration id array
+        p_id = self.types[p_type]
+        c_id = self.main_obj.info_manager.obj_rconfig.c_id
+        c_id[c_id == p_id] = 0
+
+        # sets the region configuration
+        self.plots[p_id - 1].hide()
+        self.main_obj.info_manager.set_region_config(c_id)
+        self.update_plot_config(c_id)
 
     def get_plot_index(self, p_type):
 
         return self.types[p_type]
-
 
     # ---------------------------------------------------------------------------
     # Probe-View Specific Functions
@@ -220,6 +231,222 @@ class PlotManager(QWidget):
             grid_new = self.n_plot * np.zeros((self.grid_id.shape[0], 1), dtype=int)
             self.grid_id = np.hstack((self.grid_id, grid_new))
             self.grid_id[0, -1] = self.n_plot
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+"""
+    PlotWidget: 
+"""
+
+
+class PlotWidget(QWidget):
+    # pyqtsignal functions
+    hide_plot = pyqtSignal()
+
+    # mouse event function fields
+    mp_event_release = None
+    mp_event_click = None
+
+    # dimensions
+    x_gap_plt = 2
+    but_height_plt = 16
+
+    # widget stylesheets
+    plot_gbox_style = """
+        QGroupBox {
+            color: white;
+            border: 2px solid white;
+            border-radius: 5px;
+        }
+        QGroupBox::title
+        {
+            padding: 0px 5px;
+            background-color: transparent;
+        }
+        QGroupBox[objectName='selected'] {
+            color: white;
+            border: 2px solid red;
+            border-radius: 5px;
+        }                                    
+    """
+
+    def __init__(self, p_type):
+        super(PlotWidget, self).__init__()
+
+        # main class fields
+        self.p_type = p_type
+        self.p_name = vt.plot_names[p_type]
+
+        # data class field
+        self.x = None
+        self.y = None
+        self.x_lim = []
+        self.y_lim = []
+        self.n_row = 1
+        self.n_col = 1
+
+        # widget fields
+        self.h_plot = []
+        self.v_box = []
+        self.plot_but = []
+        self.plt_manager = None
+
+        # boolean class fields
+        self.is_updating = False
+        self.region_clicked = False
+
+        # class layouts
+        self.main_layout = QHBoxLayout()
+        self.group_layout = QVBoxLayout()
+        self.plot_layout = QGridLayout()
+
+        # class widgets
+        self.plot_widget = QWidget()
+        self.obj_plot_gbox = QGroupBox(self.p_name, self)
+
+        # sets up the plot widgets
+        self.setup_plot_widget()
+        self.setup_plot_buttons()
+
+    # ---------------------------------------------------------------------------
+    # Class Widget Setup Functions
+    # ---------------------------------------------------------------------------
+
+    def setup_plot_buttons(self):
+
+        # initialisations
+        f_name = ['new', 'open', 'save', 'close']
+        tt_str = 'Finish Me!'
+
+        # sets up the
+        gb_layout = QHBoxLayout()
+        gb_layout.setContentsMargins(0, 0, self.x_gap_plt, 0)
+
+        # creates the checkbox object
+        obj_grp = QWidget()
+        obj_grp.setLayout(gb_layout)
+        obj_grp.setStyleSheet("background-color: transparent;")
+
+        # adds the widgets
+        obj_gap = QWidget()
+        gb_layout.addWidget(obj_gap)
+        obj_gap.setStyleSheet("background-color: transparent;")
+
+        # frame layout
+        frm_layout = QHBoxLayout()
+        frm_layout.setSpacing(self.x_gap_plt)
+        frm_layout.setContentsMargins(self.x_gap_plt, self.x_gap_plt, self.x_gap_plt, self.x_gap_plt)
+
+        # frame widget
+        obj_frm = QFrame()
+        obj_frm.setLayout(frm_layout)
+        obj_frm.setFixedHeight(self.but_height_plt + 3 * self.x_gap_plt)
+        obj_frm.setSizePolicy(QSizePolicy(cf.q_fix, cf.q_fix))
+        obj_frm.setStyleSheet("border: 1px solid white;")
+
+        # creates the push button objects
+        for fp in f_name:
+            # creates the button widget
+            obj_but = cw.create_push_button(None, "")
+            obj_but.setIcon(QIcon(cw.icon_path[fp]))
+            obj_but.setIconSize(QSize(self.but_height_plt - 1, self.but_height_plt - 1))
+            obj_but.setFixedSize(self.but_height_plt, self.but_height_plt)
+            obj_but.setCursor(Qt.CursorShape.PointingHandCursor)
+            obj_but.setToolTip(tt_str)
+            obj_but.setObjectName(fp)
+            obj_but.setStyleSheet("""
+                QToolTip {
+                    color: white;                 
+                }
+            """)
+
+            # sets the callback function
+            self.plot_but.append(obj_but)
+
+            # adds the widgets
+            frm_layout.addWidget(obj_but)
+
+        # adds the plot widget
+        gb_layout.addWidget(obj_frm)
+        self.group_layout.addWidget(obj_grp)
+        self.group_layout.addWidget(self.plot_widget)
+
+    def setup_plot_widget(self):
+
+        # sets the main widget properties
+        self.setSizePolicy(QSizePolicy(cf.q_pref, cf.q_exp))
+        self.setLayout(self.main_layout)
+
+        # sets the main layout properties
+        self.main_layout.setSpacing(0)
+        self.main_layout.setContentsMargins(0, 0, 0, 0)
+        self.main_layout.setAlignment(cw.align_flag['top'])
+        self.main_layout.addWidget(self.obj_plot_gbox)
+
+        # sets the groupbox properties
+        self.obj_plot_gbox.setObjectName('selected')
+        self.obj_plot_gbox.setFont(cw.font_hdr)
+        self.obj_plot_gbox.setCheckable(False)
+        self.obj_plot_gbox.setSizePolicy(QSizePolicy(cf.q_exp, cf.q_exp))
+        self.obj_plot_gbox.setLayout(self.group_layout)
+        self.obj_plot_gbox.setStyleSheet(self.plot_gbox_style)
+
+        # sets the plot widget layout
+        self.plot_layout.setSpacing(5)
+        self.plot_layout.setContentsMargins(0, 0, 0, 0)
+        self.plot_widget.setLayout(self.plot_layout)
+
+        # sets up the
+        cb_fcn = functools.partial(self.click_plot_region, self)
+        self.obj_plot_gbox.mousePressEvent = cb_fcn
+
+    def setup_plot_pen(self):
+
+        pen_style = cf.pen_style[self.p_style]
+        return pg.mkPen(color=self.p_col, width=self.p_width, style=pen_style)
+
+    def setup_subplots(self, n_r=1, n_c=1):
+
+        # memory allocation
+        self.n_row, self.n_col = n_r, n_c
+        self.v_box = np.empty((n_r, n_c), dtype=object)
+        self.h_plot = np.empty((n_r, n_c), dtype=object)
+
+        for i in range(n_r):
+            for j in range(n_c):
+                # creates the plot widget
+                self.h_plot[i, j] = pg.PlotWidget()
+                self.v_box[i, j] = self.h_plot[i, j].getViewBox()
+
+                # adds the plot widget to the layout
+                self.h_plot[i, j].setContentsMargins(0, 20, 0, 0)
+                self.plot_layout.addWidget(self.h_plot[i, j], i, j, 1, 1)
+
+    # ---------------------------------------------------------------------------
+    # Widget Event Functions
+    # ---------------------------------------------------------------------------
+
+    def click_plot_region(self, plot, *_):
+
+        if self.region_clicked:
+            self.region_clicked = False
+            return
+
+        if self.plt_manager is None:
+            self.plt_manager = cf.get_parent_widget(self, PlotManager)
+
+        # updates the selected plot to the current
+        self.plt_manager.reset_plot_highlight(plot)
+
+    # ---------------------------------------------------------------------------
+    # Miscellaneous Functions
+    # ---------------------------------------------------------------------------
+
+    def reset_groupbox_name(self, name_new):
+
+        self.obj_plot_gbox.setObjectName(name_new)
+        self.obj_plot_gbox.setStyleSheet(self.obj_plot_gbox.styleSheet())
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -316,222 +543,6 @@ class PlotLayout(QLayout):
     @property
     def items(self):
         return self._items
-
-
-# ----------------------------------------------------------------------------------------------------------------------
-
-"""
-    PlotWidget: 
-"""
-
-
-class PlotWidget(QWidget):
-    # mouse event function fields
-    mp_event_release = None
-    mp_event_click = None
-
-    # dimensions
-    x_gap_plt = 2
-    but_height_plt = 16
-
-    # widget stylesheets
-    plot_gbox_style = """
-        QGroupBox {
-            color: white;
-            border: 2px solid white;
-            border-radius: 5px;
-        }
-        QGroupBox::title
-        {
-            padding: 0px 5px;
-            background-color: transparent;
-        }
-        QGroupBox[objectName='selected'] {
-            color: white;
-            border: 2px solid red;
-            border-radius: 5px;
-        }                                    
-    """
-
-    def __init__(self, p_type):
-        super(PlotWidget, self).__init__()
-
-        # main class fields
-        self.p_type = p_type
-        self.p_name = vt.plot_names[p_type]
-
-        # data class field
-        self.x = None
-        self.y = None
-        self.x_lim = []
-        self.y_lim = []
-        self.n_row = 1
-        self.n_col = 1
-
-        # widget fields
-        self.h_plot = []
-        self.v_box = []
-        self.plt_manager = None
-
-        # boolean class fields
-        self.is_updating = False
-        self.region_clicked = False
-
-        # class layouts
-        self.main_layout = QHBoxLayout()
-        self.group_layout = QVBoxLayout()
-        self.plot_layout = QGridLayout()
-
-        # class widgets
-        self.plot_widget = QWidget()
-        self.obj_plot_gbox = QGroupBox(self.p_name, self)
-
-        # sets up the plot widgets
-        self.setup_plot_widget()
-        self.setup_plot_buttons()
-
-    # ---------------------------------------------------------------------------
-    # Class Widget Setup Functions
-    # ---------------------------------------------------------------------------
-
-    def setup_plot_buttons(self):
-
-        # initialisations
-        f_name = ['new', 'open', 'save', 'close']
-        tt_str = 'Finish Me!'
-
-        # sets up the
-        gb_layout = QHBoxLayout()
-        gb_layout.setContentsMargins(0, 0, self.x_gap_plt, 0)
-
-        # creates the checkbox object
-        obj_grp = QWidget()
-        obj_grp.setLayout(gb_layout)
-        obj_grp.setStyleSheet("background-color: transparent;")
-
-        # adds the widgets
-        obj_gap = QWidget()
-        gb_layout.addWidget(obj_gap)
-        obj_gap.setStyleSheet("background-color: transparent;")
-
-        # frame layout
-        frm_layout = QHBoxLayout()
-        frm_layout.setSpacing(self.x_gap_plt)
-        frm_layout.setContentsMargins(self.x_gap_plt, self.x_gap_plt, self.x_gap_plt, self.x_gap_plt)
-
-        # frame widget
-        obj_frm = QFrame()
-        obj_frm.setLayout(frm_layout)
-        obj_frm.setFixedHeight(self.but_height_plt + 3 * self.x_gap_plt)
-        obj_frm.setSizePolicy(QSizePolicy(cf.q_fix, cf.q_fix))
-        obj_frm.setStyleSheet("border: 1px solid white;")
-
-        # creates the push button objects
-        for fp in f_name:
-            # creates the button widget
-            obj_but = cw.create_push_button(None, "")
-            obj_but.setIcon(QIcon(cw.icon_path[fp]))
-            obj_but.setIconSize(QSize(self.but_height_plt - 1, self.but_height_plt - 1))
-            obj_but.setFixedSize(self.but_height_plt, self.but_height_plt)
-            obj_but.setCursor(Qt.CursorShape.PointingHandCursor)
-            obj_but.setToolTip(tt_str)
-            obj_but.setObjectName(fp)
-            obj_but.setStyleSheet("""
-                QToolTip {
-                    color: white;                 
-                }
-            """)
-
-            # sets the callback function
-            obj_but.clicked.connect(self.button_plot_click)
-
-            # adds the widgets
-            frm_layout.addWidget(obj_but)
-
-        # adds the plot widget
-        gb_layout.addWidget(obj_frm)
-        self.group_layout.addWidget(obj_grp)
-        self.group_layout.addWidget(self.plot_widget)
-
-    def setup_plot_widget(self):
-
-        # sets the main widget properties
-        self.setSizePolicy(QSizePolicy(cf.q_pref, cf.q_exp))
-        self.setLayout(self.main_layout)
-
-        # sets the main layout properties
-        self.main_layout.setSpacing(0)
-        self.main_layout.setContentsMargins(0, 0, 0, 0)
-        self.main_layout.setAlignment(cw.align_flag['top'])
-        self.main_layout.addWidget(self.obj_plot_gbox)
-
-        # sets the groupbox properties
-        self.obj_plot_gbox.setObjectName('selected')
-        self.obj_plot_gbox.setFont(cw.font_hdr)
-        self.obj_plot_gbox.setCheckable(False)
-        self.obj_plot_gbox.setSizePolicy(QSizePolicy(cf.q_exp, cf.q_exp))
-        self.obj_plot_gbox.setLayout(self.group_layout)
-        self.obj_plot_gbox.setStyleSheet(self.plot_gbox_style)
-
-        # sets the plot widget layout
-        self.plot_layout.setSpacing(5)
-        self.plot_layout.setContentsMargins(0, 0, 0, 0)
-        self.plot_widget.setLayout(self.plot_layout)
-
-        # sets up the
-        cb_fcn = functools.partial(self.click_plot_region, self)
-        self.obj_plot_gbox.mousePressEvent = cb_fcn
-
-    def setup_plot_pen(self):
-
-        pen_style = cf.pen_style[self.p_style]
-        return pg.mkPen(color=self.p_col, width=self.p_width, style=pen_style)
-
-    def setup_subplots(self, n_r=1, n_c=1):
-
-        # memory allocation
-        self.n_row, self.n_col = n_r, n_c
-        self.v_box = np.empty((n_r, n_c), dtype=object)
-        self.h_plot = np.empty((n_r, n_c), dtype=object)
-
-        for i in range(n_r):
-            for j in range(n_c):
-                # creates the plot widget
-                self.h_plot[i, j] = pg.PlotWidget()
-                self.v_box[i, j] = self.h_plot[i, j].getViewBox()
-
-                # adds the plot widget to the layout
-                self.h_plot[i, j].setContentsMargins(0, 20, 0, 0)
-                self.plot_layout.addWidget(self.h_plot[i, j], i, j, 1, 1)
-
-    # ---------------------------------------------------------------------------
-    # Widget Event Functions
-    # ---------------------------------------------------------------------------
-
-    def click_plot_region(self, plot, *_):
-
-        if self.region_clicked:
-            self.region_clicked = False
-            return
-
-        if self.plt_manager is None:
-            self.plt_manager = cf.get_parent_widget(self, PlotManager)
-
-        # updates the selected plot to the current
-        self.plt_manager.reset_plot_highlight(plot)
-
-    def button_plot_click(self):
-
-        cf.show_error('Finish Me!')
-
-    # ---------------------------------------------------------------------------
-    # Miscellaneous Functions
-    # ---------------------------------------------------------------------------
-
-    def reset_groupbox_name(self, name_new):
-
-        self.obj_plot_gbox.setObjectName(name_new)
-        self.obj_plot_gbox.setStyleSheet(self.obj_plot_gbox.styleSheet())
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -640,4 +651,5 @@ class PlotPara(PlotParaBase):
 # ----------------------------------------------------------------------------------------------------------------------
 
 # module imports (required here as will cause circular import error)
+
 import spike_pipeline.plotting.view_type as vt
