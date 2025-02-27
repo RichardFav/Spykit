@@ -43,6 +43,9 @@ class ProbePlotWidget(PlotWidget):
 
 
 class ProbePlot(ProbePlotPara, ProbePlotWidget):
+    # pyqtsignal functions
+    probe_clicked = pyqtSignal(object)
+
     def __init__(self, session_info):
         ProbePlotPara.__init__(self)
         ProbePlotWidget.__init__(self)
@@ -89,7 +92,7 @@ class ProbePlot(ProbePlotPara, ProbePlotWidget):
         self.v_box[1, 0].setBorder((255, 255, 255))
 
         # main class fields
-        self.probe_rec = self.session_info.get_current_probe()
+        self.probe_rec = self.session_info.get_current_recording_probe()
 
         # adds the contact text label
         self.sub_label = pg.TextItem(color=(0, 0, 0, 255), fill=(255, 255, 255, 255), ensureInBounds=True)
@@ -103,9 +106,8 @@ class ProbePlot(ProbePlotPara, ProbePlotWidget):
             a = 1
 
         # creates the main/inset views
-        ch_data = self.session_info.channel_data
-        self.main_view = ProbeView(self.h_plot[0, 0], self.probe, ch_data)
-        self.sub_view = ProbeView(self.h_plot[1, 0], self.probe, ch_data)
+        self.main_view = ProbeView(self.h_plot[0, 0], self.probe, self.session_info)
+        self.sub_view = ProbeView(self.h_plot[1, 0], self.probe, self.session_info)
 
         # sets the main probe view properties
         self.h_plot[0, 0].addItem(self.main_view)
@@ -181,7 +183,7 @@ class ProbePlot(ProbePlotPara, ProbePlotWidget):
 
                 # updates the label properties
                 self.sub_label.setVisible(True)
-                self.sub_label.setText('Contact #{}'.format(i_contact))
+                self.sub_label.setText('Channel ID #{}'.format(i_contact))
                 self.sub_label.update()
 
             # repositions the label
@@ -201,9 +203,9 @@ class ProbePlot(ProbePlotPara, ProbePlotWidget):
 
         # toggles the selection flag
         self.session_info.toggle_channel_flag(self.sub_view.i_sel_contact)
+        self.reset_probe_views()
 
-        self.main_view.create_probe_plot()
-        self.sub_view.create_probe_plot()
+        self.probe_clicked.emit(self.sub_view.i_sel_contact)
 
     def convert_coords(self):
 
@@ -212,6 +214,11 @@ class ProbePlot(ProbePlotPara, ProbePlotWidget):
         lbl_height = self.sub_label.boundingRect().height()
 
         return y_scale * lbl_height / plt_height
+
+    def reset_probe_views(self):
+
+        self.main_view.create_probe_plot()
+        self.sub_view.create_probe_plot()
 
     @staticmethod
     def update_probe(_self):
@@ -242,10 +249,11 @@ class ProbeView(GraphicsObject):
     # pyqtsignal functions
     update_roi = pyqtSignal(object)
 
-    def __init__(self, main_obj, probe, channel_data=None):
+    def __init__(self, main_obj, probe, session_info=None):
         super(ProbeView, self).__init__()
 
         # sets the parent object
+        self.main_obj = main_obj
         self.setParent(main_obj)
 
         # field initialisation
@@ -259,7 +267,7 @@ class ProbeView(GraphicsObject):
         self.x_lim_shank = []
         self.y_lim_shank = []
         self.i_sel_contact = None
-        self.channel_data = channel_data
+        self.session_info = session_info
 
         # field retrieval
         self.n_dim = probe.ndim
@@ -318,7 +326,7 @@ class ProbeView(GraphicsObject):
                 p.setBrush(mkBrush(self.c_col_hover))
                 p.drawPolygon(c_p)
 
-            if (self.channel_data is not None) and self.channel_data.is_selected[i_p]:
+            if (self.session_info is not None) and self.session_info.channel_data.is_selected[i_p]:
                 # case is the contact has been selected
                 p.setBrush(mkBrush(self.c_col_selected))
                 p.drawPolygon(c_p)

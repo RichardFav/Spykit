@@ -2,12 +2,14 @@
 import functools
 
 # custom module imports
+import numpy as np
+
 import spike_pipeline.common.common_func as cf
 import spike_pipeline.common.common_widget as cw
 
 # pyqt imports
 from PyQt6.QtWidgets import (QWidget, QLineEdit, QComboBox, QCheckBox, QPushButton, QSizePolicy, QVBoxLayout, QGroupBox,
-                             QScrollArea, QFormLayout, QGridLayout, QColorDialog)
+                             QScrollArea, QFormLayout, QGridLayout, QColorDialog, QTableWidget, QTableWidgetItem)
 from PyQt6.QtCore import QObject, Qt, QSize, QRect, pyqtSignal
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -26,6 +28,9 @@ x_gap_h = 2
 
 class InfoManager(QWidget):
     # signal functions
+    unit_check = pyqtSignal(object)
+    channel_check = pyqtSignal(object)
+    config_update = pyqtSignal(object)
     axes_reset = pyqtSignal(QWidget)
 
     # widget dimensions
@@ -37,6 +42,22 @@ class InfoManager(QWidget):
     props_tab_lbl = ['Region Configuration']
     table_tab_lbl = ['Channel Info', 'Unit Info']
     plot_types = ['Trace', 'Probe']
+
+    # widget stylesheets
+    table_style = """
+        QTableWidget {
+            font: Arial 6px;
+            border: 1px solid;
+        }
+        QHeaderView {
+            font: Arial 6px;
+            font-weight: 1000;
+        }
+    """
+
+    #
+    norm_item_flag = Qt.ItemFlag.ItemIsEnabled
+    check_item_flag = norm_item_flag | Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsSelectable
 
     def __init__(self, main_obj, info_width, session_obj=None):
         super(InfoManager, self).__init__()
@@ -57,11 +78,11 @@ class InfoManager(QWidget):
         self.main_layout = QVBoxLayout()
         self.props_layout = QVBoxLayout()
         self.table_layout = QVBoxLayout()
-        # self.scroll_layout = QFormLayout()
 
         # main widget setup
-        self.obj_rconfig = cw.QRegionConfig(
-            self, font=cw.font_lbl, is_expanded=True, can_close=False, p_list0=self.plot_types)
+        gbox_height = self.info_width
+        self.obj_rconfig = cw.QRegionConfig(self, font=cw.font_lbl, is_expanded=True,
+                                            p_list0=self.plot_types, gbox_height=gbox_height)
         self.group_props = QGroupBox(self.props_name.upper())
         self.group_table = QGroupBox(self.table_name.upper())
         self.tab_group_table = cw.create_tab_group(self)
@@ -103,7 +124,7 @@ class InfoManager(QWidget):
         self.group_props.setLayout(self.props_layout)
         self.group_props.setFont(cw.font_panel)
         # self.group_props.setContentsMargins(x_gap, 2 * x_gap, x_gap, x_gap)
-        self.group_table.setSizePolicy(QSizePolicy(cf.q_exp, cf.q_pref))
+        # self.group_props.setSizePolicy(QSizePolicy(cf.q_exp, cf.q_min))
 
         # sets the outer group-box properties
         self.group_table.setLayout(self.table_layout)
@@ -112,6 +133,8 @@ class InfoManager(QWidget):
         # self.group_table.setContentsMargins(0, x_gap, 0, 0)
 
     def init_props_group(self):
+
+        self.tab_group_props.setSizePolicy(QSizePolicy(cf.q_exp, cf.q_min))
 
         # sets the property tab group properties
         self.props_layout.setSpacing(0)
@@ -126,6 +149,9 @@ class InfoManager(QWidget):
         # creates the tab-objects
         for p_lbl in self.p_info:
             self.add_prop_tab(self.p_info[p_lbl], p_lbl)
+
+        # sets the region configuration slot function
+        self.obj_rconfig.config_reset.connect(self.update_config)
 
     def add_prop_tab(self, p_info_tab, p_lbl):
 
@@ -166,8 +192,23 @@ class InfoManager(QWidget):
 
         # creates the tab-objects
         for t_lbl in self.table_tab_lbl:
-            h_tab = QWidget()
-            self.tab_group_table.addTab(h_tab, t_lbl)
+            # sets up the tab widget
+            tab_widget = QWidget()
+            tab_layout = QVBoxLayout(self)
+            tab_widget.setLayout(tab_layout)
+            tab_layout.setContentsMargins(0, 0, 0, 0)
+
+            # creates the table object
+            table_widget = QTableWidget(None)
+            tab_layout.addWidget(table_widget)
+            # table_widget.setStyleSheet(self.table_style)
+            table_widget.setObjectName(t_lbl)
+            table_widget.setRowCount(0)
+            table_widget.setColumnCount(0)
+            table_widget.verticalHeader().setVisible(False)
+
+            # appends the tab to the tab group
+            self.tab_group_table.addTab(tab_widget, t_lbl)
 
     # ---------------------------------------------------------------------------
     # Class Property Widget Setup Functions
@@ -350,6 +391,76 @@ class InfoManager(QWidget):
                 cb_fcn = functools.partial(self.button_file_spec, p_str_l)
                 obj_fspec.connect(cb_fcn)
 
+    def setup_info_table(self, data, t_type, c_hdr):
+
+        # retrieves and clears the table object
+        table_obj = self.get_table_widget(t_type)
+
+        # resets the table properties
+        table_obj.clear()
+        table_obj.setRowCount(data.shape[0])
+        table_obj.setColumnCount(data.shape[1])
+        table_obj.setHorizontalHeaderLabels(c_hdr)
+
+        # sets up all cells within the table
+        for i_row in range(data.shape[0]):
+            for i_col in range(data.shape[1]):
+                # retrieves the cell value
+                value = data.iloc[i_row][data.columns[i_col]]
+
+                if isinstance(value, np.bool_):
+                    # case is a checkbox item
+                    item = QTableWidgetItem()
+                    item.setFlags(self.check_item_flag)
+                    item.setCheckState(cf.chk_state[value])
+
+                else:
+                    # case is another item type
+                    item = QTableWidgetItem(f'{value}')
+                    item.setFlags(self.norm_item_flag)
+
+                # adds the item to the table
+                item.setTextAlignment(cw.align_flag['center'])
+                table_obj.setItem(i_row, i_col, item)
+
+        # sets the table properties
+        table_obj.resizeColumnsToContents()
+        table_obj.resizeRowsToContents()
+
+        # sets the checkbox callback function
+        cb_fcn = functools.partial(self.table_cell_changed, t_type)
+        table_obj.cellChanged.connect(cb_fcn)
+
+    def table_cell_changed(self, t_type, i_row, i_col):
+
+        # if manually updating, then exit
+        if self.is_updating:
+            return
+
+        if t_type == self.table_tab_lbl[0]:
+            # case is the channel information tab
+            self.channel_check.emit(i_row)
+
+        elif t_type == self.table_tab_lbl[1]:
+            # case is the unit information tab
+            self.unit_check.emit(i_row)
+
+    def get_table_widget(self, t_type):
+
+        return self.findChild(QTableWidget, name=t_type)
+
+    def update_table_value(self, t_type, i_row, value):
+
+        # flag that updating is taking place
+        self.is_updating = True
+
+        # updates the channel item checkmark
+        table_channel = self.get_table_widget(t_type)
+        table_channel.item(i_row, 0).setCheckState(cf.chk_state[value])
+
+        # resets the update flag
+        self.is_updating = False
+
     # ---------------------------------------------------------------------------
     # Widget Event Functions
     # ---------------------------------------------------------------------------
@@ -482,9 +593,21 @@ class InfoManager(QWidget):
             # updates the parameter field
             setattr(self.p_props, p_str, p_col)
 
+    def update_config(self):
+
+        self.config_update.emit(self.obj_rconfig.c_id)
+
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
     # ---------------------------------------------------------------------------
+
+    def get_region_config(self):
+
+        return self.obj_rconfig.c_id
+
+    def set_region_config(self, c_id):
+
+        self.obj_rconfig.reset_selector_widgets(c_id)
 
     def setup_widget_callback(self, h_widget=None):
 

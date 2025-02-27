@@ -28,15 +28,24 @@ q_yes_no = q_yes | q_no
 q_yes_no_cancel = q_yes_no | q_cancel
 
 # common parameters
-align_type = {'center': Qt.AlignmentFlag.AlignCenter,
-              'left': Qt.AlignmentFlag.AlignLeft,
-              'right': Qt.AlignmentFlag.AlignRight}
+align_type = {
+    'center': Qt.AlignmentFlag.AlignCenter,
+    'left': Qt.AlignmentFlag.AlignLeft,
+    'right': Qt.AlignmentFlag.AlignRight
+}
 
-pen_style = {'Solid': Qt.PenStyle.SolidLine,
-             'Dash': Qt.PenStyle.DashLine,
-             'Dot': Qt.PenStyle.DotLine,
-             'Dash-Dot': Qt.PenStyle.DashDotLine,
-             'Dash-Dot-Dot': Qt.PenStyle.DashDotDotLine}
+pen_style = {
+    'Solid': Qt.PenStyle.SolidLine,
+    'Dash': Qt.PenStyle.DashLine,
+    'Dot': Qt.PenStyle.DotLine,
+    'Dash-Dot': Qt.PenStyle.DashDotLine,
+    'Dash-Dot-Dot': Qt.PenStyle.DashDotDotLine
+}
+
+chk_state = {
+    False: Qt.CheckState.Unchecked,
+    True: Qt.CheckState.Checked,
+}
 
 # widget dimensions
 but_height = 24

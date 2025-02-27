@@ -115,6 +115,11 @@ class PlotManager(QWidget):
         self.types[p_type] = self.n_plot
         self.plots.append(plot_new)
 
+        match p_type:
+            case 'probe':
+                # case is the probe view
+                plot_new.probe_clicked.connect(self.clicked_probe)
+
     def get_plot_view(self, p_type, is_add=True):
 
         # determines if the plot type exists in the view list
@@ -138,6 +143,21 @@ class PlotManager(QWidget):
 
         return self.types[p_type]
 
+
+    # ---------------------------------------------------------------------------
+    # Probe-View Specific Functions
+    # ---------------------------------------------------------------------------
+
+    def clicked_probe(self, i_row):
+
+        value = self.session_obj.channel_data.is_selected[i_row]
+        self.main_obj.info_manager.update_table_value("Channel Info", i_row, value)
+
+    def reset_probe_views(self):
+
+        plt_probe = self.plots[self.types['probe'] - 1]
+        plt_probe.reset_probe_views()
+
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
     # ---------------------------------------------------------------------------
@@ -154,6 +174,11 @@ class PlotManager(QWidget):
     def update_plot_config(self, c_id):
 
         self.main_layout.updateID(c_id)
+
+    def hide_all_plots(self):
+
+        for x in self.plots:
+            x.hide()
 
     def reset_plot_highlight(self, plot):
 

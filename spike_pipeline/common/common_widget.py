@@ -79,7 +79,7 @@ class QRegionConfig(QWidget):
     x_gap = 10
     gbox_height0 = 25
 
-    def __init__(self, parent=None, font=None, is_expanded=False, can_close=True, p_list0=None):
+    def __init__(self, parent=None, font=None, is_expanded=False, can_close=True, p_list0=None, gbox_height=None):
         super(QRegionConfig, self).__init__(parent)
 
         if p_list0 is None:
@@ -90,9 +90,10 @@ class QRegionConfig(QWidget):
             p_col0 = [cf.get_colour_value(x + 1, n_col_new=n_col) for x in range(n_col)]
 
         # field initialisations
-        self.is_sel = None
         self.n_row = 1
         self.n_col = 1
+        self.is_sel = None
+        self.gbox_height = gbox_height
         self.tr_col = cf.get_colour_value('w')
 
         # array class fields
@@ -101,6 +102,7 @@ class QRegionConfig(QWidget):
         self.c_id = np.zeros((self.n_row, self.n_col), dtype=int)
 
         # boolean class fields
+        self.is_updating = False
         self.is_mouse_down = False
         self.is_expanded = is_expanded
 
@@ -172,7 +174,6 @@ class QRegionConfig(QWidget):
         self.obj_gbox = QGroupBox(cf.arr_chr(False))
         self.obj_gbox.setCheckable(False)
         self.obj_gbox.setFont(font)
-        self.obj_gbox.update()
 
         # adds the widget to the class widget
         self.main_layout.addWidget(self.obj_gbox)
@@ -180,9 +181,11 @@ class QRegionConfig(QWidget):
         # sets the initial config groupbox height
         if is_expanded:
             # case is the groupbox is expanded
-            sz_main = self.main_layout.sizeHint()
-            gbox_height = sz_main.width() - (sz_main.height() - self.gbox_height0)
-            self.obj_gbox.setFixedHeight(gbox_height)
+            if self.gbox_height is None:
+                sz_main = self.main_layout.sizeHint()
+                self.gbox_height = sz_main.width() - (sz_main.height() - self.gbox_height0)
+
+            self.obj_gbox.setFixedHeight(self.gbox_height)
 
         else:
             # case is the groupbox is collapsed
@@ -316,16 +319,10 @@ class QRegionConfig(QWidget):
             # calculates the widget dimensions
             self.reset_config_group_height()
 
-    def reset_config_group_height(self):
-
-        d_hght = self.calc_groupbox_height()
-        self.obj_gbox.setFixedHeight(self.obj_gbox.height() + d_hght)
-
-    def calc_groupbox_height(self):
-
-        return (2 * self.is_expanded - 1) * (self.obj_gbox.width() - self.gbox_height0)
-
     def edit_dim_update(self, p_str, h_edit):
+
+        if self.is_updating:
+            return
 
         # field retrieval
         nw_val = h_edit.text()
@@ -377,82 +374,30 @@ class QRegionConfig(QWidget):
 
         return i_reg // self.n_col, i_reg % self.n_col
 
-    # TRACE OBJECT I/O FUNCTIONS ----------------------------------------------
-
-    def add_new_trace(self, tr_name, n_trace):
-
-        # appends the name/colour lists
-        self.p_list.append(tr_name)
-        self.p_col.append(cf.get_colour_value(n_trace - 1))
-
-        if n_trace == 1:
-            self.c_id[:] = int(1)
-
-        else:
-            is_empty = np.any(self.c_id == 0, axis=1)
-            if np.any(is_empty):
-                # is so, then add the new trace into the array
-                i_row_nw = np.where(is_empty)[0][0]
-                i_col_nw = np.where(self.c_id[i_row_nw, :] == 0)[0][0]
-                self.c_id[i_row_nw, i_col_nw] = n_trace
-
-            else:
-                # otherwise, append a new row to the grid ID array
-                if self.n_col == 1:
-                    self.c_id = np.vstack([self.c_id, n_trace])
-
-                else:
-                    nw_row = np.hstack([n_trace, np.zeros(self.n_col - 1, dtype=int)])
-                    self.c_id = np.vstack([self.c_id, nw_row])
-
-                # increments the region row counter
-                self.n_row += 1
-                self.findChild(QLineEdit, name='n_row').setText(str(self.n_row))
-                self.reset_selector_widgets()
-
-        # appends a new combobox item
-        self.obj_lbl_combo.obj_cbox.addItem(tr_name)
-        self.obj_lbl_combo.obj_cbox.setCurrentText(tr_name)
-
-    def delete_existing_trace(self, tr_obj, i_trace):
-
-        # initialisations
-        reset_region = False
-
-        # removes the groupbox item
-        self.obj_lbl_combo.obj_cbox.removeItem(i_trace + 1)
-
-        # resets the grid ID flags
-        self.c_id[self.c_id == (i_trace + 1)] = 0
-        self.c_id = self.c_id - (self.c_id > i_trace)
-        self.p_col.pop(-1)
-
-        # removes any empty rows
-        is_empty_row = np.all(self.c_id == 0, axis=1)
-        if np.any(is_empty_row):
-            self.c_id, reset_region = self.c_id[np.logical_not(is_empty_row), :], True
-
-        # removes any empty columns
-        is_empty_col = np.all(self.c_id == 0, axis=0)
-        if np.any(is_empty_col):
-            self.c_id, reset_region = self.c_id[:, np.logical_not(is_empty_col)], True
-
-        # updates any
-        if reset_region:
-            # resets the row/column indices
-            self.n_row, self.n_col = self.c_id.shape[0], self.c_id.shape[1]
-            self.findChild(QLineEdit, name='n_row').setText(str(self.n_row))
-            self.findChild(QLineEdit, name='n_col').setText(str(self.n_col))
-
-            # resets the selector widgets
-            self.reset_selector_widgets()
-
-            # flag that the plot widgets need updating
-            self.config_reset.emit()
-
     # MISCELLANEOUS FUNCTIONS -------------------------------------------------
 
-    def reset_selector_widgets(self):
+    def reset_config_id(self, c_id_new):
+
+        # set the flag to updating
+        self.is_updating = True
+
+        # updates the class fields with the new ID
+        self.c_id = c_id_new
+        self.n_row, self.n_col = c_id_new.shape
+
+        # resets the grid configuration fields
+        for n in ['n_row', 'n_col']:
+            h_edit = self.findChild(QLineEdit, name=n)
+            h_edit.setText(str(getattr(self, n)))
+
+        # resets the update flag
+        self.is_updating = False
+
+    def reset_selector_widgets(self, c_id_new=None):
+
+        # updates the configuration ID's (if provided)
+        if c_id_new is not None:
+            self.reset_config_id(c_id_new)
 
         # retrieves the
         self.g_id[:] = 0
@@ -567,6 +512,15 @@ class QRegionConfig(QWidget):
 
         # updates the object style sheet
         h_grid.setStyleSheet(ss_str)
+
+    def calc_groupbox_height(self):
+
+        return (2 * self.is_expanded - 1) * (self.obj_gbox.width() - self.gbox_height0)
+
+    def reset_config_group_height(self):
+
+        d_hght = self.calc_groupbox_height()
+        self.obj_gbox.setFixedHeight(self.obj_gbox.height() + d_hght)
 
     @staticmethod
     def get_rgba_string(t_col):
@@ -1734,8 +1688,15 @@ class PandasModel(QAbstractTableModel):
     def data(self, index, role=Qt.ItemDataRole.DisplayRole):
 
         if index.isValid():
+            # current cell value
+            value = self._data.iloc[index.row()][self._data.columns[index.column()]]
+
             if role == Qt.ItemDataRole.DisplayRole:
-                return str(self._data.iloc[index.row()][self._data.columns[index.column()]])
+                if isinstance(value, np.bool_):
+                    return QCheckBox()
+                else:
+                    return str(value)
+
         return None
 
     def headerData(self, col, orientation, role):

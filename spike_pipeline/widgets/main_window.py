@@ -22,7 +22,7 @@ from spike_pipeline.widgets.open_session import OpenSession
 
 # widget dimensions
 x_gap = 15
-info_width = 300
+info_width = 250
 
 # object dimensions
 dlg_width = 1650
@@ -90,6 +90,11 @@ class MainWindow(QMainWindow):
         self.main_layout.addWidget(self.info_manager)
         self.main_layout.addWidget(self.plot_manager)
 
+        # connects information manager signal functions
+        self.info_manager.unit_check.connect(self.update_unit)
+        self.info_manager.channel_check.connect(self.update_channel)
+        self.info_manager.config_update.connect(self.update_config)
+
         # connects workbook signal functions
         self.session_obj.session_change.connect(self.new_session)
 
@@ -103,8 +108,9 @@ class MainWindow(QMainWindow):
         if self.has_session:
             a = 1
 
-        # enables the menubar items
-        self.menu_bar.set_menu_enabled('save', True)
+        # -----------------------------------------------------------------------
+        # Plot View Setup
+        # -----------------------------------------------------------------------
 
         # sets up the trace/probe views
         self.plot_manager.get_plot_view('trace')
@@ -115,10 +121,51 @@ class MainWindow(QMainWindow):
         i_plot_probe = self.plot_manager.get_plot_index('probe')
         c_id = np.array([[i_plot_trace, i_plot_trace, i_plot_probe]])
         self.plot_manager.update_plot_config(c_id)
+        self.info_manager.set_region_config(c_id)
+
+        # -----------------------------------------------------------------------
+        # Info Table Setup
+        # -----------------------------------------------------------------------
+
+        # field retrieval
+        c_list = ['contact_ids', 'channel_ids', 'device_channel_indices', 'x', 'y']
+        c_hdr = ['', 'Contact ID', 'Channel ID', 'Channel Index', 'X', 'Y']
+
+        # retrieves the necessary channel information data
+        ch_info = self.session_obj.get_channel_info()
+        p_dframe = ch_info[ch_info.columns.intersection(c_list)][c_list]
+
+        # appends the show
+        is_show = np.zeros(p_dframe.shape[0], dtype=bool)
+        p_dframe.insert(0, "Show", is_show, True)
+
+        # creates the table model
+        self.info_manager.setup_info_table(p_dframe, 'Channel Info', c_hdr)
+
+        # -----------------------------------------------------------------------
+        # House-Keeping Exercises
+        # -----------------------------------------------------------------------
+
+        # enables the menubar items
+        self.menu_bar.set_menu_enabled('save', True)
 
         # resets the session flags
         self.session_obj.state = 1
         self.has_session = True
+
+    def update_config(self, c_id):
+
+        self.plot_manager.hide_all_plots()
+        self.plot_manager.update_plot_config(c_id)
+
+    def update_channel(self, i_row):
+
+        self.session_obj.toggle_channel_flag(i_row)
+        self.plot_manager.reset_probe_views()
+
+    def update_unit(self, i_row):
+
+        a = 1
 
     # ---------------------------------------------------------------------------
     # Override Functions
@@ -236,7 +283,7 @@ class MenuBar(QObject):
     def load_session(self, file_info=None):
 
         # runs the save file dialog (if file path not given)
-        if file_info is None:
+        if not isinstance(file_info, str):
             file_dlg = cw.FileDialogModal(None, 'Select Session File', cw.f_mode_ssf, cw.data_dir, is_save=False)
             if file_dlg.exec() == QDialog.DialogCode.Accepted:
                 # if successful, then retrieve the file name

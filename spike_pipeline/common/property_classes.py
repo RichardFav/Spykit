@@ -49,7 +49,7 @@ class SessionWorkBook(QObject):
     # Getter Functions
     # ---------------------------------------------------------------------------
 
-    def get_current_probe(self):
+    def get_current_recording_probe(self):
 
         return self.session.get_session_runs(self.current_run, self.current_ses)
 
@@ -65,6 +65,11 @@ class SessionWorkBook(QObject):
 
         # returns the data struct
         return save_data
+
+    def get_channel_info(self):
+
+        probe = self.get_current_recording_probe().get_probe()
+        return probe.to_dataframe(complete=True)
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
@@ -96,7 +101,7 @@ class SessionWorkBook(QObject):
         _self.current_ses = _self.session.get_session_names(0)[0]
 
         # sets up the channel data object
-        _self.channel_data = ChannelData(_self.get_current_probe())
+        _self.channel_data = ChannelData(_self.get_current_recording_probe())
 
         # runs the session change signal function
         if _self.has_init:
