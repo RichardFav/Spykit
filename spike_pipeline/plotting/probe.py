@@ -70,7 +70,7 @@ class ProbePlot(ProbePlotPara, ProbePlotWidget):
         self.sub_label = None
 
         # sets up the plot regions
-        self.setup_subplots(2, 1, vb=[None, cw.ROIViewBox()])
+        self.setup_subplots(n_r=2, n_c=1, vb=[None, cw.ROIViewBox()])
 
         # initialises the other class fields
         self.init_class_fields()

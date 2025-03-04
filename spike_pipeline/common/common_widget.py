@@ -22,6 +22,8 @@ from PyQt6.QtWidgets import (QWidget, QHBoxLayout, QGridLayout, QVBoxLayout, QPu
 from PyQt6.QtCore import Qt, QRect, QRectF, QMimeData, pyqtSignal, QItemSelectionModel, QAbstractTableModel, QObject, QVariant
 from PyQt6.QtGui import QFont, QDrag, QCursor, QStandardItemModel, QStandardItem, QPalette, QPixmap
 
+# ----------------------------------------------------------------------------------------------------------------------
+
 # style sheets
 edit_style_sheet = "border: 1px solid; border-radius: 2px; padding-left: 5px;"
 
@@ -74,6 +76,12 @@ x_gap = 5
 row_height = 16.5
 
 # ----------------------------------------------------------------------------------------------------------------------
+# SPECIAL WIDGETS
+# ----------------------------------------------------------------------------------------------------------------------
+
+"""
+    QRegionConfig:
+"""
 
 
 class QRegionConfig(QWidget):
@@ -541,6 +549,10 @@ class QRegionConfig(QWidget):
 
 # ----------------------------------------------------------------------------------------------------------------------
 
+"""
+    QAxesLimits:
+"""
+
 
 class QAxesLimits(QWidget):
     # initialisations
@@ -687,6 +699,10 @@ class QAxesLimits(QWidget):
 
 
 # ----------------------------------------------------------------------------------------------------------------------
+
+"""
+    QTraceTree:
+"""
 
 
 class QTraceTree(QWidget):
@@ -848,6 +864,10 @@ class QTraceTree(QWidget):
 
 
 # ----------------------------------------------------------------------------------------------------------------------
+
+"""
+    QFolderTree:
+"""
 
 
 class QFolderTree(QWidget):
@@ -1034,6 +1054,10 @@ class QFolderTree(QWidget):
 
 # ----------------------------------------------------------------------------------------------------------------------
 
+"""
+    QCollapseGroup:
+"""
+
 
 class QCollapseGroup(QWidget):
     # object dimensions
@@ -1150,6 +1174,10 @@ class QCollapseGroup(QWidget):
 
 # ----------------------------------------------------------------------------------------------------------------------
 
+"""
+    FileDialogModal:
+"""
+
 
 class FileDialogModal(QFileDialog):
     def __init__(self, parent=None, caption=None, f_filter=None,
@@ -1175,6 +1203,10 @@ class FileDialogModal(QFileDialog):
 
 
 # ----------------------------------------------------------------------------------------------------------------------
+
+"""
+    ClickableRegion:
+"""
 
 
 class ClickableRegion(QLabel):
@@ -1233,6 +1265,10 @@ class ClickableRegion(QLabel):
 
 # ----------------------------------------------------------------------------------------------------------------------
 
+"""
+    QFileSpec:
+"""
+
 
 class QFileSpec(QGroupBox):
     def __init__(self, parent=None, grp_hdr=None, file_path=None, name=None, f_mode=None):
@@ -1276,6 +1312,12 @@ class QFileSpec(QGroupBox):
 
 
 # ----------------------------------------------------------------------------------------------------------------------
+# BASE WIDGET COMBINATIONS
+# ----------------------------------------------------------------------------------------------------------------------
+
+"""
+    QLabelText:
+"""
 
 
 class QLabelText(QWidget):
@@ -1306,6 +1348,10 @@ class QLabelText(QWidget):
 
 
 # ----------------------------------------------------------------------------------------------------------------------
+
+"""
+    QLabelEdit:
+"""
 
 
 class QLabelEdit(QWidget):
@@ -1352,6 +1398,10 @@ class QLabelEdit(QWidget):
 
 # ----------------------------------------------------------------------------------------------------------------------
 
+"""
+    QLabelButton:
+"""
+
 
 class QLabelButton(QWidget):
     def __init__(self, parent=None, lbl_str=None, but_str=None, font_lbl=None, name=None):
@@ -1384,6 +1434,10 @@ class QLabelButton(QWidget):
 
 
 # ----------------------------------------------------------------------------------------------------------------------
+
+"""
+    QLabelCombo:
+"""
 
 
 class QLabelCombo(QWidget):
@@ -1466,6 +1520,10 @@ class QLabelCombo(QWidget):
 
 
 # ----------------------------------------------------------------------------------------------------------------------
+
+"""
+    QCheckCombo:
+"""
 
 
 class QCheckCombo(QComboBox):
@@ -1563,6 +1621,10 @@ class QCheckCombo(QComboBox):
 
 # ----------------------------------------------------------------------------------------------------------------------
 
+"""
+    QLabelCheckCombo:
+"""
+
 
 class QLabelCheckCombo(QWidget):
     # pyqtsignal functions
@@ -1615,6 +1677,10 @@ class QLabelCheckCombo(QWidget):
 
 
 # ----------------------------------------------------------------------------------------------------------------------
+
+"""
+    QCheckboxHTML:
+"""
 
 
 class QCheckboxHTML(QWidget):
@@ -1672,6 +1738,13 @@ class QCheckboxHTML(QWidget):
 
 
 # ----------------------------------------------------------------------------------------------------------------------
+# TABLE WIDGET CUSTOM MODEL CLASSES
+# ----------------------------------------------------------------------------------------------------------------------
+
+
+"""
+    PandasModel: 
+"""
 
 
 class PandasModel(QAbstractTableModel):
@@ -1709,6 +1782,10 @@ class PandasModel(QAbstractTableModel):
 
 
 # ----------------------------------------------------------------------------------------------------------------------
+
+"""
+    InfoTableModel: 
+"""
 
 
 class InfoTableModel(QAbstractTableModel):
@@ -1835,39 +1912,9 @@ class InfoTableModel(QAbstractTableModel):
 
 
 # ----------------------------------------------------------------------------------------------------------------------
-
-
-class PlotCrossHair(QObject):
-    def __init__(self, h_plot, v_box):
-        super(PlotCrossHair, self).__init__()
-
-        # main class fields
-        self.h_plot = h_plot
-        self.v_box = v_box
-
-        # creates the vertical/horizontal lines
-        self.h_line = InfiniteLine(angle=0, movable=False)
-        self.v_line = InfiniteLine(angle=90, movable=False)
-
-        # adds the lines to the plot
-        self.h_plot.addItem(self.v_line, ignoreBounds=True)
-        self.h_plot.addItem(self.h_line, ignoreBounds=True)
-
-        # disables the crosshair
-        self.set_visible(False)
-
-    def set_position(self, m_pos):
-
-        self.v_line.setPos(m_pos.x())
-        self.h_line.setPos(m_pos.y())
-
-    def set_visible(self, state):
-
-        self.h_line.setVisible(state)
-        self.v_line.setVisible(state)
-
-
+# TABLE WIDGET PROPERTY CLASSES
 # ----------------------------------------------------------------------------------------------------------------------
+
 
 """
     ROIViewBox: 
@@ -1939,29 +1986,9 @@ class ROIViewBox(ViewBox):
 
 # ----------------------------------------------------------------------------------------------------------------------
 
-class CheckBoxStyle(QProxyStyle):
-    def subElementRect(self, element, option, widget=None):
-        r = super().subElementRect(element, option, widget)
-        if element == QStyle.SubElement.SE_ItemViewItemCheckIndicator .SE_ItemViewItemCheckIndicator:
-            r.moveCenter(option.rect.center())
-        return r
-
-
-# ----------------------------------------------------------------------------------------------------------------------
-
-
-class IconDelegate(QStyledItemDelegate):
-    def initStyleOption(self, option, index):
-        super(IconDelegate, self).initStyleOption(option, index)
-
-        s = option.decorationSize
-        s.setWidth(option.rect.width())
-        option.decorationSize = s
-
-        option.rect.setX(int((option.rect.width() - option.rect.height()) / 2))
-
-
-# ----------------------------------------------------------------------------------------------------------------------
+"""
+    CheckTableHeader: 
+"""
 
 
 class CheckTableHeader(QHeaderView):
@@ -2038,7 +2065,65 @@ class CheckTableHeader(QHeaderView):
 
 
 # ----------------------------------------------------------------------------------------------------------------------
+# WIDGET STYLE CLASSES
+# ----------------------------------------------------------------------------------------------------------------------
 
+
+"""
+    CheckBoxStyle: 
+"""
+
+
+class CheckBoxStyle(QProxyStyle):
+    def subElementRect(self, element, option, widget=None):
+        r = super().subElementRect(element, option, widget)
+        if element == QStyle.SubElement.SE_ItemViewItemCheckIndicator .SE_ItemViewItemCheckIndicator:
+            r.moveCenter(option.rect.center())
+        return r
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+# OTHER SPECIAL WIDGETS
+# ----------------------------------------------------------------------------------------------------------------------
+
+"""
+    PlotCrossHair: 
+"""
+
+
+class PlotCrossHair(QObject):
+    def __init__(self, h_plot, v_box):
+        super(PlotCrossHair, self).__init__()
+
+        # main class fields
+        self.h_plot = h_plot
+        self.v_box = v_box
+
+        # creates the vertical/horizontal lines
+        self.h_line = InfiniteLine(angle=0, movable=False)
+        self.v_line = InfiniteLine(angle=90, movable=False)
+
+        # adds the lines to the plot
+        self.h_plot.addItem(self.v_line, ignoreBounds=True)
+        self.h_plot.addItem(self.h_line, ignoreBounds=True)
+
+        # disables the crosshair
+        self.set_visible(False)
+
+    def set_position(self, m_pos):
+
+        self.v_line.setPos(m_pos.x())
+        self.h_line.setPos(m_pos.y())
+
+    def set_visible(self, state):
+
+        self.h_line.setVisible(state)
+        self.v_line.setVisible(state)
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+# BASE WIDGET SETUP FUNCTIONS
+# ----------------------------------------------------------------------------------------------------------------------
 
 def create_text_label(parent, text, font=None, align='right', name=None):
 

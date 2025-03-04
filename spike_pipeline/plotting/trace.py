@@ -8,6 +8,7 @@ import pyqtgraph as pg
 
 # spike pipeline imports
 import spike_pipeline.common.common_func as cf
+import spike_pipeline.common.common_widget as cw
 from spike_pipeline.plotting.utils import PlotWidget, PlotPara
 
 # pyqt6 module import
@@ -84,12 +85,16 @@ class TracePlot(TraceParaClass, TracePlotWidget):
         self.image_item = pg.ImageItem()
 
         # sets up the plot regions
-        self.setup_subplots(n_r=2)
+        self.setup_subplots(n_r=2, n_c=1)
         self.plot_item = self.h_plot[0, 0].getPlotItem()
         self.frame_item = self.h_plot[1, 0].getPlotItem()
 
         # initialises the other class fields
         self.init_class_fields()
+
+    # ---------------------------------------------------------------------------
+    # Class Widget Setup Functions
+    # ---------------------------------------------------------------------------
 
     def init_class_fields(self):
 
@@ -110,6 +115,7 @@ class TracePlot(TraceParaClass, TracePlotWidget):
         # sets the axis limits
         self.v_box[0, 0].setXRange(self.t_lim[0], self.t_lim[1], padding=0)
         self.v_box[0, 0].setLimits(xMin=0, xMax=self.session_info.session_props.t_dur)
+        self.v_box[0, 0].setMouseMode(self.v_box[0, 0].RectMode)
 
         # sets the plot button callback functions
         for pb in self.plot_but:
@@ -173,7 +179,7 @@ class TracePlot(TraceParaClass, TracePlotWidget):
         return np.linspace(0, 1, self.n_col_img).reshape(-1, 1)
 
     # ---------------------------------------------------------------------------
-    # Plot Reset Functions
+    # Plot Update/Reset Functions
     # ---------------------------------------------------------------------------
 
     def reset_trace_view(self):
