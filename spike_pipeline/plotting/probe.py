@@ -26,6 +26,7 @@ class ProbePlotPara(PlotPara):
     def __init__(self):
         super(ProbePlotPara, self).__init__('Probe')
 
+
 # ----------------------------------------------------------------------------------------------------------------------
 
 """
@@ -37,7 +38,12 @@ class ProbePlotWidget(PlotWidget):
     def __init__(self):
         super(ProbePlotWidget, self).__init__('probe')
 
+
 # ----------------------------------------------------------------------------------------------------------------------
+
+"""
+    ProbePlot:
+"""
 
 
 class ProbePlot(ProbePlotPara, ProbePlotWidget):

@@ -15,16 +15,37 @@ from PyQt6.QtWidgets import (QWidget)
 from PyQt6.QtCore import pyqtSignal
 
 
+# ----------------------------------------------------------------------------------------------------------------------
+
+"""
+    TraceParaClass:
+"""
+
+
 class TraceParaClass(PlotPara):
     def __init__(self):
         super(TraceParaClass, self).__init__('Trace')
         a = 1
 
 
+# ----------------------------------------------------------------------------------------------------------------------
+
+"""
+    TracePlotWidget:
+"""
+
+
 class TracePlotWidget(PlotWidget):
     def __init__(self):
         super(TracePlotWidget, self).__init__('trace')
         a = 1
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+"""
+    TracePlot:
+"""
 
 
 class TracePlot(TraceParaClass, TracePlotWidget):

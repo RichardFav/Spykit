@@ -1708,6 +1708,9 @@ class PandasModel(QAbstractTableModel):
         return None
 
 
+# ----------------------------------------------------------------------------------------------------------------------
+
+
 class InfoTableModel(QAbstractTableModel):
     chk_col = 0
 
@@ -1944,6 +1947,9 @@ class CheckBoxStyle(QProxyStyle):
         return r
 
 
+# ----------------------------------------------------------------------------------------------------------------------
+
+
 class IconDelegate(QStyledItemDelegate):
     def initStyleOption(self, option, index):
         super(IconDelegate, self).initStyleOption(option, index)
@@ -1953,6 +1959,9 @@ class IconDelegate(QStyledItemDelegate):
         option.decorationSize = s
 
         option.rect.setX(int((option.rect.width() - option.rect.height()) / 2))
+
+
+# ----------------------------------------------------------------------------------------------------------------------
 
 
 class CheckTableHeader(QHeaderView):
@@ -2026,6 +2035,9 @@ class CheckTableHeader(QHeaderView):
             self.check_update.emit(self.i_state[i_col], i_col)
 
         QHeaderView.mousePressEvent(self, evnt)
+
+
+# ----------------------------------------------------------------------------------------------------------------------
 
 
 def create_text_label(parent, text, font=None, align='right', name=None):

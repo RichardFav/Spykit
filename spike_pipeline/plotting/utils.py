@@ -669,6 +669,5 @@ class PlotPara(PlotParaBase):
 
 # ----------------------------------------------------------------------------------------------------------------------
 
-# module imports (required here as will cause circular import error)
-
+# module imports (required here as will cause circular import error otherwise)
 import spike_pipeline.plotting.view_type as vt
