@@ -10,7 +10,7 @@ import spike_pipeline.common.common_widget as cw
 from PyQt6.QtWidgets import (QWidget, QLayout, QLayoutItem, QGridLayout, QVBoxLayout, QHBoxLayout,
                              QSizePolicy, QGroupBox, QFrame)
 from PyQt6.QtCore import QObject, Qt, QSize, QRect, pyqtSignal
-from PyQt6.QtGui import QIcon, QColor
+from PyQt6.QtGui import QIcon, QColor, QPixmap
 
 # pyqtgraph module imports
 import pyqtgraph as pg
@@ -56,9 +56,6 @@ class PlotManager(QWidget):
         sz_layout = QSize(dlg_width - (info_width + x_gap), dlg_height)
         self.main_layout = PlotLayout(self, sz_hint=sz_layout)
         self.bg_widget = QWidget()
-
-        # # creates the region configuration widget
-        # self.r_config = cw.QRegionConfig(self, cw.font_lbl)
 
         # initialises the class fields
         self.init_class_fields()
@@ -256,7 +253,7 @@ class PlotWidget(QWidget):
 
     # dimensions
     x_gap_plt = 2
-    but_height_plt = 16
+    but_height_plt = 24
 
     # widget stylesheets
     plot_gbox_style = """
@@ -277,11 +274,19 @@ class PlotWidget(QWidget):
         }                                    
     """
 
-    def __init__(self, p_type):
+    plot_button_style = """
+        QToolTip {
+            color: white;                 
+        }
+    """
+
+    def __init__(self, p_type, b_icon=None, b_type=None):
         super(PlotWidget, self).__init__()
 
         # main class fields
         self.p_type = p_type
+        self.b_icon = b_icon
+        self.b_type = b_type
         self.p_name = vt.plot_names[p_type]
 
         # data class field
@@ -352,20 +357,34 @@ class PlotWidget(QWidget):
         obj_frm.setStyleSheet("border: 1px solid white;")
 
         # creates the push button objects
-        for fp in f_name:
+        for bi, bt in zip(self.b_icon, self.b_type):
             # creates the button widget
             obj_but = cw.create_push_button(None, "")
-            obj_but.setIcon(QIcon(cw.icon_path[fp]))
+            match bt:
+                case 'toggle':
+                    # case is a toggle button
+                    obj_but.setCheckable(True)
+
+                    # creates the togglebar icon
+                    toggle_icon = QIcon()
+                    toggle_icon.addPixmap(QPixmap(cw.icon_path[bi + '_on']), QIcon.Mode.Normal, QIcon.State.On)
+                    toggle_icon.addPixmap(QPixmap(cw.icon_path[bi + '_off']), QIcon.Mode.Normal, QIcon.State.Off)
+                    obj_but.setIcon(toggle_icon)
+
+                case 'button':
+                    # case is a push button
+                    obj_but.setIcon(QIcon(cw.icon_path[bi]))
+
+                case _:
+                    name = None
+
+            # sets the button properties
             obj_but.setIconSize(QSize(self.but_height_plt - 1, self.but_height_plt - 1))
             obj_but.setFixedSize(self.but_height_plt, self.but_height_plt)
             obj_but.setCursor(Qt.CursorShape.PointingHandCursor)
             obj_but.setToolTip(tt_str)
-            obj_but.setObjectName(fp)
-            obj_but.setStyleSheet("""
-                QToolTip {
-                    color: white;                 
-                }
-            """)
+            obj_but.setObjectName(bi)
+            obj_but.setStyleSheet(self.plot_button_style)
 
             # sets the callback function
             self.plot_but.append(obj_but)

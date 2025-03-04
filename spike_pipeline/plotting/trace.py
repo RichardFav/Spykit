@@ -15,6 +15,11 @@ from spike_pipeline.plotting.utils import PlotWidget, PlotPara
 from PyQt6.QtWidgets import (QWidget)
 from PyQt6.QtCore import pyqtSignal, Qt
 
+# plot button fields
+b_icon = ['datatip', 'save', 'close']
+b_type = ['toggle', 'button', 'button']
+
+
 # ----------------------------------------------------------------------------------------------------------------------
 
 """
@@ -25,7 +30,6 @@ from PyQt6.QtCore import pyqtSignal, Qt
 class TraceParaClass(PlotPara):
     def __init__(self):
         super(TraceParaClass, self).__init__('Trace')
-        a = 1
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -37,9 +41,7 @@ class TraceParaClass(PlotPara):
 
 class TracePlotWidget(PlotWidget):
     def __init__(self):
-        super(TracePlotWidget, self).__init__('trace')
-        a = 1
-
+        super(TracePlotWidget, self).__init__('trace', b_icon=b_icon, b_type=b_type)
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -83,7 +85,7 @@ class TracePlot(TraceParaClass, TracePlotWidget):
         self.trace_dclick_fcn = None
 
         # parameters
-        self.y_lim_tr = None
+        self.y_lim_tr = self.y_ofs / 2
         self.t_trace = np.min([self.t_dur, self.t_trace0])
         self.t_lim = [0, self.t_trace]
 
@@ -128,7 +130,7 @@ class TracePlot(TraceParaClass, TracePlotWidget):
 
         # sets the axis limits
         self.v_box[0, 0].setXRange(self.t_lim[0], self.t_lim[1], padding=0)
-        self.v_box[0, 0].setLimits(xMin=0, xMax=self.session_info.session_props.t_dur, yMin=0)
+        self.v_box[0, 0].setLimits(xMin=0, xMax=self.session_info.session_props.t_dur, yMin=0, yMax=self.y_lim_tr)
         self.v_box[0, 0].setMouseMode(self.v_box[0, 0].RectMode)
 
         # sets the plot button callback functions
@@ -271,6 +273,7 @@ class TracePlot(TraceParaClass, TracePlotWidget):
         # resets the y-axis range
         self.v_box[0, 0].setLimits(yMax=self.y_lim_tr)
         self.v_box[0, 0].setYRange(0, self.y_lim_tr, padding=0)
+        self.trace_double_click()
 
     def reset_frame_image(self):
 
@@ -280,22 +283,25 @@ class TracePlot(TraceParaClass, TracePlotWidget):
     # Signal Trace Plot Event Functions
     # ---------------------------------------------------------------------------
 
-    def trace_double_click(self, evnt) -> None:
+    def trace_double_click(self, evnt=None) -> None:
 
+        # flag that updating is taking place
         self.is_updating = True
 
         # runs the original mouse event function
-        self.trace_release_fcn(evnt)
+        if evnt is not None:
+            self.trace_release_fcn(evnt)
+            self.h_plot[0, 0].setYRange(0, self.y_lim_tr, padding=0)
 
         # resets the y-range
         self.l_reg_y.setRegion((0, 100))
-        self.h_plot[0, 0].setYRange(0, self.y_lim_tr, padding=0)
-        self.reset_trace_view()
 
+        # resets the update flag
         self.is_updating = False
 
     def trace_mouse_release(self, evnt) -> None:
 
+        # flag that updating is taking place
         self.is_updating = True
 
         # runs the original mouse event function
@@ -305,12 +311,11 @@ class TracePlot(TraceParaClass, TracePlotWidget):
         y_lim = self.v_box[0, 0].viewRange()[1]
         self.t_lim = self.v_box[0, 0].viewRange()[0]
 
-        # resets the x-axis linear region
+        # resets the x/y-axis linear regions
         self.l_reg_x.setRegion(self.t_lim)
-
-        # resets the y-axis linear range
         self.l_reg_y.setRegion(100 * np.array(y_lim) / self.y_lim_tr)
 
+        # resets the update flag
         self.is_updating = False
 
     # ---------------------------------------------------------------------------
@@ -333,7 +338,6 @@ class TracePlot(TraceParaClass, TracePlotWidget):
 
         y_lim_nw = np.array(self.l_reg_y.getRegion()) * (self.y_lim_tr / 100)
         self.v_box[0, 0].setYRange(y_lim_nw[0], y_lim_nw[1], padding=0)
-        self.reset_trace_view()
 
     # ---------------------------------------------------------------------------
     # Plot Button Event Functions
@@ -342,13 +346,9 @@ class TracePlot(TraceParaClass, TracePlotWidget):
     def plot_button_clicked(self, b_str):
 
         match b_str:
-            case 'new':
-                # case is the new button
-                cf.show_error('Finish Me!')
-
-            case 'open':
-                # case is the open button
-                cf.show_error('Finish Me!')
+            case 'datatip':
+                # case is the save button
+                pass
 
             case 'save':
                 # case is the save button

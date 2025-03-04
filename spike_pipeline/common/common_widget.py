@@ -66,9 +66,14 @@ icon_path = {
     'restart': os.path.join(icon_dir, 'restart_icon.png'),
     'close': os.path.join(icon_dir, 'close_icon.png'),
     'new': os.path.join(icon_dir, 'new_icon.png'),
+    'add': os.path.join(icon_dir, 'add_icon.png'),
+    'remove': os.path.join(icon_dir, 'remove_icon.png'),
     'save': os.path.join(icon_dir, 'save_icon.png'),
+    'toggle': os.path.join(icon_dir, 'toggle_icon.png'),
     'checked_wide': os.path.join(icon_dir, 'checked_wide_icon.png'),
     'unchecked_wide': os.path.join(icon_dir, 'unchecked_wide_icon.png'),
+    'datatip_on': os.path.join(icon_dir, 'datatip_on_icon.png'),
+    'datatip_off': os.path.join(icon_dir, 'datatip_off_icon.png'),
 }
 
 # widget dimensions

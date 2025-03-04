@@ -5,7 +5,7 @@ import pyqtgraph as pg
 
 # pyqt6 module import
 from PyQt6.QtCore import QRectF, QPointF, pyqtSignal, Qt
-from PyQt6.QtGui import QPolygonF, QPicture, QPainter
+from PyQt6.QtGui import QPolygonF, QPicture, QPainter, QIcon
 
 # spike pipeline imports
 import spike_pipeline.common.common_func as cf
@@ -14,6 +14,10 @@ from spike_pipeline.plotting.utils import PlotWidget, PlotPara
 
 # testing modules
 from pyqtgraph import GraphicsObject, ROI, mkPen, mkBrush
+
+# plot button fields
+b_icon = ['toggle', 'save', 'close']
+b_type = ['button', 'button', 'button']
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -36,7 +40,7 @@ class ProbePlotPara(PlotPara):
 
 class ProbePlotWidget(PlotWidget):
     def __init__(self):
-        super(ProbePlotWidget, self).__init__('probe')
+        super(ProbePlotWidget, self).__init__('probe', b_icon=b_icon, b_type=b_type)
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -50,6 +54,9 @@ class ProbePlot(ProbePlotPara, ProbePlotWidget):
     # pyqtsignal functions
     hide_plot = pyqtSignal()
     probe_clicked = pyqtSignal(object)
+
+    # list class fields
+    add_lbl = ['remove', 'toggle', 'add']
 
     def __init__(self, session_info):
         ProbePlotPara.__init__(self)
@@ -68,6 +75,9 @@ class ProbePlot(ProbePlotPara, ProbePlotWidget):
         self.vb_sub = None
         self.sub_xhair = None
         self.sub_label = None
+
+        # other class fields
+        self.i_status = 1
 
         # sets up the plot regions
         self.setup_subplots(n_r=2, n_c=1, vb=[None, cw.ROIViewBox()])
@@ -170,7 +180,9 @@ class ProbePlot(ProbePlotPara, ProbePlotWidget):
 
         if len(i_sel):
             # toggles the selection flag
-            self.session_info.toggle_channel_flag(i_sel)
+            self.session_info.toggle_channel_flag(i_sel, self.i_status)
+
+            # resets the probe views
             self.reset_probe_views()
             self.probe_clicked.emit(i_sel)
 
@@ -181,13 +193,16 @@ class ProbePlot(ProbePlotPara, ProbePlotWidget):
     def plot_button_clicked(self, b_str):
 
         match b_str:
-            case 'new':
-                # case is the new button
-                cf.show_error('Finish Me!')
+            case 'toggle':
+                # case is the save button
 
-            case 'open':
-                # case is the open button
-                cf.show_error('Finish Me!')
+                # updates the status flag
+                self.i_status = (self.i_status + 1) % 3
+
+                # updates the button icon (based on type)
+                icon_name = self.add_lbl[self.i_status]
+                obj_but = self.findChild(cw.QPushButton, name=b_str)
+                obj_but.setIcon(QIcon(cw.icon_path[icon_name]))
 
             case 'save':
                 # case is the save button

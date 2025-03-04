@@ -112,9 +112,9 @@ class SessionWorkBook(QObject):
     # Miscellaneous Functions
     # ---------------------------------------------------------------------------
 
-    def toggle_channel_flag(self, i_channel):
+    def toggle_channel_flag(self, i_channel, state=1):
 
-        self.channel_data.toggle_channel_flag(i_channel)
+        self.channel_data.toggle_channel_flag(i_channel, state)
 
     def reset_session(self, ses_data):
 
@@ -304,14 +304,21 @@ class ChannelData:
         # memory allocation
         self.is_selected = np.zeros(self.n_channel, dtype=bool)
 
-    def toggle_channel_flag(self, i_channel):
+    def toggle_channel_flag(self, i_channel, state):
 
         if not isinstance(i_channel, list):
             i_channel = [i_channel]
 
         for i_ch in i_channel:
-            self.is_selected[i_ch] ^= True
+            match state:
+                case 0:
+                    self.is_selected[i_ch] = False
 
+                case 1:
+                    self.is_selected[i_ch] ^= True
+
+                case 2:
+                    self.is_selected[i_ch] = True
 
 # ----------------------------------------------------------------------------------------------------------------------
 
