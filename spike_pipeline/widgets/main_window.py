@@ -69,8 +69,8 @@ class MainWindow(QMainWindow):
         # sets the widget style sheets
         self.set_styles()
 
-        # # REMOVE ME LATER
-        # self.testing()
+        # REMOVE ME LATER
+        self.testing()
 
     # ---------------------------------------------------------------------------
     # Class Widget Setup Functions
@@ -138,8 +138,8 @@ class MainWindow(QMainWindow):
         # -----------------------------------------------------------------------
 
         # field retrieval
-        c_list = ['contact_ids', 'channel_ids', 'device_channel_indices', 'x', 'y']
-        c_hdr = ['', 'Contact ID', 'Channel ID', 'Channel Index', 'X', 'Y']
+        c_list = ['contact_ids', 'shank_ids', 'channel_ids', 'device_channel_indices', 'x', 'y']
+        c_hdr = ['', 'Contact ID', 'Shank ID', 'Channel ID', 'Channel Index', 'X-Coordinate', 'Y-Coordinate']
 
         # retrieves the necessary channel information data
         ch_info = self.session_obj.get_channel_info()

@@ -225,9 +225,18 @@ class ProbePlot(ProbePlotPara, ProbePlotWidget):
                 self.sub_label.setText('Channel ID #{}'.format(i_contact))
                 self.sub_label.update()
 
-            # repositions the label
-            dy_pos = self.convert_coords()
-            self.sub_label.setPos(m_pos + QPointF(0, dy_pos))
+            # calculates the label x/y-offsets
+            dx_pos, dy_pos = self.convert_coords()
+
+            # resets the y-label offset (if near the top)
+            if m_pos.y() > (self.sub_view.y_lim[1] - dy_pos):
+                dy_pos = 0
+
+            # resets the x-label offset (if near the right-side)
+            if m_pos.x() < (self.sub_view.x_lim[1] - dx_pos):
+                dx_pos = 0
+
+            self.sub_label.setPos(m_pos + QPointF(-dx_pos, dy_pos))
 
         elif self.sub_view.i_sel_contact is not None:
             self.sub_view.i_sel_contact = None
@@ -237,10 +246,14 @@ class ProbePlot(ProbePlotPara, ProbePlotWidget):
     def convert_coords(self):
 
         y_scale = np.diff(self.sub_view.y_lim)[0]
-        plt_height = self.h_plot[1, 0].height()
-        lbl_height = self.sub_label.boundingRect().height()
+        plt_height = float(self.h_plot[1, 0].height())
+        scaled_height = (y_scale / plt_height) * self.sub_label.boundingRect().height()
 
-        return y_scale * lbl_height / plt_height
+        x_scale = np.diff(self.sub_view.x_lim)[0]
+        plt_width = float(self.h_plot[1, 0].width())
+        scaled_width = (x_scale / plt_width) * self.sub_label.boundingRect().width()
+
+        return scaled_width, scaled_height
 
     def reset_probe_views(self):
 

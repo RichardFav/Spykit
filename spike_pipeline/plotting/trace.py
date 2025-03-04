@@ -36,6 +36,7 @@ class TracePlot(TraceParaClass, TracePlotWidget):
     t_trace0 = 2
     n_lvl = 100
     n_col_img = 1000
+    y_gap = 4
 
     def __init__(self, session_info):
         TracePlotWidget.__init__(self)
@@ -58,13 +59,13 @@ class TracePlot(TraceParaClass, TracePlotWidget):
 
         # class widgets
         self.l_reg = None
+        self.trace_curves = []
         self.image_item = pg.ImageItem()
 
         # sets up the plot regions
         self.setup_subplots(n_r=2)
         self.plot_item = self.h_plot[0, 0].getPlotItem()
         self.frame_item = self.h_plot[1, 0].getPlotItem()
-        self.plot_data_item = None
 
         # initialises the other class fields
         self.init_class_fields()
@@ -83,6 +84,7 @@ class TracePlot(TraceParaClass, TracePlotWidget):
         self.plot_item.setMouseEnabled(y=False)
         self.plot_item.hideAxis('left')
         self.plot_item.hideButtons()
+        self.plot_item.setDownsampling(auto=True)
 
         # sets the axis limits
         self.v_box[0, 0].setXRange(self.t_lim[0], self.t_lim[1], padding=0)
@@ -93,11 +95,19 @@ class TracePlot(TraceParaClass, TracePlotWidget):
             cb_fcn = functools.partial(self.plot_button_clicked, pb.objectName())
             pb.clicked.connect(cb_fcn)
 
+        # creates the trace curves
+        l_pen_tr = pg.mkPen(color=cf.get_colour_value('g'), width=1)
+        for i_ch in range(self.n_channels):
+            curve = pg.PlotCurveItem(pen=l_pen_tr, skipFiniteCheck=True)
+            curve.setPos(0, i_ch * self.y_gap)
+            self.h_plot[0, 0].addItem(curve)
+            self.trace_curves.append(curve)
+
         # ---------------------------------------------------------------------------
         # Frame Image Setup
         # ---------------------------------------------------------------------------
 
-        # Example: Transformed display of ImageItem
+        # creates the image transform
         tr = pg.QtGui.QTransform()
         tr.scale(self.t_dur / self.n_col_img, 1.0)
 
@@ -125,6 +135,9 @@ class TracePlot(TraceParaClass, TracePlotWidget):
         self.l_reg.setZValue(10)
         self.h_plot[1, 0].addItem(self.l_reg)
 
+        # disables the viewbox pan/zooming on the frame selection panel
+        self.v_box[1, 0].setMouseEnabled(False, False)
+
     def setup_colour_map(self):
 
         p_rgb = []
@@ -149,39 +162,28 @@ class TracePlot(TraceParaClass, TracePlotWidget):
         n_plt = len(i_channel)
 
         if n_plt:
+            # sets the frame range indices
             s_freq = self.session_info.session_props.s_freq
-            ch_ids = self.session_info.get_channel_ids(i_channel)
-
             i_frm0 = int(self.t_lim[0] * s_freq)
             i_frm1 = int(self.t_lim[1] * s_freq)
-            n_frm = i_frm1 - i_frm0
-
-            # sets up the connection flag array
-            c = np.ones((n_plt, n_frm), dtype=np.ubyte)
-            c[:, -1] = 0
 
             # sets up the x-data array
-            x = np.empty((n_plt, n_frm))
-            x[:] = np.linspace(self.t_lim[0], self.t_lim[1], i_frm1 - i_frm0)
-
-            d_time = time.time()
+            x = np.linspace(self.t_lim[0], self.t_lim[1], i_frm1 - i_frm0)
 
             # sets up the y-data array
-            y = np.empty((n_plt, n_frm))
+            ch_ids = self.session_info.get_channel_ids(i_channel)
             y0 = self.session_info.get_traces(start_frame=i_frm0, end_frame=i_frm1, channel_ids=ch_ids)
             for i in range(n_plt):
                 y_min, y_max = np.min(y0[:, i]), np.max(y0[:, i])
-                y[i, :] = (3 * i + self.y_ofs) + (1 - self.y_ofs) * (y0[:, i] - y_min) / (y_max - y_min)
+                y_scl = self.y_ofs + (1 - self.y_ofs) * (y0[:, i] - y_min) / (y_max - y_min)
+                self.trace_curves[i].setData(x, y_scl)
 
-            if self.plot_data_item is None:
-                self.plot_data_item = self.plot_item.plot(x.flatten(), y.flatten(), connect=c.flatten(), clear=True)
-            else:
-                self.plot_data_item.setData(x=x.flatten(), y=y.flatten(), connect=c.flatten())
-
-            print('Plot = {}'.format(time.time() - d_time))
+            # sets the y-axis range
+            self.h_plot[0, 0].setYRange(0, 1 + (n_plt - 1) * self.y_gap)
 
         else:
-            self.plot_data_item.setData(x=None, y=None)
+            # case is there are no plots (collapse y-axis range)
+            self.h_plot[0, 0].setYRange(0, self.y_ofs / 2.)
 
     def reset_frame_image(self):
 

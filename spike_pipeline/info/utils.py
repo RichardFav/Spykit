@@ -9,9 +9,9 @@ import spike_pipeline.common.common_widget as cw
 
 # pyqt imports
 from PyQt6.QtWidgets import (QWidget, QLineEdit, QComboBox, QCheckBox, QPushButton, QSizePolicy, QVBoxLayout, QGroupBox,
-                             QHeaderView, QFormLayout, QGridLayout, QColorDialog, QTableWidget, QTableWidgetItem, )
-from PyQt6.QtCore import QObject, Qt, QSize, QRect, pyqtSignal
-from PyQt6.QtGui import QIcon
+                             QHeaderView, QFormLayout, QGridLayout, QColorDialog, QTableWidget, QTableWidgetItem)
+from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtGui import QFont
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -58,6 +58,9 @@ class InfoManager(QWidget):
             font-weight: 1000;
         }
     """
+
+    table_font = cw.create_font_obj(size=8)
+    table_hdr_font = cw.create_font_obj(size=8, is_bold=True, font_weight=QFont.Weight.Bold)
 
     # table cell item flags
     norm_item_flag = Qt.ItemFlag.ItemIsEnabled
@@ -228,9 +231,6 @@ class InfoManager(QWidget):
 
         self.tab_group_table.setVisible(True)
         self.tab_group_props.setVisible(True)
-
-        # self.main_layout.addWidget(self.group_props)
-        # self.main_layout.addWidget(self.group_table)
         # self.main_layout.addWidget(self.status_lbl)
 
     # ---------------------------------------------------------------------------
@@ -427,10 +427,14 @@ class InfoManager(QWidget):
         # sets the table header view
         table_obj.setHorizontalHeaderLabels(c_hdr)
 
-        for i_row in range(data.shape[0]):
-            for i_col in range(data.shape[1]):
+        for i_col in range(data.shape[1]):
+            # updates the table header font
+            table_obj.horizontalHeaderItem(i_col).setFont(self.table_hdr_font)
+
+            for i_row in range(data.shape[0]):
                 # creates the widget item
                 item = QTableWidgetItem()
+                item.setFont(self.table_font)
 
                 # sets the item properties (based on the field values)
                 value = data.iloc[i_row][data.columns[i_col]]
@@ -489,7 +493,7 @@ class InfoManager(QWidget):
         for i_r, val in zip(i_row, value):
             table_channel.item(i_r, 0).setCheckState(cf.chk_state[val])
 
-        #
+        # updates the header checkbox tri-state value
         self.update_header_checkbox_state(t_type)
 
         # resets the update flag
@@ -497,13 +501,17 @@ class InfoManager(QWidget):
 
     def update_header_checkbox_state(self, t_type):
 
+        # sets the status flag based on the current selections
         i_sel_ch = self.session_obj.get_selected_channels()
         if len(i_sel_ch) == 0:
+            # case is no channels have been selected
             i_status = 0
 
         else:
+            # case is at least one channel has been selecte
             i_status = 1 + (len(i_sel_ch) == self.session_obj.get_channel_count())
 
+        # resets the table header checkbox value
         table_obj = self.get_table_widget(t_type)
         table_obj.horizontalHeader().setCheckState(i_status)
 

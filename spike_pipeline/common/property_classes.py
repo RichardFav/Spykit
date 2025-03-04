@@ -307,7 +307,7 @@ class ChannelData:
     def toggle_channel_flag(self, i_channel):
 
         if not isinstance(i_channel, list):
-            i_channel = list(i_channel)
+            i_channel = [i_channel]
 
         for i_ch in i_channel:
             self.is_selected[i_ch] ^= True
