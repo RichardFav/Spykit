@@ -5,7 +5,8 @@ import numpy as np
 # from importlib import reload
 
 # pyqt6 module import
-from PyQt6.QtWidgets import QDialog, QVBoxLayout, QMainWindow, QWidget, QHBoxLayout
+from PyQt6.QtWidgets import QDialog, QVBoxLayout, QMainWindow, QWidget, QHBoxLayout, QTableWidget
+from PyQt6.QtCore import Qt
 
 # other imports
 # import spike_pipeline.common.misc_func as mf
@@ -14,6 +15,7 @@ import spike_pipeline.common.common_widget as cw
 #
 import spike_pipeline.common.memory_map as mm
 import spike_pipeline.common.spikeinterface_func as sf
+import spike_pipeline.threads.workers as tw
 
 ########################################################################################################################
 ########################################################################################################################
@@ -71,6 +73,14 @@ class Testing(object):
             case 7:
                 # case is the plot dock test
                 return self.run_plot_dock_test()
+
+            case 8:
+                # case is the thread calculation test
+                return self.run_thread_calc_test()
+
+            case 9:
+                # case is checkbox table test
+                return self.run_checkbox_table_test()
 
     def run_dialog_test(self, title_str="My Dialog"):
         """
@@ -206,3 +216,25 @@ class Testing(object):
 
         # return the main window widget
         return h_app
+
+    def run_thread_calc_test(self):
+
+        # creates the parameter panel object
+        return tw.BlockWorkerTest()
+
+    def run_checkbox_table_test(self):
+
+        table = QTableWidget(None)
+        table.setRowCount(4)
+        table.setColumnCount(3)
+
+        table_header = cw.CheckTableHeader(table, [0, 2])
+        table.setHorizontalHeader(table_header)
+        table.setHorizontalHeaderLabels(['', 'Moo', ''])
+        table.resizeColumnsToContents()
+        table.verticalHeader().setVisible(False)
+
+        table.horizontalHeader().setCheckState(1, 0)
+        table.horizontalHeader().setCheckState(2, 2)
+
+        return table

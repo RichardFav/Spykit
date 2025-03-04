@@ -412,18 +412,27 @@ class PlotWidget(QWidget):
         pen_style = cf.pen_style[self.p_style]
         return pg.mkPen(color=self.p_col, width=self.p_width, style=pen_style)
 
-    def setup_subplots(self, n_r=1, n_c=1):
+    def setup_subplots(self, n_r=1, n_c=1, vb=None):
 
         # memory allocation
         self.n_row, self.n_col = n_r, n_c
         self.v_box = np.empty((n_r, n_c), dtype=object)
         self.h_plot = np.empty((n_r, n_c), dtype=object)
 
+        if vb is None:
+            vb = n_r * n_c * [None]
+
         for i in range(n_r):
             for j in range(n_c):
                 # creates the plot widget
-                self.h_plot[i, j] = pg.PlotWidget()
-                self.v_box[i, j] = self.h_plot[i, j].getViewBox()
+                k = i * n_c + j
+                if vb[k] is None:
+                    self.h_plot[i, j] = pg.PlotWidget()
+                    self.v_box[i, j] = self.h_plot[i, j].getViewBox()
+
+                else:
+                    self.h_plot[i, j] = pg.PlotWidget(viewBox=vb[k])
+                    self.v_box[i, j] = vb[k]
 
                 # adds the plot widget to the layout
                 self.h_plot[i, j].setContentsMargins(0, 20, 0, 0)

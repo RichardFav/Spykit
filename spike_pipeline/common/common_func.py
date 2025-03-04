@@ -6,6 +6,7 @@ import threading
 from typing import TypeVar
 
 # pyqt6 module import
+import numpy as np
 from PyQt6.QtWidgets import (QMessageBox, QSizePolicy)
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor
@@ -55,6 +56,39 @@ combo_height = 22
 # other parameters
 n_col_max = 20
 Cls = TypeVar('Cls')
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+
+class IteratorThread:
+
+    def __init__(self, n=np.Inf):
+
+        self.i = 0
+        self.n = n
+        self.lock = threading.Lock()
+
+    def __iter__(self):
+
+        return self
+
+    def reset(self):
+
+        self.i = 0
+
+    def reset_n(self, n_new):
+
+        self.n = n_new
+
+    def next(self):
+
+        with self.lock:
+            self.i += 1
+            if self.i >= self.n:
+                return None
+            else:
+                return self.i
+
 
 # ----------------------------------------------------------------------------------------------------------------------
 

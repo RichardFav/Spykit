@@ -91,6 +91,23 @@ class SessionWorkBook(QObject):
 
         return np.where(self.channel_data.is_selected)[0]
 
+    def get_channel_count(self):
+
+        probe_rec = self.get_current_recording_probe()
+        return probe_rec.get_num_channels()
+
+    def get_frame_count(self):
+
+        return self.session_props
+
+    # ---------------------------------------------------------------------------
+    # Getter Functions
+    # ---------------------------------------------------------------------------
+
+    def set_all_channel_states(self, is_checked):
+
+        self.channel_data.is_selected[:] = is_checked
+
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
     # ---------------------------------------------------------------------------
@@ -278,18 +295,22 @@ class SessionObject:
 
 
 class ChannelData:
-    def __init__(self, probe):
+    def __init__(self, probe_rec):
 
         # class field initialisations
-        self.channel_ids = probe.channel_ids
-        self.n_channel = probe.get_num_channels()
+        self.channel_ids = probe_rec.channel_ids
+        self.n_channel = probe_rec.get_num_channels()
 
         # memory allocation
         self.is_selected = np.zeros(self.n_channel, dtype=bool)
 
     def toggle_channel_flag(self, i_channel):
 
-        self.is_selected[i_channel] ^= True
+        if not isinstance(i_channel, list):
+            i_channel = list(i_channel)
+
+        for i_ch in i_channel:
+            self.is_selected[i_ch] ^= True
 
 
 # ----------------------------------------------------------------------------------------------------------------------

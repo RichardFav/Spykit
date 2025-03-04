@@ -4,9 +4,11 @@ import re
 import textwrap
 import functools
 import numpy as np
-import pyqtgraph as pg
 from copy import deepcopy
 from skimage.measure import label, regionprops
+
+#
+from pyqtgraph import ViewBox, RectROI, InfiniteLine
 
 # custom module import
 import spike_pipeline.common.common_func as cf
@@ -14,10 +16,11 @@ import spike_pipeline.common.common_func as cf
 # pyqt6 module import
 from PyQt6.QtWidgets import (QWidget, QHBoxLayout, QGridLayout, QVBoxLayout, QPushButton, QGroupBox, QTabWidget,
                              QFormLayout, QLabel, QCheckBox, QLineEdit, QComboBox, QSizePolicy, QFileDialog,
-                             QApplication, QTreeView, QFrame, QRadioButton, QAbstractItemView,
-                             QStylePainter, QStyleOptionComboBox, QStyle)
-from PyQt6.QtGui import QFont, QDrag, QCursor, QStandardItemModel, QStandardItem, QPalette
-from PyQt6.QtCore import Qt, QRect, QMimeData, pyqtSignal, QItemSelectionModel, QAbstractTableModel, QObject
+                             QApplication, QTreeView, QFrame, QRadioButton, QAbstractItemView, QStylePainter,
+                             QStyleOptionComboBox, QStyle, QProxyStyle, QStyledItemDelegate, QStyleOptionViewItem,
+                             QHeaderView, QStyleOptionButton)
+from PyQt6.QtCore import Qt, QRect, QRectF, QMimeData, pyqtSignal, QItemSelectionModel, QAbstractTableModel, QObject, QVariant
+from PyQt6.QtGui import QFont, QDrag, QCursor, QStandardItemModel, QStandardItem, QPalette, QPixmap
 
 # style sheets
 edit_style_sheet = "border: 1px solid; border-radius: 2px; padding-left: 5px;"
@@ -62,6 +65,8 @@ icon_path = {
     'close': os.path.join(icon_dir, 'close_icon.png'),
     'new': os.path.join(icon_dir, 'new_icon.png'),
     'save': os.path.join(icon_dir, 'save_icon.png'),
+    'checked_wide': os.path.join(icon_dir, 'checked_wide_icon.png'),
+    'unchecked_wide': os.path.join(icon_dir, 'unchecked_wide_icon.png'),
 }
 
 # widget dimensions
@@ -1689,13 +1694,9 @@ class PandasModel(QAbstractTableModel):
 
         if index.isValid():
             # current cell value
-            value = self._data.iloc[index.row()][self._data.columns[index.column()]]
-
             if role == Qt.ItemDataRole.DisplayRole:
-                if isinstance(value, np.bool_):
-                    return QCheckBox()
-                else:
-                    return str(value)
+                value = self._data.iloc[index.row()][self._data.columns[index.column()]]
+                return str(value)
 
         return None
 
@@ -1705,6 +1706,129 @@ class PandasModel(QAbstractTableModel):
             return self._data.columns[col]
 
         return None
+
+
+class InfoTableModel(QAbstractTableModel):
+    chk_col = 0
+
+    def __init__(self, data, c_hdr, parent=None):
+        QAbstractTableModel.__init__(self, parent)
+
+        self.c_hdr = c_hdr
+        self.ch_select = data[:, self.chk_col]
+        self._array = data[:, 1:]
+
+        self.header_icon = None
+        self.setHeaderIcon()
+
+    def rowCount(self, _parent=None):
+
+        return self._array.shape[0]
+
+    def columnCount(self, _parent=None):
+
+        return self._array.shape[1]
+
+    def data(self, index, role=Qt.ItemDataRole.DisplayRole):
+
+        if not index.isValid():
+            return None
+
+        if index.column() == self.chk_col:
+            value = ''
+        else:
+            value = QVariant('%g' % self._array[index.row(), index.column()])
+
+        if role == Qt.ItemDataRole.EditRole:
+            return value
+
+        elif role == Qt.ItemDataRole.DisplayRole:
+            return value
+
+        elif role == Qt.ItemDataRole.CheckStateRole:
+            if index.column() == self.chk_col:
+                return cf.chk_state[self.ch_select[index.row()]]
+
+        elif role == Qt.ItemDataRole.TextAlignmentRole:
+            return cf.align_type['center']
+
+        return QVariant()
+
+    def setData(self, index, value, role=Qt.ItemDataRole.EditRole):
+
+        if not index.isValid():
+            return False
+
+        if role == Qt.ItemDataRole.CheckStateRole and (index.column() == self.chk_col):
+            self.ch_select[index.row()] ^= True
+            # if value == cf.chk_state[True]:
+            #     self.ch_select[index.row()] = True
+            # else:
+            #     self.ch_select[index.row()] = False
+
+            self.setHeaderIcon()
+
+        elif role == Qt.ItemDataRole.EditRole and (index.column() != self.chk_col):
+            row = index.row()
+            col = index.column()
+            if value.isdigit():
+                self._array[row, col] = value
+
+        return True
+
+    def flags(self, index):
+
+        if not index.isValid():
+            return None
+
+        flag_enable = Qt.ItemFlag.ItemIsEnabled
+        if index.column() == self.chk_col:
+            return flag_enable | Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsSelectable
+        else:
+            return flag_enable
+
+    def headerData(self, index, orientation, role):
+
+        if orientation == Qt.Orientation.Horizontal and role == Qt.ItemDataRole.DecorationRole:
+            if index == self.chk_col:
+                return QVariant(QPixmap(self.header_icon).scaled(
+                    100, 100, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+
+        if orientation == Qt.Orientation.Horizontal and role == Qt.ItemDataRole.DisplayRole:
+            if index != self.chk_col:
+                return QVariant(self.c_hdr[index])
+
+        return QVariant()
+
+    def toggleCheckState(self, index):
+
+        if index == self.chk_col:
+            if not np.any(self.ch_select):
+                self.ch_select.fill(True)
+
+            else:
+                self.ch_select.fill(False)
+
+            top_left = self.index(0, self.chk_col)
+            bottom_right = self.index(self.rowCount(), self.chk_col)
+            self.dataChanged.emit(top_left, bottom_right)
+            self.setHeaderIcon()
+
+    def setHeaderIcon(self):
+
+        if np.all(self.ch_select):
+            self.header_icon = icon_path['new']
+            # self.header_icon = 'checked.png'
+
+        elif not np.any(self.ch_select):
+            self.header_icon = icon_path['close']
+            # self.header_icon = 'unchecked.png'
+
+        else:
+            self.header_icon = icon_path['restart']
+            # self.header_icon = 'intermediate.png'
+
+        self.headerDataChanged.emit(Qt.Orientation.Horizontal, self.chk_col, 3)
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -1719,8 +1843,8 @@ class PlotCrossHair(QObject):
         self.v_box = v_box
 
         # creates the vertical/horizontal lines
-        self.h_line = pg.InfiniteLine(angle=0, movable=False)
-        self.v_line = pg.InfiniteLine(angle=90, movable=False)
+        self.h_line = InfiniteLine(angle=0, movable=False)
+        self.v_line = InfiniteLine(angle=90, movable=False)
 
         # adds the lines to the plot
         self.h_plot.addItem(self.v_line, ignoreBounds=True)
@@ -1741,6 +1865,167 @@ class PlotCrossHair(QObject):
 
 
 # ----------------------------------------------------------------------------------------------------------------------
+
+"""
+    ROIViewBox: 
+"""
+
+
+class ROIViewBox(ViewBox):
+    drawing_finished = pyqtSignal(QRectF)
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.drawing = True
+        self.constructionROI = None
+        self.pos = None
+
+    def mouseMoveEvent(self, evnt):
+        if self.drawing:
+            delta = self.mapSceneToView(self.pos) - self.mapSceneToView(evnt.pos())
+            self.constructionROI.setSize([self._adjustValue(- delta.x()), self._adjustValue(- delta.y())])
+            self.update()
+            evnt.accept()
+        else:
+            super().mouseMoveEvent(evnt)
+
+    def mouseReleaseEvent(self, evnt):
+        if self.drawing:
+            # deletes the ROI and runs the signal function
+            self.constructionROI.deleteLater()
+
+            pos_0 = self.mapSceneToView(self.pos)
+            pos_1 = self.mapSceneToView(evnt.pos())
+
+            d_pos = pos_0 - pos_1
+            x = min([pos_0.x(), pos_1.x()])
+            y = min([pos_0.y(), pos_1.y()])
+            self.drawing_finished.emit(QRectF(x, y, abs(d_pos.x()), abs(d_pos.y())))
+
+            # clears the other fields
+            self.pos = None
+            self.drawing = False
+            self.constructionROI = None
+            evnt.accept()
+        else:
+            super().mouseReleaseEvent(evnt)
+
+    def mousePressEvent(self, evnt):
+        if evnt.button() == Qt.MouseButton.LeftButton:
+            # flag that drawing is taking place
+            self.drawing = True
+            self.pos = evnt.pos()
+
+            # creates the ROI object
+            self.constructionROI = RectROI(self.mapSceneToView(self.pos), (1, 1), removable=True, invertible=True)
+            self.addItem(self.constructionROI)
+            self.update()
+            evnt.accept()
+        else:
+            super().mousePressEvent(evnt)
+
+    def drawRect(self, action):
+        self.drawing = True
+
+    @staticmethod
+    def _adjustValue(x):
+        if -1 < x < 1:
+            return -1 if x < 0 else 1
+        return x
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+class CheckBoxStyle(QProxyStyle):
+    def subElementRect(self, element, option, widget=None):
+        r = super().subElementRect(element, option, widget)
+        if element == QStyle.SubElement.SE_ItemViewItemCheckIndicator .SE_ItemViewItemCheckIndicator:
+            r.moveCenter(option.rect.center())
+        return r
+
+
+class IconDelegate(QStyledItemDelegate):
+    def initStyleOption(self, option, index):
+        super(IconDelegate, self).initStyleOption(option, index)
+
+        s = option.decorationSize
+        s.setWidth(option.rect.width())
+        option.decorationSize = s
+
+        option.rect.setX(int((option.rect.width() - option.rect.height()) / 2))
+
+
+class CheckTableHeader(QHeaderView):
+    sz_chk = 5
+    check_update = pyqtSignal(int, int)
+
+    def __init__(self, parent=None, i_col=None):
+        super(CheckTableHeader, self).__init__(Qt.Orientation.Horizontal, parent)
+
+        self.i_state = []
+        self.hdr_chk = []
+
+        if i_col is None:
+            self.i_col_chk = [0]
+
+        else:
+            self.i_col_chk = i_col
+
+        for _ in self.i_col_chk:
+            self.i_state.append(0)
+            self.hdr_chk.append(QStyleOptionButton())
+
+    def setCheckState(self, state, i_col=0):
+
+        if i_col not in self.i_col_chk:
+            return
+
+        self.i_state[self.i_col_chk.index(i_col)] = state
+        self.update()
+
+    def paintSection(self, painter, rect, index):
+
+        painter.save()
+        QHeaderView.paintSection(self, painter, rect, index)
+        painter.restore()
+
+        if index in self.i_col_chk:
+            i_col = self.i_col_chk.index(index)
+            left = int(rect.width() / 2 - self.sz_chk)
+            top = int(rect.height() / 2 - self.sz_chk)
+            self.hdr_chk[i_col].rect = QRect(rect.left() + left, top, 2 * self.sz_chk, 2 * self.sz_chk)
+
+            match self.i_state[i_col]:
+                case 0:
+                    # case is the checkbox is off
+                    self.hdr_chk[i_col].state = QStyle.StateFlag.State_Off
+
+                case 1:
+                    # case is the checkbox is mixed
+                    self.hdr_chk[i_col].state = QStyle.StateFlag.State_NoChange
+
+                case 2:
+                    # case is the checkbox is on
+                    self.hdr_chk[i_col].state = QStyle.StateFlag.State_On
+
+            self.style().drawPrimitive(QStyle.PrimitiveElement.PE_IndicatorCheckBox, self.hdr_chk[i_col], painter)
+
+    def mousePressEvent(self, evnt):
+
+        i_col = next(
+            (i for i, h in enumerate(self.hdr_chk) if h.rect.contains(evnt.pos())), None)
+
+        if i_col is not None:
+            if self.i_state[i_col] in [0, 1]:
+                self.i_state[i_col] = 2
+
+            else:
+                self.i_state[i_col] = 0
+
+            self.update()
+            self.check_update.emit(self.i_state[i_col], i_col)
+
+        QHeaderView.mousePressEvent(self, evnt)
 
 
 def create_text_label(parent, text, font=None, align='right', name=None):

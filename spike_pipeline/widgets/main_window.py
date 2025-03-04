@@ -22,7 +22,7 @@ from spike_pipeline.widgets.open_session import OpenSession
 
 # widget dimensions
 x_gap = 15
-info_width = 275
+info_width = 285
 
 # object dimensions
 dlg_width = 1650
@@ -66,6 +66,9 @@ class MainWindow(QMainWindow):
         self.setup_main_window()
         self.init_class_fields()
 
+        # sets the widget style sheets
+        self.set_styles()
+
         # # REMOVE ME LATER
         # self.testing()
 
@@ -89,10 +92,14 @@ class MainWindow(QMainWindow):
         # plot parameter widget setup
         self.main_layout.addWidget(self.info_manager)
         self.main_layout.addWidget(self.plot_manager)
+        self.main_layout.setSpacing(0)
+        self.main_layout.setContentsMargins(0, 0, 0, 0)
 
         # connects information manager signal functions
         self.info_manager.unit_check.connect(self.update_unit)
+        self.info_manager.unit_header_check.connect(self.update_unit_header)
         self.info_manager.channel_check.connect(self.update_channel)
+        self.info_manager.channel_header_check.connect(self.update_channel_header)
         self.info_manager.config_update.connect(self.update_config)
 
         # connects workbook signal functions
@@ -167,7 +174,25 @@ class MainWindow(QMainWindow):
         self.plot_manager.reset_trace_views()
         self.plot_manager.reset_probe_views()
 
+        t_type = self.info_manager.table_tab_lbl[0]
+        self.info_manager.update_header_checkbox_state(t_type)
+
+    def update_channel_header(self, is_checked):
+
+        self.session_obj.set_all_channel_states(is_checked)
+
+        t_type = self.info_manager.table_tab_lbl[0]
+        is_sel = self.session_obj.channel_data.is_selected
+        self.info_manager.reset_table_selections(t_type, is_sel)
+
+        self.plot_manager.reset_probe_views()
+        self.plot_manager.reset_trace_views()
+
     def update_unit(self, i_row):
+
+        a = 1
+
+    def update_unit_header(self, i_state):
 
         a = 1
 
@@ -185,6 +210,17 @@ class MainWindow(QMainWindow):
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
     # ---------------------------------------------------------------------------
+
+    def set_styles(self):
+
+        # # widget stylesheets
+        # central_widget_style = """
+        #     background-color: rgba(220, 220, 255, 255) ;
+        # """
+        #
+        # self.central_widget.setStyleSheet(central_widget_style)
+
+        pass
 
     def testing(self):
 

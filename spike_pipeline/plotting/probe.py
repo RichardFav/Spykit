@@ -9,6 +9,7 @@ from PyQt6.QtGui import QPolygonF, QPicture, QPainter
 
 # spike pipeline imports
 import spike_pipeline.common.common_func as cf
+import spike_pipeline.common.common_widget as cw
 from spike_pipeline.plotting.utils import PlotWidget, PlotPara
 
 # testing modules
@@ -63,7 +64,7 @@ class ProbePlot(ProbePlotPara, ProbePlotWidget):
         self.sub_label = None
 
         # sets up the plot regions
-        self.setup_subplots(2, 1)
+        self.setup_subplots(2, 1, vb=[None, cw.ROIViewBox()])
 
         # initialises the other class fields
         self.init_class_fields()
@@ -97,6 +98,9 @@ class ProbePlot(ProbePlotPara, ProbePlotWidget):
         self.sub_label.setVisible(False)
         self.h_plot[1, 0].addItem(self.sub_label)
 
+        # sets the inset mouse drag properties
+        self.v_box[1, 0].drawing_finished.connect(self.inset_mouse_release)
+
         # sets the plot button callback functions
         for pb in self.plot_but:
             cb_fcn = functools.partial(self.plot_button_clicked, pb.objectName())
@@ -123,10 +127,10 @@ class ProbePlot(ProbePlotPara, ProbePlotWidget):
             yMin=self.main_view.y_lim[0], yMax=self.main_view.y_lim[1],
         )
 
-        # sets the inset probe view properties\
+        # sets the inset probe view properties
         self.h_plot[1, 0].addItem(self.sub_view)
         self.h_plot[1, 0].scene().sigMouseMoved.connect(self.sub_mouse_move)
-        self.h_plot[1, 0].scene().sigMouseClicked.connect(self.sub_mouse_click)
+        # self.h_plot[1, 0].scene().sigMouseClicked.connect(self.sub_mouse_click)
         # self.sub_xhair = PlotCrossHair(self.h_plot[1, 0], self.v_box[1, 0])
 
         # resets the plot enter/leave events
@@ -152,6 +156,17 @@ class ProbePlot(ProbePlotPara, ProbePlotWidget):
     def leave_sub_view(self, *_):
 
         self.sub_label.setVisible(False)
+
+    def inset_mouse_release(self, rect):
+
+        rect_p = QPolygonF(rect)
+        i_sel = np.where([x.intersects(rect_p) for x in self.sub_view.c_poly])[0]
+
+        if len(i_sel):
+            # toggles the selection flag
+            self.session_info.toggle_channel_flag(i_sel)
+            self.reset_probe_views()
+            self.probe_clicked.emit(i_sel)
 
     # ---------------------------------------------------------------------------
     # Plot Button Event Functions
@@ -199,7 +214,7 @@ class ProbePlot(ProbePlotPara, ProbePlotWidget):
         m_pos = self.v_box[1, 0].mapSceneToView(p_pos)
         # self.sub_xhair.set_position(m_pos)
 
-        i_contact = self.sub_view.inside_polygon(m_pos)
+        i_contact = self.sub_view.inside_polygon_single(m_pos)
         if i_contact is not None:
             if self.sub_view.i_sel_contact is None:
                 self.sub_view.i_sel_contact = i_contact
@@ -218,18 +233,6 @@ class ProbePlot(ProbePlotPara, ProbePlotWidget):
             self.sub_view.i_sel_contact = None
             self.sub_view.create_probe_plot()
             self.sub_label.setVisible(False)
-
-    def sub_mouse_click(self, *_):
-
-        # if no contact is highlighted, then exit
-        if self.sub_view.i_sel_contact is None:
-            return
-
-        # toggles the selection flag
-        self.session_info.toggle_channel_flag(self.sub_view.i_sel_contact)
-        self.reset_probe_views()
-
-        self.probe_clicked.emit(self.sub_view.i_sel_contact)
 
     def convert_coords(self):
 
@@ -465,7 +468,7 @@ class ProbeView(GraphicsObject):
         p_lim_tot = np.vstack((p_min0, p_max0))
         return self.calc_expanded_limits(p_lim_tot, np.array([0.1, 0.05]))
 
-    def inside_polygon(self, m_pos):
+    def inside_polygon_single(self, m_pos):
 
         return next((i for i, cp in enumerate(self.c_poly) if self.has_point(cp, m_pos)), None)
 
