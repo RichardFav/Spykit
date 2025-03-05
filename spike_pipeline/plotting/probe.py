@@ -1,7 +1,6 @@
 # module import
 import functools
 import numpy as np
-import pyqtgraph as pg
 
 # pyqt6 module import
 from PyQt6.QtCore import QRectF, QPointF, pyqtSignal, Qt
@@ -12,8 +11,8 @@ import spike_pipeline.common.common_func as cf
 import spike_pipeline.common.common_widget as cw
 from spike_pipeline.plotting.utils import PlotWidget, PlotPara
 
-# testing modules
-from pyqtgraph import GraphicsObject, ROI, mkPen, mkBrush
+# pyqtgraph modules
+from pyqtgraph import GraphicsObject, ROI, TextItem, mkPen, mkBrush, exporters
 
 # plot button fields
 b_icon = ['toggle', 'save', 'close']
@@ -54,16 +53,18 @@ class ProbePlot(ProbePlotPara, ProbePlotWidget):
     # pyqtsignal functions
     hide_plot = pyqtSignal()
     probe_clicked = pyqtSignal(object)
+    reset_highlight = pyqtSignal(bool, object)
 
     # list class fields
     add_lbl = ['remove', 'toggle', 'add']
 
-    def __init__(self, session_info):
+    def __init__(self, main_obj):
         ProbePlotPara.__init__(self)
         ProbePlotWidget.__init__(self)
 
         # main class fields
-        self.session_info = session_info
+        self.main_obj = main_obj
+        self.session_info = main_obj.session_obj
 
         # probe class fields
         self.probe = None
@@ -110,7 +111,7 @@ class ProbePlot(ProbePlotPara, ProbePlotWidget):
         self.probe_rec = self.session_info.get_current_recording_probe()
 
         # adds the contact text label
-        self.sub_label = pg.TextItem(color=(0, 0, 0, 255), fill=(255, 255, 255, 255), ensureInBounds=True)
+        self.sub_label = TextItem(color=(0, 0, 0, 255), fill=(255, 255, 255, 255), ensureInBounds=True)
         self.sub_label.setVisible(False)
         self.h_plot[1, 0].addItem(self.sub_label)
 
@@ -186,6 +187,10 @@ class ProbePlot(ProbePlotPara, ProbePlotWidget):
             self.reset_probe_views()
             self.probe_clicked.emit(i_sel)
 
+            if len(i_sel) == 1:
+                is_sel_ch = self.session_info.channel_data.is_selected[i_sel[0]]
+                self.reset_highlight.emit(is_sel_ch, i_sel[0])
+
     # ---------------------------------------------------------------------------
     # Plot Button Event Functions
     # ---------------------------------------------------------------------------
@@ -206,7 +211,22 @@ class ProbePlot(ProbePlotPara, ProbePlotWidget):
 
             case 'save':
                 # case is the save button
-                cf.show_error('Finish Me!')
+
+                # hides the interaction objects
+                self.main_view.roi.setVisible(False)
+
+                # outputs the main probe view
+                f_path = cf.setup_image_file_name(cw.figure_dir, 'ProbeMainTest.png')
+                exp_obj = exporters.ImageExporter(self.h_plot[0, 0].getPlotItem())
+                exp_obj.export(f_path)
+
+                # outputs the sub-image probe view
+                f_path = cf.setup_image_file_name(cw.figure_dir, 'ProbeInsetTest.png')
+                exp_obj = exporters.ImageExporter(self.h_plot[1, 0].getPlotItem())
+                exp_obj.export(f_path)
+
+                # hides the interaction objects
+                self.main_view.roi.setVisible(True)
 
             case 'close':
                 # case is the close button
@@ -241,6 +261,10 @@ class ProbePlot(ProbePlotPara, ProbePlotWidget):
                 self.sub_view.i_sel_contact = i_contact
                 self.sub_view.create_probe_plot()
 
+                # if the contact is selected, then reset the channel highlight
+                if self.session_info.channel_data.is_selected[i_contact]:
+                    self.reset_highlight.emit(True, i_contact)
+
                 # updates the label properties
                 self.sub_label.setVisible(True)
                 self.sub_label.setText('Channel ID #{}'.format(i_contact))
@@ -257,12 +281,17 @@ class ProbePlot(ProbePlotPara, ProbePlotWidget):
             if m_pos.x() < (self.sub_view.x_lim[1] - dx_pos):
                 dx_pos = 0
 
+            # resets the label position
             self.sub_label.setPos(m_pos + QPointF(-dx_pos, dy_pos))
 
         elif self.sub_view.i_sel_contact is not None:
+            # if not hovering over an object, then disable the label
             self.sub_view.i_sel_contact = None
             self.sub_view.create_probe_plot()
             self.sub_label.setVisible(False)
+
+            # disables the trace highlight
+            self.reset_highlight.emit(False, None)
 
     def convert_coords(self):
 
@@ -291,6 +320,10 @@ class ProbePlot(ProbePlotPara, ProbePlotWidget):
 
 
 # ----------------------------------------------------------------------------------------------------------------------
+
+"""
+    ProbeView:
+"""
 
 
 class ProbeView(GraphicsObject):
@@ -328,6 +361,7 @@ class ProbeView(GraphicsObject):
         self.x_lim_shank = []
         self.y_lim_shank = []
         self.i_sel_contact = None
+        self.i_sel_trace = None
         self.session_info = session_info
 
         # field retrieval

@@ -25,7 +25,7 @@ from PyQt6.QtGui import QFont, QDrag, QCursor, QStandardItemModel, QStandardItem
 # ----------------------------------------------------------------------------------------------------------------------
 
 # style sheets
-edit_style_sheet = "border: 1px solid; border-radius: 2px; padding-left: 5px;"
+
 
 # subject/session model flags
 sub_flag = QItemSelectionModel.SelectionFlag.ClearAndSelect | QItemSelectionModel.SelectionFlag.Rows
@@ -42,6 +42,11 @@ toolbar_style = """
         font-size : 14px;
     }
 """
+edit_style_sheet = """
+    border: 1px solid; 
+    border-radius: 2px; 
+    padding-left: 5px;
+"""
 
 # alignment flags
 align_flag = {
@@ -57,8 +62,9 @@ f_mode_ssf = "Spike Pipeline Session File (*.ssf)"
 
 # parameter/resource folder paths
 data_dir = "C:\\Work\\Other Projects\\EPhys Project\\Data"
-icon_dir = os.path.join(os.getcwd(), 'resources', 'icons')
+icon_dir = os.path.join(os.getcwd(), 'resources', 'icons').replace('\\', '/')
 para_dir = os.path.join(os.getcwd(), 'resources', 'parameters').replace('\\', '/')
+figure_dir = os.path.join(os.getcwd(), 'resources', 'figures').replace('\\', '/')
 
 # icon paths
 icon_path = {

@@ -355,3 +355,11 @@ def get_path_matches(f_path, f_str, is_file=False):
 def get_folder_dir(f_path):
 
     return [x for x in os.listdir(f_path) if os.path.isdir(os.path.join(f_path, x))]
+
+
+def setup_image_file_name(fig_dir, fig_name):
+
+    if not os.path.exists(fig_dir):
+        os.mkdir(fig_dir)
+
+    return os.path.join(fig_dir, fig_name)

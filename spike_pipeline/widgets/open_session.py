@@ -363,6 +363,9 @@ class SessionFile(QWidget):
         }
     """
 
+    table_font = cw.create_font_obj(size=8)
+    table_hdr_font = cw.create_font_obj(size=8, is_bold=True, font_weight=QFont.Weight.Bold)
+
     def __init__(self, parent=None):
         super(SessionFile, self).__init__(parent)
 
@@ -833,8 +836,6 @@ class SessionFile(QWidget):
         # resets the table dimensions
         n_run = len(run_name)
         self.run_table.setRowCount(n_run)
-        self.run_table.setHorizontalHeaderLabels(self.col_hdr)
-        self.run_table.resizeRowsToContents()
 
         # memory allocation
         self.use_run = np.ones(n_run, dtype=bool)
@@ -849,7 +850,7 @@ class SessionFile(QWidget):
             h_cell_num = QTableWidgetItem(str(i + 1))
             h_cell_num.setFlags(~Qt.ItemFlag.ItemIsEditable)
             h_cell_num.setTextAlignment(cf.align_type['center'])
-            # h_cell_num.setFont(self.table_font)
+            h_cell_num.setFont(self.table_font)
             self.run_table.setItem(i, 0, h_cell_num)
 
             # creates include checkbox
@@ -864,10 +865,19 @@ class SessionFile(QWidget):
             # creates the run name field
             h_cell_run = QTableWidgetItem(run_name[i])
             h_cell_run.setFlags(~Qt.ItemFlag.ItemIsEditable)
-            # h_cell_run.setFont(self.table_font)
+            h_cell_run.setFont(self.table_font)
             self.run_table.setItem(i, 2, h_cell_run)
-
             self.run_table.setRowHeight(i, self.row_height)
+
+        # resets the header font
+        self.run_table.setHorizontalHeaderLabels(self.col_hdr)
+        for i_col in range(self.run_table.columnCount()):
+            item_hdr = self.run_table.horizontalHeaderItem(i_col)
+            item_hdr.setFont(self.table_hdr_font)
+
+        # resizes the table row/columns
+        self.run_table.resizeRowsToContents()
+        self.run_table.resizeColumnsToContents()
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions

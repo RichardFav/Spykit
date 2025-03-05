@@ -101,7 +101,7 @@ class PlotManager(QWidget):
 
         # creates new plot type
         plot_constructor = vt.plot_types[p_type]
-        plot_new = plot_constructor(self.session_obj)
+        plot_new = plot_constructor(self)
         self.i_plot = self.n_plot - 1
 
         # adds the new layout and updates the grid layout
@@ -120,6 +120,7 @@ class PlotManager(QWidget):
             case 'probe':
                 # case is the probe view
                 plot_new.probe_clicked.connect(self.clicked_probe)
+                plot_new.reset_highlight.connect(self.trace_highlight)
 
     def get_plot_view(self, p_type, is_add=True):
 
@@ -160,7 +161,12 @@ class PlotManager(QWidget):
 
         value = self.session_obj.channel_data.is_selected[i_row]
         self.main_obj.info_manager.update_table_value("Channel Info", i_row, value)
-        self.main_obj.plot_manager.reset_trace_views()
+        self.reset_trace_views()
+
+    def trace_highlight(self, is_on, i_contact=None):
+
+        plt_probe = self.plots[self.types['trace'] - 1]
+        plt_probe.reset_trace_highlight(is_on, i_contact)
 
     def reset_probe_views(self):
 

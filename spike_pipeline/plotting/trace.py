@@ -1,10 +1,13 @@
 # module import
+import os
+import time
 import colorsys
 import functools
-import time
-
 import numpy as np
-import pyqtgraph as pg
+
+# pyqtgraph modules
+from pyqtgraph import exporters, mkPen, ImageItem, PlotCurveItem, LinearRegionItem, ColorMap
+from pyqtgraph.Qt import QtGui
 
 # spike pipeline imports
 import spike_pipeline.common.common_func as cf
@@ -63,15 +66,18 @@ class TracePlot(TraceParaClass, TracePlotWidget):
     y_gap = 4
 
     # pen widgets
-    l_pen = pg.mkPen(width=3, color='y')
-    l_pen_h = pg.mkPen(width=3, color='g')
+    l_pen = mkPen(width=3, color='y')
+    l_pen_hover = mkPen(width=3, color='g')
+    l_pen_trace = mkPen(color=cf.get_colour_value('g'), width=1)
+    l_pen_high = mkPen(color=cf.get_colour_value('y'), width=1)
 
-    def __init__(self, session_info):
+    def __init__(self, main_obj):
         TracePlotWidget.__init__(self)
         TraceParaClass.__init__(self)
 
         # main class fields
-        self.session_info = session_info
+        self.main_obj = main_obj
+        self.session_info = main_obj.session_obj
         s_props = self.session_info.session_props
 
         # experiment properties
@@ -92,10 +98,11 @@ class TracePlot(TraceParaClass, TracePlotWidget):
         # class widgets
         self.l_reg_x = None
         self.l_reg_y = None
+        self.i_sel_tr = None
         self.frame_img = None
         self.trace_curves = []
-        self.ximage_item = pg.ImageItem()
-        self.yimage_item = pg.ImageItem()
+        self.ximage_item = ImageItem()
+        self.yimage_item = ImageItem()
 
         # sets up the plot regions
         self.setup_subplots(n_r=2, n_c=2)
@@ -139,9 +146,8 @@ class TracePlot(TraceParaClass, TracePlotWidget):
             pb.clicked.connect(cb_fcn)
 
         # creates the trace curves
-        l_pen_tr = pg.mkPen(color=cf.get_colour_value('g'), width=1)
         for i_ch in range(self.n_channels):
-            curve = pg.PlotCurveItem(pen=l_pen_tr, skipFiniteCheck=True)
+            curve = PlotCurveItem(pen=self.l_pen_trace, skipFiniteCheck=True)
             curve.setPos(0, i_ch * self.y_gap)
             self.h_plot[0, 0].addItem(curve)
             self.trace_curves.append(curve)
@@ -157,7 +163,7 @@ class TracePlot(TraceParaClass, TracePlotWidget):
         # ---------------------------------------------------------------------------
 
         # creates the image transform
-        tr_x = pg.QtGui.QTransform()
+        tr_x = QtGui.QTransform()
         tr_x.scale(self.t_dur / self.n_col_img, 1.0)
 
         # sets the plot item properties
@@ -174,8 +180,8 @@ class TracePlot(TraceParaClass, TracePlotWidget):
         self.h_plot[1, 0].addItem(self.ximage_item)
 
         # creates the linear region
-        self.l_reg_x = pg.LinearRegionItem([0, self.t_trace], bounds=[0, self.t_dur], span=[0, 1],
-                                           pen=self.l_pen, hoverPen=self.l_pen_h)
+        self.l_reg_x = LinearRegionItem([0, self.t_trace], bounds=[0, self.t_dur], span=[0, 1],
+                                        pen=self.l_pen, hoverPen=self.l_pen_hover)
         self.l_reg_x.sigRegionChangeFinished.connect(self.xframe_region_move)
         self.l_reg_x.setZValue(10)
         self.h_plot[1, 0].addItem(self.l_reg_x)
@@ -188,7 +194,7 @@ class TracePlot(TraceParaClass, TracePlotWidget):
         # ---------------------------------------------------------------------------
 
         # creates the image transform
-        tr_y = pg.QtGui.QTransform()
+        tr_y = QtGui.QTransform()
         tr_y.scale(1 / self.n_row_yscl, 1.0)
 
         # disables the viewbox pan/zooming on the frame selection panel
@@ -199,7 +205,7 @@ class TracePlot(TraceParaClass, TracePlotWidget):
         self.yframe_item.hideAxis('left')
         self.yframe_item.getAxis('bottom').setGrid(False)
         self.yframe_item.getAxis('bottom').setTextPen('black')
-        self.yframe_item.getAxis('bottom').setTickPen(pg.mkPen(style=Qt.PenStyle.NoPen))
+        self.yframe_item.getAxis('bottom').setTickPen(mkPen(style=Qt.PenStyle.NoPen))
         self.yframe_item.hideButtons()
         self.yframe_item.setDefaultPadding(0.0)
 
@@ -210,8 +216,8 @@ class TracePlot(TraceParaClass, TracePlotWidget):
         self.h_plot[0, 1].addItem(self.yimage_item)
 
         # creates the linear region
-        self.l_reg_y = pg.LinearRegionItem([0, self.n_row_yscl], bounds=[0, self.n_row_yscl], span=[0, 1],
-                                           pen=self.l_pen, hoverPen=self.l_pen_h, orientation='horizontal')
+        self.l_reg_y = LinearRegionItem([0, self.n_row_yscl], bounds=[0, self.n_row_yscl], span=[0, 1],
+                                        pen=self.l_pen, hoverPen=self.l_pen_hover, orientation='horizontal')
         self.l_reg_y.sigRegionChangeFinished.connect(self.yframe_region_move)
         self.l_reg_y.setZValue(10)
         self.h_plot[0, 1].addItem(self.l_reg_y)
@@ -226,7 +232,7 @@ class TracePlot(TraceParaClass, TracePlotWidget):
             p_hsv = (0.5 - (i_lvl / (2 * self.n_lvl)), 0.5, 0.5)
             p_rgb.append([int(255 * x) for x in list(colorsys.hsv_to_rgb(*p_hsv))])
 
-        return pg.ColorMap(pos=np.linspace(0.0, 1.0, self.n_lvl), color=p_rgb)
+        return ColorMap(pos=np.linspace(0.0, 1.0, self.n_lvl), color=p_rgb)
 
     def setup_frame_image(self, axis):
 
@@ -352,8 +358,32 @@ class TracePlot(TraceParaClass, TracePlotWidget):
 
             case 'save':
                 # case is the save button
-                cf.show_error('Finish Me!')
+
+                # outputs the current trace
+                f_path = cf.setup_image_file_name(cw.figure_dir, 'TraceTest.png')
+                exp_obj = exporters.ImageExporter(self.h_plot[0, 0].getPlotItem())
+                exp_obj.export(f_path)
 
             case 'close':
                 # case is the close button
                 self.hide_plot.emit()
+
+    def reset_trace_highlight(self, is_on=False, i_contact=None):
+
+        # removes any current trace highlight
+        if self.i_sel_tr is not None:
+            # resets the trace colours
+            self.trace_curves[self.i_sel_tr].setPen(self.l_pen_trace)
+
+            # resets the trace highlight flag
+            self.i_sel_tr = None
+
+        # highlights the required trace (if turning on highlight)
+        if is_on:
+            # determines the index of the curve that corresponds to the contact ID
+            i_sel_ch = self.session_info.get_selected_channels()
+            self.i_sel_tr = np.where(i_sel_ch == i_contact)[0][0]
+            self.trace_curves[self.i_sel_tr].setPen(self.l_pen_high)
+
+
+
