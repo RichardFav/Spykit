@@ -37,13 +37,6 @@ class TraceLabelMixin:
 
     def setup_trace_labels(self):
 
-        # class field initialisations
-        self.n_show = 0
-        self.labels = []
-        self.i_trace = None
-        self.y_trace = None
-        self.is_show = False
-
         for i in range(self.n_lbl_max):
             # creates the label object
             label = TextItem(f'Test', color='#FFFFFF', anchor=(0, 0.5), border=None, fill=self.lbl_col)
@@ -135,7 +128,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
     n_lvl = 100
     n_col_img = 1000
     n_row_yscl = 100
-    t_trace0 = 2
+    t_dur_max0 = 2
 
     # pen widgets
     l_pen = mkPen(width=3, color='y')
@@ -166,8 +159,15 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         # parameters
         self.n_plt = 0
         self.y_lim_tr = self.y_ofs / 2
-        self.t_trace = np.min([self.t_dur, self.t_trace0])
-        self.t_lim = [0, self.t_trace]
+        self.t_dur_max = np.min([self.t_dur, self.t_dur_max0])
+        self.t_lim = [0, self.t_dur_max]
+
+        # trace label class fields
+        self.n_show = 0
+        self.labels = []
+        self.i_trace = None
+        self.y_trace = None
+        self.is_show = False
 
         # class widgets
         self.l_reg_x = None
@@ -257,7 +257,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.h_plot[1, 0].addItem(self.ximage_item)
 
         # creates the linear region
-        self.l_reg_x = LinearRegionItem([0, self.t_trace], bounds=[0, self.t_dur], span=[0, 1],
+        self.l_reg_x = LinearRegionItem([0, self.t_dur_max], bounds=[0, self.t_dur], span=[0, 1],
                                         pen=self.l_pen, hoverPen=self.l_pen_hover)
         self.l_reg_x.sigRegionChangeFinished.connect(self.xframe_region_move)
         self.l_reg_x.setZValue(10)
@@ -379,6 +379,17 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         if evnt is not None:
             self.trace_release_fcn(evnt)
             self.h_plot[0, 0].setYRange(0, (1 + self.p_gap) * self.y_lim_tr, padding=0)
+
+            # determines if the time axis needs resetting
+            if np.diff(self.t_lim)[0] < self.t_dur_max:
+                if (self.t_dur - self.t_lim[0]) < self.t_dur_max:
+                    self.t_lim = [self.t_dur - self.t_dur_max, self.t_dur]
+                else:
+                    self.t_lim[1] = self.t_lim[0] = self.t_dur_max
+
+                # updates the time limits
+                self.h_plot[0, 0].setXRange(self.t_lim[0], self.t_lim[1], padding=0)
+                self.l_reg_x.setRegion(self.t_lim)
 
         # resets the y-range
         self.l_reg_y.setRegion((0, 100))
