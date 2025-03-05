@@ -48,6 +48,11 @@ chk_state = {
     True: Qt.CheckState.Checked,
 }
 
+ascend_flag = {
+    True: Qt.SortOrder.AscendingOrder,
+    False: Qt.SortOrder.DescendingOrder,
+}
+
 # widget dimensions
 but_height = 24
 edit_height = 20

@@ -18,7 +18,7 @@ from PyQt6.QtWidgets import (QWidget, QHBoxLayout, QGridLayout, QVBoxLayout, QPu
                              QFormLayout, QLabel, QCheckBox, QLineEdit, QComboBox, QSizePolicy, QFileDialog,
                              QApplication, QTreeView, QFrame, QRadioButton, QAbstractItemView, QStylePainter,
                              QStyleOptionComboBox, QStyle, QProxyStyle, QStyledItemDelegate, QStyleOptionViewItem,
-                             QHeaderView, QStyleOptionButton)
+                             QHeaderView, QStyleOptionButton, QTableWidget, QTableWidgetItem)
 from PyQt6.QtCore import Qt, QRect, QRectF, QMimeData, pyqtSignal, QItemSelectionModel, QAbstractTableModel, QObject, QVariant
 from PyQt6.QtGui import QFont, QDrag, QCursor, QStandardItemModel, QStandardItem, QPalette, QPixmap
 
@@ -2011,6 +2011,8 @@ class CheckTableHeader(QHeaderView):
 
         self.i_state = []
         self.hdr_chk = []
+        self.sort_index = 1
+        self.is_ascend = True
 
         if i_col is None:
             self.i_col_chk = [0]
@@ -2055,7 +2057,17 @@ class CheckTableHeader(QHeaderView):
                     # case is the checkbox is on
                     self.hdr_chk[i_col].state = QStyle.StateFlag.State_On
 
+            self.setSectionResizeMode(index, self.ResizeMode.ResizeToContents)
             self.style().drawPrimitive(QStyle.PrimitiveElement.PE_IndicatorCheckBox, self.hdr_chk[i_col], painter)
+
+        else:
+            # left = rect.x() + 20 * (index > self.sort_index)
+            # width = self.sectionSize(index) + 20 * (index == self.sort_index)
+            # self.resizeSection(index, width)
+            #
+            # # rect.setX(left)
+            # # rect.setWidth(width)
+            QHeaderView.paintSection(self, painter, rect, index)
 
     def mousePressEvent(self, evnt):
 
@@ -2071,9 +2083,50 @@ class CheckTableHeader(QHeaderView):
 
             self.update()
             self.check_update.emit(self.i_state[i_col], i_col)
+            QHeaderView.mousePressEvent(self, evnt)
 
-        QHeaderView.mousePressEvent(self, evnt)
+        else:
+            # retrieves the column index
+            index = self.logicalIndexAt(evnt.pos())
 
+            # updates the ascend flag
+            if index == self.sort_index:
+                self.is_ascend ^= True
+            else:
+                self.sort_index = index
+
+            # resets the sort indicator
+            self.setSortIndicator(index, cf.ascend_flag[self.is_ascend])
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+"""
+    CheckTableHeader: 
+"""
+
+
+class QTableWidgetItemSortable(QTableWidgetItem):
+    def __init__(self, parent=None):
+        super(QTableWidgetItemSortable, self).__init__(parent)
+
+    def __lt__(self, other):
+
+        return self.convert_text(self.text()) < self.convert_text(other.text())
+
+    def __gt__(self, other):
+
+        return self.convert_text(self.text()) > self.convert_text(other.text())
+
+    @staticmethod
+    def convert_text(t_str):
+
+        try:
+            t_value = float(t_str)
+            return t_value
+
+        except ValueError:
+            return t_str
 
 # ----------------------------------------------------------------------------------------------------------------------
 # WIDGET STYLE CLASSES

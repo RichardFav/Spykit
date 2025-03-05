@@ -433,7 +433,7 @@ class InfoManager(QWidget):
 
             for i_row in range(data.shape[0]):
                 # creates the widget item
-                item = QTableWidgetItem()
+                item = cw.QTableWidgetItemSortable()
                 item.setFont(self.table_font)
 
                 # sets the item properties (based on the field values)
@@ -445,7 +445,7 @@ class InfoManager(QWidget):
 
                 else:
                     # case is a string field
-                    item.setFlags(self.check_item_flag)
+                    item.setFlags(self.norm_item_flag)
                     item.setText(str(value))
 
                 # ads the item to the table
@@ -453,15 +453,17 @@ class InfoManager(QWidget):
                 table_obj.setItem(i_row, i_col, item)
 
         # resizes the table to the contents
-        table_obj.resizeRowsToContents()
-        table_obj.resizeColumnsToContents()
-        table_obj.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Fixed)
+        table_obj.setSortingEnabled(True)
+        table_obj.horizontalHeader().setSortIndicator(1, Qt.SortOrder.AscendingOrder)
+        # table_obj.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
+        # table_obj.resizeRowsToContents()
+        # table_obj.resizeColumnsToContents()
 
         # sets the checkbox callback function
         cb_fcn = functools.partial(self.table_cell_changed, t_type)
         table_obj.cellChanged.connect(cb_fcn)
 
-    def table_cell_changed(self, t_type, i_row, i_col):
+    def table_cell_changed(self, t_type, i_row_s, i_col):
 
         # if manually updating, then exit
         if self.is_updating:
@@ -469,6 +471,7 @@ class InfoManager(QWidget):
 
         # retrieves the table widget
         table_obj = self.get_table_widget(t_type)
+        i_row = int(table_obj.item(i_row_s, 1).text())
         self.update()
 
         if t_type == self.table_tab_lbl[0]:
@@ -482,6 +485,13 @@ class InfoManager(QWidget):
     def get_table_widget(self, t_type):
 
         return self.findChild(QTableWidget, name=t_type)
+
+    def get_column_values(self, t_type, i_col):
+
+        # retrieves the table widget
+        table_obj = self.get_table_widget(t_type)
+
+        a = 1
 
     def update_table_value(self, t_type, i_row, value):
 
