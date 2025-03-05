@@ -6,7 +6,7 @@ import functools
 import numpy as np
 
 # pyqtgraph modules
-from pyqtgraph import exporters, mkPen, ImageItem, PlotCurveItem, LinearRegionItem, ColorMap
+from pyqtgraph import exporters, mkPen, mkColor, TextItem, ImageItem, PlotCurveItem, LinearRegionItem, ColorMap
 from pyqtgraph.Qt import QtGui
 
 # spike pipeline imports
@@ -16,35 +16,106 @@ from spike_pipeline.plotting.utils import PlotWidget, PlotPara
 
 # pyqt6 module import
 from PyQt6.QtWidgets import (QWidget)
-from PyQt6.QtCore import pyqtSignal, Qt
+from PyQt6.QtCore import pyqtSignal, Qt, QObject
 
 # plot button fields
 b_icon = ['datatip', 'save', 'close']
 b_type = ['toggle', 'button', 'button']
-
-
-# ----------------------------------------------------------------------------------------------------------------------
-
-"""
-    TraceParaClass:
-"""
-
-
-class TraceParaClass(PlotPara):
-    def __init__(self):
-        super(TraceParaClass, self).__init__('Trace')
-
+tt_lbl = ['Show Channel Labels', 'Save Figure', 'Close TraceView']
 
 # ----------------------------------------------------------------------------------------------------------------------
 
 """
-    TracePlotWidget:
+    TraceLabels:
 """
 
 
-class TracePlotWidget(PlotWidget):
-    def __init__(self):
-        super(TracePlotWidget, self).__init__('trace', b_icon=b_icon, b_type=b_type)
+class TraceLabelMixin:
+    # parameters
+    n_lbl_max = 50
+    lbl_col = mkColor((128, 128, 128, 255))
+
+    def setup_trace_labels(self):
+
+        # class field initialisations
+        self.n_show = 0
+        self.labels = []
+        self.i_trace = None
+        self.y_trace = None
+        self.is_show = False
+
+        for i in range(self.n_lbl_max):
+            # creates the label object
+            label = TextItem(f'Test', color='#FFFFFF', anchor=(0, 0.5), border=None, fill=self.lbl_col)
+            label.hide()
+
+            # adds the label to the plot item and stores it
+            self.plot_item.addItem(label)
+            self.labels.append(label)
+
+    def update_labels(self):
+
+        # determines the indices of the traces within the view
+        self.get_view_trace_indices()
+        n_trace = len(self.i_trace)
+
+        if (n_trace == 0) or (n_trace > self.n_lbl_max):
+            # if no/too many traces, then hide the labels
+            self.hide_labels()
+
+        else:
+            # show/hides the labels based on how many are being displayed
+            if n_trace < self.n_show:
+                self.hide_labels(range(self.n_show, self.n_lbl_max))
+
+            # updates the locations of the labels so they overlap with the traces
+            tr_id = self.session_info.get_selected_channels()[self.i_trace]
+            for i_tr in range(n_trace):
+                self.labels[i_tr].setPos(self.t_lim[0], self.y_trace[i_tr])
+                self.labels[i_tr].setText('#ID: {0}'.format(tr_id[i_tr]))
+
+            # shows all the required labels
+            self.show_labels(range(n_trace))
+
+            # update the trace count flag
+            self.n_show = n_trace
+
+    def get_view_trace_indices(self):
+
+        # determines the location of the label spots
+        y_lim = np.array(self.v_box[0, 0].viewRange()[1])
+        y_pos = np.array([self.calc_vert_loc(x) for x in range(self.n_plt)])
+
+        # returns the indices of the traces within the range
+        self.i_trace = np.where([self.is_in_range(y_lim, x) for x in y_pos])[0]
+        self.y_trace = y_pos[self.i_trace]
+
+    def hide_labels(self, i_lbl=None):
+
+        # hide all label if indices not provided
+        if i_lbl is None:
+            i_lbl = range(self.n_lbl_max)
+
+        for i in i_lbl:
+            self.labels[i].hide()
+
+    def show_labels(self, i_lbl=None):
+
+        # show all label if indices not provided
+        if i_lbl is None:
+            i_lbl = range(self.n_lbl_max)
+
+        for i in i_lbl:
+            self.labels[i].show()
+
+    def calc_vert_loc(self, i_lvl):
+
+        return (i_lvl * self.y_gap + 1.) - self.y_ofs
+
+    @staticmethod
+    def is_in_range(y_lim, y_pos):
+
+        return int(np.prod(np.sign(y_lim - y_pos))) == -1
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -53,17 +124,18 @@ class TracePlotWidget(PlotWidget):
 """
 
 
-class TracePlot(TraceParaClass, TracePlotWidget):
+class TracePlot(TraceLabelMixin, PlotWidget):
     # pyqtsignal functions
     hide_plot = pyqtSignal()
 
     # parameters
+    y_gap = 2
     y_ofs = 0.2
-    t_trace0 = 2
+    p_gap = 0.05
     n_lvl = 100
     n_col_img = 1000
     n_row_yscl = 100
-    y_gap = 4
+    t_trace0 = 2
 
     # pen widgets
     l_pen = mkPen(width=3, color='y')
@@ -71,13 +143,14 @@ class TracePlot(TraceParaClass, TracePlotWidget):
     l_pen_trace = mkPen(color=cf.get_colour_value('g'), width=1)
     l_pen_high = mkPen(color=cf.get_colour_value('y'), width=1)
 
-    def __init__(self, main_obj):
-        TracePlotWidget.__init__(self)
-        TraceParaClass.__init__(self)
+    lbl_tt_str = ['Hide Channel Labels', 'Show Channel Labels']
+
+    def __init__(self, session_info):
+        TraceLabelMixin.__init__(self)
+        super(TracePlot, self).__init__('trace', b_icon=b_icon, b_type=b_type, tt_lbl=tt_lbl)
 
         # main class fields
-        self.main_obj = main_obj
-        self.session_info = main_obj.session_obj
+        self.session_info = session_info
         s_props = self.session_info.session_props
 
         # experiment properties
@@ -91,6 +164,7 @@ class TracePlot(TraceParaClass, TracePlotWidget):
         self.trace_dclick_fcn = None
 
         # parameters
+        self.n_plt = 0
         self.y_lim_tr = self.y_ofs / 2
         self.t_trace = np.min([self.t_dur, self.t_trace0])
         self.t_lim = [0, self.t_trace]
@@ -157,6 +231,9 @@ class TracePlot(TraceParaClass, TracePlotWidget):
         self.trace_release_fcn = self.h_plot[0, 0].mouseReleaseEvent
         self.h_plot[0, 0].mouseReleaseEvent = self.trace_mouse_release
         self.h_plot[0, 0].mouseDoubleClickEvent = self.trace_double_click
+
+        # sets up the trace label widgets
+        self.setup_trace_labels()
 
         # ---------------------------------------------------------------------------
         # X-Axis Range Finder Setup
@@ -250,9 +327,9 @@ class TracePlot(TraceParaClass, TracePlotWidget):
 
         # retrieves the currently selected channels
         i_channel = self.session_info.get_selected_channels()
-        n_plt = len(i_channel)
+        self.n_plt = len(i_channel)
 
-        if n_plt:
+        if self.n_plt:
             # sets the frame range indices
             s_freq = self.session_info.session_props.s_freq
             i_frm0 = int(self.t_lim[0] * s_freq)
@@ -264,13 +341,13 @@ class TracePlot(TraceParaClass, TracePlotWidget):
             # sets up the y-data array
             ch_ids = self.session_info.get_channel_ids(i_channel)
             y0 = self.session_info.get_traces(start_frame=i_frm0, end_frame=i_frm1, channel_ids=ch_ids)
-            for i in range(n_plt):
+            for i in range(self.n_plt):
                 y_min, y_max = np.min(y0[:, i]), np.max(y0[:, i])
                 y_scl = self.y_ofs + (1 - self.y_ofs) * (y0[:, i] - y_min) / (y_max - y_min)
                 self.trace_curves[i].setData(x, y_scl)
 
             # sets the y-axis range
-            self.y_lim_tr = 1 + (n_plt - 1) * self.y_gap
+            self.y_lim_tr = 1 + (self.n_plt - 1) * self.y_gap
 
         else:
             # case is there are no plots (collapse y-axis range)
@@ -278,8 +355,12 @@ class TracePlot(TraceParaClass, TracePlotWidget):
 
         # resets the y-axis range
         self.v_box[0, 0].setLimits(yMax=self.y_lim_tr)
-        self.v_box[0, 0].setYRange(0, self.y_lim_tr, padding=0)
+        self.v_box[0, 0].setYRange(0, (1 + self.p_gap) * self.y_lim_tr, padding=0)
         self.trace_double_click()
+
+        # # updates the plot labels
+        # if self.is_show:
+        #     self.update_labels()
 
     def reset_frame_image(self):
 
@@ -297,10 +378,14 @@ class TracePlot(TraceParaClass, TracePlotWidget):
         # runs the original mouse event function
         if evnt is not None:
             self.trace_release_fcn(evnt)
-            self.h_plot[0, 0].setYRange(0, self.y_lim_tr, padding=0)
+            self.h_plot[0, 0].setYRange(0, (1 + self.p_gap) * self.y_lim_tr, padding=0)
 
         # resets the y-range
         self.l_reg_y.setRegion((0, 100))
+
+        # updates the labels (if currently displaying)
+        if self.is_show:
+            self.update_labels()
 
         # resets the update flag
         self.is_updating = False
@@ -321,6 +406,10 @@ class TracePlot(TraceParaClass, TracePlotWidget):
         self.l_reg_x.setRegion(self.t_lim)
         self.l_reg_y.setRegion(100 * np.array(y_lim) / self.y_lim_tr)
 
+        # updates the labels (if currently displaying)
+        if self.is_show:
+            self.update_labels()
+
         # resets the update flag
         self.is_updating = False
 
@@ -337,13 +426,22 @@ class TracePlot(TraceParaClass, TracePlotWidget):
         self.v_box[0, 0].setXRange(self.t_lim[0], self.t_lim[1], padding=0)
         self.reset_trace_view()
 
+        # updates the labels (if currently displaying)
+        if self.is_show:
+            self.update_labels()
+
     def yframe_region_move(self):
 
         if self.is_updating:
             return
 
         y_lim_nw = np.array(self.l_reg_y.getRegion()) * (self.y_lim_tr / 100)
-        self.v_box[0, 0].setYRange(y_lim_nw[0], y_lim_nw[1], padding=0)
+        y_pad_nw = self.p_gap * np.diff(y_lim_nw)[0]
+        self.v_box[0, 0].setYRange(y_lim_nw[0], y_lim_nw[1] + y_pad_nw, padding=0)
+
+        # updates the labels (if currently displaying)
+        if self.is_show:
+            self.update_labels()
 
     # ---------------------------------------------------------------------------
     # Plot Button Event Functions
@@ -353,14 +451,24 @@ class TracePlot(TraceParaClass, TracePlotWidget):
 
         match b_str:
             case 'datatip':
-                # case is the save button
-                pass
+                # case is the label toggle button
+                obj_but = self.findChild(cw.QPushButton, name=b_str)
+
+                # updates the tooltip string
+                self.is_show = obj_but.isChecked()
+                obj_but.setToolTip(self.lbl_tt_str[int(self.is_show)])
+
+                # updates the plot labels (depending on toggle value)
+                if self.is_show:
+                    self.update_labels()
+                else:
+                    self.hide_labels()
 
             case 'save':
-                # case is the save button
+                # case is the figure save button
 
-                # outputs the current trace
-                f_path = cf.setup_image_file_name(cw.figure_dir, 'TraceTest.png')
+                # outputs the current trace to file
+                f_path = cf.setup_image_file_name(cw.figure_dir, 'TraceTest.png')       # CHANGE THIS TO
                 exp_obj = exporters.ImageExporter(self.h_plot[0, 0].getPlotItem())
                 exp_obj.export(f_path)
 
@@ -384,6 +492,3 @@ class TracePlot(TraceParaClass, TracePlotWidget):
             i_sel_ch = self.session_info.get_selected_channels()
             self.i_sel_tr = np.where(i_sel_ch == i_contact)[0][0]
             self.trace_curves[self.i_sel_tr].setPen(self.l_pen_high)
-
-
-

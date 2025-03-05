@@ -101,7 +101,7 @@ class PlotManager(QWidget):
 
         # creates new plot type
         plot_constructor = vt.plot_types[p_type]
-        plot_new = plot_constructor(self)
+        plot_new = plot_constructor(self.session_obj)
         self.i_plot = self.n_plot - 1
 
         # adds the new layout and updates the grid layout
@@ -286,13 +286,14 @@ class PlotWidget(QWidget):
         }
     """
 
-    def __init__(self, p_type, b_icon=None, b_type=None):
+    def __init__(self, p_type, b_icon=None, b_type=None, tt_lbl=None):
         super(PlotWidget, self).__init__()
 
         # main class fields
         self.p_type = p_type
         self.b_icon = b_icon
         self.b_type = b_type
+        self.tt_lbl = tt_lbl
         self.p_name = vt.plot_names[p_type]
 
         # data class field
@@ -332,10 +333,6 @@ class PlotWidget(QWidget):
 
     def setup_plot_buttons(self):
 
-        # initialisations
-        f_name = ['new', 'open', 'save', 'close']
-        tt_str = 'Finish Me!'
-
         # sets up the
         gb_layout = QHBoxLayout()
         gb_layout.setContentsMargins(0, 0, self.x_gap_plt, 0)
@@ -363,7 +360,7 @@ class PlotWidget(QWidget):
         obj_frm.setStyleSheet("border: 1px solid white;")
 
         # creates the push button objects
-        for bi, bt in zip(self.b_icon, self.b_type):
+        for bi, bt, tt in zip(self.b_icon, self.b_type, self.tt_lbl):
             # creates the button widget
             obj_but = cw.create_push_button(None, "")
             match bt:
@@ -381,14 +378,11 @@ class PlotWidget(QWidget):
                     # case is a push button
                     obj_but.setIcon(QIcon(cw.icon_path[bi]))
 
-                case _:
-                    name = None
-
             # sets the button properties
             obj_but.setIconSize(QSize(self.but_height_plt - 1, self.but_height_plt - 1))
             obj_but.setFixedSize(self.but_height_plt, self.but_height_plt)
             obj_but.setCursor(Qt.CursorShape.PointingHandCursor)
-            obj_but.setToolTip(tt_str)
+            obj_but.setToolTip(tt)
             obj_but.setObjectName(bi)
             obj_but.setStyleSheet(self.plot_button_style)
 
@@ -598,7 +592,7 @@ class PlotLayout(QLayout):
 
 class PlotParaBase(QWidget):
     def __init__(self, tr_name):
-        super(PlotParaBase, self).__init__()
+        super(PlotParaBase, self).__init__(tr_name)
 
         # initialisations
         self.has_init = False

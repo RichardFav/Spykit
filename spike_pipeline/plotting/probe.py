@@ -17,29 +17,7 @@ from pyqtgraph import GraphicsObject, ROI, TextItem, mkPen, mkBrush, exporters
 # plot button fields
 b_icon = ['toggle', 'save', 'close']
 b_type = ['button', 'button', 'button']
-
-# ----------------------------------------------------------------------------------------------------------------------
-
-"""
-    ProbePlotPara:
-"""
-
-
-class ProbePlotPara(PlotPara):
-    def __init__(self):
-        super(ProbePlotPara, self).__init__('Probe')
-
-
-# ----------------------------------------------------------------------------------------------------------------------
-
-"""
-    ProbePlotWidget:
-"""
-
-
-class ProbePlotWidget(PlotWidget):
-    def __init__(self):
-        super(ProbePlotWidget, self).__init__('probe', b_icon=b_icon, b_type=b_type)
+tt_lbl = ['Toggle Selection', 'Save Figure', 'Close ProbeView']
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -49,7 +27,7 @@ class ProbePlotWidget(PlotWidget):
 """
 
 
-class ProbePlot(ProbePlotPara, ProbePlotWidget):
+class ProbePlot(PlotWidget):
     # pyqtsignal functions
     hide_plot = pyqtSignal()
     probe_clicked = pyqtSignal(object)
@@ -57,14 +35,13 @@ class ProbePlot(ProbePlotPara, ProbePlotWidget):
 
     # list class fields
     add_lbl = ['remove', 'toggle', 'add']
+    add_tt_str = ['Remove Selection', 'Toggle Selection', 'Add Selection']
 
-    def __init__(self, main_obj):
-        ProbePlotPara.__init__(self)
-        ProbePlotWidget.__init__(self)
+    def __init__(self, session_info):
+        super(ProbePlot, self).__init__('probe', b_icon=b_icon, b_type=b_type, tt_lbl=tt_lbl)
 
         # main class fields
-        self.main_obj = main_obj
-        self.session_info = main_obj.session_obj
+        self.session_info = session_info
 
         # probe class fields
         self.probe = None
@@ -208,6 +185,7 @@ class ProbePlot(ProbePlotPara, ProbePlotWidget):
                 icon_name = self.add_lbl[self.i_status]
                 obj_but = self.findChild(cw.QPushButton, name=b_str)
                 obj_but.setIcon(QIcon(cw.icon_path[icon_name]))
+                obj_but.setToolTip(self.add_tt_str[self.i_status])
 
             case 'save':
                 # case is the save button

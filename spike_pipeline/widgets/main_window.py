@@ -278,6 +278,7 @@ class MenuBar(QObject):
         # adds the toolbar to the main window
         self.main_obj.addToolBarBreak()
         self.main_obj.addToolBar(Qt.ToolBarArea.TopToolBarArea, self.tool_bar)
+        self.main_obj.contextMenuEvent = self.context_menu_event
 
         # ---------------------------------------------------------------------------
         # File Menubar Event Functions
@@ -371,3 +372,7 @@ class MenuBar(QObject):
     def get_menu_item(self, menu_name):
 
         return self.findChildren(QAction, name=menu_name)
+
+    def context_menu_event(self, evnt):
+
+        evnt.ignore()
