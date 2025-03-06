@@ -151,6 +151,7 @@ class MainWindow(QMainWindow):
 
         # creates the table model
         self.info_manager.setup_info_table(p_dframe, 'Channel Info', c_hdr)
+        self.info_manager.init_channel_comboboxes()
 
         # -----------------------------------------------------------------------
         # House-Keeping Exercises
@@ -158,6 +159,7 @@ class MainWindow(QMainWindow):
 
         # enables the menubar items
         self.menu_bar.set_menu_enabled('save', True)
+        self.menu_bar.set_menu_enabled('prep_test', True)
 
         # resets the session flags
         self.session_obj.state = 1
@@ -195,6 +197,26 @@ class MainWindow(QMainWindow):
     def update_unit_header(self, i_state):
 
         a = 1
+
+    def run_preprocessing(self):
+
+        # configs
+        configs = {
+            "preprocessing": {
+                "1": ["bandpass_filter", {"freq_min": 300, "freq_max": 6000}],
+                "2": ["common_reference", {"operator": "median"}],
+            }
+        }
+
+        # runs the session pre-processing
+        self.session_obj.session.run_preprocessing(configs)
+
+        # REMOVE ME LATER
+        plots = self.session_obj.session._s.plot_preprocessed(
+            show=True,
+            time_range=(0, 0.5),
+            show_channel_ids=False,  # also, "mode"="map" or "line"
+        )
 
     # ---------------------------------------------------------------------------
     # Override Functions
@@ -264,6 +286,7 @@ class MenuBar(QObject):
 
         # parent menu widgets
         h_menu_file = self.menu_bar.addMenu('File')
+        h_menu_prep = self.menu_bar.addMenu('Preprocessing')
 
         # ---------------------------------------------------------------------------
         # Toolbar Setup
@@ -281,7 +304,7 @@ class MenuBar(QObject):
         self.main_obj.contextMenuEvent = self.context_menu_event
 
         # ---------------------------------------------------------------------------
-        # File Menubar Event Functions
+        # File Menubar Item Setup
         # ---------------------------------------------------------------------------
 
         # initialisations
@@ -289,28 +312,53 @@ class MenuBar(QObject):
         p_lbl = ['New Session', 'Load Session', 'Save Session', None, 'Close Window']
         cb_fcn = [self.new_session, self.load_session, self.save_session, None, self.close_window]
 
+        # adds the file menu items
+        self.add_menu_items(h_menu_file, p_lbl, cb_fcn, p_str, True)
+
+        # ---------------------------------------------------------------------------
+        # Preprocessing Menubar Item Setup
+        # ---------------------------------------------------------------------------
+
+        # initialisations
+        p_str = ['run_test']
+        p_lbl = ['Run Test']
+        cb_fcn = [self.run_test]
+
+        # adds the preprocessing menu items
+        self.add_menu_items(h_menu_prep, p_lbl, cb_fcn, p_lbl, False)
+
+        # ---------------------------------------------------------------------------
+        # House-Keeping Exercises
+        # ---------------------------------------------------------------------------
+
+        # disables the required menu items
+        [self.set_menu_enabled(x, False) for x in self.disabled_list]
+
+    def add_menu_items(self, h_menu_parent, p_lbl, cb_fcn, p_str, add_tool):
+
         # menu/toolbar item creation
         for pl, ps, cbf in zip(p_lbl, p_str, cb_fcn):
             if ps is None:
                 # adds separators
-                self.tool_bar.addSeparator()
-                h_menu_file.addSeparator()
+                h_menu_parent.addSeparator()
+
+                # adds in a separator (if adding to toolbar)
+                if add_tool:
+                    self.tool_bar.addSeparator()
 
             else:
                 # creates the menu item
-                h_tool = QAction(QIcon(cw.icon_path[ps]), pl, self)
-                h_tool.triggered.connect(cbf)
-                h_tool.setObjectName(ps)
-                self.tool_bar.addAction(h_tool)
+                if add_tool:
+                    h_tool = QAction(QIcon(cw.icon_path[ps]), pl, self)
+                    h_tool.triggered.connect(cbf)
+                    h_tool.setObjectName(ps)
+                    self.tool_bar.addAction(h_tool)
 
                 # creates the menu item
                 h_menu = QAction(pl, self)
                 h_menu.setObjectName(ps)
                 h_menu.triggered.connect(cbf)
-                h_menu_file.addAction(h_menu)
-
-        # disables the required menu items
-        [self.set_menu_enabled(x, False) for x in self.disabled_list]
+                h_menu_parent.addAction(h_menu)
 
     # ---------------------------------------------------------------------------
     # File Menubar Functions
@@ -359,6 +407,14 @@ class MenuBar(QObject):
         # closes the window
         self.main_obj.can_close = True
         self.main_obj.close()
+
+    # ---------------------------------------------------------------------------
+    # Preprocessing Menubar Functions
+    # ---------------------------------------------------------------------------
+
+    def run_test(self):
+
+        self.main_obj.run_preprocessing()
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions

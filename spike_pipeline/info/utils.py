@@ -22,6 +22,99 @@ x_gap_h = 2
 
 # ----------------------------------------------------------------------------------------------------------------------
 
+
+class InfoTab(QWidget):
+    # widget stylesheets
+    table_style = """
+        QTableWidget {
+            font: Arial 6px;
+            border: 1px solid;
+        }
+        QHeaderView {
+            font: Arial 6px;
+            font-weight: 1000;
+        }
+    """
+
+    def __init__(self, t_lbl):
+        super(InfoTab, self).__init__()
+
+        # field initialisations
+        self.table = None
+        self.t_lbl = t_lbl
+
+        # field retrieval
+        self.tab_layout = QVBoxLayout(self)
+        self.tab_layout.setContentsMargins(0, 0, 0, 0)
+        self.setLayout(self.tab_layout)
+
+    def create_table_widget(self):
+
+        # creates the table object
+        self.table = QTableWidget(None)
+
+        # sets the table properties
+        self.table.setRowCount(0)
+        self.table.setColumnCount(0)
+        self.table.setObjectName(self.t_lbl)
+        self.table.setStyleSheet(self.table_style)
+        self.table.verticalHeader().setVisible(False)
+
+        # adds the table to the layout
+        self.tab_layout.addWidget(self.table)
+
+        # resets the channel table style
+        table_style = cw.CheckBoxStyle(self.table.style())
+        self.table.setStyle(table_style)
+
+        # table header setup
+        table_header = cw.CheckTableHeader(self.table)
+        self.table.setHorizontalHeader(table_header)
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+
+class ChannelInfoTab(InfoTab):
+    def __init__(self, t_str, session_obj):
+        super(ChannelInfoTab, self).__init__(t_str)
+
+        # adds the widget combo
+        self.data_type = cw.QLabelCombo(None, 'Plot Data Type:', None, font_lbl=cw.font_lbl)
+        self.tab_layout.addWidget(self.data_type)
+
+        # adds the widget combo
+        self.run_type = cw.QLabelCombo(None, 'Session Run:', None, font_lbl=cw.font_lbl)
+        self.tab_layout.addWidget(self.run_type)
+
+        # creates the table widget
+        self.create_table_widget()
+
+    def reset_combobox_fields(self, cb_type, cb_list):
+
+        # retrieves the combo box
+        combo = getattr(self, '{0}_type'.format(cb_type))
+
+        # clears and resets the combobox fields
+        combo.clear()
+        for cb in cb_list:
+            combo.addItem(cb)
+
+        # resets the combobox fields
+        combo.set_enabled(len(cb_list) > 1)
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+
+class UnitInfoTab(InfoTab):
+    def __init__(self, t_str, session_obj):
+        super(UnitInfoTab, self).__init__(t_str)
+
+        # creates the table widget
+        self.create_table_widget()
+
+# ----------------------------------------------------------------------------------------------------------------------
+
 """
     InfoManager: object that controls the information panels within the central
                  main window information widget
@@ -45,26 +138,22 @@ class InfoManager(QWidget):
     table_name = 'Channel/Unit Information'
     props_tab_lbl = ['Region Configuration']
     table_tab_lbl = ['Channel Info', 'Unit Info']
+    table_tab_type = ['channel', 'unit']
     plot_types = ['Trace', 'Probe']
 
-    # widget stylesheets
-    table_style = """
-        QTableWidget {
-            font: Arial 6px;
-            border: 1px solid;
-        }
-        QHeaderView {
-            font: Arial 6px;
-            font-weight: 1000;
-        }
-    """
-
+    # font types
     table_font = cw.create_font_obj(size=8)
     table_hdr_font = cw.create_font_obj(size=8, is_bold=True, font_weight=QFont.Weight.Bold)
 
     # table cell item flags
     norm_item_flag = Qt.ItemFlag.ItemIsEnabled
     check_item_flag = norm_item_flag | Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsSelectable
+
+    # list of all plot types
+    tab_types = {
+        'channel': ChannelInfoTab,  # trace plot type
+        'unit': UnitInfoTab,        # probe plot type
+    }
 
     def __init__(self, main_obj, info_width, session_obj=None):
         super(InfoManager, self).__init__()
@@ -82,6 +171,8 @@ class InfoManager(QWidget):
         self.is_updating = False
 
         # widget layout setup
+        self.tabs = []
+        self.t_types = []
         self.main_layout = QVBoxLayout()
         self.props_layout = QVBoxLayout()
         self.table_layout = QVBoxLayout()
@@ -196,33 +287,26 @@ class InfoManager(QWidget):
         self.tab_group_table.setContentsMargins(0, 0, 0, 0)
 
         # creates the tab-objects
-        for t_lbl in self.table_tab_lbl:
-            # sets up the tab widget
-            tab_widget = QWidget()
-            tab_layout = QVBoxLayout(self)
-            tab_widget.setLayout(tab_layout)
-            tab_layout.setContentsMargins(0, 0, 0, 0)
+        tab_type, tab_lbl = self.table_tab_type[0:2], self.table_tab_lbl[0:2]
+        for t_lbl, t_type in zip(tab_lbl, tab_type):
+            # creates the tab widget (based on type)
+            tab_constructor = self.tab_types[t_type]
+            tab_widget = tab_constructor(t_lbl, self.session_obj)
+            self.tabs.append(tab_widget)
 
-            # creates the table object
-            channel_table = QTableWidget(None)
-            channel_table.setRowCount(0)
-            channel_table.setColumnCount(0)
-            channel_table.setObjectName(t_lbl)
-            channel_table.setStyleSheet(self.table_style)
-            channel_table.verticalHeader().setVisible(False)
-            tab_layout.addWidget(channel_table)
+            # sets the
+            self.t_types.append(t_type)
+            match t_type:
+                case t_type if t_type in ['channel', 'unit']:
+                    # connects the
+                    cb_fcn = functools.partial(self.header_check_update, t_lbl)
+                    tab_widget.table.horizontalHeader().check_update.connect(cb_fcn)
 
-            # resets the channel table style
-            table_style = cw.CheckBoxStyle(channel_table.style())
-            channel_table.setStyle(table_style)
-
-            # table header setup
-            table_header = cw.CheckTableHeader(channel_table)
-            channel_table.setHorizontalHeader(table_header)
-
-            #
-            cb_fcn = functools.partial(self.header_check_update, t_lbl)
-            table_header.check_update.connect(cb_fcn)
+                    # performs tab specific updates
+                    if t_type == 'channel':
+                        # case is the channel tab
+                        tab_widget.data_type.connect(self.channel_combobox_update)
+                        tab_widget.run_type.connect(self.channel_combobox_update)
 
             # appends the tab to the tab group
             self.tab_group_table.addTab(tab_widget, t_lbl)
@@ -232,6 +316,38 @@ class InfoManager(QWidget):
         self.tab_group_table.setVisible(True)
         self.tab_group_props.setVisible(True)
         # self.main_layout.addWidget(self.status_lbl)
+
+    # ---------------------------------------------------------------------------
+    # Channel Tab Event Functions
+    # ---------------------------------------------------------------------------
+
+    def channel_combobox_update(self, cb=None):
+
+        # if manually updating the combobox, then exit
+        if self.is_updating:
+            return
+
+        pass
+
+    def init_channel_comboboxes(self):
+
+        # combobox fields
+        data_list = ['Raw']
+        run_list = self.session_obj.session.get_run_names()
+
+        # flag that manual updating is taking place
+        self.is_updating = True
+
+        # resets the combobox fields
+        i_tab = self.t_types.index('channel')
+        self.tabs[i_tab].reset_combobox_fields('data', data_list)
+        self.tabs[i_tab].reset_combobox_fields('run', run_list)
+
+        # resets the update flag
+        self.is_updating = False
+
+        # force update the combobox
+        self.channel_combobox_update()
 
     # ---------------------------------------------------------------------------
     # Class Property Widget Setup Functions

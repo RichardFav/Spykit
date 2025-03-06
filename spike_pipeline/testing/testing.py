@@ -11,11 +11,12 @@ from PyQt6.QtCore import Qt
 # other imports
 # import spike_pipeline.common.misc_func as mf
 import spike_pipeline.common.common_widget as cw
-
-#
 import spike_pipeline.common.memory_map as mm
 import spike_pipeline.common.spikeinterface_func as sf
 import spike_pipeline.threads.workers as tw
+
+import spikewrap as sw
+# from spikeinterface.widgets import
 
 ########################################################################################################################
 ########################################################################################################################
@@ -81,6 +82,10 @@ class Testing(object):
             case 9:
                 # case is checkbox table test
                 return self.run_checkbox_table_test()
+
+            case 10:
+                # case is the pre-processing test
+                return self.run_pre_process_test()
 
     def run_dialog_test(self, title_str="My Dialog"):
         """
@@ -238,3 +243,37 @@ class Testing(object):
         table.horizontalHeader().setCheckState(2, 2)
 
         return table
+
+    def run_pre_process_test(self):
+
+        # main window widget
+        h_app = QMainWindow()
+
+        # configs
+        configs = {
+            "preprocessing": {
+                "1": ["bandpass_filter", {"freq_min": 300, "freq_max": 6000}],
+                "2": ["common_reference", {"operator": "median"}],
+            }
+        }
+
+        # creates the spikewrap session object
+        session = sw.Session(
+            subject_path='C:/Work/Other Projects/EPhys Project/Data/spikeglx/tiny_example/rawdata/sub-001',
+            session_name='ses-001',
+            file_format='spikeglx',
+            run_names='all',
+            output_path=None,
+        )
+
+        # loads and pre-processes the session
+        session.load_raw_data()
+        session.preprocess(configs=configs)
+
+        plots = session.plot_preprocessed(
+            show=True,
+            time_range=(0, 0.5),
+            show_channel_ids=False,  # also, "mode"="map" or "line"
+        )
+
+        return h_app

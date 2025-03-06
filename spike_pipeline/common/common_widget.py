@@ -2075,11 +2075,11 @@ class CheckTableHeader(QHeaderView):
             (i for i, h in enumerate(self.hdr_chk) if h.rect.contains(evnt.pos())), None)
 
         if i_col is not None:
-            if self.i_state[i_col] in [0, 1]:
-                self.i_state[i_col] = 2
+            if self.i_state[i_col] in [1, 2]:
+                self.i_state[i_col] = 0
 
             else:
-                self.i_state[i_col] = 0
+                self.i_state[i_col] = 2
 
             self.update()
             self.check_update.emit(self.i_state[i_col], i_col)

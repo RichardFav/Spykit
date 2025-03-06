@@ -230,6 +230,14 @@ class SessionObject:
 
         return self._s_props
 
+    def run_preprocessing(self, configs, per_shank=False, concat_runs=False):
+
+        self._s.preprocess(
+            configs=configs,
+            per_shank=per_shank,
+            concat_runs=concat_runs,
+        )
+
     # ---------------------------------------------------------------------------
     # Protected Properties
     # ---------------------------------------------------------------------------
