@@ -80,6 +80,7 @@ icon_path = {
     'unchecked_wide': os.path.join(icon_dir, 'unchecked_wide_icon.png'),
     'datatip_on': os.path.join(icon_dir, 'datatip_on_icon.png'),
     'datatip_off': os.path.join(icon_dir, 'datatip_off_icon.png'),
+    'search': os.path.join(icon_dir, 'search_icon.png'),
 }
 
 # widget dimensions

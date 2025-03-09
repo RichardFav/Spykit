@@ -323,7 +323,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
     # Plot Update/Reset Functions
     # ---------------------------------------------------------------------------
 
-    def reset_trace_view(self):
+    def reset_trace_view(self, double_click_reset=False):
 
         # retrieves the currently selected channels
         i_channel = self.session_info.get_selected_channels()
@@ -356,7 +356,9 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         # resets the y-axis range
         self.v_box[0, 0].setLimits(yMax=self.y_lim_tr)
         self.v_box[0, 0].setYRange(0, (1 + self.p_gap) * self.y_lim_tr, padding=0)
-        self.trace_double_click()
+
+        if not double_click_reset:
+            self.trace_double_click()
 
         # # updates the plot labels
         # if self.is_show:
@@ -390,6 +392,9 @@ class TracePlot(TraceLabelMixin, PlotWidget):
                 # updates the time limits
                 self.h_plot[0, 0].setXRange(self.t_lim[0], self.t_lim[1], padding=0)
                 self.l_reg_x.setRegion(self.t_lim)
+
+                # resets the trace view
+                self.reset_trace_view(True)
 
         # resets the y-range
         self.l_reg_y.setRegion((0, 100))

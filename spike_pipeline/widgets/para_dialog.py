@@ -900,6 +900,7 @@ class ParaDialog(QMainWindow):
         return {'name': name, 'type': obj_type, 'value': value, 'p_fld': p_fld,
                 'p_list': p_list, 'p_misc': p_misc, 'ch_fld': ch_fld}
 
+
 # ----------------------------------------------------------------------------------------------------------------------
 
 
@@ -997,7 +998,7 @@ class QSearchWidget(QWidget):
 
         # increments the count
         self.n_para += 1
-        p_name_s = re.sub(r'\<[^>]*\>|[&;]+','', p_name)
+        p_name_s = re.sub(r'<[^>]*>|[&;]+', '', p_name)
 
         # appends the objects
         self.h_para.append(h_obj)
@@ -1018,3 +1019,4 @@ class QSearchWidget(QWidget):
     def add_highlight(s, i0, n):
 
         return '{0}{1}{2}'.format(s[0:i0], cf.set_text_background_colour(s[i0:(i0 + n)], 'yellow'), s[(i0 + n):])
+

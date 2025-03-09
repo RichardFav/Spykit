@@ -1,9 +1,8 @@
 # module imports
+import numpy as np
 import functools
 
 # custom module imports
-import numpy as np
-
 import spike_pipeline.common.common_func as cf
 import spike_pipeline.common.common_widget as cw
 
@@ -20,98 +19,6 @@ x_gap = 5
 x_gap2 = 2 * x_gap
 x_gap_h = 2
 
-# ----------------------------------------------------------------------------------------------------------------------
-
-
-class InfoTab(QWidget):
-    # widget stylesheets
-    table_style = """
-        QTableWidget {
-            font: Arial 6px;
-            border: 1px solid;
-        }
-        QHeaderView {
-            font: Arial 6px;
-            font-weight: 1000;
-        }
-    """
-
-    def __init__(self, t_lbl):
-        super(InfoTab, self).__init__()
-
-        # field initialisations
-        self.table = None
-        self.t_lbl = t_lbl
-
-        # field retrieval
-        self.tab_layout = QVBoxLayout(self)
-        self.tab_layout.setContentsMargins(0, 0, 0, 0)
-        self.setLayout(self.tab_layout)
-
-    def create_table_widget(self):
-
-        # creates the table object
-        self.table = QTableWidget(None)
-
-        # sets the table properties
-        self.table.setRowCount(0)
-        self.table.setColumnCount(0)
-        self.table.setObjectName(self.t_lbl)
-        self.table.setStyleSheet(self.table_style)
-        self.table.verticalHeader().setVisible(False)
-
-        # adds the table to the layout
-        self.tab_layout.addWidget(self.table)
-
-        # resets the channel table style
-        table_style = cw.CheckBoxStyle(self.table.style())
-        self.table.setStyle(table_style)
-
-        # table header setup
-        table_header = cw.CheckTableHeader(self.table)
-        self.table.setHorizontalHeader(table_header)
-
-
-# ----------------------------------------------------------------------------------------------------------------------
-
-
-class ChannelInfoTab(InfoTab):
-    def __init__(self, t_str, session_obj):
-        super(ChannelInfoTab, self).__init__(t_str)
-
-        # adds the widget combo
-        self.data_type = cw.QLabelCombo(None, 'Plot Data Type:', None, font_lbl=cw.font_lbl)
-        self.tab_layout.addWidget(self.data_type)
-
-        # adds the widget combo
-        self.run_type = cw.QLabelCombo(None, 'Session Run:', None, font_lbl=cw.font_lbl)
-        self.tab_layout.addWidget(self.run_type)
-
-        # creates the table widget
-        self.create_table_widget()
-
-    def reset_combobox_fields(self, cb_type, cb_list):
-
-        # retrieves the combo box
-        combo = getattr(self, '{0}_type'.format(cb_type))
-
-        # clears and resets the combobox fields
-        combo.clear()
-        for cb in cb_list:
-            combo.addItem(cb)
-
-        # resets the combobox fields
-        combo.set_enabled(len(cb_list) > 1)
-
-# ----------------------------------------------------------------------------------------------------------------------
-
-
-class UnitInfoTab(InfoTab):
-    def __init__(self, t_str, session_obj):
-        super(UnitInfoTab, self).__init__(t_str)
-
-        # creates the table widget
-        self.create_table_widget()
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -137,8 +44,6 @@ class InfoManager(QWidget):
     props_name = 'Plot Properties'
     table_name = 'Channel/Unit Information'
     props_tab_lbl = ['Region Configuration']
-    table_tab_lbl = ['Channel Info', 'Unit Info']
-    table_tab_type = ['channel', 'unit']
     plot_types = ['Trace', 'Probe']
 
     # font types
@@ -148,12 +53,6 @@ class InfoManager(QWidget):
     # table cell item flags
     norm_item_flag = Qt.ItemFlag.ItemIsEnabled
     check_item_flag = norm_item_flag | Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsSelectable
-
-    # list of all plot types
-    tab_types = {
-        'channel': ChannelInfoTab,  # trace plot type
-        'unit': UnitInfoTab,        # probe plot type
-    }
 
     def __init__(self, main_obj, info_width, session_obj=None):
         super(InfoManager, self).__init__()
@@ -287,11 +186,12 @@ class InfoManager(QWidget):
         self.tab_group_table.setContentsMargins(0, 0, 0, 0)
 
         # creates the tab-objects
-        tab_type, tab_lbl = self.table_tab_type[0:2], self.table_tab_lbl[0:2]
-        for t_lbl, t_type in zip(tab_lbl, tab_type):
+        tab_type = ['channel', 'unit', 'preprocess']
+        for t_type in tab_type:
             # creates the tab widget (based on type)
-            tab_constructor = self.tab_types[t_type]
-            tab_widget = tab_constructor(t_lbl, self.session_obj)
+            t_lbl = it.info_names[t_type]
+            tab_constructor = it.info_types[t_type]
+            tab_widget = tab_constructor(t_lbl)
             self.tabs.append(tab_widget)
 
             # sets the
@@ -300,6 +200,7 @@ class InfoManager(QWidget):
                 case t_type if t_type in ['channel', 'unit']:
                     # connects the
                     cb_fcn = functools.partial(self.header_check_update, t_lbl)
+                    # tab_widget.set_check_update(cb_fcn)
                     tab_widget.table.horizontalHeader().check_update.connect(cb_fcn)
 
                     # performs tab specific updates
@@ -590,13 +491,18 @@ class InfoManager(QWidget):
         i_row = int(table_obj.item(i_row_s, 1).text())
         self.update()
 
-        if t_type == self.table_tab_lbl[0]:
-            # case is the channel information tab
-            self.channel_check.emit(i_row)
+        match t_type.lower():
+            case 'channel':
+                # case is the channel information tab
+                self.channel_check.emit(i_row)
 
-        elif t_type == self.table_tab_lbl[1]:
-            # case is the unit information tab
-            self.unit_check.emit(i_row)
+            case 'unit':
+                # case is the unit information tab
+                self.unit_check.emit(i_row)
+
+            case 'preprocess':
+                # case is the preprocessing information tab
+                pass
 
     def get_table_widget(self, t_type):
 
@@ -846,3 +752,8 @@ class InfoManager(QWidget):
 
         return {'name': name, 'type': obj_type, 'value': value, 'p_fld': p_fld,
                 'p_list': p_list, 'p_misc': p_misc, 'ch_fld': ch_fld}
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+# module imports (required here as will cause circular import error otherwise)
+import spike_pipeline.info.info_type as it

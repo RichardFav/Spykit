@@ -150,7 +150,7 @@ class MainWindow(QMainWindow):
         p_dframe.insert(0, "Show", is_show, True)
 
         # creates the table model
-        self.info_manager.setup_info_table(p_dframe, 'Channel Info', c_hdr)
+        self.info_manager.setup_info_table(p_dframe, 'Channel', c_hdr)
         self.info_manager.init_channel_comboboxes()
 
         # -----------------------------------------------------------------------
