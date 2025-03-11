@@ -45,6 +45,8 @@ class InfoManager(QWidget):
     table_name = 'Channel/Unit Information'
     props_tab_lbl = ['Region Configuration']
     plot_types = ['Trace', 'Probe']
+    table_tab_lbl = ['Channel Info', 'Unit Info']
+    table_tab_type = ['channel', 'unit']
 
     # font types
     table_font = cw.create_font_obj(size=8)
@@ -77,7 +79,7 @@ class InfoManager(QWidget):
         self.table_layout = QVBoxLayout()
 
         # main widget setup
-        gbox_height = self.info_width
+        gbox_height = self.info_width - 4 * x_gap
         self.obj_rconfig = cw.QRegionConfig(self, font=cw.font_lbl, is_expanded=True,
                                             p_list0=self.plot_types, gbox_height=gbox_height)
         self.group_props = QGroupBox(self.props_name.upper())
@@ -506,7 +508,9 @@ class InfoManager(QWidget):
 
     def get_table_widget(self, t_type):
 
-        return self.findChild(QTableWidget, name=t_type)
+        info_c = it.info_types[t_type.split()[0].lower()]
+        i_tab = next(i for i, x in enumerate(self.tabs) if isinstance(x, info_c))
+        return self.tabs[i_tab].findChild(QTableWidget)
 
     def get_column_values(self, t_type, i_col):
 

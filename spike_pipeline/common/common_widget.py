@@ -103,7 +103,7 @@ class QRegionConfig(QWidget):
 
     # dimensions
     x_gap = 10
-    gbox_height0 = 25
+    gbox_height0 = 10
 
     def __init__(self, parent=None, font=None, is_expanded=False, can_close=True, p_list0=None, gbox_height=None):
         super(QRegionConfig, self).__init__(parent)
@@ -207,6 +207,7 @@ class QRegionConfig(QWidget):
         # sets the initial config groupbox height
         if is_expanded:
             # case is the groupbox is expanded
+            self.obj_gbox.setTitle(cf.arr_chr(True))
             if self.gbox_height is None:
                 sz_main = self.main_layout.sizeHint()
                 self.gbox_height = sz_main.width() - (sz_main.height() - self.gbox_height0)

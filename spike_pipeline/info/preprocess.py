@@ -10,17 +10,36 @@ import spike_pipeline.common.common_func as cf
 from spike_pipeline.info.common import InfoTab
 from spike_pipeline.common.common_widget import QLabelEdit, QLabelCombo
 
+
 # pyqt imports
 from PyQt6.QtWidgets import (QWidget, QFrame, QSpinBox, QTabWidget, QVBoxLayout, QFormLayout, QSizePolicy,
-                             QCheckBox, QLineEdit, QComboBox, QTreeWidget, QTreeWidgetItem, QHeaderView)
-from PyQt6.QtGui import QIcon, QStandardItemModel, QStandardItem, QFont, QColor, QBrush
-from PyQt6.QtCore import QSize, Qt, QModelIndex
+                             QCheckBox, QLineEdit, QComboBox, QTreeWidget, QTreeWidgetItem, QHeaderView,
+                             QItemDelegate)
+from PyQt6.QtGui import QIcon, QFont, QColor, QTextDocument, QAbstractTextDocumentLayout
+from PyQt6.QtCore import QSize, QSizeF, Qt, QModelIndex, QRectF
 
 # ----------------------------------------------------------------------------------------------------------------------
 
 """
     SearchMixin:
 """
+
+
+class HTMLDelegate(QItemDelegate):
+    def __init__(self):
+        super(HTMLDelegate, self).__init__()
+
+    def paint(self, painter, option, index):
+
+        painter.save()
+        doc = QTextDocument()
+        doc.setHtml(index.data())
+        context = QAbstractTextDocumentLayout.PaintContext()
+        doc.setPageSize(QSizeF(option.rect.size()))
+        painter.setClipRect(option.rect)
+        painter.translate(option.rect.x(), option.rect.y())
+        doc.documentLayout().draw(painter, context)
+        painter.restore()
 
 
 class SearchMixin:
@@ -71,6 +90,12 @@ class SearchMixin:
         has_s = np.array([len(x) > 0 for x in ind_s])
         grp_s = np.unique(np.array(self.para_grp)[has_s])
 
+        # updates the group text labels
+        for i, hg in enumerate(self.h_grp):
+            col = 'yellow' if hg in grp_s else '#A0A0A0'
+            t_lbl = cf.set_text_background_colour(self.grp_name[i], col)
+            self.h_grp[hg].setText(0, t_lbl)
+
         # resets the parameter label strings
         for ii, nn, hh in zip(ind_s, self.para_name0, self.h_para):
             # sets the highlighted text string
@@ -117,13 +142,13 @@ class PreprocessInfoTab(SearchMixin, InfoTab):
         }
                 
         QTreeWidget::item {
-            height: 21px;
+            height: 23px;
         }        
         
         QTreeWidget::item:has-children {
             background: #A0A0A0;
-            color: white;
             padding-left: 5px;
+            color: white;
         }
     """
 
@@ -302,6 +327,7 @@ class PreprocessInfoTab(SearchMixin, InfoTab):
         self.tree_prop.setHeaderLabels(self.tree_hdr)
         self.tree_prop.setFrameStyle(QFrame.Shape.WinPanel | QFrame.Shadow.Plain)
         self.tree_prop.setAlternatingRowColors(True)
+        self.tree_prop.setItemDelegateForColumn(0, HTMLDelegate())
 
         # creates the full property tree
         for pp_s, pp_h in self.p_prop_flds.items():
@@ -313,7 +339,7 @@ class PreprocessInfoTab(SearchMixin, InfoTab):
             item.setFont(0, self.item_font)
             item.setFirstColumnSpanned(True)
             item.setExpanded(True)
-            item.setBackground(0, self.gray_col)
+            # item.setBackground(0, self.gray_col)
 
             # adds the main group to the search widget
             self.append_grp_obj(item, pp_s)
@@ -590,7 +616,12 @@ class PreprocessInfoTab(SearchMixin, InfoTab):
         # creates the tree widget item
         item_ch = QTreeWidgetItem(None)
         item_ch.setText(0, lbl_str)
-        item_ch.setFont(0, self.item_child_font)
+
+        # #
+        # obj_lbl = cw.create_text_label(None, lbl_str, self.item_child_font, align='right')
+        # obj_lbl.setAutoFillBackground(False)
+        # obj_lbl.setObjectName('child_item')
+        # self.tree_prop.setItemWidget(item_ch, 0, obj_lbl)
 
         match props['type']:
             case 'edit':
@@ -628,6 +659,7 @@ class PreprocessInfoTab(SearchMixin, InfoTab):
 
                 # sets the widget properties
                 h_obj.setCheckState(cf.chk_state[props['value']])
+                h_obj.setStyleSheet("padding-left: 5px;")
 
                 # sets the object callback functions
                 cb_fcn = functools.partial(cb_fcn_base, h_obj)
