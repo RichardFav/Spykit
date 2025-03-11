@@ -1,6 +1,7 @@
 # module imports
 import re
 import functools
+import numpy as np
 from copy import deepcopy
 
 # custom module imports
@@ -10,10 +11,10 @@ from spike_pipeline.info.common import InfoTab
 from spike_pipeline.common.common_widget import QLabelEdit, QLabelCombo
 
 # pyqt imports
-from PyQt6.QtWidgets import (QWidget, QFrame, QTreeView, QTabWidget, QVBoxLayout, QFormLayout, QSizePolicy,
+from PyQt6.QtWidgets import (QWidget, QFrame, QSpinBox, QTabWidget, QVBoxLayout, QFormLayout, QSizePolicy,
                              QCheckBox, QLineEdit, QComboBox, QTreeWidget, QTreeWidgetItem, QHeaderView)
-from PyQt6.QtGui import QIcon, QStandardItemModel, QStandardItem, QFont
-from PyQt6.QtCore import QSize, QModelIndex
+from PyQt6.QtGui import QIcon, QStandardItemModel, QStandardItem, QFont, QColor, QBrush
+from PyQt6.QtCore import QSize, Qt, QModelIndex
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -61,6 +62,28 @@ class SearchMixin:
         s_txt = self.edit_search.text().lower()
         ns_txt = len(s_txt)
 
+        if ns_txt:
+            ind_s = [[m.start() for m in re.finditer(s_txt, n)] for n in self.para_name]
+        else:
+            ind_s = [[] for _ in range(self.n_para)]
+
+        # determines the groups which have a match
+        has_s = np.array([len(x) > 0 for x in ind_s])
+        grp_s = np.unique(np.array(self.para_grp)[has_s])
+
+        # resets the parameter label strings
+        for ii, nn, hh in zip(ind_s, self.para_name0, self.h_para):
+            # sets the highlighted text string
+            for xi0 in np.flip(ii):
+                nn = self.add_highlight(nn, xi0, ns_txt)
+
+            # updates the property label text
+            hh.setText(0, nn)
+
+    @staticmethod
+    def add_highlight(s, i0, n):
+
+        return '{0}{1}{2}'.format(s[0:i0], cf.set_text_background_colour(s[i0:(i0 + n)], 'yellow'), s[(i0 + n):])
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -83,26 +106,46 @@ class PreprocessInfoTab(SearchMixin, InfoTab):
     }
 
     # font objects
+    gray_col = QColor(160, 160, 160, 255)
     item_font = cw.create_font_obj(9, True, QFont.Weight.Bold)
+    item_child_font = cw.create_font_obj(8)
 
     # widget stylesheets
-    tree_style = """
+    tree_style = """    
         QTreeWidget {
             font: Arial 8px;
         }
-        
+                
         QTreeWidget::item {
+            height: 21px;
+        }        
+        
+        QTreeWidget::item:has-children {
             background: #A0A0A0;
-            color: white;   
-        }    
-
-        QTreeWidget::branch:open:has-children:has-siblings {
-
-        }              
+            color: white;
+            padding-left: 5px;
+        }
     """
+
+    # """
+    #     QTreeWidget::item:!has-children {
+    #         background-color: cyan;
+    #         color: black;
+    #     }
+    #
+    #     QCheckBox {
+    #         background-color: cyan;
+    #     }
+    #
+    #     QCheckBox::indicator {
+    #         color: black;
+    #         background-color: white;
+    #     }
+    # """
 
     # dimensions
     x_gap = 5
+    item_row_size = 23
 
     def __init__(self, t_str):
         super(PreprocessInfoTab, self).__init__(t_str, layout=QFormLayout)
@@ -162,7 +205,7 @@ class PreprocessInfoTab(SearchMixin, InfoTab):
             {
                 'freq_min': self.create_para_field('Min Frequency', 'edit', 300),
                 'freq_max': self.create_para_field('Max Frequency', 'edit', 6000),
-                'margin_ms': self.create_para_field('Border Margin (ms)', 'edit', 5),
+                'margin_ms': self.create_para_field('Margin (ms)', 'edit', 5),
             },
 
             # common reference parameters
@@ -180,13 +223,18 @@ class PreprocessInfoTab(SearchMixin, InfoTab):
             {
                 'apply_mean': self.create_para_field('Subtract Mean', 'checkbox', False),
                 'mode': self.create_para_field('Mode', 'combobox', mode_list[0], p_list=mode_list),
-                'radius_um': self.create_para_field('Reference Radius (um)', 'edit', 100),
+                'radius_um': self.create_para_field('Radius (um)', 'edit', 100),
             },
 
             # drift correction parameters
             {
                 'preset': self.create_para_field('Preset', 'combobox', preset_list[0], p_list=preset_list),
             },
+
+            # # sparsity option parameters
+            # {
+            #     'sparse': self.create_para_field('Use Sparsity?', 'checkpanel', True, ch_fld=pp_sp),
+            # },
         ]
 
         # sets up the property fields for each section
@@ -207,11 +255,11 @@ class PreprocessInfoTab(SearchMixin, InfoTab):
         # -----------------------------------------------------------------------
 
         # sets up the sorting tab parameter fields
-        pp_k2 = {'car': self.create_para_field('Use Common Avg Ref.', 'checkbox', False, p_fld='kilosort2'),
+        pp_k2 = {'car': self.create_para_field('Use Common Avg Ref', 'checkbox', False, p_fld='kilosort2'),
                  'freq_min': self.create_para_field('Min Frequency', 'edit', 150, p_fld='kilosort2')}
-        pp_k2_5 = {'car': self.create_para_field('Use Common Avg Ref.', 'checkbox', False, p_fld='kilosort2_5'),
+        pp_k2_5 = {'car': self.create_para_field('Use Common Avg Ref', 'checkbox', False, p_fld='kilosort2_5'),
                    'freq_min': self.create_para_field('Min Frequency', 'edit', 150, p_fld='kilosort2_5'), }
-        pp_k3 = {'car': self.create_para_field('Use Common Avg Ref.', 'checkbox', False, p_fld='kilosort3'),
+        pp_k3 = {'car': self.create_para_field('Use Common Avg Ref', 'checkbox', False, p_fld='kilosort3'),
                  'freq_min': self.create_para_field('Min Frequency', 'edit', 300, p_fld='kilosort3'), }
         pp_m5 = {'scheme': self.create_para_field('Scheme', 'edit', 2, p_fld='mountainsort5'),
                  'filter': self.create_para_field('Filter', 'checkbox', False, p_fld='mountainsort5'), }
@@ -253,10 +301,9 @@ class PreprocessInfoTab(SearchMixin, InfoTab):
         self.tree_prop.setStyleSheet(self.tree_style)
         self.tree_prop.setHeaderLabels(self.tree_hdr)
         self.tree_prop.setFrameStyle(QFrame.Shape.WinPanel | QFrame.Shadow.Plain)
+        self.tree_prop.setAlternatingRowColors(True)
 
         # creates the full property tree
-        i_row = 0
-        i_row_p = 0
         for pp_s, pp_h in self.p_prop_flds.items():
             # creates the parent item
             item = QTreeWidgetItem(self.tree_prop)
@@ -266,28 +313,34 @@ class PreprocessInfoTab(SearchMixin, InfoTab):
             item.setFont(0, self.item_font)
             item.setFirstColumnSpanned(True)
             item.setExpanded(True)
+            item.setBackground(0, self.gray_col)
 
-            for k, v in pp_h['props'].items():
-                # creates the property name field
-                item_name = QTreeWidgetItem(None)
-                item_name.setText(0, v['name'])
-                # self.tree_prop.setItemWidget(item_name, 0)
-
-                # adds the child tree widget item
-                item.addChild(item_name)
-                i_row += 1
+            # adds the main group to the search widget
+            self.append_grp_obj(item, pp_s)
 
             # adds the tree widget item
             self.tree_prop.addTopLevelItem(item)
+            for k, p in pp_h['props'].items():
+                # creates the property name field
+                item_ch, obj_prop = self.create_child_tree_item(p, [pp_s, k])
+                item_ch.setTextAlignment(0, cw.align_flag['right'] | cw.align_flag['vcenter'])
+                obj_prop.setFixedHeight(self.item_row_size)
+
+                # adds the child tree widget item
+                item.addChild(item_ch)
+                self.append_para_obj(item_ch, pp_s)
+                self.tree_prop.setItemWidget(item_ch, 1, obj_prop)
 
         # adds the tree widget to the parent widget
         self.tab_layout.addRow(self.tree_prop)
 
         # resizes the columns to fit, then resets to fixed size
         tree_header = self.tree_prop.header()
+        tree_header.setDefaultAlignment(cf.align_type['center'])
         tree_header.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
         tree_header.updateSection(0)
         tree_header.setSectionResizeMode(QHeaderView.ResizeMode.Fixed)
+        tree_header.setStyleSheet("background: rgba(240, 240, 255, 255);")
 
     def init_sorting_frame(self):
 
@@ -296,7 +349,7 @@ class PreprocessInfoTab(SearchMixin, InfoTab):
 
         # sets the frame properties
         self.frame_sort.setLineWidth(1)
-        self.frame_sort.setFixedHeight(100)
+        self.frame_sort.setFixedHeight(120)
         self.frame_sort.setFrameStyle(QFrame.Shadow.Plain | QFrame.Shape.WinPanel)
         # self.frame_sort.setStyleSheet("border: 1px solid;")
 
@@ -360,10 +413,8 @@ class PreprocessInfoTab(SearchMixin, InfoTab):
                 layout_para.setContentsMargins(2 * self.x_gap, 2 * self.x_gap, 2 * self.x_gap, self.x_gap)
 
                 # creates the tab parameter objects
-                self.n_para = 0
                 for k, v in p_val.items():
                     self.create_para_object(layout_para, k, v, v['type'], p_str_p + [k])
-                    self.n_para += 1
 
                 # sets the tab layout
                 panel_frame.setLayout(layout_para)
@@ -400,16 +451,14 @@ class PreprocessInfoTab(SearchMixin, InfoTab):
             case 'combobox':
                 # creates the label/combobox widget combo
                 lbl_str = '{0}: '.format(p_val['name'])
-                obj_combo = QLabelCombo(None, lbl_str, p_val['p_list'], p_val['value'], name=p_str, font_lbl=cw.font_lbl)
+                obj_combo = QLabelCombo(
+                    None, lbl_str, p_val['p_list'], p_val['value'], name=p_str, font_lbl=cw.font_lbl)
                 layout.addRow(obj_combo)
 
                 # sets up the slot function
                 cb_fcn = functools.partial(self.prop_update, p_str_p, is_sort)
                 obj_combo.connect(cb_fcn)
                 obj_combo.obj_lbl.setStyleSheet('padding-top: 3 px;')
-
-                # # appends the parameter search objects
-                # self.search_dlg.append_para_obj(obj_lbl, ps['name'], p_str_l[1])
 
             # case is a checkbox
             case 'checkbox':
@@ -439,6 +488,9 @@ class PreprocessInfoTab(SearchMixin, InfoTab):
 
         elif isinstance(h_obj, QComboBox):
             self.combo_prop_update(h_obj, is_sort, p_str)
+
+        elif isinstance(h_obj, QSpinBox):
+            self.spinbox_prop_update(h_obj, is_sort, p_str)
 
     def check_prop_update(self, h_obj, is_sort, p_str):
 
@@ -479,6 +531,12 @@ class PreprocessInfoTab(SearchMixin, InfoTab):
         p = self.get_prop_field(is_sort)
         cf.set_multi_dict_value(p, p_str, h_obj.currentText())
 
+    def spinbox_prop_update(self, h_obj, is_sort, p_str):
+
+        p = self.get_prop_field(is_sort)
+        spin_val = cf.check_edit_num(h_obj.text(), min_val=0)
+        cf.set_multi_dict_value(p, p_str, spin_val[0])
+
     def sort_tab_change(self):
 
         i_tab_nw = self.tab_group_sort.currentIndex()
@@ -492,26 +550,26 @@ class PreprocessInfoTab(SearchMixin, InfoTab):
 
         return self.s_props if is_sort else self.p_props
 
-    def append_para_obj(self, h_obj, p_name, g_name):
+    def append_para_obj(self, item, group_name):
 
         # increments the count
         self.n_para += 1
-        p_name_s = re.sub(r'<[^>]*>|[&;]+', '', p_name)
+        p_name_s = re.sub(r'<[^>]*>|[&;]+', '', item.text(0))
 
         # appends the objects
-        self.h_para.append(h_obj)
+        self.h_para.append(item)
         self.para_name.append(p_name_s.lower())
         self.para_name0.append(p_name_s)
-        self.para_grp.append(g_name)
+        self.para_grp.append(group_name)
 
-    def append_grp_obj(self, h_obj, g_str, g_name):
+    def append_grp_obj(self, item, group_str):
 
         # increments the count
         self.n_grp += 1
 
         # appends the objects
-        self.h_grp[g_str] = h_obj
-        self.grp_name.append(g_name)
+        self.h_grp[group_str] = item
+        self.grp_name.append(item.text(0))
 
     # ---------------------------------------------------------------------------
     # Static Methods
@@ -522,3 +580,68 @@ class PreprocessInfoTab(SearchMixin, InfoTab):
 
         return {'name': name, 'type': obj_type, 'value': value, 'p_fld': p_fld,
                 'p_list': p_list, 'p_misc': p_misc, 'ch_fld': ch_fld}
+
+    def create_child_tree_item(self, props, p_name):
+
+        # initialisations
+        lbl_str = '{0}:'.format(props['name'])
+        cb_fcn_base = functools.partial(self.prop_update, p_name, False)
+
+        # creates the tree widget item
+        item_ch = QTreeWidgetItem(None)
+        item_ch.setText(0, lbl_str)
+        item_ch.setFont(0, self.item_child_font)
+
+        match props['type']:
+            case 'edit':
+                # case is a lineedit
+                h_obj = QSpinBox()
+
+                # sets the widget properties
+                h_obj.setRange(0, 100000)
+                h_obj.setValue(props['value'])
+
+                # sets the object callback functions
+                cb_fcn = functools.partial(cb_fcn_base, h_obj)
+                h_obj.editingFinished.connect(cb_fcn)
+                h_obj.textChanged.connect(cb_fcn)
+
+            case 'combobox':
+                # case is a comboboxW
+                h_obj = QComboBox()
+
+                # adds the combobox items
+                for p in props['p_list']:
+                    h_obj.addItem(p)
+
+                # sets the widget properties
+                i_sel0 = props['p_list'].index(props['value'])
+                h_obj.setCurrentIndex(i_sel0)
+
+                # sets the object callback functions
+                cb_fcn = functools.partial(cb_fcn_base, h_obj)
+                h_obj.currentIndexChanged.connect(cb_fcn)
+
+            case 'checkbox':
+                # case is a checkbox
+                h_obj = QCheckBox()
+
+                # sets the widget properties
+                h_obj.setCheckState(cf.chk_state[props['value']])
+
+                # sets the object callback functions
+                cb_fcn = functools.partial(cb_fcn_base, h_obj)
+                h_obj.clicked.connect(cb_fcn)
+
+            case _:
+                # default case
+                if isinstance(props['value'], str):
+                    p_str = props['value']
+
+                else:
+                    p_str = "%g" % props['value']
+
+                h_obj = cw.QLabel(p_str)
+
+        # returns the objects
+        return item_ch, h_obj

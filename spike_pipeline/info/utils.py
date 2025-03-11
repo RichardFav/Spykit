@@ -733,7 +733,7 @@ class InfoManager(QWidget):
 
         # widget stylesheets
         info_groupbox_style = """
-            background-color: rgba(240, 240, 255, 255) ;
+            background-color: rgba(240, 240, 255, 255);
         """
 
         # sets the group style sheets

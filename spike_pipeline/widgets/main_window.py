@@ -22,7 +22,7 @@ from spike_pipeline.widgets.open_session import OpenSession
 
 # widget dimensions
 x_gap = 15
-info_width = 285
+info_width = 300
 
 # object dimensions
 dlg_width = 1650
@@ -237,7 +237,7 @@ class MainWindow(QMainWindow):
 
         # # widget stylesheets
         # central_widget_style = """
-        #     background-color: rgba(220, 220, 255, 255) ;
+        #     background-color: rgba(220, 220, 255, 255);
         # """
         #
         # self.central_widget.setStyleSheet(central_widget_style)

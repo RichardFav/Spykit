@@ -55,6 +55,7 @@ align_flag = {
     'left': Qt.AlignmentFlag.AlignLeft,
     'right': Qt.AlignmentFlag.AlignRight,
     'center': Qt.AlignmentFlag.AlignCenter,
+    'vcenter': Qt.AlignmentFlag.AlignVCenter,
 }
 
 # file path/filter modes
