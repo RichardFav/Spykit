@@ -108,6 +108,10 @@ class SessionWorkBook(QObject):
 
         self.channel_data.is_selected[:] = is_checked
 
+    def set_current_run(self, new_run):
+
+        self.current_run = new_run
+
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
     # ---------------------------------------------------------------------------

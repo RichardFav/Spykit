@@ -208,8 +208,8 @@ class InfoManager(QWidget):
                     # performs tab specific updates
                     if t_type == 'channel':
                         # case is the channel tab
-                        tab_widget.data_type.connect(self.channel_combobox_update)
-                        tab_widget.run_type.connect(self.channel_combobox_update)
+                        tab_widget.data_change.connect(self.channel_combobox_update)
+                        tab_widget.run_change.connect(self.channel_combobox_update)
 
             # appends the tab to the tab group
             self.tab_group_table.addTab(tab_widget, t_lbl)
@@ -224,13 +224,18 @@ class InfoManager(QWidget):
     # Channel Tab Event Functions
     # ---------------------------------------------------------------------------
 
-    def channel_combobox_update(self, cb=None):
+    def channel_combobox_update(self, tab_obj):
 
         # if manually updating the combobox, then exit
         if self.is_updating:
             return
 
-        pass
+        # updates the current run flag
+        new_run = tab_obj.run_type.current_text()
+        self.main_obj.session_obj.set_current_run(new_run)
+
+        # resets the trace view
+        self.main_obj.plot_manager.reset_trace_views()
 
     def init_channel_comboboxes(self):
 
@@ -248,9 +253,6 @@ class InfoManager(QWidget):
 
         # resets the update flag
         self.is_updating = False
-
-        # force update the combobox
-        self.channel_combobox_update()
 
     # ---------------------------------------------------------------------------
     # Class Property Widget Setup Functions
