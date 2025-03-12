@@ -14,7 +14,7 @@ import spike_pipeline.common.common_widget as cw
 import spike_pipeline.common.memory_map as mm
 import spike_pipeline.common.spikeinterface_func as sf
 import spike_pipeline.threads.workers as tw
-from spike_pipeline.info.preprocess import PreprocessInfoTab
+from spike_pipeline.info.preprocess import PreprocessInfoTab, PreprocessSetup
 import spike_pipeline.info.utils as ui
 
 import spikewrap as sw
@@ -92,6 +92,10 @@ class Testing(object):
             case 11:
                 # case is the property editor test
                 return self.run_prop_editor_test()
+
+            case 12:
+                # case is the preprocessing setup test
+                return self.run_preprocess_setup_test()
 
     def run_dialog_test(self, title_str="My Dialog"):
         """
@@ -300,5 +304,24 @@ class Testing(object):
         # creates the button
         h_prep_tab = PreprocessInfoTab('preprocess')
         main_layout.addWidget(h_prep_tab)
+
+        return h_app
+
+    def run_preprocess_setup_test(self):
+
+        # dimensions
+        dlg_height, dlg_width = 250, 300
+
+        # # main window widget
+        # h_app = QDialog()
+        # h_app.setFixedSize(dlg_width, dlg_height)
+        #
+        # # creates the dialog layout
+        # main_layout = QVBoxLayout()
+        # h_app.setLayout(main_layout)
+
+        # creates the button
+        h_app = PreprocessSetup()
+        h_app.setFixedSize(dlg_width, dlg_height)
 
         return h_app

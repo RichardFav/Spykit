@@ -10,13 +10,25 @@ import spike_pipeline.common.common_func as cf
 from spike_pipeline.info.common import InfoTab
 from spike_pipeline.common.common_widget import QLabelEdit, QLabelCombo
 
-
 # pyqt imports
-from PyQt6.QtWidgets import (QWidget, QFrame, QSpinBox, QTabWidget, QVBoxLayout, QFormLayout, QSizePolicy,
+from PyQt6.QtWidgets import (QWidget, QFrame, QSpinBox, QTabWidget, QVBoxLayout, QFormLayout, QHBoxLayout,
                              QCheckBox, QLineEdit, QComboBox, QTreeWidget, QTreeWidgetItem, QHeaderView,
-                             QItemDelegate)
+                             QItemDelegate, QListWidget, QGridLayout, QSpacerItem, QSizePolicy, QDialog)
 from PyQt6.QtGui import QIcon, QFont, QColor, QTextDocument, QAbstractTextDocumentLayout
-from PyQt6.QtCore import QSize, QSizeF, Qt, QModelIndex, QRectF
+from PyQt6.QtCore import QSize, QSizeF
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+# preprocessing task map dictionary
+prep_task_map = {
+    'Raw': 'raw',
+    'Phase Shift': 'phase_shift',
+    'Bandpass Filter': 'bandpass_filter',
+    'Common Reference': 'common_reference',
+    'Whitening': 'whitening',
+    'Drift Correction': 'drift_correct',
+    'Sorting': 'sorting',
+}
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -47,20 +59,31 @@ class SearchMixin:
     def init_search_widgets(self):
 
         # initialisations
-        edit_pixmap = QIcon(cw.icon_path['search']).pixmap(QSize(cf.but_height, cf.but_height))
+        close_pixmap = QIcon(cw.icon_path['close']).pixmap(QSize(cf.but_height, cf.but_height))
+        search_pixmap = QIcon(cw.icon_path['search']).pixmap(QSize(cf.but_height, cf.but_height))
 
         # creates the pixmap object
         filter_obj = QLabelEdit(None, '', '')
 
         # filter label properties
-        filter_obj.obj_lbl.setPixmap(edit_pixmap)
+        filter_obj.obj_lbl.setPixmap(search_pixmap)
         filter_obj.obj_lbl.setFixedHeight(cf.but_height)
+        filter_obj.obj_lbl.setSizePolicy(QSizePolicy(cf.q_fix, cf.q_fix))
+
+        # filter label properties
+        close_obj = cw.create_text_label(None, '')
+        close_obj.setPixmap(close_pixmap)
+        close_obj.setFixedHeight(cf.but_height)
+        close_obj.setSizePolicy(QSizePolicy(cf.q_fix, cf.q_fix))
+        close_obj.mouseReleaseEvent = self.label_clear_search
+        filter_obj.layout.addWidget(close_obj)
 
         # filter line edit properties
         self.edit_search = filter_obj.obj_edit
         self.edit_search.textChanged.connect(self.edit_search_change)
         self.edit_search.setPlaceholderText("Search Filter")
         self.edit_search.setFixedHeight(cf.but_height)
+        self.edit_search.setSizePolicy(QSizePolicy(cf.q_expm, cf.q_exp))
 
         # sets the object style sheets
         filter_obj.obj_lbl.setStyleSheet("""
@@ -69,11 +92,16 @@ class SearchMixin:
         """)
         self.edit_search.setStyleSheet("""
             border: 1px solid;                
-            border-left-style: None;            
+            border-left-style: None;  
+            border-right-style: None;                        
+        """)
+        close_obj.setStyleSheet("""
+            border: 1px solid;                
+            border-left-style: None;                     
         """)
 
         # adds the widget to the layout
-        self.tab_layout.addRow(filter_obj.obj_lbl, self.edit_search)
+        self.tab_layout.addRow(filter_obj)
 
     def edit_search_change(self):
 
@@ -104,6 +132,11 @@ class SearchMixin:
 
             # updates the property label text
             hh.setText(0, nn)
+
+    def label_clear_search(self, evnt):
+
+        if len(self.edit_search.text()):
+            self.edit_search.setText("")
 
     @staticmethod
     def add_highlight(s, i0, n):
@@ -339,7 +372,6 @@ class PreprocessInfoTab(SearchMixin, InfoTab):
             item.setFont(0, self.item_font)
             item.setFirstColumnSpanned(True)
             item.setExpanded(True)
-            # item.setBackground(0, self.gray_col)
 
             # adds the main group to the search widget
             self.append_grp_obj(item, pp_s)
@@ -576,6 +608,10 @@ class PreprocessInfoTab(SearchMixin, InfoTab):
 
         return self.s_props if is_sort else self.p_props
 
+    def get_all_prop_fields(self):
+
+        return self.p_props, self.s_props
+
     def append_para_obj(self, item, group_name):
 
         # increments the count
@@ -596,6 +632,28 @@ class PreprocessInfoTab(SearchMixin, InfoTab):
         # appends the objects
         self.h_grp[group_str] = item
         self.grp_name.append(item.text(0))
+
+    # ---------------------------------------------------------------------------
+    # Preprocessing Config Functions
+    # ---------------------------------------------------------------------------
+
+    def setup_config_dict(self, prep_task, is_sorting=False):
+
+        # memory allocation
+        config = {"preprocessing": {}}
+
+        # sets up the preprocessing fields
+        config_pp = config['preprocessing']
+        for i, pp_t in enumerate(prep_task):
+            pp = prep_task_map[pp_t]
+            config_pp[str(i + 1)] = [pp, self.p_props[pp]]
+
+        #
+        if is_sorting:
+            pass
+
+        # returns the config dictionary
+        return config
 
     # ---------------------------------------------------------------------------
     # Static Methods
@@ -677,3 +735,231 @@ class PreprocessInfoTab(SearchMixin, InfoTab):
 
         # returns the objects
         return item_ch, h_obj
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+
+class PreprocessSetup(QDialog):
+    # parameters
+    n_but = 4
+    x_gap = 5
+    gap_sz = 5
+    but_height = 20
+    dlg_height = 250
+    dlg_width = 300
+
+    # array class fields
+    b_icon = ['arrow_right', 'arrow_left', 'arrow_up', 'arrow_down']
+    tt_str = ['Add Task', 'Remove Task', 'Move Task Up', 'Move Task Down']
+    l_task = ['Bandpass Filter', 'Common Reference', 'Phase Shift']
+
+    # widget stylesheets
+    border_style = "border: 1px solid;"
+    frame_style = QFrame.Shape.WinPanel | QFrame.Shadow.Plain
+
+    def __init__(self, main_obj=None):
+        super(PreprocessSetup, self).__init__()
+
+        # sets the input arguments
+        self.main_obj = main_obj
+        self.setWindowTitle("Preprocessing Setup")
+        self.setFixedSize(self.dlg_width, self.dlg_height)
+
+        # sets the main widget/layout
+        self.main_widget = QWidget()
+        self.main_layout = QVBoxLayout()
+
+        # class layouts
+        self.list_layout = QGridLayout(self)
+        self.button_layout = QVBoxLayout()
+        self.control_layout = QHBoxLayout()
+
+        # class widgets
+        self.button_control = []
+        self.button_frame = QWidget(self)
+        self.add_list = QListWidget(None)
+        self.task_list = QListWidget(None)
+        self.spacer_top = QSpacerItem(20, 60, cf.q_min, cf.q_max)
+        self.spacer_bottom = QSpacerItem(20, 60, cf.q_min, cf.q_max)
+
+        # initialises the class fields
+        self.init_class_fields()
+        self.init_control_buttons()
+        self.set_button_props()
+
+    # ---------------------------------------------------------------------------
+    # Class Property Widget Setup Functions
+    # ---------------------------------------------------------------------------
+
+    def init_class_fields(self):
+
+        # initialisations
+        cb_fcn = [self.button_add, self.button_remove, self.button_up, self.button_down]
+
+        # sets up the main layout
+        self.setLayout(self.main_layout)
+        self.main_layout.addWidget(self.main_widget)
+        self.main_widget.setLayout(self.list_layout)
+
+        # main layout properties
+        self.list_layout.setHorizontalSpacing(self.x_gap)
+        self.list_layout.setVerticalSpacing(0)
+        self.list_layout.setContentsMargins(self.x_gap, 0, self.x_gap, 0)
+        self.setLayout(self.list_layout)
+
+        # added list widget properties
+        self.add_list.setStyleSheet(self.border_style)
+        self.add_list.itemClicked.connect(self.set_button_props)
+
+        # task list widget properties
+        self.task_list.addItems(self.l_task)
+        self.task_list.setStyleSheet(self.border_style)
+        self.task_list.itemClicked.connect(self.set_button_props)
+
+        # button layout properties
+        self.button_layout.setSpacing(self.x_gap)
+
+        # adds the spacers/buttons to the button layout
+        self.button_layout.addItem(self.spacer_top)
+        for bi, cb, tt in zip(self.b_icon, cb_fcn, self.tt_str):
+            # creates the button object
+            button_new = cw.create_push_button(self, "")
+
+            # sets the button properties
+            button_new.setObjectName(bi)
+            button_new.setToolTip(tt)
+            button_new.setIcon(QIcon(cw.icon_path[bi]))
+            button_new.setIconSize(QSize(self.but_height - 2, self.but_height - 2))
+            button_new.setFixedSize(self.but_height, self.but_height)
+            button_new.setStyleSheet(self.border_style)
+
+            # sets the button callback
+            button_new.pressed.connect(cb)
+            self.button_layout.addWidget(button_new)
+            self.button_control.append(button_new)
+
+        self.button_layout.addItem(self.spacer_bottom)
+
+        # adds the main widgets to the main layout
+        self.list_layout.addWidget(self.task_list, 0, 0, 1, 1)
+        self.list_layout.addLayout(self.button_layout, 0, 1, 1, 1)
+        self.list_layout.addWidget(self.add_list, 0, 2, 1, 1)
+        self.list_layout.addWidget(self.button_frame, 1, 0, 1, 3)
+
+        # set the grid layout column sizes
+        self.list_layout.setColumnStretch(0, self.gap_sz)
+        self.list_layout.setColumnStretch(1, 1)
+        self.list_layout.setColumnStretch(2, self.gap_sz)
+        self.list_layout.setRowStretch(0, 5)
+        self.list_layout.setRowStretch(1, 1)
+
+    def init_control_buttons(self):
+
+        # initialisations
+        b_str = ['Start Preprocessing', 'Close Window']
+        cb_fcn = [self.start_preprocess, self.close_window]
+
+        # sets the frame/layout properties
+        self.button_frame.setContentsMargins(0, 0, 0, 0)
+        self.button_frame.setLayout(self.control_layout)
+        self.control_layout.setContentsMargins(0, 0, 0, 0)
+
+        # creates the control buttons
+        for bs, cb in zip(b_str, cb_fcn):
+            # creates the button object
+            button_new = cw.create_push_button(self, bs, font=cw.font_lbl)
+            self.control_layout.addWidget(button_new)
+            self.button_control.append(button_new)
+
+            # sets the button properties
+            button_new.pressed.connect(cb)
+            button_new.setFixedHeight(cf.but_height)
+            button_new.setStyleSheet(self.border_style)
+
+    # ---------------------------------------------------------------------------
+    # Class Property Widget Setup Functions
+    # ---------------------------------------------------------------------------
+
+    def button_add(self):
+
+        # swaps the selected item between lists
+        i_index = self.task_list.currentIndex()
+        task_item = self.task_list.takeItem(i_index.row())
+        self.add_list.addItem(task_item.text())
+
+        # updates the button properties
+        self.set_button_props()
+
+    def button_remove(self):
+
+        # swaps the selected item between lists
+        i_index = self.add_list.currentIndex()
+        add_item = self.add_list.takeItem(i_index.row())
+        self.task_list.addItem(add_item)
+
+        # updates the button properties
+        self.set_button_props()
+
+    def button_up(self):
+
+        # field retrieval
+        i_row_sel = self.add_list.currentRow()
+        item_sel = self.add_list.item(i_row_sel)
+        item_prev = self.add_list.item(i_row_sel - 1)
+
+        # reorders the items
+        name_sel, name_prev = item_sel.text(), item_prev.text()
+        item_sel.setText(name_prev)
+        item_prev.setText(name_sel)
+
+        # resets the row selection and button properties
+        self.add_list.setCurrentRow(i_row_sel - 1)
+        self.set_button_props()
+
+    def button_down(self):
+
+        # field retrieval
+        i_row_sel = self.add_list.currentRow()
+        item_sel = self.add_list.item(i_row_sel)
+        item_next = self.add_list.item(i_row_sel + 1)
+
+        # reorders the items
+        name_sel, name_next = item_sel.text(), item_next.text()
+        item_sel.setText(name_next)
+        item_next.setText(name_sel)
+
+        # resets the row selection and button properties
+        self.add_list.setCurrentRow(i_row_sel + 1)
+        self.set_button_props()
+
+    def start_preprocess(self):
+
+        if self.main_obj is not None:
+            # retrieves the selected tasks
+            prep_task = []
+            for i in range(self.add_list.count()):
+                prep_task.append(self.add_list.item(i).text())
+
+            # runs the pre-processing
+            self.main_obj.run_preproccessing(prep_task)
+            self.close_window()
+
+    def close_window(self):
+
+        self.close()
+
+    def set_button_props(self):
+
+        # field retrieval
+        n_added = self.add_list.count() - 1
+        i_row_add = self.add_list.currentRow()
+        i_row_task = self.task_list.currentRow()
+        is_added_sel = i_row_add >= 0
+
+        # updates the button properties
+        self.button_control[0].setEnabled(i_row_task >= 0)
+        self.button_control[1].setEnabled(i_row_add >= 0)
+        self.button_control[2].setEnabled(is_added_sel and (i_row_add > 0))
+        self.button_control[3].setEnabled(is_added_sel and (i_row_add < n_added))
+        self.button_control[4].setEnabled(n_added >= 0)

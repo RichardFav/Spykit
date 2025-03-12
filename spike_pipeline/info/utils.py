@@ -19,7 +19,6 @@ x_gap = 5
 x_gap2 = 2 * x_gap
 x_gap_h = 2
 
-
 # ----------------------------------------------------------------------------------------------------------------------
 
 """
@@ -234,6 +233,10 @@ class InfoManager(QWidget):
         new_run = tab_obj.run_type.current_text()
         self.main_obj.session_obj.set_current_run(new_run)
 
+        # updates the current preprocessing data type
+        i_data = tab_obj.data_type.current_index()
+        self.main_obj.session_obj.set_prep_type(tab_obj.data_flds[i_data])
+
         # resets the trace view
         self.main_obj.plot_manager.reset_trace_views()
 
@@ -247,9 +250,9 @@ class InfoManager(QWidget):
         self.is_updating = True
 
         # resets the combobox fields
-        i_tab = self.t_types.index('channel')
-        self.tabs[i_tab].reset_combobox_fields('data', data_list)
-        self.tabs[i_tab].reset_combobox_fields('run', run_list)
+        channel_tab = self.get_info_tab('channel')
+        channel_tab.reset_combobox_fields('data', data_list)
+        channel_tab.reset_combobox_fields('run', run_list)
 
         # resets the update flag
         self.is_updating = False
@@ -660,11 +663,11 @@ class InfoManager(QWidget):
     def header_check_update(self, t_type, i_state, i_col):
 
         match t_type:
-            case 'Channel Info':
+            case 'Channel':
                 # case is the channel information table
                 self.channel_header_check.emit(i_state == 2)
 
-            case 'Unit Info':
+            case 'Unit':
                 # case is the unit information table
                 self.unit_header_check.emit(i_state == 2)
 
@@ -726,6 +729,10 @@ class InfoManager(QWidget):
     def set_region_config(self, c_id):
 
         self.obj_rconfig.reset_selector_widgets(c_id)
+
+    def get_info_tab(self, tab_type):
+
+        return self.tabs[self.t_types.index(tab_type)]
 
     def setup_widget_callback(self, h_widget=None):
 

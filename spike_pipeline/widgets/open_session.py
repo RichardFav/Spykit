@@ -311,9 +311,9 @@ class OpenSession(QMainWindow):
         self.setFixedWidth(p_width + file_width)
         self.main_layout.setColumnStretch(1, p_width)
 
-    def get_session_run(self, i_run, r_name):
+    def get_session_run(self, i_run, r_name, pp_type=None):
 
-        rec_probe = self.session.get_session_runs(i_run, r_name)
+        rec_probe = self.session.get_session_runs(i_run, r_name, pp_type)
         return rec_probe.get_probe(), rec_probe
 
     def get_session_files(self):

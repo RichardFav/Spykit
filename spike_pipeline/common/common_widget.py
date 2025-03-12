@@ -82,6 +82,11 @@ icon_path = {
     'datatip_on': os.path.join(icon_dir, 'datatip_on_icon.png'),
     'datatip_off': os.path.join(icon_dir, 'datatip_off_icon.png'),
     'search': os.path.join(icon_dir, 'search_icon.png'),
+    'arrow_left': os.path.join(icon_dir, 'arrow_left_icon.png'),
+    'arrow_right': os.path.join(icon_dir, 'arrow_right_icon.png'),
+    'arrow_up': os.path.join(icon_dir, 'arrow_up_icon.png'),
+    'arrow_down': os.path.join(icon_dir, 'arrow_down_icon.png'),
+    'tick': os.path.join(icon_dir, 'tick_icon.png'),
 }
 
 # widget dimensions
@@ -1374,7 +1379,7 @@ class QLabelEdit(QWidget):
 
         # creates the layout widget
         self.layout = QHBoxLayout()
-        self.layout.setSpacing(3)
+        self.layout.setSpacing(0)
         self.layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(self.layout)
 
@@ -1499,9 +1504,17 @@ class QLabelCombo(QWidget):
 
         return self.obj_cbox.currentText()
 
+    def current_index(self):
+
+        return self.obj_cbox.currentIndex()
+
     def set_current_text(self, c_text):
 
         self.obj_cbox.setCurrentText(c_text)
+
+    def set_current_index(self, i_sel):
+
+        self.obj_cbox.setCurrentIndex(i_sel)
 
     def set_enabled(self, state):
 

@@ -368,3 +368,8 @@ def setup_image_file_name(fig_dir, fig_name):
         os.mkdir(fig_dir)
 
     return os.path.join(fig_dir, fig_name)
+
+
+def get_dict_key_from_value(d, val):
+
+    return next((k for k, v in d.items() if (v == val)))

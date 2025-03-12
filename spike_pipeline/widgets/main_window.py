@@ -17,8 +17,9 @@ import spike_pipeline.common.common_func as cf
 import spike_pipeline.common.common_widget as cw
 from spike_pipeline.info.utils import InfoManager
 from spike_pipeline.plotting.utils import PlotManager
-from spike_pipeline.common.property_classes import SessionWorkBook, SessionObject
+from spike_pipeline.common.property_classes import SessionWorkBook
 from spike_pipeline.widgets.open_session import OpenSession
+from spike_pipeline.info.preprocess import PreprocessSetup, prep_task_map
 
 # widget dimensions
 x_gap = 15
@@ -198,25 +199,25 @@ class MainWindow(QMainWindow):
 
         a = 1
 
-    def run_preprocessing(self):
-
-        # configs
-        configs = {
-            "preprocessing": {
-                "1": ["bandpass_filter", {"freq_min": 300, "freq_max": 6000}],
-                "2": ["common_reference", {"operator": "median"}],
-            }
-        }
+    def run_preproccessing(self, prep_task):
 
         # runs the session pre-processing
+        prep_tab = self.info_manager.get_info_tab('preprocess')
+        configs = prep_tab.setup_config_dict(prep_task)
+
+        # runs the preprocessing
         self.session_obj.session.run_preprocessing(configs)
 
-        # REMOVE ME LATER
-        plots = self.session_obj.session._s.plot_preprocessed(
-            show=True,
-            time_range=(0, 0.5),
-            show_channel_ids=False,  # also, "mode"="map" or "line"
-        )
+        # resets the preprocessing data type combobox
+        pp_data_flds = self.session_obj.get_current_prep_data_names()
+
+        # updates the channel data types
+        channel_tab = self.info_manager.get_info_tab('channel')
+        channel_tab.reset_data_types(['Raw'] + prep_task, pp_data_flds)
+        self.session_obj.set_prep_type(pp_data_flds[0])
+
+        # updates the trace views
+        self.plot_manager.reset_trace_views()
 
     # ---------------------------------------------------------------------------
     # Override Functions
@@ -320,12 +321,12 @@ class MenuBar(QObject):
         # ---------------------------------------------------------------------------
 
         # initialisations
-        p_str = ['run_test']
-        p_lbl = ['Run Test']
-        cb_fcn = [self.run_test]
+        p_str = ['run_prep']
+        p_lbl = ['Preprocessing Setup']
+        cb_fcn = [self.run_preproccessing]
 
         # adds the preprocessing menu items
-        self.add_menu_items(h_menu_prep, p_lbl, cb_fcn, p_lbl, False)
+        self.add_menu_items(h_menu_prep, p_lbl, cb_fcn, p_str, False)
 
         # ---------------------------------------------------------------------------
         # House-Keeping Exercises
@@ -412,9 +413,9 @@ class MenuBar(QObject):
     # Preprocessing Menubar Functions
     # ---------------------------------------------------------------------------
 
-    def run_test(self):
+    def run_preproccessing(self):
 
-        self.main_obj.run_preprocessing()
+        PreprocessSetup(self.main_obj).exec()
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions

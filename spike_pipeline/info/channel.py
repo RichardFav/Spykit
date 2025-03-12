@@ -16,6 +16,9 @@ class ChannelInfoTab(InfoTab):
     def __init__(self, t_str):
         super(ChannelInfoTab, self).__init__(t_str)
 
+        # field initialisations
+        self.data_flds = None
+
         # boolean class fields
         self.is_updating = False
 
@@ -67,3 +70,19 @@ class ChannelInfoTab(InfoTab):
         # if manually updating, then exit
         if not self.is_updating:
             self.run_change.emit(self)
+
+    def reset_data_types(self, d_names, d_flds):
+
+        # indicate that
+        self.is_updating = True
+
+        # resets the
+        self.data_type.obj_cbox.clear()
+        self.data_type.obj_cbox.addItems(d_names)
+        self.data_type.set_enabled(len(d_names) > 1)
+
+        # updates the data field
+        self.data_flds = d_flds
+
+        # resets the update flag
+        self.is_updating = False

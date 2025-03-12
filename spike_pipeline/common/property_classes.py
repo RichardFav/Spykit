@@ -13,6 +13,7 @@ import spikewrap as sw
 
 # custom module import
 import spike_pipeline.common.common_func as cf
+from spike_pipeline.info.preprocess import prep_task_map as pp_map
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -41,6 +42,7 @@ class SessionWorkBook(QObject):
         # other class field
         self.current_run = None
         self.current_ses = None
+        self.prep_type = None
         self.n_channels = None
 
         # resets the initialisation flag
@@ -49,10 +51,6 @@ class SessionWorkBook(QObject):
     # ---------------------------------------------------------------------------
     # Getter Functions
     # ---------------------------------------------------------------------------
-
-    def get_current_recording_probe(self):
-
-        return self.session.get_session_runs(self.current_run, self.current_ses)
 
     def get_session_save_data(self):
 
@@ -100,8 +98,16 @@ class SessionWorkBook(QObject):
 
         return self.session_props
 
+    def get_current_recording_probe(self):
+
+        return self.session.get_session_runs(self.current_run, self.current_ses, self.prep_type)
+
+    def get_current_prep_data_names(self):
+
+        return self.session.get_prep_data_names(self.current_run, self.current_ses)
+
     # ---------------------------------------------------------------------------
-    # Getter Functions
+    # Setter Functions
     # ---------------------------------------------------------------------------
 
     def set_all_channel_states(self, is_checked):
@@ -111,6 +117,10 @@ class SessionWorkBook(QObject):
     def set_current_run(self, new_run):
 
         self.current_run = new_run
+
+    def set_prep_type(self, new_type):
+
+        self.prep_type = new_type
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
@@ -209,14 +219,16 @@ class SessionObject:
     # Session wrapper functions
     # ---------------------------------------------------------------------------
 
-    def get_session_runs(self, i_run, r_name=None):
+    def get_session_runs(self, i_run, run_type=None, pp_type=None):
 
         if isinstance(i_run, str):
-            run_names = self.get_run_names()
-            i_run = run_names.index(i_run)
+            i_run = self.get_run_index(i_run)
 
-        if r_name is not None:
-            return self._s._runs[i_run]._raw[r_name]
+        if pp_type is not None:
+            return self._s._runs[i_run]._preprocessed[run_type]._data[pp_type]
+
+        elif run_type is not None:
+            return self._s._runs[i_run]._raw[run_type]
 
         else:
             return self._s._runs[i_run]
@@ -233,6 +245,17 @@ class SessionObject:
     def get_session_props(self):
 
         return self._s_props
+
+    def get_prep_data_names(self, i_run, run_type):
+
+        if isinstance(i_run, str):
+            i_run = self.get_run_index(i_run)
+
+        return list(self._s._runs[i_run]._preprocessed[run_type]._data.keys())
+
+    def get_run_index(self, run_name):
+
+        return self.get_run_names().index(run_name)
 
     def run_preprocessing(self, configs, per_shank=False, concat_runs=False):
 
