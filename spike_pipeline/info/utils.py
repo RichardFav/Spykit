@@ -234,11 +234,12 @@ class InfoManager(QWidget):
         self.main_obj.session_obj.set_current_run(new_run)
 
         # updates the current preprocessing data type
-        i_data = tab_obj.data_type.current_index()
-        self.main_obj.session_obj.set_prep_type(tab_obj.data_flds[i_data])
+        if tab_obj.data_flds is not None:
+            i_data = tab_obj.data_type.current_index()
+            self.main_obj.session_obj.set_prep_type(tab_obj.data_flds[i_data])
 
         # resets the trace view
-        self.main_obj.plot_manager.reset_trace_views()
+        self.main_obj.plot_manager.reset_trace_views(False)
 
     def init_channel_comboboxes(self):
 

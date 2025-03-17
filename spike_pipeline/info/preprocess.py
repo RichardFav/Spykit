@@ -752,7 +752,7 @@ class PreprocessSetup(QDialog):
     # array class fields
     b_icon = ['arrow_right', 'arrow_left', 'arrow_up', 'arrow_down']
     tt_str = ['Add Task', 'Remove Task', 'Move Task Up', 'Move Task Down']
-    l_task = ['Bandpass Filter', 'Common Reference', 'Phase Shift']
+    l_task = ['Phase Shift', 'Bandpass Filter', 'Common Reference']
 
     # widget stylesheets
     border_style = "border: 1px solid;"

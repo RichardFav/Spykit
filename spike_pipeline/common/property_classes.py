@@ -45,6 +45,10 @@ class SessionWorkBook(QObject):
         self.prep_type = None
         self.n_channels = None
 
+        # # REMOVE ME LATER
+        # self.y_min = None
+        # self.y_max = None
+
         # resets the initialisation flag
         self.has_init = True
 
@@ -140,6 +144,11 @@ class SessionWorkBook(QObject):
         self.channel_data = ses_data['channel_data']
         self.calculated_data = ses_data['calculated_data']
 
+        # calculates the min/max potentials
+        # y = self.get_traces()
+        # self.y_min = np.min(y, axis=0)
+        # self.y_max = np.max(y, axis=0)
+
     # ---------------------------------------------------------------------------
     # Static Methods
     # ---------------------------------------------------------------------------
@@ -176,6 +185,8 @@ class SessionObject:
 
         # class field initialisations
         self._s = None
+        # self.y_min = None
+        # self.y_max = None
         self._s_props = s_props
 
         # creates the session property fields from the input dictionary

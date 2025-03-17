@@ -122,13 +122,14 @@ class TracePlot(TraceLabelMixin, PlotWidget):
     hide_plot = pyqtSignal()
 
     # parameters
+    n_frm_plt = 10000
     y_gap = 2
     y_ofs = 0.2
     p_gap = 0.05
     n_lvl = 100
     n_col_img = 1000
     n_row_yscl = 100
-    t_dur_max0 = 2
+    t_dur_max0 = 1
 
     # pen widgets
     l_pen = mkPen(width=3, color='y')
@@ -156,13 +157,14 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.trace_release_fcn = None
         self.trace_dclick_fcn = None
 
-        # parameters
-        self.n_plt = 0
-        self.y_lim_tr = self.y_ofs / 2
+        # axes limits
+        self.y_lim = []
         self.t_dur_max = np.min([self.t_dur, self.t_dur_max0])
+        self.y_lim_tr = self.y_ofs / 2
         self.t_lim = [0, self.t_dur_max]
 
         # trace label class fields
+        self.n_plt = 0
         self.n_show = 0
         self.labels = []
         self.i_trace = None
@@ -207,7 +209,9 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.plot_item.setMouseEnabled()
         self.plot_item.hideAxis('left')
         self.plot_item.hideButtons()
+        # self.plot_item.setDownsampling(ds=1000)
         self.plot_item.setDownsampling(auto=True)
+        self.plot_item.setClipToView(True)
 
         # sets the axis limits
         self.v_box[0, 0].setXRange(self.t_lim[0], self.t_lim[1], padding=0)
@@ -221,7 +225,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
         # creates the trace curves
         for i_ch in range(self.n_channels):
-            curve = PlotCurveItem(pen=self.l_pen_trace, skipFiniteCheck=True)
+            curve = PlotCurveItem(pen=self.l_pen_trace, skipFiniteCheck=False)
             curve.setPos(0, i_ch * self.y_gap)
             self.h_plot[0, 0].addItem(curve)
             self.trace_curves.append(curve)
@@ -323,7 +327,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
     # Plot Update/Reset Functions
     # ---------------------------------------------------------------------------
 
-    def reset_trace_view(self, double_click_reset=False):
+    def reset_trace_view(self, reset_limits=True):
 
         # retrieves the currently selected channels
         i_channel = self.session_info.get_selected_channels()
@@ -334,35 +338,51 @@ class TracePlot(TraceLabelMixin, PlotWidget):
             s_freq = self.session_info.session_props.s_freq
             i_frm0 = int(self.t_lim[0] * s_freq)
             i_frm1 = int(self.t_lim[1] * s_freq)
+            n_frm = i_frm1 - i_frm0
+
+            n_ds = np.max([int(np.floor(n_frm / self.n_frm_plt)), 1])
 
             # sets up the x-data array
-            x = np.linspace(self.t_lim[0], self.t_lim[1], i_frm1 - i_frm0)
+            # x = np.linspace(self.t_lim[0], self.t_lim[1], n_frm)
+            x = np.linspace(self.t_lim[0], self.t_lim[1], n_frm)
+
+            # t0 = time.time()
 
             # sets up the y-data array
             ch_ids = self.session_info.get_channel_ids(i_channel)
             y0 = self.session_info.get_traces(start_frame=i_frm0, end_frame=i_frm1, channel_ids=ch_ids)
             for i in range(self.n_plt):
+                # calculates the scaled traces
                 y_min, y_max = np.min(y0[:, i]), np.max(y0[:, i])
                 y_scl = self.y_ofs + (1 - self.y_ofs) * (y0[:, i] - y_min) / (y_max - y_min)
+
+                # resets the curve data
+                self.trace_curves[i].clear()
                 self.trace_curves[i].setData(x, y_scl)
 
-            # sets the y-axis range
+            # print(time.time() - t0)
+
+            # sets the maximum y-axis trace range
             self.y_lim_tr = 1 + (self.n_plt - 1) * self.y_gap
 
         else:
             # case is there are no plots (collapse y-axis range)
             self.y_lim_tr = self.y_ofs / 2.
 
-        # resets the y-axis range
+        # resets the maximum y-axis trace range
         self.v_box[0, 0].setLimits(yMax=self.y_lim_tr)
-        self.v_box[0, 0].setYRange(0, (1 + self.p_gap) * self.y_lim_tr, padding=0)
 
-        if not double_click_reset:
-            self.trace_double_click()
+        # resets the other plot properties
+        self.plot_item.setDownsampling(auto=True)
+        self.plot_item.setClipToView(True)
 
-        # # updates the plot labels
-        # if self.is_show:
-        #     self.update_labels()
+        if reset_limits:
+            # resets the y-axis range
+            self.reset_yaxis_limits()
+
+        # updates the plot labels
+        if self.is_show:
+            self.update_labels()
 
     def reset_frame_image(self):
 
@@ -380,7 +400,9 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         # runs the original mouse event function
         if evnt is not None:
             self.trace_release_fcn(evnt)
-            self.h_plot[0, 0].setYRange(0, (1 + self.p_gap) * self.y_lim_tr, padding=0)
+
+            # resets the y-axis range
+            self.reset_yaxis_limits()
 
             # determines if the time axis needs resetting
             if np.diff(self.t_lim)[0] < self.t_dur_max:
@@ -389,15 +411,9 @@ class TracePlot(TraceLabelMixin, PlotWidget):
                 else:
                     self.t_lim[1] = self.t_lim[0] = self.t_dur_max
 
-                # updates the time limits
-                self.h_plot[0, 0].setXRange(self.t_lim[0], self.t_lim[1], padding=0)
-                self.l_reg_x.setRegion(self.t_lim)
-
                 # resets the trace view
+                self.reset_xaxis_limits()
                 self.reset_trace_view(True)
-
-        # resets the y-range
-        self.l_reg_y.setRegion((0, 100))
 
         # updates the labels (if currently displaying)
         if self.is_show:
@@ -415,12 +431,12 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.trace_release_fcn(evnt)
 
         # retrieves the new axis limit
-        y_lim = self.v_box[0, 0].viewRange()[1]
+        self.y_lim = self.v_box[0, 0].viewRange()[1]
         self.t_lim = self.v_box[0, 0].viewRange()[0]
 
         # resets the x/y-axis linear regions
         self.l_reg_x.setRegion(self.t_lim)
-        self.l_reg_y.setRegion(100 * np.array(y_lim) / self.y_lim_tr)
+        self.l_reg_y.setRegion(100 * np.array(self.y_lim) / self.y_lim_tr)
 
         # updates the labels (if currently displaying)
         if self.is_show:
@@ -428,6 +444,21 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
         # resets the update flag
         self.is_updating = False
+
+    # ---------------------------------------------------------------------------
+    # Axis Limit Reset Functions
+    # ---------------------------------------------------------------------------
+
+    def reset_yaxis_limits(self):
+
+        self.h_plot[0, 0].setYRange(0, (1 + self.p_gap) * self.y_lim_tr, padding=0)
+        self.l_reg_y.setRegion((0, 100))
+
+    def reset_xaxis_limits(self):
+
+        # updates the time limits
+        self.h_plot[0, 0].setXRange(self.t_lim[0], self.t_lim[1], padding=0)
+        self.l_reg_x.setRegion(self.t_lim)
 
     # ---------------------------------------------------------------------------
     # Frame Region Event Functions

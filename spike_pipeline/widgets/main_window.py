@@ -70,8 +70,8 @@ class MainWindow(QMainWindow):
         # sets the widget style sheets
         self.set_styles()
 
-        # REMOVE ME LATER
-        self.testing()
+        # # REMOVE ME LATER
+        # self.testing()
 
     # ---------------------------------------------------------------------------
     # Class Widget Setup Functions
@@ -174,8 +174,8 @@ class MainWindow(QMainWindow):
     def update_channel(self, i_row):
 
         self.session_obj.toggle_channel_flag(i_row)
-        self.plot_manager.reset_trace_views()
         self.plot_manager.reset_probe_views()
+        self.plot_manager.reset_trace_views()
 
         t_type = self.info_manager.table_tab_lbl[0]
         self.info_manager.update_header_checkbox_state(t_type)
@@ -214,7 +214,7 @@ class MainWindow(QMainWindow):
         # updates the channel data types
         channel_tab = self.info_manager.get_info_tab('channel')
         channel_tab.reset_data_types(['Raw'] + prep_task, pp_data_flds)
-        self.session_obj.set_prep_type(pp_data_flds[0])
+        # self.session_obj.set_prep_type(pp_data_flds[-1])
 
         # updates the trace views
         self.plot_manager.reset_trace_views()

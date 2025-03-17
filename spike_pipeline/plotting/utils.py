@@ -173,10 +173,10 @@ class PlotManager(QWidget):
         plt_probe = self.plots[self.types['probe'] - 1]
         plt_probe.reset_probe_views()
 
-    def reset_trace_views(self):
+    def reset_trace_views(self, reset_limits=True):
 
         plt_trace = self.plots[self.types['trace'] - 1]
-        plt_trace.reset_trace_view()
+        plt_trace.reset_trace_view(reset_limits)
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
