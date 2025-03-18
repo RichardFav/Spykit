@@ -13,7 +13,7 @@ from PyQt6.QtCore import Qt
 import spike_pipeline.common.common_widget as cw
 import spike_pipeline.common.memory_map as mm
 import spike_pipeline.common.spikeinterface_func as sf
-import spike_pipeline.threads.workers as tw
+import spike_pipeline.threads.utils as tw
 from spike_pipeline.info.preprocess import PreprocessInfoTab, PreprocessSetup
 import spike_pipeline.info.utils as ui
 
