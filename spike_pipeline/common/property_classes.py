@@ -3,6 +3,8 @@ import os
 import functools
 
 # pyqt6 module import
+import time
+
 import numpy as np
 from PyQt6.QtWidgets import (QMainWindow, QHBoxLayout, QFormLayout, QWidget,
                              QScrollArea, QSizePolicy, QStatusBar, QMenuBar)
@@ -140,8 +142,6 @@ class SessionWorkBook(QObject):
 
         # resets the session object
         self.session = SessionObject(ses_data['session_props'])
-        self.session.session_loaded.connect(self.update_session)
-        self.session.channels_detected.connect(self.update_channels)
 
         # resets the other class fields
         self.state = ses_data['state']
@@ -157,31 +157,40 @@ class SessionWorkBook(QObject):
     # Static Methods
     # ---------------------------------------------------------------------------
 
-    def update_session(self):
+    @staticmethod
+    def update_session(_self):
 
         # resets the current run/session names
-        self.current_run = self.session.get_run_names()[0]
-        self.current_ses = self.session.get_session_names(0)[0]
+        _self.current_run = _self.session.get_run_names()[0]
+        _self.current_ses = _self.session.get_session_names(0)[0]
 
         # sets up the channel data object
-        probe_current = self.get_current_recording_probe()
-        self.channel_data = ChannelData(probe_current)
-        self.session_props = SessionProps(probe_current)
+        _probe_current = _self.get_current_recording_probe()
+        _self.channel_data = ChannelData(_probe_current)
+        _self.session_props = SessionProps(_probe_current)
 
         # runs the session change signal function
-        if self.has_init:
-            self.session_change.emit()
+        if _self.has_init:
+            _self.session_change.emit()
+
+    # trace property observer properties
+    session = cf.ObservableProperty(update_session)
 
     def update_channels(self, ch_data, ch_type):
+
+        if self.channel_data is None:
+            self.setup_channel_data()
 
         match ch_type:
             case "bad":
                 # case is the bad channels
                 self.channel_data.set_bad_channels(ch_data)
+                print("Bad Channels Detected")
 
             case "sync":
                 # case is the sync channels
                 self.channel_data.set_sync_channels(ch_data)
+                print("Sync Channels Detected")
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -192,7 +201,7 @@ class SessionWorkBook(QObject):
 
 class SessionObject(QObject):
     # pyqtsignal functions
-    session_loaded = pyqtSignal()
+    channel_data_setup = pyqtSignal(object)
     channels_detected = pyqtSignal(object, str)
 
     def __init__(self, s_props):
@@ -200,15 +209,17 @@ class SessionObject(QObject):
 
         # class field initialisations
         self._s = None
-        # self.y_min = None
-        # self.y_max = None
         self._s_props = s_props
+
+        # bad/sync channels
+        self.bad_ch = None
+        self.sync_ch = None
 
         # creates the session property fields from the input dictionary
         for sp in s_props:
             setattr(self, sp, s_props[sp])
 
-        # loads the session object
+        # loads the session
         self.load_session()
 
     # ---------------------------------------------------------------------------
@@ -220,111 +231,90 @@ class SessionObject(QObject):
         match self.format_type:
             case 'folder':
                 # case is loading from folder format
-                ses_dict = {
-                    "format_type": "folder",
-                    "subject_path": self.subject_path,
-                    "session_name": self.session_name,
-                    "file_format": self.file_format,
-                    "run_names": self.run_names,
-                    "output_path": self.output_path,
-                }
+                self._s = sw.Session(
+                    subject_path=self.subject_path,
+                    session_name=self.session_name,
+                    file_format=self.file_format,
+                    run_names=self.run_names,
+                    output_path=self.output_path,
+                )
 
             case 'file':
                 # case is loading from raw data file
 
                 # FINISH ME!
-                ses_dict = None
+                pass
 
-            case _:
-                # default case
-                ses_dict = None
+        # loads the raw data and channel data
+        self._s.load_raw_data()
+        self.load_channel_data()
 
-        # starts the thread worker
-        t_worker = ThreadWorker(self, self.session_load, ses_dict)
-        t_worker.work_finished.connect(self.post_session_load)
-        t_worker.start()
+    def load_channel_data(self):
+
+        # pauses for things to catch up...
+        time.sleep(0.1)
+
+        # memory allocation
+        n_run = self.get_run_count()
+        self.bad_ch = np.empty(n_run, dtype=object)
+        self.sync_ch = np.empty(n_run, dtype=object)
+
+        for i_run in range(n_run):
+            # sets up the bad channel detection worker
+            ses_run = self.get_session_runs(i_run)
+            t_worker_bad = ThreadWorker(self, self.get_bad_channel, (ses_run, i_run))
+            t_worker_bad.work_finished.connect(self.post_get_bad_channel)
+            t_worker_bad.start()
+
+            # sets up the sync channel detection worker
+            t_worker_sync = ThreadWorker(self, self.get_sync_channel, (self._s, i_run))
+            t_worker_sync.work_finished.connect(self.post_get_sync_channel)
+            t_worker_sync.start()
 
     # ---------------------------------------------------------------------------
     # Thread worker functions
     # ---------------------------------------------------------------------------
 
     @staticmethod
-    def session_load(p_obj, ses_dict):
+    def get_bad_channel(p_obj, run_data):
 
-        # creates the session object
-        ses_obj = None
-        match ses_dict['format_type']:
-            case 'folder':
-                # case is loading from folder format
-                ses_obj = sw.Session(
-                    subject_path=ses_dict["subject_path"],
-                    session_name=ses_dict["session_name"],
-                    file_format=ses_dict["file_format"],
-                    run_names=ses_dict["run_names"],
-                    output_path=ses_dict["output_path"],
-                )
-
-        # loads the session object
-        ses_obj.load_raw_data()
-
-        # returns the session object
-        return ses_obj
-
-    @staticmethod
-    def get_bad_channel(p_obj, ses_obj):
+        # field retrieval
+        ses_run, i_run = run_data
 
         # retrieves the sync channels for each session/run
-        s_channel = []
-        for idx in range(len(ses_obj._raw_runs)):
-            ses_run = p_obj.get_session_runs(idx)
-            for probe in ses_run._raw.values():
-                s_channel.append(si.preprocessing.detect_bad_channels(probe))
+        b_channel = []
+        for probe in ses_run._raw.values():
+            b_channel.append(si.preprocessing.detect_bad_channels(probe))
 
         # returns the bad channels
-        return s_channel
+        return b_channel, i_run
 
     @staticmethod
-    def get_sync_channel(p_obj, ses_obj):
+    def get_sync_channel(p_obj, run_data):
 
-        # retrieves the sync channels for each run
-        s_channel = []
-        for idx in range(len(ses_obj._raw_runs)):
-            s_channel.append(ses_obj.get_sync_channel(idx))
+        # field retrieval
+        ses_obj, i_run = run_data
 
         # returns the sync channels
-        return s_channel
+        return ses_obj.get_sync_channel(i_run), i_run
 
     # ---------------------------------------------------------------------------
     # Post thread worker functions
     # ---------------------------------------------------------------------------
 
-    def post_session_load(self, ses_obj):
-
-        # updates the session object field
-        self._s = ses_obj
-
-        # sets up the bad channel detection worker
-        t_worker_bad = ThreadWorker(self, self.get_bad_channel, ses_obj)
-        t_worker_bad.work_finished.connect(self.post_get_bad_channel)
-
-        # sets up the sync channel detection worker
-        t_worker_sync = ThreadWorker(self, self.get_sync_channel, ses_obj)
-        t_worker_sync.work_finished.connect(self.post_get_sync_channel)
-
-        # starts the worker objects
-        t_worker_bad.start()
-        t_worker_sync.start()
-
-        # emits the session loaded signal
-        self.session_loaded.emit()
-
     def post_get_bad_channel(self, data):
 
-        self.channels_detected.emit(data, "bad")
+        ch_data, i_run = data
+        self.bad_ch[i_run] = ch_data
+
+        print("Bad Channel {0} Data Detected".format(i_run))
 
     def post_get_sync_channel(self, data):
 
-        self.channels_detected.emit(data, "sync")
+        ch_data, i_run = data
+        self.sync_ch[i_run] = ch_data
+
+        print("Sync Channel {0} Data Detected".format(i_run))
 
     # ---------------------------------------------------------------------------
     # Session wrapper functions
@@ -367,6 +357,10 @@ class SessionObject(QObject):
     def get_run_index(self, run_name):
 
         return self.get_run_names().index(run_name)
+
+    def get_run_count(self):
+
+        return len(self._s._raw_runs)
 
     def run_preprocessing(self, configs, per_shank=False, concat_runs=False):
 
@@ -443,10 +437,6 @@ class SessionObject(QObject):
 class ChannelData:
     def __init__(self, probe_rec):
 
-        # sync/bad channel fields
-        self.bad_channels = None
-        self.sync_channels = None
-
         # class field initialisations
         self.channel_ids = probe_rec.channel_ids
         self.n_channel = probe_rec.get_num_channels()
@@ -469,14 +459,6 @@ class ChannelData:
 
                 case 2:
                     self.is_selected[i_ch] = True
-
-    def set_bad_channels(self, ch_data):
-
-        self.bad_channels = ch_data
-
-    def set_sync_channels(self, ch_data):
-
-        self.sync_channels = ch_data
 
 # ----------------------------------------------------------------------------------------------------------------------
 

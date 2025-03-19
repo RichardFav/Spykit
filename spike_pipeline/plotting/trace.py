@@ -354,7 +354,10 @@ class TracePlot(TraceLabelMixin, PlotWidget):
             for i in range(self.n_plt):
                 # calculates the scaled traces
                 y_min, y_max = np.min(y0[:, i]), np.max(y0[:, i])
-                y_scl = self.y_ofs + (1 - self.y_ofs) * (y0[:, i] - y_min) / (y_max - y_min)
+                if np.abs(y_max - y_min) == 0:
+                    y_scl = self.y_ofs + (1 - self.y_ofs) * np.ones(n_frm)
+                else:
+                    y_scl = self.y_ofs + (1 - self.y_ofs) * (y0[:, i] - y_min) / (y_max - y_min)
 
                 # resets the curve data
                 self.trace_curves[i].clear()
