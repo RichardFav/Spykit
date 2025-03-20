@@ -43,7 +43,7 @@ class InfoManager(QWidget):
     props_name = 'Plot Properties'
     table_name = 'Channel/Unit Information'
     props_tab_lbl = ['Region Configuration']
-    plot_types = ['Trace', 'Probe']
+    plot_types = ['Trace', 'Probe', 'Trigger']
     table_tab_lbl = ['Channel Info', 'Unit Info']
     table_tab_type = ['channel', 'unit']
 

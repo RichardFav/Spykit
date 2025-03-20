@@ -98,10 +98,26 @@ class SessionWorkBook(QObject):
 
         return np.where(self.channel_data.is_selected)[0]
 
-    def get_min_max_values(self, i_ch=None):
+    def get_min_max_values(self, t_lim, i_ch):
 
+        # determines the current run
         i_run = self.session.get_run_index(self.current_run)
-        return [z[0][i_ch] for z in self.session.min_max[i_run, :]]
+
+        # retrieves the blocks covered by the time range
+        t_min_max = self.session.t_min_max[i_run]
+        i_blk0 = np.where(t_lim[0] >= t_min_max[:, 0])[0][0]
+        i_blk1 = np.where(t_lim[1] <= t_min_max[:, 1])[0][0]
+        i_blk_rng = np.arange(int(i_blk0), int(i_blk1 + 1))
+
+        # calculates the overall min/max value over all contiguous blocks
+        y_min = self.session.min_max[i_run, 0][0][i_blk_rng, i_ch]
+        y_max = self.session.min_max[i_run, 1][0][i_blk_rng, i_ch]
+
+        if len(i_blk_rng) > 1:
+            return np.min(y_min, axis=0), np.max(y_max, axis=0)
+
+        else:
+            return y_min, y_max
 
     def get_channel_count(self):
 
@@ -205,6 +221,7 @@ class SessionObject(QObject):
         # bad/sync channels
         self.bad_ch = None
         self.sync_ch = None
+        self.t_min_max = None
         self.min_max = None
 
         # creates the session property fields from the input dictionary
@@ -250,6 +267,7 @@ class SessionObject(QObject):
         n_run = self.get_run_count()
         self.bad_ch = np.empty(n_run, dtype=object)
         self.sync_ch = np.empty(n_run, dtype=object)
+        self.t_min_max = np.empty(n_run, dtype=object)
         self.min_max = np.empty((n_run, 2), dtype=object)
 
         for i_run in range(n_run):
@@ -306,15 +324,40 @@ class SessionObject(QObject):
         # field retrieval
         ses_run, i_run, t0 = run_data
 
-        # retrieves the frame count
+        # memory allocation
         y_min, y_max = [], []
+        # hist_range = (-500, 500)
+        sz_blk, n_bins, t_blk, n_ds = 150000, 100, 10, 10
+
         for probe in ses_run._raw.values():
+            # retrieves the traces for the current probe
             y_sig = probe.get_traces()
-            y_min.append(np.min(y_sig, axis=0))
-            y_max.append(np.max(y_sig, axis=0))
+
+            # determines the histogram block size
+            n_frm, n_ch = y_sig.shape
+            n_frm_blk = np.min([n_frm, int(probe.sampling_frequency * t_blk)])
+            n_blk = int(np.ceil(n_frm / n_frm_blk))
+
+            # allocates memory for the current probe
+            t_blk = np.zeros((n_blk, 2))
+            y_min_tmp, y_max_tmp = np.zeros((n_blk, n_ch)), np.zeros((n_blk, n_ch))
+            for i_blk in range(n_blk):
+                # retrieves the sub-signal block
+                t_blk[i_blk, 0] = i_blk * n_frm_blk
+                t_blk[i_blk, 1] = np.min([(i_blk + 1) * n_frm_blk, n_frm])
+                i_row_blk = np.arange(int(t_blk[i_blk, 0]), int(t_blk[i_blk, 1]))
+                y_sig_blk = y_sig[i_row_blk, :][::n_ds, :]
+
+                # calculates the min/max over the block
+                y_min_tmp[i_blk, :] = np.min(y_sig_blk, axis=0)
+                y_max_tmp[i_blk, :] = np.max(y_sig_blk, axis=0)
+
+            # appends the min/max values
+            y_min.append(y_min_tmp)
+            y_max.append(y_max_tmp)
 
         # returns the min/max values
-        return y_min, y_max, i_run, t0
+        return t_blk, y_min, y_max, i_run, t0
 
     # ---------------------------------------------------------------------------
     # Post thread worker functions
@@ -336,7 +379,8 @@ class SessionObject(QObject):
 
     def post_calc_trace_minmax(self, data):
 
-        y_min, y_max, i_run, t0 = data
+        t_blk, y_min, y_max, i_run, t0 = data
+        self.t_min_max[i_run] = t_blk
         self.min_max[i_run, :] = [y_min, y_max]
 
         print("Min/Max Calculated for Channel {0} - {1}".format(i_run, time.time() - t0))

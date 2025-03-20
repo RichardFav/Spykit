@@ -126,11 +126,18 @@ class MainWindow(QMainWindow):
         # sets up the trace/probe views
         self.plot_manager.get_plot_view('trace')
         self.plot_manager.get_plot_view('probe')
+        self.plot_manager.get_plot_view('trigger')
 
         # resets the plot view to include only the trace/probe views
         i_plot_trace = self.plot_manager.get_plot_index('trace')
         i_plot_probe = self.plot_manager.get_plot_index('probe')
-        c_id = np.array([[i_plot_trace, i_plot_trace, i_plot_probe]])
+        i_plot_trigger = self.plot_manager.get_plot_index('trigger')
+
+        c_id = np.zeros((4, 3), dtype=int)
+        c_id[:4, :2] = i_plot_trace
+        c_id[:, -1] = i_plot_probe
+        c_id[-1, :2] = i_plot_trigger
+
         self.plot_manager.update_plot_config(c_id)
         self.info_manager.set_region_config(c_id)
 

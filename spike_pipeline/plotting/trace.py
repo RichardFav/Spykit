@@ -110,6 +110,7 @@ class TraceLabelMixin:
 
         return int(np.prod(np.sign(y_lim - y_pos))) == -1
 
+
 # ----------------------------------------------------------------------------------------------------------------------
 
 """
@@ -158,10 +159,9 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.trace_release_fcn = None
         self.trace_dclick_fcn = None
 
-        #
+        # trace fields
         self.x_tr = None
         self.y_tr = None
-        self.c_tr = None
 
         # axes limits
         self.y_lim = []
@@ -354,7 +354,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
             # sets up the y-data array
             ch_ids = self.session_info.get_channel_ids(i_channel)
-            y_min, y_max = self.session_info.get_min_max_values(i_channel)
+            y_min, y_max = self.session_info.get_min_max_values(self.t_lim, i_channel)
             y0 = self.session_info.get_traces(start_frame=i_frm0, end_frame=i_frm1, channel_ids=ch_ids)
 
             #

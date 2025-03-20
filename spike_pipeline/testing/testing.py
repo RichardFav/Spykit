@@ -224,6 +224,7 @@ class Testing(object):
         # adds the plot views
         plt_manager.add_plot_view('trace')
         plt_manager.add_plot_view('probe')
+        plt_manager.add_plot_view('trigger')
 
         # test
         c_id = np.array([[1, 1, 2],[1, 1, 2]])
