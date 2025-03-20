@@ -136,6 +136,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
     l_pen_hover = mkPen(width=3, color='g')
     l_pen_trace = mkPen(color=cf.get_colour_value('g'), width=1)
     l_pen_high = mkPen(color=cf.get_colour_value('y'), width=1)
+    l_pen_bad = mkPen(color=cf.get_colour_value('r'), width=1)
 
     lbl_tt_str = ['Hide Channel Labels', 'Show Channel Labels']
 
@@ -157,6 +158,11 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.trace_release_fcn = None
         self.trace_dclick_fcn = None
 
+        #
+        self.x_tr = None
+        self.y_tr = None
+        self.c_tr = None
+
         # axes limits
         self.y_lim = []
         self.t_dur_max = np.min([self.t_dur, self.t_dur_max0])
@@ -176,9 +182,13 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.l_reg_y = None
         self.i_sel_tr = None
         self.frame_img = None
-        self.trace_curves = []
         self.ximage_item = ImageItem()
         self.yimage_item = ImageItem()
+
+        # trace items
+        self.main_trace = PlotCurveItem(pen=self.l_pen_trace, skipFiniteCheck=False)
+        self.highlight_trace = PlotCurveItem(pen=self.l_pen_high, skipFiniteCheck=False)
+        self.bad_trace = PlotCurveItem(pen=self.l_pen_bad, skipFiniteCheck=False)
 
         # sets up the plot regions
         self.setup_subplots(n_r=2, n_c=2)
@@ -223,12 +233,10 @@ class TracePlot(TraceLabelMixin, PlotWidget):
             cb_fcn = functools.partial(self.plot_button_clicked, pb.objectName())
             pb.clicked.connect(cb_fcn)
 
-        # creates the trace curves
-        for i_ch in range(self.n_channels):
-            curve = PlotCurveItem(pen=self.l_pen_trace, skipFiniteCheck=False)
-            curve.setPos(0, i_ch * self.y_gap)
-            self.h_plot[0, 0].addItem(curve)
-            self.trace_curves.append(curve)
+        # adds the traces to the main plot
+        self.h_plot[0, 0].addItem(self.main_trace)
+        self.h_plot[0, 0].addItem(self.highlight_trace)
+        self.h_plot[0, 0].addItem(self.bad_trace)
 
         # sets the signal trace plot event functions
         self.trace_dclick_fcn = self.h_plot[0, 0].mousePressEvent
@@ -340,28 +348,31 @@ class TracePlot(TraceLabelMixin, PlotWidget):
             i_frm1 = int(self.t_lim[1] * s_freq)
             n_frm = i_frm1 - i_frm0
 
-            n_ds = np.max([int(np.floor(n_frm / self.n_frm_plt)), 1])
-
             # sets up the x-data array
-            # x = np.linspace(self.t_lim[0], self.t_lim[1], n_frm)
-            x = np.linspace(self.t_lim[0], self.t_lim[1], n_frm)
-
-            # t0 = time.time()
+            self.x_tr = np.empty((self.n_plt, n_frm))
+            self.x_tr[:] = np.linspace(self.t_lim[0], self.t_lim[1], n_frm)
 
             # sets up the y-data array
             ch_ids = self.session_info.get_channel_ids(i_channel)
+            y_min, y_max = self.session_info.get_min_max_values(i_channel)
             y0 = self.session_info.get_traces(start_frame=i_frm0, end_frame=i_frm1, channel_ids=ch_ids)
+
+            #
+            self.y_tr = (y0 - y_min) / (y_max - y_min)
             for i in range(self.n_plt):
                 # calculates the scaled traces
-                y_min, y_max = np.min(y0[:, i]), np.max(y0[:, i])
-                if np.abs(y_max - y_min) == 0:
-                    y_scl = self.y_ofs + (1 - self.y_ofs) * np.ones(n_frm)
-                else:
-                    y_scl = self.y_ofs + (1 - self.y_ofs) * (y0[:, i] - y_min) / (y_max - y_min)
+                self.y_tr[:, i] = (i * self.y_gap + self.y_ofs) + (1 - self.y_ofs) * self.y_tr[:, i]
 
-                # resets the curve data
-                self.trace_curves[i].clear()
-                self.trace_curves[i].setData(x, y_scl)
+            # transposes the final array
+            self.y_tr = self.y_tr.transpose()
+
+            # sets up the connection array
+            c = np.ones((self.n_plt, n_frm), dtype=np.ubyte)
+            c[:, -1] = False
+
+            # resets the curve data
+            self.main_trace.clear()
+            self.main_trace.setData(self.x_tr.flatten(), self.y_tr.flatten(), connect=c.flatten())
 
             # print(time.time() - t0)
 
@@ -531,14 +542,18 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         # removes any current trace highlight
         if self.i_sel_tr is not None:
             # resets the trace colours
-            self.trace_curves[self.i_sel_tr].setPen(self.l_pen_trace)
+            self.highlight_trace.setVisible(False)
 
             # resets the trace highlight flag
             self.i_sel_tr = None
 
         # highlights the required trace (if turning on highlight)
         if is_on:
+            # ensures the trace is visible
+            if not self.highlight_trace.isVisible():
+                self.highlight_trace.setVisible(True)
+
             # determines the index of the curve that corresponds to the contact ID
             i_sel_ch = self.session_info.get_selected_channels()
             self.i_sel_tr = np.where(i_sel_ch == i_contact)[0][0]
-            self.trace_curves[self.i_sel_tr].setPen(self.l_pen_high)
+            self.highlight_trace.setData(self.x_tr[0, :], self.y_tr[self.i_sel_tr, :])

@@ -98,6 +98,11 @@ class SessionWorkBook(QObject):
 
         return np.where(self.channel_data.is_selected)[0]
 
+    def get_min_max_values(self, i_ch=None):
+
+        i_run = self.session.get_run_index(self.current_run)
+        return [z[0][i_ch] for z in self.session.min_max[i_run, :]]
+
     def get_channel_count(self):
 
         probe_rec = self.get_current_recording_probe()
