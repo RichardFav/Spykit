@@ -44,8 +44,8 @@ class InfoManager(QWidget):
     table_name = 'Channel/Unit Information'
     props_tab_lbl = ['Region Configuration']
     plot_types = ['Trace', 'Probe']
-    # table_tab_lbl = ['Channel Info', 'Unit Info', 'Trigger Info']
-    # table_tab_type = ['channel', 'unit', 'trigger']
+    table_tab_lbl = ['Channel Info', 'Trigger Info', 'Unit Info']
+    table_tab_type = ['channel', 'trigger', 'unit']
     tab_type = ['channel', 'trigger', 'preprocess', 'unit']
 
     # font types
@@ -199,7 +199,7 @@ class InfoManager(QWidget):
             # sets the
             self.t_types.append(t_type)
             match t_type:
-                case t_type if t_type in ['channel', 'unit']:
+                case t_type if t_type in ['channel', 'unit', 'trigger']:
                     # connects the
                     cb_fcn = functools.partial(self.header_check_update, t_lbl)
                     # tab_widget.set_check_update(cb_fcn)
@@ -209,6 +209,10 @@ class InfoManager(QWidget):
                     if t_type == 'channel':
                         # case is the channel tab
                         tab_widget.data_change.connect(self.channel_combobox_update)
+                        tab_widget.run_change.connect(self.channel_combobox_update)
+
+                    elif t_type == 'trigger':
+                        # case is the trigger channel
                         tab_widget.run_change.connect(self.channel_combobox_update)
 
             # appends the tab to the tab group
@@ -256,6 +260,10 @@ class InfoManager(QWidget):
         channel_tab = self.get_info_tab('channel')
         channel_tab.reset_combobox_fields('data', data_list)
         channel_tab.reset_combobox_fields('run', run_list)
+
+        # resets the combobox fields
+        trigger_tab = self.get_info_tab('trigger')
+        trigger_tab.reset_combobox_fields('run', run_list)
 
         # resets the update flag
         self.is_updating = False
@@ -504,7 +512,8 @@ class InfoManager(QWidget):
         match t_type.lower():
             case 'channel':
                 # case is the channel information tab
-                self.channel_check.emit(i_row)
+                if i_col == 0:
+                    self.channel_check.emit(i_row)
 
             case 'unit':
                 # case is the unit information tab

@@ -133,6 +133,7 @@ class MainWindow(QMainWindow):
         i_plot_trace = self.plot_manager.get_plot_index('trace')
         i_plot_probe = self.plot_manager.get_plot_index('probe')
 
+        # initial region configuration
         c_id = np.zeros((4, 3), dtype=int)
         c_id[:, :2] = i_plot_trace
         c_id[:, -1] = i_plot_probe
@@ -154,16 +155,20 @@ class MainWindow(QMainWindow):
         self.info_manager.set_region_config(c_id)
 
         # -----------------------------------------------------------------------
-        # Info Table Setup
+        # Channel Info Table Setup
         # -----------------------------------------------------------------------
 
         # field retrieval
-        c_list = ['channel_ids', 'shank_ids', 'contact_ids',  'device_channel_indices', 'x', 'y']
-        c_hdr = ['', 'Channel ID', 'Shank ID', 'Contact ID', 'Channel Index', 'X-Coord', 'Y-Coord']
+        c_list = ['channel_ids', 'shank_ids', 'contact_ids',  'device_channel_indices', 'x', 'y', 'status']
+        c_hdr = ['', 'Channel ID', 'Shank ID', 'Contact ID', 'Channel Index', 'X-Coord', 'Y-Coord', 'Status']
 
         # retrieves the necessary channel information data
         ch_info = self.session_obj.get_channel_info()
-        p_dframe = ch_info[ch_info.columns.intersection(c_list)][c_list]
+        p_dframe = ch_info[ch_info.columns.intersection(c_list)][c_list[:-1]]
+
+        # inserts the "status" column
+        n_row, n_col = p_dframe.shape
+        p_dframe.insert(n_col, 'status', np.array(['***'] * n_row))
 
         # appends the show
         is_show = np.zeros(p_dframe.shape[0], dtype=bool)
@@ -198,7 +203,13 @@ class MainWindow(QMainWindow):
 
     def bad_channel_change(self):
 
-        a = 1
+        # retrieves the channel status flags
+        i_run = self.session_obj.session.get_run_index(self.session_obj.current_run)
+        ch_status = self.session_obj.session.bad_ch[i_run]
+
+        # updates the channel status flags
+        channel_tab = self.info_manager.get_info_tab('channel')
+        channel_tab.update_channel_status(ch_status[0][1])
 
     def update_config(self, c_id):
 

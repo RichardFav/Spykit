@@ -103,7 +103,6 @@ class PlotManager(QWidget):
         # creates new plot type
         plot_constructor = vt.plot_types[p_type]
         plot_new = plot_constructor(self.session_obj)
-        plot_new.setVisible(show_plot)
 
         # adds the new layout and updates the grid layout
         self.main_layout.addWidget(plot_new)
@@ -112,6 +111,10 @@ class PlotManager(QWidget):
         # stores the new plot properties
         self.types[p_type] = self.n_plot
         self.plots.append(plot_new)
+
+        # hides the plot (if not showing)
+        if not show_plot:
+            plot_new.hide()
 
         # connects the hide button
         cb_fcn = functools.partial(self.clear_plot_view, p_type)
@@ -290,9 +293,6 @@ class PlotWidget(QWidget):
 
     def __init__(self, p_type, b_icon=None, b_type=None, tt_lbl=None):
         super(PlotWidget, self).__init__()
-
-        # hides the plot item
-        self.setVisible(False)
 
         # main class fields
         self.p_type = p_type

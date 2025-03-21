@@ -86,3 +86,17 @@ class ChannelInfoTab(InfoTab):
 
         # resets the update flag
         self.is_updating = False
+
+    def update_channel_status(self, ch_status):
+
+        # initialisations
+        self.is_updating = True
+        n_col = self.table.columnCount()
+
+        # updates the table with the new information
+        for i_row, c_stat in enumerate(ch_status):
+            item = self.table.item(i_row, n_col - 1)
+            item.setText(c_stat)
+
+        # resets the update flag
+        self.is_updating = False

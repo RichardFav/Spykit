@@ -264,7 +264,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
         # adds the image frame
         self.ximage_item.setTransform(tr_x)
-        self.ximage_item.setColorMap(self.setup_colour_map())
+        self.ximage_item.setColorMap(cw.setup_colour_map(self.n_lvl))
         self.ximage_item.setImage(self.setup_frame_image('x'))
         self.h_plot[1, 0].addItem(self.ximage_item)
 
@@ -300,7 +300,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
         # adds the image frame
         self.yimage_item.setTransform(tr_y)
-        self.yimage_item.setColorMap(self.setup_colour_map())
+        self.yimage_item.setColorMap(cw.setup_colour_map(self.n_lvl))
         self.yimage_item.setImage(self.setup_frame_image('y'))
         self.h_plot[0, 1].addItem(self.yimage_item)
 
@@ -313,15 +313,6 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
         # makes the bottom right plot invisible
         self.h_plot[1, 1].setVisible(False)
-
-    def setup_colour_map(self):
-
-        p_rgb = []
-        for i_lvl in range(self.n_lvl):
-            p_hsv = (0.5 - (i_lvl / (2 * self.n_lvl)), 0.5, 0.5)
-            p_rgb.append([int(255 * x) for x in list(colorsys.hsv_to_rgb(*p_hsv))])
-
-        return ColorMap(pos=np.linspace(0.0, 1.0, self.n_lvl), color=p_rgb)
 
     def setup_frame_image(self, axis):
 

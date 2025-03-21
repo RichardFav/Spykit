@@ -1,6 +1,7 @@
 # module import
 import os
 import re
+import colorsys
 import textwrap
 import functools
 import numpy as np
@@ -8,7 +9,7 @@ from copy import deepcopy
 from skimage.measure import label, regionprops
 
 #
-from pyqtgraph import ViewBox, RectROI, InfiniteLine
+from pyqtgraph import ViewBox, RectROI, InfiniteLine, ColorMap
 
 # custom module import
 import spike_pipeline.common.common_func as cf
@@ -2389,6 +2390,17 @@ def create_font_obj(size=9, is_bold=False, font_weight=QFont.Weight.Normal):
 
     # returns the font object
     return font
+
+
+def setup_colour_map(n_lvl):
+
+    p_rgb = []
+    for i_lvl in range(n_lvl):
+        p_hsv = (0.5 - (i_lvl / (2 * n_lvl)), 0.5, 0.5)
+        p_rgb.append([int(255 * x) for x in list(colorsys.hsv_to_rgb(*p_hsv))])
+
+    return ColorMap(pos=np.linspace(0.0, 1.0, n_lvl), color=p_rgb)
+
 
 
 # ----------------------------------------------------------------------------------------------------------------------

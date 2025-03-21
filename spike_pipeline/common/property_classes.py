@@ -331,7 +331,7 @@ class SessionObject(QObject):
         ses_obj, i_run, t0 = run_data
 
         # returns the sync channels
-        return ses_obj.get_sync_channel(i_run), i_run, t0
+        return ses_obj.get_sync_channel(i_run).flatten(), i_run, t0
 
     @staticmethod
     def calc_trace_minmax(run_data):
