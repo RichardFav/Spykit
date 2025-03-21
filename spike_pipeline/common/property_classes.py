@@ -30,6 +30,8 @@ from spike_pipeline.info.preprocess import prep_task_map as pp_map
 class SessionWorkBook(QObject):
     # signal functions
     session_change = pyqtSignal()
+    sync_channel_change = pyqtSignal()
+    bad_channel_change = pyqtSignal()
 
     def __init__(self):
         super(SessionWorkBook, self).__init__()
@@ -164,6 +166,7 @@ class SessionWorkBook(QObject):
 
         # resets the session object
         self.session = SessionObject(ses_data['session_props'])
+        self.session.channels_detected.connect(self.channel_detected)
 
         # resets the other class fields
         self.state = ses_data['state']
@@ -174,6 +177,15 @@ class SessionWorkBook(QObject):
         # y = self.get_traces()
         # self.y_min = np.min(y, axis=0)
         # self.y_max = np.max(y, axis=0)
+
+    def channel_detected(self, ch_type):
+
+        match ch_type:
+            case 'sync':
+                self.sync_channel_change.emit()
+
+            case 'bad':
+                self.bad_channel_change.emit()
 
     # ---------------------------------------------------------------------------
     # Static Methods
@@ -209,7 +221,7 @@ class SessionWorkBook(QObject):
 class SessionObject(QObject):
     # pyqtsignal functions
     channel_data_setup = pyqtSignal(object)
-    channels_detected = pyqtSignal(object, str)
+    channels_detected = pyqtSignal(str)
 
     def __init__(self, s_props):
         super(SessionObject, self).__init__()
@@ -291,6 +303,9 @@ class SessionObject(QObject):
             t_worker_mm.work_finished.connect(self.post_calc_trace_minmax)
             t_worker_mm.start()
 
+        # pauses for things to catch up...
+        time.sleep(0.1)
+
     # ---------------------------------------------------------------------------
     # Thread worker functions
     # ---------------------------------------------------------------------------
@@ -368,12 +383,20 @@ class SessionObject(QObject):
         ch_data, i_run, t0 = data
         self.bad_ch[i_run] = ch_data
 
+        # if all runs have been detected, then run the signal function
+        if np.all([x is not None for x in self.bad_ch]):
+            self.channels_detected.emit('bad')
+
         print("Bad Channel {0} Data Detected - {1}".format(i_run, time.time() - t0))
 
     def post_get_sync_channel(self, data):
 
         ch_data, i_run, t0 = data
         self.sync_ch[i_run] = ch_data
+
+        # if all runs have been detected, then run the signal function
+        if np.all([x is not None for x in self.sync_ch]):
+            self.channels_detected.emit('sync')
 
         print("Sync Channel {0} Data Detected - {1}".format(i_run, time.time() - t0))
 
@@ -541,6 +564,9 @@ class CalculatedData:
 
         # FINISH ME!
         a = 1
+
+
+# ----------------------------------------------------------------------------------------------------------------------
 
 
 class SessionProps:

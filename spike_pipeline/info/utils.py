@@ -43,9 +43,10 @@ class InfoManager(QWidget):
     props_name = 'Plot Properties'
     table_name = 'Channel/Unit Information'
     props_tab_lbl = ['Region Configuration']
-    plot_types = ['Trace', 'Probe', 'Trigger']
-    table_tab_lbl = ['Channel Info', 'Unit Info']
-    table_tab_type = ['channel', 'unit']
+    plot_types = ['Trace', 'Probe']
+    # table_tab_lbl = ['Channel Info', 'Unit Info', 'Trigger Info']
+    # table_tab_type = ['channel', 'unit', 'trigger']
+    tab_type = ['channel', 'trigger', 'preprocess', 'unit']
 
     # font types
     table_font = cw.create_font_obj(size=8)
@@ -69,6 +70,7 @@ class InfoManager(QWidget):
 
         # boolean class fields
         self.is_updating = False
+        self.tab_show = [True, False, True, False]
 
         # widget layout setup
         self.tabs = []
@@ -187,8 +189,7 @@ class InfoManager(QWidget):
         self.tab_group_table.setContentsMargins(0, 0, 0, 0)
 
         # creates the tab-objects
-        tab_type = ['channel', 'unit', 'preprocess']
-        for t_type in tab_type:
+        for i_tab, t_type in enumerate(self.tab_type):
             # creates the tab widget (based on type)
             t_lbl = it.info_names[t_type]
             tab_constructor = it.info_types[t_type]
@@ -212,6 +213,7 @@ class InfoManager(QWidget):
 
             # appends the tab to the tab group
             self.tab_group_table.addTab(tab_widget, t_lbl)
+            self.tab_group_table.setTabEnabled(i_tab, self.tab_show[i_tab])
 
     def add_info_widgets(self):
 
@@ -707,6 +709,21 @@ class InfoManager(QWidget):
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
     # ---------------------------------------------------------------------------
+
+    def set_tab_enabled(self, i_tab, s_flag):
+
+        if isinstance(i_tab, str):
+            i_tab = self.t_types.index(i_tab)
+
+        # updates the table flag
+        self.tab_show[i_tab] = s_flag
+        self.tab_group_table.setTabEnabled(i_tab, s_flag)
+
+    def add_view_item(self, v_type):
+
+        self.obj_rconfig.is_updating = True
+        self.obj_rconfig.obj_lbl_combo.obj_cbox.addItem(v_type)
+        self.obj_rconfig.is_updating = False
 
     def reset_table_selections(self, t_type, is_sel):
 

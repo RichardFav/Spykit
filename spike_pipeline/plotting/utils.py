@@ -85,7 +85,7 @@ class PlotManager(QWidget):
     # Plot View I/O Functions
     # ---------------------------------------------------------------------------
 
-    def add_plot_view(self, p_type):
+    def add_plot_view(self, p_type, expand_grid=True, show_plot=True):
 
         # if the plot type exists in the list, then exit
         if p_type in self.types:
@@ -94,7 +94,8 @@ class PlotManager(QWidget):
 
         # increments the plot count
         self.n_plot += 1
-        self.expand_grid_indices()
+        if expand_grid:
+            self.expand_grid_indices()
 
         # removes any currently highlighted plot
         self.remove_plot_highlight()
@@ -102,7 +103,7 @@ class PlotManager(QWidget):
         # creates new plot type
         plot_constructor = vt.plot_types[p_type]
         plot_new = plot_constructor(self.session_obj)
-        self.i_plot = self.n_plot - 1
+        plot_new.setVisible(show_plot)
 
         # adds the new layout and updates the grid layout
         self.main_layout.addWidget(plot_new)
@@ -122,13 +123,13 @@ class PlotManager(QWidget):
                 plot_new.probe_clicked.connect(self.clicked_probe)
                 plot_new.reset_highlight.connect(self.trace_highlight)
 
-    def get_plot_view(self, p_type, is_add=True):
+    def get_plot_view(self, p_type, is_add=True, expand_grid=True, show_plot=True):
 
         # determines if the plot type exists in the view list
         if p_type not in self.types:
             if is_add:
                 # if missing, then add the plot type (if required)
-                self.add_plot_view(p_type)
+                self.add_plot_view(p_type, expand_grid, show_plot)
 
             else:
                 # otherwise, return a None object
@@ -193,6 +194,7 @@ class PlotManager(QWidget):
 
     def update_plot_config(self, c_id):
 
+        self.grid_id = c_id
         self.main_layout.updateID(c_id)
 
     def hide_all_plots(self):
@@ -288,6 +290,9 @@ class PlotWidget(QWidget):
 
     def __init__(self, p_type, b_icon=None, b_type=None, tt_lbl=None):
         super(PlotWidget, self).__init__()
+
+        # hides the plot item
+        self.setVisible(False)
 
         # main class fields
         self.p_type = p_type

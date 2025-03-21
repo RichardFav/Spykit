@@ -109,16 +109,17 @@ class QRegionConfig(QWidget):
     # dimensions
     x_gap = 10
     gbox_height0 = 10
+    n_col_max = 10
 
     def __init__(self, parent=None, font=None, is_expanded=False, can_close=True, p_list0=None, gbox_height=None):
         super(QRegionConfig, self).__init__(parent)
 
         if p_list0 is None:
-            p_list0, p_col0 = [], []
+            p_list0 = []
 
-        else:
-            n_col = len(p_list0)
-            p_col0 = [cf.get_colour_value(x + 1, n_col_new=n_col) for x in range(n_col)]
+        # sets up the colour values
+        p_col0 = [cf.get_colour_value(x + 1, n_col_new=self.n_col_max) for x in range(self.n_col_max)]
+        p_col0 = p_col0[::2] + p_col0[1::2]
 
         # field initialisations
         self.n_row = 1
@@ -379,6 +380,9 @@ class QRegionConfig(QWidget):
 
     def combo_update_trace(self, h_cbox):
 
+        if self.is_updating:
+            return
+
         # trace index/colour fields
         self.i_trace = h_cbox.currentIndex()
         self.tr_col = self.p_col[self.i_trace]
@@ -407,6 +411,10 @@ class QRegionConfig(QWidget):
         return i_reg // self.n_col, i_reg % self.n_col
 
     # MISCELLANEOUS FUNCTIONS -------------------------------------------------
+
+    def add_trace_item(self, p_item):
+
+        a = 1
 
     def reset_config_id(self, c_id_new):
 

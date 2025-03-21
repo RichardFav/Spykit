@@ -103,8 +103,10 @@ class MainWindow(QMainWindow):
         self.info_manager.channel_header_check.connect(self.update_channel_header)
         self.info_manager.config_update.connect(self.update_config)
 
-        # connects workbook signal functions
+        # connects workbook sig\nal functions
         self.session_obj.session_change.connect(self.new_session)
+        self.session_obj.sync_channel_change.connect(self.sync_channel_change)
+        self.session_obj.bad_channel_change.connect(self.bad_channel_change)
 
     # ---------------------------------------------------------------------------
     # Signal Slot Functions
@@ -126,18 +128,28 @@ class MainWindow(QMainWindow):
         # sets up the trace/probe views
         self.plot_manager.get_plot_view('trace')
         self.plot_manager.get_plot_view('probe')
-        self.plot_manager.get_plot_view('trigger')
 
         # resets the plot view to include only the trace/probe views
         i_plot_trace = self.plot_manager.get_plot_index('trace')
         i_plot_probe = self.plot_manager.get_plot_index('probe')
-        i_plot_trigger = self.plot_manager.get_plot_index('trigger')
 
         c_id = np.zeros((4, 3), dtype=int)
-        c_id[:4, :2] = i_plot_trace
+        c_id[:, :2] = i_plot_trace
         c_id[:, -1] = i_plot_probe
-        c_id[-1, :2] = i_plot_trigger
 
+        if not np.any([x is None for x in self.session_obj.session.sync_ch]):
+            # create the trigger plot view
+            self.plot_manager.get_plot_view('trigger', expand_grid=False)
+
+            # appends the trigger plot view to the info manager
+            self.info_manager.add_view_item('Trigger')
+            self.info_manager.set_tab_enabled('trigger', True)
+
+            # adds the trigger view
+            i_plot_trigger = self.plot_manager.get_plot_index('trigger')
+            c_id[-1, :2] = i_plot_trigger
+
+        # updates the grid plots
         self.plot_manager.update_plot_config(c_id)
         self.info_manager.set_region_config(c_id)
 
@@ -172,6 +184,21 @@ class MainWindow(QMainWindow):
         # resets the session flags
         self.session_obj.state = 1
         self.has_session = True
+
+    def sync_channel_change(self):
+
+        # sets up the trigger channel view (if session is loaded)
+        if self.has_session:
+            # appends the trigger plot view to the info manager
+            self.plot_manager.get_plot_view('trigger', expand_grid=False, show_plot=False)
+
+            # appends the trigger plot view to the info manager
+            self.info_manager.add_view_item('Trigger')
+            self.info_manager.set_tab_enabled('trigger', True)
+
+    def bad_channel_change(self):
+
+        a = 1
 
     def update_config(self, c_id):
 

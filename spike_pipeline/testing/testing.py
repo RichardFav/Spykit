@@ -227,7 +227,7 @@ class Testing(object):
         plt_manager.add_plot_view('trigger')
 
         # test
-        c_id = np.array([[1, 1, 2],[1, 1, 2]])
+        c_id = np.array([[1, 1, 2], [1, 1, 2], [3, 3, 2]])
         plt_manager.main_layout.updateID(c_id)
 
         # return the main window widget
