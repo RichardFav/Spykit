@@ -194,7 +194,6 @@ class TriggerPlot(PlotWidget):
                 # case is the close button
                 self.hide_plot.emit()
 
-
     # ---------------------------------------------------------------------------
     # Signal Trace Plot Event Functions
     # ---------------------------------------------------------------------------

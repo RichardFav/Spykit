@@ -7,7 +7,7 @@ import numpy as np
 import pyqtgraph as pg
 
 # pyqt6 module import
-from PyQt6.QtWidgets import (QMainWindow, QHBoxLayout, QFormLayout, QWidget,
+from PyQt6.QtWidgets import (QMainWindow, QHBoxLayout, QFormLayout, QWidget, QGridLayout,
                              QScrollArea, QSizePolicy, QDialog, QMenuBar, QToolBar)
 from PyQt6.QtCore import Qt, QSize, QRect, pyqtSignal, QObject
 from PyQt6.QtGui import QFont, QColor, QIcon, QAction
@@ -50,7 +50,7 @@ class MainWindow(QMainWindow):
 
         # sets up the main layout
         self.central_widget = QWidget()
-        self.main_layout = QHBoxLayout()
+        self.main_layout = QGridLayout()
 
         # main class object setup
         self.session_obj = SessionWorkBook()
@@ -59,7 +59,7 @@ class MainWindow(QMainWindow):
         self.menu_bar = MenuBar(self)
         self.info_manager = InfoManager(self, info_width, self.session_obj)
         self.plot_manager = PlotManager(self, dlg_width - info_width, self.session_obj)
-        self.prop_manager = PropManager(self)
+        self.prop_manager = PropManager(self, info_width, self.session_obj)
 
         # boolean class fields
         self.can_close = False
@@ -95,8 +95,9 @@ class MainWindow(QMainWindow):
     def init_class_fields(self):
 
         # plot parameter widget setup
-        self.main_layout.addWidget(self.info_manager)
-        self.main_layout.addWidget(self.plot_manager)
+        self.main_layout.addWidget(self.prop_manager, 0, 0, 1, 1)
+        self.main_layout.addWidget(self.info_manager, 1, 0, 1, 1)
+        self.main_layout.addWidget(self.plot_manager, 0, 1, 2, 1)
         self.main_layout.setSpacing(0)
         self.main_layout.setContentsMargins(0, 0, 0, 0)
 
@@ -105,7 +106,7 @@ class MainWindow(QMainWindow):
         self.info_manager.unit_header_check.connect(self.update_unit_header)
         self.info_manager.channel_check.connect(self.update_channel)
         self.info_manager.channel_header_check.connect(self.update_channel_header)
-        self.info_manager.config_update.connect(self.update_config)
+        self.prop_manager.config_update.connect(self.update_config)
 
         # connects workbook sig\nal functions
         self.session_obj.session_change.connect(self.new_session)
@@ -129,35 +130,35 @@ class MainWindow(QMainWindow):
         # Plot View Setup
         # -----------------------------------------------------------------------
 
-        # sets up the trace/probe views
-        self.plot_manager.get_plot_view('trace')
-        self.plot_manager.get_plot_view('probe')
+        # sets the property types to ad
+        prop_type_add = ['trace']
 
-        # resets the plot view to include only the trace/probe views
-        i_plot_trace = self.plot_manager.get_plot_index('trace')
-        i_plot_probe = self.plot_manager.get_plot_index('probe')
+        # sets up the trace/probe views
+        for p_view in ['Trace', 'Probe']:
+            self.plot_manager.get_plot_view(p_view.lower())
+            self.prop_manager.add_config_view(p_view)
 
         # initial region configuration
         c_id = np.zeros((4, 3), dtype=int)
-        c_id[:, :2] = i_plot_trace
-        c_id[:, -1] = i_plot_probe
+        c_id[:, :2] = self.plot_manager.get_plot_index('trace')
+        c_id[:, -1] = self.plot_manager.get_plot_index('probe')
 
         if self.has_session:
             if not np.any([x is None for x in self.session_obj.session.sync_ch]):
                 # create the trigger plot view
                 self.plot_manager.get_plot_view('trigger', expand_grid=False)
+                c_id[-1, :2] = self.plot_manager.get_plot_index('trigger')
 
-                # appends the trigger plot view to the info manager
-                self.info_manager.add_view_item('Trigger')
-                self.info_manager.set_tab_enabled('trigger', True)
-
-                # adds the trigger view
-                i_plot_trigger = self.plot_manager.get_plot_index('trigger')
-                c_id[-1, :2] = i_plot_trigger
+                # appends the trigger plot view to the prop manager
+                self.prop_manager.add_config_view('Trigger')
+                prop_type_add = prop_type_add + ['trigger']
 
         # updates the grid plots
         self.plot_manager.update_plot_config(c_id)
-        self.info_manager.set_region_config(c_id)
+        self.prop_manager.set_region_config(c_id)
+
+        # adds the new property tabs
+        self.prop_manager.add_prop_tabs(prop_type_add)
 
         # -----------------------------------------------------------------------
         # Channel Info Table Setup
@@ -203,8 +204,9 @@ class MainWindow(QMainWindow):
             self.plot_manager.get_plot_view('trigger', expand_grid=False, show_plot=False)
 
             # appends the trigger plot view to the info manager
-            self.info_manager.add_view_item('Trigger')
-            self.info_manager.set_tab_enabled('trigger', True)
+            self.prop_manager.add_config_view('Trigger')
+            self.prop_manager.add_prop_tabs('trigger')
+            self.prop_manager.set_tab_enabled('trigger', True)
 
     def bad_channel_change(self):
 
@@ -442,7 +444,6 @@ class MenuBar(QObject):
         self.main_obj.session_obj.session.set_bad_channel(ses_data['bad_channel'])
         self.main_obj.session_obj.session.set_sync_channel(ses_data['sync_channel'])
         self.main_obj.session_obj.session.set_min_max_values(ses_data['signal_data'])
-
 
         # updates the channel status table fields
         self.main_obj.bad_channel_change()

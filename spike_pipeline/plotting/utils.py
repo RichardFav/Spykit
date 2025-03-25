@@ -150,7 +150,7 @@ class PlotManager(QWidget):
 
         # sets the region configuration
         self.plots[p_id - 1].hide()
-        self.main_obj.info_manager.set_region_config(c_id)
+        self.main_obj.prop_manager.set_region_config(c_id)
         self.update_plot_config(c_id)
 
     def get_plot_index(self, p_type):
