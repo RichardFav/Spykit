@@ -44,9 +44,9 @@ class InfoManager(QWidget):
     table_name = 'Channel/Unit Information'
     props_tab_lbl = ['Region Configuration']
     plot_types = ['Trace', 'Probe']
-    table_tab_lbl = ['Channel Info', 'Trigger Info', 'Unit Info']
-    table_tab_type = ['channel', 'trigger', 'unit']
-    tab_type = ['channel', 'trigger', 'preprocess', 'unit']
+    table_tab_lbl = ['Channel Info', 'Unit Info']
+    table_tab_type = ['channel', 'unit']
+    tab_type = ['channel', 'preprocess', 'unit']
 
     # font types
     table_font = cw.create_font_obj(size=8)
@@ -281,6 +281,15 @@ class InfoManager(QWidget):
 
         # updates the class field
         self.p_info['reg_config'] = {'name': 'Configuration', 'type': 'v_panel', 'ch_fld': p_tmp}
+
+    def add_para_info_field(self, p_fld, p_info_new):
+
+        # adds the tab to the property tab group
+        if p_fld not in self.p_info:
+            self.add_prop_tab(p_info_new, p_fld)
+
+        # appends the field to the parameter info dictionary
+        self.p_info[p_fld] = p_info_new
 
     def create_para_object(self, layout, p_name, ps, p_str_l):
 

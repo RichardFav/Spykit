@@ -4,7 +4,7 @@
 import pickle
 import numpy as np
 
-# import pyqtgraph as pg
+import pyqtgraph as pg
 
 # pyqt6 module import
 from PyQt6.QtWidgets import (QMainWindow, QHBoxLayout, QFormLayout, QWidget,
@@ -17,6 +17,7 @@ import spike_pipeline.common.common_func as cf
 import spike_pipeline.common.common_widget as cw
 from spike_pipeline.info.utils import InfoManager
 from spike_pipeline.plotting.utils import PlotManager
+from spike_pipeline.props.utils import PropManager
 from spike_pipeline.common.property_classes import SessionWorkBook
 from spike_pipeline.widgets.open_session import OpenSession
 from spike_pipeline.info.preprocess import PreprocessSetup, prep_task_map
@@ -58,6 +59,7 @@ class MainWindow(QMainWindow):
         self.menu_bar = MenuBar(self)
         self.info_manager = InfoManager(self, info_width, self.session_obj)
         self.plot_manager = PlotManager(self, dlg_width - info_width, self.session_obj)
+        self.prop_manager = PropManager(self)
 
         # boolean class fields
         self.can_close = False
@@ -87,6 +89,8 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Spike Interface Pipeline")
         self.setMinimumSize(min_width, min_height)
         self.resize(dlg_width, dlg_height)
+
+        pg.setConfigOption('useOpenGL', False)
 
     def init_class_fields(self):
 
@@ -138,17 +142,18 @@ class MainWindow(QMainWindow):
         c_id[:, :2] = i_plot_trace
         c_id[:, -1] = i_plot_probe
 
-        if not np.any([x is None for x in self.session_obj.session.sync_ch]):
-            # create the trigger plot view
-            self.plot_manager.get_plot_view('trigger', expand_grid=False)
+        if self.has_session:
+            if not np.any([x is None for x in self.session_obj.session.sync_ch]):
+                # create the trigger plot view
+                self.plot_manager.get_plot_view('trigger', expand_grid=False)
 
-            # appends the trigger plot view to the info manager
-            self.info_manager.add_view_item('Trigger')
-            self.info_manager.set_tab_enabled('trigger', True)
+                # appends the trigger plot view to the info manager
+                self.info_manager.add_view_item('Trigger')
+                self.info_manager.set_tab_enabled('trigger', True)
 
-            # adds the trigger view
-            i_plot_trigger = self.plot_manager.get_plot_index('trigger')
-            c_id[-1, :2] = i_plot_trigger
+                # adds the trigger view
+                i_plot_trigger = self.plot_manager.get_plot_index('trigger')
+                c_id[-1, :2] = i_plot_trigger
 
         # updates the grid plots
         self.plot_manager.update_plot_config(c_id)
@@ -434,6 +439,17 @@ class MenuBar(QObject):
 
         # creates the session data
         self.main_obj.session_obj.reset_session(ses_data)
+        self.main_obj.session_obj.session.set_bad_channel(ses_data['bad_channel'])
+        self.main_obj.session_obj.session.set_sync_channel(ses_data['sync_channel'])
+        self.main_obj.session_obj.session.set_min_max_values(ses_data['signal_data'])
+
+
+        # updates the channel status table fields
+        self.main_obj.bad_channel_change()
+
+        # creates the trigger plot view (if missing)
+        if 'trigger' not in self.main_obj.plot_manager.types:
+            self.main_obj.sync_channel_change()
 
     def save_session(self):
 

@@ -16,7 +16,7 @@ from spike_pipeline.plotting.utils import PlotWidget, PlotPara
 
 # pyqt6 module import
 from PyQt6.QtWidgets import (QWidget)
-from PyQt6.QtCore import pyqtSignal, Qt, QObject
+from PyQt6.QtCore import pyqtSignal, Qt, QObject, QPointF
 
 # plot button fields
 b_icon = ['datatip', 'save', 'close']
@@ -130,7 +130,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
     n_lvl = 100
     n_col_img = 1000
     n_row_yscl = 100
-    t_dur_max0 = 1
+    t_dur_max0 = 0.25
 
     # pen widgets
     l_pen = mkPen(width=3, color='y')
@@ -165,9 +165,9 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
         # axes limits
         self.y_lim = []
-        self.t_dur_max = np.min([self.t_dur, self.t_dur_max0])
+        self.x_window = np.min([self.t_dur, self.t_dur_max0])
         self.y_lim_tr = self.y_ofs / 2
-        self.t_lim = [0, self.t_dur_max]
+        self.t_lim = np.array([0, self.x_window])
 
         # trace label class fields
         self.n_plt = 0
@@ -269,9 +269,9 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.h_plot[1, 0].addItem(self.ximage_item)
 
         # creates the linear region
-        self.l_reg_x = LinearRegionItem([0, self.t_dur_max], bounds=[0, self.t_dur], span=[0, 1],
+        self.l_reg_x = LinearRegionItem([0, self.x_window], bounds=[0, self.t_dur], span=[0, 1],
                                         pen=self.l_pen, hoverPen=self.l_pen_hover)
-        self.l_reg_x.sigRegionChangeFinished.connect(self.xframe_region_move)
+        self.l_reg_x.sigRegionChanged.connect(self.xframe_region_move)
         self.l_reg_x.setZValue(10)
         self.h_plot[1, 0].addItem(self.l_reg_x)
 
@@ -404,17 +404,17 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
         # runs the original mouse event function
         if evnt is not None:
-            self.trace_release_fcn(evnt)
+            self.trace_dclick_fcn(evnt)
 
             # resets the y-axis range
             self.reset_yaxis_limits()
 
             # determines if the time axis needs resetting
-            if np.diff(self.t_lim)[0] < self.t_dur_max:
-                if (self.t_dur - self.t_lim[0]) < self.t_dur_max:
-                    self.t_lim = [self.t_dur - self.t_dur_max, self.t_dur]
+            if np.diff(self.t_lim)[0] < self.x_window:
+                if (self.t_dur - self.t_lim[0]) < self.x_window:
+                    self.t_lim = [self.t_dur - self.x_window, self.t_dur]
                 else:
-                    self.t_lim[1] = self.t_lim[0] = self.t_dur_max
+                    self.t_lim[1] = self.t_lim[0] = self.x_window
 
                 # resets the trace view
                 self.reset_xaxis_limits()
@@ -474,7 +474,27 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         if self.is_updating:
             return
 
-        self.t_lim = list(self.l_reg_x.getRegion())
+        # retrieves the current region limits
+        t_lim_nw = np.array(self.l_reg_x.getRegion())
+        t_lim_half = np.mean(t_lim_nw)
+
+        # case is the window size need to be fixed
+        if t_lim_half < self.x_window / 2:
+            t_lim_nw = [0, self.x_window]
+
+        elif t_lim_half > (self.t_dur - self.x_window / 2):
+            t_lim_nw = [self.t_dur - self.x_window, self.t_dur]
+
+        else:
+            t_lim_nw = t_lim_half + (self.x_window / 2) * np.array([-1, 1])
+
+        # resets the x-linear region view size
+        self.is_updating = True
+        self.l_reg_x.setRegion((t_lim_nw[0], t_lim_nw[1]))
+        self.is_updating = False
+
+        # updates the view range
+        self.t_lim = t_lim_nw
         self.v_box[0, 0].setXRange(self.t_lim[0], self.t_lim[1], padding=0)
         self.reset_trace_view()
 

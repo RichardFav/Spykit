@@ -1573,6 +1573,7 @@ class QCheckCombo(QComboBox):
         # field initialisation
         self.n_item = 0
         self.n_sel = 0
+        self._title = '0 Items Selected'
 
         # sets the widget model and event functions
         self.combo_model = QStandardItemModel(self)
@@ -1706,6 +1707,11 @@ class QLabelCheckCombo(QWidget):
     def check_update(self, item):
 
         self.item_clicked.emit(item)
+
+    def setEnabled(self, state):
+
+        self.h_lbl.setEnabled(state)
+        self.h_combo.setEnabled(state)
 
     def clear(self):
 

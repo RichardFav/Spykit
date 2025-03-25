@@ -1,6 +1,9 @@
+# module import
+import numpy as np
+
 # custom module imports
 from spike_pipeline.info.common import InfoTab
-from spike_pipeline.common.common_widget import QWidget, QLabelCombo, font_lbl
+from spike_pipeline.common.common_widget import QWidget, QLabelCombo, QLabelCheckCombo, font_lbl
 
 # pyqt imports
 from PyQt6.QtCore import pyqtSignal
@@ -12,6 +15,7 @@ class ChannelInfoTab(InfoTab):
     # pyqtSignal signal functions
     run_change = pyqtSignal(QWidget)
     data_change = pyqtSignal(QWidget)
+    status_change = pyqtSignal(QWidget)
 
     def __init__(self, t_str):
         super(ChannelInfoTab, self).__init__(t_str)
@@ -22,13 +26,19 @@ class ChannelInfoTab(InfoTab):
         # boolean class fields
         self.is_updating = False
 
-        # adds the widget combo
+        # adds the plot data type combobox
         self.data_type = QLabelCombo(None, 'Plot Data Type:', None, font_lbl=font_lbl)
         self.tab_layout.addWidget(self.data_type)
 
-        # adds the widget combo
+        # adds the session run type combobox
         self.run_type = QLabelCombo(None, 'Session Run:', None, font_lbl=font_lbl)
         self.tab_layout.addWidget(self.run_type)
+
+        # adds status filter check combobox
+        self.status_filter = QLabelCheckCombo(None, lbl="Status Filter", font=font_lbl)
+        self.status_filter.item_clicked.connect(self.check_filter_item)
+        self.status_filter.setEnabled(False)
+        self.tab_layout.addWidget(self.status_filter)
 
         # creates the table widget
         self.create_table_widget()
@@ -71,6 +81,12 @@ class ChannelInfoTab(InfoTab):
         if not self.is_updating:
             self.run_change.emit(self)
 
+    def combo_status_change(self, h_combo):
+
+        # if manually updating, then exit
+        if not self.is_updating:
+            self.status_change.emit(self)
+
     def reset_data_types(self, d_names, d_flds):
 
         # indicate that
@@ -98,5 +114,15 @@ class ChannelInfoTab(InfoTab):
             item = self.table.item(i_row, n_col - 1)
             item.setText(c_stat)
 
+        # resets the status filter
+        self.status_filter.clear()
+        self.status_filter.setEnabled(True)
+        for s_filt in np.unique(ch_status):
+            self.status_filter.add_item(s_filt, True)
+
         # resets the update flag
         self.is_updating = False
+
+    def check_filter_item(self):
+
+        self.status_change.emit(self)

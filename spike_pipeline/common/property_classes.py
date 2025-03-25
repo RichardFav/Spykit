@@ -65,12 +65,21 @@ class SessionWorkBook(QObject):
 
     def get_session_save_data(self):
 
+        # sets the raw signal data
+        signal_data_raw = {
+            't': self.session.t_min_max,
+            'y': self.session.min_max
+        }
+
         # sets up the session save data dictionary
         save_data = {
             'state': self.state,
             'session_props': self.session.get_session_props(),
+            'sync_channel': self.session.sync_ch,
+            'bad_channel': self.session.bad_ch,
             'channel_data': self.channel_data,
             'calculated_data': self.calculated_data,
+            'signal_data': signal_data_raw,
         }
 
         # returns the data struct
@@ -142,6 +151,10 @@ class SessionWorkBook(QObject):
     # Setter Functions
     # ---------------------------------------------------------------------------
 
+    def set_min_max_values(self, signal_data):
+
+        self.session.set_min_max_values(signal_data)
+
     def set_all_channel_states(self, is_checked):
 
         self.channel_data.is_selected[:] = is_checked
@@ -165,7 +178,7 @@ class SessionWorkBook(QObject):
     def reset_session(self, ses_data):
 
         # resets the session object
-        self.session = SessionObject(ses_data['session_props'])
+        self.session = SessionObject(ses_data['session_props'], True)
         self.session.channels_detected.connect(self.channel_detected)
 
         # resets the other class fields
@@ -210,6 +223,7 @@ class SessionWorkBook(QObject):
     # trace property observer properties
     session = cf.ObservableProperty(update_session)
 
+
 # ----------------------------------------------------------------------------------------------------------------------
 
 
@@ -223,7 +237,7 @@ class SessionObject(QObject):
     channel_data_setup = pyqtSignal(object)
     channels_detected = pyqtSignal(str)
 
-    def __init__(self, s_props):
+    def __init__(self, s_props, ssf_load=False):
         super(SessionObject, self).__init__()
 
         # class field initialisations
@@ -235,6 +249,7 @@ class SessionObject(QObject):
         self.sync_ch = None
         self.t_min_max = None
         self.min_max = None
+        self.ssf_load = ssf_load
 
         # creates the session property fields from the input dictionary
         for sp in s_props:
@@ -268,7 +283,10 @@ class SessionObject(QObject):
 
         # loads the raw data and channel data
         self._s.load_raw_data()
-        self.load_channel_data()
+
+        # loads the channel data (if not loading session from .ssf file)
+        if not self.ssf_load:
+            self.load_channel_data()
 
     def load_channel_data(self):
 
@@ -407,6 +425,19 @@ class SessionObject(QObject):
         self.min_max[i_run, :] = [y_min, y_max]
 
         print("Min/Max Calculated for Channel {0} - {1}".format(i_run, time.time() - t0))
+
+    def set_sync_channel(self, sync_ch_data):
+
+        self.sync_ch = sync_ch_data
+
+    def set_bad_channel(self, bad_ch_data):
+
+        self.bad_ch = bad_ch_data
+
+    def set_min_max_values(self, signal_data):
+
+        self.t_min_max = signal_data['t']
+        self.min_max = signal_data['y']
 
     # ---------------------------------------------------------------------------
     # Session wrapper functions
@@ -552,6 +583,7 @@ class ChannelData:
                 case 2:
                     self.is_selected[i_ch] = True
 
+
 # ----------------------------------------------------------------------------------------------------------------------
 
 """
@@ -561,7 +593,6 @@ class ChannelData:
 
 class CalculatedData:
     def __init__(self):
-
         # FINISH ME!
         a = 1
 
@@ -571,7 +602,6 @@ class CalculatedData:
 
 class SessionProps:
     def __init__(self, probe_rec):
-
         # retrieves the
         self.n_samples = probe_rec.get_num_frames()
         self.n_channels = probe_rec.get_num_channels()
@@ -580,5 +610,4 @@ class SessionProps:
         self.s_freq = probe_rec.get_sampling_frequency()
 
     def get_value(self, p_str):
-
         return getattr(self, p_str)

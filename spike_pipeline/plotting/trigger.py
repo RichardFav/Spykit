@@ -114,6 +114,10 @@ class TriggerPlot(PlotWidget):
         self.h_plot[0, 0].addItem(self.trig_trace)
         self.update_trigger_trace()
 
+        # sets the signal trace plot event functions
+        self.trace_dclick_fcn = self.h_plot[0, 0].mousePressEvent
+        self.h_plot[0, 0].mouseDoubleClickEvent = self.trace_double_click
+
         # ---------------------------------------------------------------------------
         # X-Axis Range Finder Setup
         # ---------------------------------------------------------------------------
@@ -190,3 +194,24 @@ class TriggerPlot(PlotWidget):
                 # case is the close button
                 self.hide_plot.emit()
 
+
+    # ---------------------------------------------------------------------------
+    # Signal Trace Plot Event Functions
+    # ---------------------------------------------------------------------------
+
+    def trace_double_click(self, evnt=None) -> None:
+
+        # flag that updating is taking place
+        self.is_updating = True
+
+        # runs the original mouse event function
+        if evnt is not None:
+            self.trace_dclick_fcn(evnt)
+
+            # updates the time limits
+            self.t_lim = [0, self.t_dur]
+            self.h_plot[0, 0].setXRange(self.t_lim[0], self.t_lim[1], padding=0)
+            self.l_reg_x.setRegion(self.t_lim)
+
+        # resets the update flag
+        self.is_updating = False

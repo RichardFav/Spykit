@@ -12,6 +12,7 @@ from PyQt6.QtCore import pyqtSignal
 class TriggerInfoTab(InfoTab):
     # pyqtSignal signal functions
     run_change = pyqtSignal(QWidget)
+    init_para = pyqtSignal(str, object)
 
     def __init__(self, t_str):
         super(TriggerInfoTab, self).__init__(t_str)
@@ -25,6 +26,16 @@ class TriggerInfoTab(InfoTab):
 
         # creates the table widget
         self.create_table_widget()
+
+    def init_para_tab(self):
+
+        # sets up the subgroup fields
+        ch_fld = {
+
+        }
+
+        # updates the class field
+        return {'name': 'Trigger', 'type': 'v_panel', 'ch_fld': ch_fld}
 
     def reset_combobox_fields(self, cb_type, cb_list):
 
@@ -54,3 +65,4 @@ class TriggerInfoTab(InfoTab):
         # if manually updating, then exit
         if not self.is_updating:
             self.run_change.emit(self)
+
