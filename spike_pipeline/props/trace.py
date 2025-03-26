@@ -41,6 +41,14 @@ class TraceProps(PropWidget):
         self.setup_prop_fields()
         super(TraceProps, self).__init__(self.main_obj, 'trace', self.p_info)
 
+        # initialises the other class fields
+        self.init_other_class_fields()
+
+    def init_other_class_fields(self):
+
+        # FINISH ME
+        pass
+
     def setup_prop_fields(self):
         # sets up the subgroup fields
         pass

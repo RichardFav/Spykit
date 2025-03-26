@@ -72,8 +72,8 @@ class MainWindow(QMainWindow):
         # sets the widget style sheets
         self.set_styles()
 
-        # # REMOVE ME LATER
-        # self.testing()
+        # REMOVE ME LATER
+        self.testing()
 
     # ---------------------------------------------------------------------------
     # Class Widget Setup Functions
@@ -131,7 +131,7 @@ class MainWindow(QMainWindow):
         # -----------------------------------------------------------------------
 
         # sets the property types to ad
-        prop_type_add = ['trace']
+        prop_type_add = ['general', 'trace']
 
         # sets up the trace/probe views
         for p_view in ['Trace', 'Probe']:
@@ -299,7 +299,8 @@ class MainWindow(QMainWindow):
 
     def testing(self):
 
-        f_file = 'C:/Work/Other Projects/EPhys Project/Data/z - session_files/test.ssf'
+        # f_file = 'C:/Work/Other Projects/EPhys Project/Data/z - session_files/test.ssf'
+        f_file = 'C:/Work/Other Projects/EPhys Project/Data/z - session_files/test_large.ssf'
         self.menu_bar.load_session(f_file)
 
 

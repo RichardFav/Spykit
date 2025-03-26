@@ -1,4 +1,6 @@
 # module imports
+import copy
+
 import numpy as np
 import functools
 
@@ -36,7 +38,7 @@ class PropManager(QWidget):
 
     # field names
     props_name = 'Plot Properties'
-    tab_type = ['config', 'general']
+    tab_type = ['config']
 
     def __init__(self, main_obj, info_width, session_obj=None):
         super(PropManager, self).__init__()
@@ -47,7 +49,6 @@ class PropManager(QWidget):
         self.session_obj = session_obj
 
         # class property fields
-        self.n_para = 0
         self.p_info = {}
         self.p_props = None
 
@@ -202,11 +203,27 @@ class PropManager(QWidget):
 # ----------------------------------------------------------------------------------------------------------------------
 
 """
-    PlotWidget: 
+    PropPara:
+"""
+
+
+class PropPara(QWidget):
+    def __init__(self, prop_fld):
+        super(PropPara, self).__init__()
+
+        for pf, pv in prop_fld.items():
+            setattr(self, pf, pv['value'])
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+"""
+    PropWidget: 
 """
 
 
 class PropWidget(QWidget):
+    lbl_width = 100
+
     def __init__(self, main_obj, p_type, p_info):
         super(PropWidget, self).__init__()
 
@@ -232,7 +249,6 @@ class PropWidget(QWidget):
 
         # field retrieval
         tab_type = self.p_info['type']
-        tab_name = self.p_info['name']
         tab_para = self.p_info['ch_fld']
 
         # sets up the property tab layout
@@ -243,7 +259,6 @@ class PropWidget(QWidget):
                 f_layout.setColumnStretch(i, 1)
 
         # creates the parameter objects
-        self.n_para = 0
         for ps_ch in tab_para:
             self.create_para_object(f_layout, ps_ch, tab_para[ps_ch], [self.p_type, ps_ch])
             self.n_para += 1
@@ -279,9 +294,13 @@ class PropWidget(QWidget):
         # field retrieval
         nw_val = h_edit.text()
         p_str = h_edit.objectName()
-        num_para = ['p_width']
+        str_para = []
 
-        if p_str in num_para:
+        if p_str in str_para:
+            # case is the value is valid
+            setattr(self.p_props, p_str, nw_val)
+
+        else:
             # case is a numerical parameters
 
             # updates the reset flag
@@ -303,10 +322,6 @@ class PropWidget(QWidget):
             else:
                 # otherwise, reset the previous value
                 h_edit.setText('%g' % getattr(self.p_props, p_str))
-
-        else:
-            # case is the value is valid
-            setattr(self.p_props, p_str, nw_val)
 
     def combobox_para_update(self, h_cbox):
 
@@ -370,6 +385,7 @@ class PropWidget(QWidget):
     def create_para_object(self, layout, p_name, ps, p_str_l):
 
         # base callback function
+        i_row = self.n_para
         cb_fcn = self.setup_widget_callback()
 
         match ps['type']:
@@ -386,12 +402,13 @@ class PropWidget(QWidget):
 
                 if isinstance(layout, QGridLayout):
                     # case is adding to a QGridlayout
-                    layout.addWidget(obj_lbl, self.n_para, 0, 1, 1)
-                    layout.addWidget(obj_txt, self.n_para, 1, 1, 2)
+                    layout.addWidget(obj_lbl, i_row, 0, 1, 1)
+                    layout.addWidget(obj_txt, i_row, 1, 1, 2)
 
                 else:
                     # case is another layout type
-                    layout.addRow(obj_lbl, obj_lbl)
+                    obj_lbl.setFixedWidth(self.lbl_width)
+                    layout.addRow(obj_lbl, obj_txt)
 
             # case is an editbox
             case 'edit':
@@ -408,17 +425,18 @@ class PropWidget(QWidget):
                 # creates the label/editbox widget combo
                 obj_lbledit = cw.QLabelEdit(None, lbl_str, edit_str, name=p_name, font_lbl=cw.font_lbl)
 
-                # sets the widget callback function
-                obj_lbledit.connect(cb_fcn)
-
                 if isinstance(layout, QGridLayout):
                     # case is adding to a QGridlayout
-                    layout.addWidget(obj_lbledit.obj_lbl, self.n_para, 0, 1, 1)
-                    layout.addWidget(obj_lbledit.obj_edit, self.n_para, 1, 1, 2)
+                    layout.addWidget(obj_lbledit.obj_lbl, i_row, 0, 1, 1)
+                    layout.addWidget(obj_lbledit.obj_edit, i_row, 1, 1, 2)
 
                 else:
                     # case is another layout type
+                    obj_lbledit.obj_lbl.setFixedWidth(self.lbl_width)
                     layout.addRow(obj_lbledit)
+
+                # sets the widget callback function
+                obj_lbledit.connect(cb_fcn)
 
             # case is a combobox
             case 'combobox':
@@ -432,26 +450,27 @@ class PropWidget(QWidget):
 
                 if isinstance(layout, QGridLayout):
                     # case is adding to a QGridlayout
-                    layout.addWidget(obj_lblcombo.obj_lbl, self.n_para, 0, 1, 1)
-                    layout.addWidget(obj_lblcombo.obj_cbox, self.n_para, 1, 1, 2)
+                    layout.addWidget(obj_lblcombo.obj_lbl, i_row, 0, 1, 1)
+                    layout.addWidget(obj_lblcombo.obj_cbox, i_row, 1, 1, 2)
 
                 else:
                     # case is another layout type
+                    obj_lblcombo.obj_lbl.setFixedWidth(self.lbl_width)
                     layout.addRow(obj_lblcombo)
 
             # case is a checkbox
             case 'checkbox':
                 # creates the checkbox widget
-                obj_checkbox = cw.QCheckboxHTML(
+                obj_checkbox = cw.create_check_box(
                     None, ps['name'], ps['value'], font=cw.font_lbl, name=p_name)
 
                 # sets up the checkbox callback function
-                cb_fcn_chk = self.setup_widget_callback(obj_checkbox.h_chk)
-                obj_checkbox.connect(cb_fcn_chk)
+                cb_fcn_chk = self.setup_widget_callback(obj_checkbox)
+                obj_checkbox.stateChanged.connect(cb_fcn_chk)
 
                 if isinstance(layout, QGridLayout):
                     # case is adding to a QGridlayout
-                    layout.addWidget(obj_checkbox, self.n_para, 0, 1, 3)
+                    layout.addWidget(obj_checkbox, i_row, 0, 1, 3)
 
                 else:
                     # case is another layout type
@@ -468,7 +487,7 @@ class PropWidget(QWidget):
 
                 if isinstance(layout, QGridLayout):
                     # case is adding to a QGridlayout
-                    layout.addWidget(obj_button, self.n_para, 0, 1, 4)
+                    layout.addWidget(obj_button, i_row, 0, 1, 4)
 
                 else:
                     # case is another layout type
@@ -515,8 +534,8 @@ class PropWidget(QWidget):
 
                 if isinstance(layout, QGridLayout):
                     # case is adding to a QGridlayout
-                    layout.addWidget(obj_lblbutton.obj_lbl, self.n_para, 0, 1, 1)
-                    layout.addWidget(obj_lblbutton.obj_but, self.n_para, 1, 1, 2)
+                    layout.addWidget(obj_lblbutton.obj_lbl, i_row, 0, 1, 1)
+                    layout.addWidget(obj_lblbutton.obj_but, i_row, 1, 1, 2)
 
                 else:
                     # case is another layout type

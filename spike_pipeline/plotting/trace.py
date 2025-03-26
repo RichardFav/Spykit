@@ -26,7 +26,7 @@ tt_lbl = ['Show Channel Labels', 'Save Figure', 'Close TraceView']
 # ----------------------------------------------------------------------------------------------------------------------
 
 """
-    TraceLabels:
+    TraceLabelMixin:
 """
 
 
