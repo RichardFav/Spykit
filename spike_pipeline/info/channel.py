@@ -125,4 +125,10 @@ class ChannelInfoTab(InfoTab):
 
     def check_filter_item(self):
 
+        #
+        sel_filt = self.status_filter.get_selected_items()
+        for i_row in range(self.table.rowCount()):
+            item = self.table.item(i_row, self.table.columnCount() - 1)
+            self.table.setRowHidden(i_row, item.text() not in sel_filt)
+
         self.status_change.emit(self)

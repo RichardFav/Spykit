@@ -73,6 +73,7 @@ class TriggerProps(PropWidget):
         self.n_row = 0
         self.b_state = 0
         self.i_row_sel = None
+        self.trig_view = None
 
         # initialises the property widget
         self.setup_prop_fields()
@@ -185,3 +186,11 @@ class TriggerProps(PropWidget):
         # resets the button state
         self.is_updating = False
         self.b_state = self.p_props.button_flag
+
+    # ---------------------------------------------------------------------------
+    # Plot View Setter Functions
+    # ---------------------------------------------------------------------------
+
+    def set_trig_view(self, trig_view_new):
+
+        self.trig_view = trig_view_new

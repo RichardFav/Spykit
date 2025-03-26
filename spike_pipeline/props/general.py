@@ -65,15 +65,14 @@ class GeneralPara(PropPara):
 
 
 class GeneralProps(PropWidget):
-    # pyqtsignal functions
-    config_reset = pyqtSignal()
-
     def __init__(self, main_obj):
 
         # sets the input arguments
         self.main_obj = main_obj
 
         # field initialisation
+        self.trig_view = None
+        self.trace_view = None
         self.t_dur = self.main_obj.session_obj.session_props.t_dur
 
         # initialises the property widget
@@ -175,6 +174,18 @@ class GeneralProps(PropWidget):
         # resets the plot views
         if self.is_init:
             self.reset_plot_views()
+
+    # ---------------------------------------------------------------------------
+    # Plot View Setter Functions
+    # ---------------------------------------------------------------------------
+
+    def set_trig_view(self, trig_view_new):
+
+        self.trig_view = trig_view_new
+
+    def set_trace_view(self, trace_view_new):
+
+        self.trace_view = trace_view_new
 
     # ---------------------------------------------------------------------------
     # Plot View Update Functions

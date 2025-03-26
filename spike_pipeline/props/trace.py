@@ -64,18 +64,16 @@ class TracePara(PropPara):
 
 
 class TraceProps(PropWidget):
-    # pyqtsignal functions
-    config_reset = pyqtSignal()
-
     # parameters
     t_span0 = 0.1
-    plot_list = ['Trace', 'Heatmap']
+    plot_list = ['Trace', 'Heatmap', 'Auto']
 
     def __init__(self, main_obj):
         # sets the input arguments
         self.main_obj = main_obj
 
         # field initialisation
+        self.trace_view = None
         self.t_dur = self.main_obj.session_obj.session_props.t_dur
 
         # initialises the property widget
@@ -84,6 +82,10 @@ class TraceProps(PropWidget):
 
         # sets up the parameter fields
         self.p_props = TracePara(self.p_info['ch_fld'])
+
+        # widget object field retrieval
+        self.edit_start = self.findChild(cw.QLineEdit, name='t_start')
+        self.edit_finish = self.findChild(cw.QLineEdit, name='t_finish')
 
         # initialises the other class fields
         self.init_other_class_fields()
@@ -158,6 +160,14 @@ class TraceProps(PropWidget):
         # resets the plot views
         if self.is_init:
             self.reset_plot_views()
+
+    # ---------------------------------------------------------------------------
+    # Plot View Setter Functions
+    # ---------------------------------------------------------------------------
+
+    def set_trace_view(self, trace_view_new):
+
+        self.trace_view = trace_view_new
 
     # ---------------------------------------------------------------------------
     # Plot View Update Functions

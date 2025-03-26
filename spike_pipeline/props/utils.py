@@ -175,6 +175,14 @@ class PropManager(QWidget):
         # updates the table flag
         self.tab_group_props.setTabEnabled(i_tab, s_flag)
 
+    def set_tab_visible(self, i_tab, s_flag):
+
+        if isinstance(i_tab, str):
+            i_tab = self.t_types.index(i_tab)
+
+        # updates the table flag
+        self.tab_group_props.setTabVisible(i_tab, s_flag)
+
     def set_styles(self):
 
         # widget stylesheets
@@ -616,6 +624,12 @@ class PropWidget(QWidget):
     def set(self, p_fld, p_value):
 
         setattr(self.p_props, p_fld, p_value)
+
+    def set_n(self, p_fld, p_value):
+
+        self.p_props.is_updating = True
+        setattr(self.p_props, p_fld, p_value)
+        self.p_props.is_updating = False
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Methods

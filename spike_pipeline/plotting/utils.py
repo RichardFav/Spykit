@@ -37,6 +37,9 @@ class PlotManager(QWidget):
     # signal functions
     update_id = pyqtSignal()
 
+    # array class fields
+    prop_views = ['trace', 'trigger']
+
     def __init__(self, main_obj, plot_width, session_obj=None):
         super(PlotManager, self).__init__()
 
@@ -126,6 +129,16 @@ class PlotManager(QWidget):
                 plot_new.probe_clicked.connect(self.clicked_probe)
                 plot_new.reset_highlight.connect(self.trace_highlight)
 
+            case 'trace':
+                # case is the trace view
+                plot_new.set_gen_props(self.main_obj.prop_manager.get_tab('general'))
+                plot_new.set_trace_props(self.main_obj.prop_manager.get_tab('trace'))
+
+            case 'trigger':
+                # case is the trigger view
+                plot_new.set_gen_props(self.main_obj.prop_manager.get_tab('general'))
+                plot_new.set_trig_props(self.main_obj.prop_manager.get_tab('trigger'))
+
     def get_plot_view(self, p_type, is_add=True, expand_grid=True, show_plot=True):
 
         # determines if the plot type exists in the view list
@@ -143,14 +156,18 @@ class PlotManager(QWidget):
 
     def clear_plot_view(self, p_type):
 
+        # retrieves the configuration tab object
+        config_tab = self.main_obj.prop_manager.get_tab('config')
+
         # removes the current plot from the configuration id array
         p_id = self.types[p_type]
-        c_id = self.main_obj.info_manager.obj_rconfig.c_id
+        c_id = config_tab.obj_rconfig.c_id
         c_id[c_id == p_id] = 0
 
         # sets the region configuration
         self.plots[p_id - 1].hide()
         self.main_obj.prop_manager.set_region_config(c_id)
+        self.main_obj.reset_prop_tab_visible(c_id)
         self.update_plot_config(c_id)
 
     def get_plot_index(self, p_type):
@@ -181,6 +198,22 @@ class PlotManager(QWidget):
 
         plt_trace = self.plots[self.types['trace'] - 1]
         plt_trace.reset_trace_view(reset_limits)
+
+    def get_prop_views(self, c_id):
+
+        # memory allocation
+        prop_viewing = []
+
+        # determines which property tab view is currently being viewed
+        for pv in self.prop_views:
+            if pv not in self.types:
+                continue
+
+            i_view = self.types[pv]
+            if np.any(c_id == i_view):
+                prop_viewing.append(pv)
+
+        return prop_viewing
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions

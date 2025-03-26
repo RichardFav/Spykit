@@ -31,6 +31,7 @@ class ConfigProps(PropWidget):
 
     # other class fields
     init_plot_types = ['Trace', 'Probe']
+    prop_views = ['trace', 'trigger']
 
     def __init__(self, main_obj):
         # sets the input arguments

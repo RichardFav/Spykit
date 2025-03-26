@@ -55,6 +55,8 @@ class TriggerPlot(PlotWidget):
         self.t_lim = [0, self.t_dur]
 
         # field retrieval
+        self.gen_props = None
+        self.trig_props = None
         self.x_tr = np.arange(self.n_samples) / self.s_freq
         self.y_tr = self.session_info.session.sync_ch
 
@@ -214,3 +216,17 @@ class TriggerPlot(PlotWidget):
 
         # resets the update flag
         self.is_updating = False
+
+    # ---------------------------------------------------------------------------
+    # Parameter Object Setter Functions
+    # ---------------------------------------------------------------------------
+
+    def set_gen_props(self, gen_props_new):
+
+        self.gen_props = gen_props_new
+        gen_props_new.set_trig_view(self)
+
+    def set_trig_props(self, trig_props_new):
+
+        self.trig_props = trig_props_new
+        trig_props_new.set_trig_view(self)

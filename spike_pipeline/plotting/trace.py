@@ -131,6 +131,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
     n_col_img = 1000
     n_row_yscl = 100
     t_dur_max0 = 0.1
+    n_plt_max = 64
 
     # pen widgets
     l_pen = mkPen(width=3, color='y')
@@ -162,6 +163,8 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         # trace fields
         self.x_tr = None
         self.y_tr = None
+        self.gen_props = None
+        self.trace_props = None
 
         # axes limits
         self.y_lim = []
@@ -326,6 +329,18 @@ class TracePlot(TraceLabelMixin, PlotWidget):
     # Plot Update/Reset Functions
     # ---------------------------------------------------------------------------
 
+    def update_trace_props(self):
+
+        # resets the start time
+        t_start = self.t_lim[0]
+        self.trace_props.set_n('t_start', t_start)
+        self.trace_props.edit_start.setText(str(t_start))
+
+        # resets the finish time
+        t_finish = self.t_lim[1]
+        self.trace_props.set_n('t_finish', t_finish)
+        self.trace_props.edit_finish.setText(str(t_finish))
+
     def reset_trace_view(self, reset_limits=True):
 
         # retrieves the currently selected channels
@@ -340,22 +355,25 @@ class TracePlot(TraceLabelMixin, PlotWidget):
             n_frm = i_frm1 - i_frm0
 
             # sets up the x-data array
+            self.y_tr = np.empty((self.n_plt, n_frm))
             self.x_tr = np.empty((self.n_plt, n_frm))
             self.x_tr[:] = np.linspace(self.t_lim[0], self.t_lim[1], n_frm)
 
             # sets up the y-data array
             ch_ids = self.session_info.get_channel_ids(i_channel)
-            y_min, y_max = self.session_info.get_min_max_values(self.t_lim, i_channel)
             y0 = self.session_info.get_traces(start_frame=i_frm0, end_frame=i_frm1, channel_ids=ch_ids)
 
-            #
-            self.y_tr = (y0 - y_min) / (y_max - y_min)
             for i in range(self.n_plt):
-                # calculates the scaled traces
-                self.y_tr[:, i] = (i * self.y_gap + self.y_ofs) + (1 - self.y_ofs) * self.y_tr[:, i]
+                # determines the signal range values
+                y_min, y_max = np.min(y0[:, i]), np.max(y0[:, i])
+                if y_min == y_max:
+                    y_scl = 0.5 * np.ones(n_frm, dtype=float)
 
-            # transposes the final array
-            self.y_tr = self.y_tr.transpose()
+                else:
+                    y_scl = (y0[:, i] - y_min) / (y_max - y_min)
+
+                # calculates the scaled traces
+                self.y_tr[i, :] = (i * self.y_gap + self.y_ofs) + (1 - self.y_ofs) * y_scl
 
             # sets up the connection array
             c = np.ones((self.n_plt, n_frm), dtype=np.ubyte)
@@ -364,8 +382,6 @@ class TracePlot(TraceLabelMixin, PlotWidget):
             # resets the curve data
             self.main_trace.clear()
             self.main_trace.setData(self.x_tr.flatten(), self.y_tr.flatten(), connect=c.flatten())
-
-            # print(time.time() - t0)
 
             # sets the maximum y-axis trace range
             self.y_lim_tr = 1 + (self.n_plt - 1) * self.y_gap
@@ -496,6 +512,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         # updates the view range
         self.t_lim = t_lim_nw
         self.v_box[0, 0].setXRange(self.t_lim[0], self.t_lim[1], padding=0)
+        self.update_trace_props()
         self.reset_trace_view()
 
         # updates the labels (if currently displaying)
@@ -568,3 +585,17 @@ class TracePlot(TraceLabelMixin, PlotWidget):
             i_sel_ch = self.session_info.get_selected_channels()
             self.i_sel_tr = np.where(i_sel_ch == i_contact)[0][0]
             self.highlight_trace.setData(self.x_tr[0, :], self.y_tr[self.i_sel_tr, :])
+
+    # ---------------------------------------------------------------------------
+    # Parameter Object Setter Functions
+    # ---------------------------------------------------------------------------
+
+    def set_gen_props(self, gen_props_new):
+
+        self.gen_props = gen_props_new
+        gen_props_new.set_trace_view(self)
+
+    def set_trace_props(self, trace_props_new):
+
+        self.trace_props = trace_props_new
+        trace_props_new.set_trace_view(self)

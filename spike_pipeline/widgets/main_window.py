@@ -130,8 +130,9 @@ class MainWindow(QMainWindow):
         # Plot View Setup
         # -----------------------------------------------------------------------
 
-        # sets the property types to ad
+        # adds the general/trace property fields
         prop_type_add = ['general', 'trace']
+        self.prop_manager.add_prop_tabs(prop_type_add)
 
         # sets up the trace/probe views
         for p_view in ['Trace', 'Probe']:
@@ -150,15 +151,15 @@ class MainWindow(QMainWindow):
                 c_id[-1, :2] = self.plot_manager.get_plot_index('trigger')
 
                 # appends the trigger plot view to the prop manager
+                self.prop_manager.add_prop_tabs('trigger')
                 self.prop_manager.add_config_view('Trigger')
-                prop_type_add = prop_type_add + ['trigger']
 
         # updates the grid plots
         self.plot_manager.update_plot_config(c_id)
         self.prop_manager.set_region_config(c_id)
 
         # adds the new property tabs
-        self.prop_manager.add_prop_tabs(prop_type_add)
+        self.reset_prop_tab_visible(c_id)
 
         # -----------------------------------------------------------------------
         # Channel Info Table Setup
@@ -201,12 +202,12 @@ class MainWindow(QMainWindow):
         # sets up the trigger channel view (if session is loaded)
         if self.has_session:
             # appends the trigger plot view to the info manager
+            self.prop_manager.add_prop_tabs('trigger')
             self.plot_manager.get_plot_view('trigger', expand_grid=False, show_plot=False)
 
             # appends the trigger plot view to the info manager
             self.prop_manager.add_config_view('Trigger')
-            self.prop_manager.add_prop_tabs('trigger')
-            self.prop_manager.set_tab_enabled('trigger', True)
+            self.prop_manager.set_tab_visible('trigger', False)
 
     def bad_channel_change(self):
 
@@ -220,8 +221,18 @@ class MainWindow(QMainWindow):
 
     def update_config(self, c_id):
 
+        # updates the plot configuration
         self.plot_manager.hide_all_plots()
         self.plot_manager.update_plot_config(c_id)
+        self.reset_prop_tab_visible(c_id)
+
+    def reset_prop_tab_visible(self, c_id):
+
+        # resets the tab visibility
+        prop_views = self.plot_manager.get_prop_views(c_id)
+        for pv in self.plot_manager.prop_views:
+            if pv in self.prop_manager.t_types:
+                self.prop_manager.set_tab_visible(pv, pv in prop_views)
 
     def update_channel(self, i_row):
 
@@ -374,9 +385,9 @@ class MenuBar(QObject):
         # ---------------------------------------------------------------------------
 
         # initialisations
-        p_str = ['run_prep']
-        p_lbl = ['Preprocessing Setup']
-        cb_fcn = [self.run_preproccessing]
+        p_str = ['run_prep', 'run_test']
+        p_lbl = ['Preprocessing Setup', 'Run Test']
+        cb_fcn = [self.run_preproccessing, self.run_test]
 
         # adds the preprocessing menu items
         self.add_menu_items(h_menu_prep, p_lbl, cb_fcn, p_str, False)
@@ -479,6 +490,19 @@ class MenuBar(QObject):
     def run_preproccessing(self):
 
         PreprocessSetup(self.main_obj).exec()
+
+    def run_test(self):
+
+        import matplotlib
+        matplotlib.use('Agg')
+
+        ses = self.main_obj.session_obj.session
+        ses._s.plot_preprocessed(
+            show=True,
+            time_range=(0, 1),
+            show_channel_ids=False,
+            mode="map",
+        )
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
