@@ -10,7 +10,7 @@ import spike_pipeline.common.common_widget as cw
 
 # pyqt imports
 from PyQt6.QtWidgets import (QWidget, QLineEdit, QComboBox, QCheckBox, QPushButton, QSizePolicy, QVBoxLayout, QGroupBox,
-                             QHeaderView, QFormLayout, QGridLayout, QColorDialog, QTableWidget, QTableWidgetItem)
+                             QHBoxLayout, QFormLayout, QGridLayout, QColorDialog, QTableWidget, QTableWidgetItem)
 from PyQt6.QtCore import Qt, pyqtSignal
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -260,7 +260,7 @@ class PropWidget(QWidget):
     # Widget Event Functions
     # ---------------------------------------------------------------------------
 
-    def widget_para_update(self, h_widget, *_):
+    def widget_para_update(self, h_widget, *args):
 
         # case is a widget type is not provided
         if isinstance(h_widget, QLineEdit):
@@ -274,6 +274,9 @@ class PropWidget(QWidget):
 
         elif isinstance(h_widget, QPushButton):
             self.pushbutton_para_update(h_widget)
+
+        elif isinstance(h_widget, cw.QButtonPair):
+            self.buttonpair_para_update(h_widget, args[0])
 
     def edit_para_update(self, h_edit):
 
@@ -346,6 +349,14 @@ class PropWidget(QWidget):
         # updates the parameter field
         self.set(p_str, nw_val)
 
+    def buttonpair_para_update(self, h_pair, i_button):
+
+        # field retrieval
+        p_str = h_pair.objectName()
+
+        # toggles the button value
+        self.set(p_str, self.get(p_str) ^ (2 ** i_button))
+
     def button_color_pick(self, h_button):
 
         # runs the colour picker dialog
@@ -377,8 +388,9 @@ class PropWidget(QWidget):
             # Standard Widgets
             # -------------------------------------------------------------------
 
-            # case is a text label
             case 'text':
+                # case is a text label
+
                 # creates the label widget combo
                 lbl_str = '%g' % (ps['value'])
                 obj_lbl = cw.create_text_label(None, '{0}: '.format(ps['name']), font=cw.font_lbl)
@@ -394,8 +406,9 @@ class PropWidget(QWidget):
                     obj_lbl.setFixedWidth(self.lbl_width)
                     layout.addRow(obj_lbl, obj_txt)
 
-            # case is an editbox
             case 'edit':
+                # case is an editbox
+
                 # sets the editbox string
                 lbl_str = '{0}: '.format(ps['name'])
                 if isinstance(ps['value'], str):
@@ -422,8 +435,9 @@ class PropWidget(QWidget):
                 # sets the widget callback function
                 obj_lbledit.connect(cb_fcn)
 
-            # case is a combobox
             case 'combobox':
+                # case is a combobox
+
                 # creates the label/combobox widget combo
                 lbl_str = '{0}: '.format(ps['name'])
                 obj_lblcombo = cw.QLabelCombo(None, lbl_str, ps['p_list'], ps['value'], name=p_name,
@@ -442,8 +456,9 @@ class PropWidget(QWidget):
                     obj_lblcombo.obj_lbl.setFixedWidth(self.lbl_width)
                     layout.addRow(obj_lblcombo)
 
-            # case is a checkbox
             case 'checkbox':
+                # case is a checkbox
+
                 # creates the checkbox widget
                 obj_checkbox = cw.create_check_box(
                     None, ps['name'], ps['value'], font=cw.font_lbl, name=p_name)
@@ -460,8 +475,9 @@ class PropWidget(QWidget):
                     # case is another layout type
                     layout.addRow(obj_checkbox)
 
-            # case is a pushbutton
             case 'pushbutton':
+                # case is a pushbutton
+
                 # creates the button widget
                 obj_button = cw.create_push_button(None, ps['name'], cw.font_lbl, name=p_name)
 
@@ -477,12 +493,50 @@ class PropWidget(QWidget):
                     # case is another layout type
                     layout.addRow(obj_button)
 
+            case 'buttonpair':
+                # case is a pushbutton pair
+
+                # creates the wrapper
+                pair_obj = cw.QButtonPair(None, ps['name'], font=cw.font_lbl, name=p_name)
+
+                # sets the callback function
+                cb_fcn_but = self.setup_widget_callback(pair_obj)
+                pair_obj.connect(cb_fcn_but)
+
+                if isinstance(layout, QGridLayout):
+                    # case is adding to a QGridlayout
+                    layout.addWidget(pair_obj, i_row, 0, 1, 3)
+
+                else:
+                    # case is another layout type
+                    layout.addRow(pair_obj)
+
+            case 'table':
+                # case is a table widget
+
+                # creates the table widget
+                table_obj = QTableWidget(None)
+
+                # sets the table properties
+                table_obj.setRowCount(0)
+                table_obj.setColumnCount(0)
+                table_obj.setObjectName(p_name)
+                table_obj.setStyleSheet(cw.table_style)
+
+                # resets the channel table style
+                table_style = cw.CheckBoxStyle(table_obj.style())
+                table_obj.setStyle(table_style)
+
+                # adds the widget to the layout
+                layout.addWidget(table_obj)
+
             # -------------------------------------------------------------------
             # Special Widgets
             # -------------------------------------------------------------------
 
-            # case is a tree widget
             case 'tree':
+                # case is a tree widget
+
                 # creates the trace tree widget
                 self.obj_ttree = cw.QTraceTree(self, font=cw.font_lbl)
 
@@ -525,14 +579,16 @@ class PropWidget(QWidget):
                     # case is another layout type
                     layout.addRow(obj_lblbutton)
 
-            # case is the axes limit widget
             case 'axeslimits':
+                # case is the axes limit widget
+
                 # creates the file selection widget
                 self.obj_axlim = cw.QAxesLimits(None, font=cw.font_lbl, p_props=self.p_props)
                 layout.addRow(self.obj_axlim)
 
-            # case is a file selection widget
             case 'filespec':
+                # case is a file selection widget
+
                 # creates the file selection widget
                 obj_fspec = cw.QFileSpec(None, ps['name'], ps['value'], name=p_name, f_mode=ps['p_misc'])
                 layout.addRow(obj_fspec)

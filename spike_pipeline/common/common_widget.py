@@ -94,6 +94,17 @@ icon_path = {
 x_gap = 5
 row_height = 16.5
 
+table_style = """
+    QTableWidget {
+        font: Arial 6px;
+        border: 1px solid;
+    }
+    QHeaderView {
+        font: Arial 6px;
+        font-weight: 1000;
+    }
+"""
+
 # ----------------------------------------------------------------------------------------------------------------------
 # SPECIAL WIDGETS
 # ----------------------------------------------------------------------------------------------------------------------
@@ -1460,6 +1471,47 @@ class QLabelButton(QWidget):
         cb_fcn = functools.partial(cb_fcn0, self.obj_but)
         self.obj_but.clicked.connect(cb_fcn)
 
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+"""
+    QButtonPair:
+"""
+
+
+class QButtonPair(QWidget):
+    def __init__(self, parent=None, but_str=None, font=None, name=None):
+        super(QButtonPair, self).__init__(parent)
+
+        # creates the layout widget
+        self.layout = QHBoxLayout()
+        self.layout.setSpacing(3)
+        self.layout.setContentsMargins(0, 0, 0, 0)
+
+        # sets the other widget properties
+        self.setObjectName(name)
+        self.setLayout(self.layout)
+
+        # creates the label/editbox widget combo
+        self.obj_but = []
+        for i, bs in enumerate(but_str):
+            # creates the button widgets
+            obj_but_new = create_push_button(None, bs, font=font, name=name)
+            obj_but_new.setFixedHeight(cf.but_height)
+            obj_but_new.setCursor(Qt.CursorShape.PointingHandCursor)
+
+            # adds the objects to the button
+            self.obj_but.append(obj_but_new)
+            self.layout.addWidget(obj_but_new)
+
+    def connect(self, cb_fcn):
+
+        for i, b in enumerate(self.obj_but):
+            b.clicked.connect(functools.partial(cb_fcn, i))
+
+    def set_enabled(self, i_button, state):
+
+        self.obj_but[i_button].setEnabled(state)
 
 # ----------------------------------------------------------------------------------------------------------------------
 

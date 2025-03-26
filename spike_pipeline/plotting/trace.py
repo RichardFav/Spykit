@@ -130,7 +130,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
     n_lvl = 100
     n_col_img = 1000
     n_row_yscl = 100
-    t_dur_max0 = 0.25
+    t_dur_max0 = 0.1
 
     # pen widgets
     l_pen = mkPen(width=3, color='y')
