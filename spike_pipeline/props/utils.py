@@ -159,19 +159,6 @@ class PropManager(QWidget):
 
         pass
 
-    # # ---------------------------------------------------------------------------
-    # # Class Property Widget Setup Functions
-    # # ---------------------------------------------------------------------------
-    #
-    # def add_para_info_field(self, p_fld, p_info_new):
-    #
-    #     # adds the tab to the property tab group
-    #     if p_fld not in self.p_info:
-    #         self.add_prop_tab(p_info_new, p_fld)
-    #
-    #     # appends the field to the parameter info dictionary
-    #     self.p_info[p_fld] = p_info_new
-
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
     # ---------------------------------------------------------------------------
@@ -214,6 +201,7 @@ class PropPara(QWidget):
         for pf, pv in prop_fld.items():
             setattr(self, pf, pv['value'])
 
+
 # ----------------------------------------------------------------------------------------------------------------------
 
 """
@@ -222,6 +210,7 @@ class PropPara(QWidget):
 
 
 class PropWidget(QWidget):
+    # widget dimensions
     lbl_width = 100
 
     def __init__(self, main_obj, p_type, p_info):
@@ -237,6 +226,7 @@ class PropWidget(QWidget):
         self.p_props = None
 
         # boolean class fields
+        self.is_init = False
         self.is_updating = False
 
         # initialises the class fields
@@ -297,31 +287,25 @@ class PropWidget(QWidget):
         str_para = []
 
         if p_str in str_para:
-            # case is the value is valid
-            setattr(self.p_props, p_str, nw_val)
+            # case is a string parameter
+            self.set(p_str, nw_val)
 
         else:
             # case is a numerical parameters
 
             # updates the reset flag
             self.main_obj.was_reset = True
-
-            # sets the parameter limiting properties
-            p_min, p_max, is_int = -1e6, 1e6, True
-            match p_str:
-                case 'p_width':
-                    # case is the line pen width
-                    p_min, p_max = 1, 5
+            p_min, p_max, is_int = self.get_para_limits(p_str)
 
             # determines if the new value is valid
             chk_val = cf.check_edit_num(nw_val, min_val=p_min, max_val=p_max, is_int=is_int)
             if chk_val[1] is None:
                 # case is the value is valid
-                setattr(self.p_props, p_str, chk_val[0])
+                self.set(p_str, chk_val[0])
 
             else:
                 # otherwise, reset the previous value
-                h_edit.setText('%g' % getattr(self.p_props, p_str))
+                h_edit.setText('%g' % self.get(p_str))
 
     def combobox_para_update(self, h_cbox):
 
@@ -334,7 +318,7 @@ class PropWidget(QWidget):
         nw_val = h_cbox.currentText()
 
         # updates the parameter field
-        setattr(self.p_props, p_str, nw_val)
+        self.set(p_str, nw_val)
 
     def checkbox_para_update(self, h_chk):
 
@@ -347,7 +331,7 @@ class PropWidget(QWidget):
         nw_val = h_chk.isChecked()
 
         # updates the parameter field
-        setattr(self.p_props, p_str, nw_val)
+        self.set(p_str, nw_val)
 
     def pushbutton_para_update(self, h_button):
 
@@ -360,11 +344,7 @@ class PropWidget(QWidget):
         nw_val = (getattr(self.p_props, p_str) + 1) % 2
 
         # updates the parameter field
-        setattr(self.p_props, p_str, nw_val)
-
-    def button_file_spec(self, p_str_l, h_fspec):
-
-        a = 1
+        self.set(p_str, nw_val)
 
     def button_color_pick(self, h_button):
 
@@ -380,7 +360,11 @@ class PropWidget(QWidget):
             )
 
             # updates the parameter field
-            setattr(self.p_props, p_str, p_col)
+            self.set(p_str, p_col)
+
+    def button_file_spec(self, p_str_l, h_fspec):
+
+        a = 1
 
     def create_para_object(self, layout, p_name, ps, p_str_l):
 
@@ -564,6 +548,50 @@ class PropWidget(QWidget):
 
         else:
             return functools.partial(self.widget_para_update, h_widget)
+
+    # ---------------------------------------------------------------------------
+    # Parameter Getter/Setter Methods
+    # ---------------------------------------------------------------------------
+
+    def get(self, p_fld):
+
+        return getattr(self.p_props, p_fld)
+
+    def set(self, p_fld, p_value):
+
+        setattr(self.p_props, p_fld, p_value)
+
+    # ---------------------------------------------------------------------------
+    # Miscellaneous Methods
+    # ---------------------------------------------------------------------------
+
+    def get_para_limits(self, p_str):
+
+        # sets the parameter limiting properties
+        p_min, p_max, is_int = -1e6, 1e6, False
+        match p_str:
+            case 'p_width':
+                # case is the line pen width
+                p_min, p_max = 1, 5
+
+            case 't_start':
+                # case is the start time
+                p_min, p_max = 0, self.t_dur - self.get('t_span')
+
+            case 't_finish':
+                # case is the start time
+                p_min, p_max = self.get('t_span'), self.t_dur
+
+            case 't_span':
+                # case is the trace window span
+                p_min, p_max = 0.01, 0.5
+
+            case 't_dur':
+                # case is the experiment duration
+                p_min, p_max = 0.1, self.t_dur
+
+        # returns the limits and integer flag
+        return p_min, p_max, is_int
 
     # ---------------------------------------------------------------------------
     # Static Methods

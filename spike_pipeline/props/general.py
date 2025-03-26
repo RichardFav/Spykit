@@ -1,7 +1,6 @@
 # module import
 import os
 import time
-import colorsys
 import numpy as np
 from functools import partial as pfcn
 
@@ -18,7 +17,6 @@ from PyQt6.QtCore import Qt, pyqtSignal
 
 # widget dimensions
 x_gap = 5
-
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -75,8 +73,7 @@ class GeneralProps(PropWidget):
         # sets the input arguments
         self.main_obj = main_obj
 
-        # field retrieval
-        self.is_init = False
+        # field initialisation
         self.t_dur = self.main_obj.session_obj.session_props.t_dur
 
         # initialises the property widget
@@ -103,6 +100,8 @@ class GeneralProps(PropWidget):
 
         # updates the editbox values
         self.check_update()
+
+        # flag initialisation is complete
         self.is_init = True
 
     def setup_prop_fields(self):
@@ -129,24 +128,24 @@ class GeneralProps(PropWidget):
         self.edit_finish.setEnabled(not self.p_props.use_full)
         self.edit_dur.setEnabled(not self.p_props.use_full)
 
-        # resets the start/finish duration fields
-        self.p_props.is_updating = True
-        if self.p_props.use_full:
-            # case is using the entire experiment
-            self.p_props.t_start = 0
-            self.p_props.t_finish = self.t_dur
-
-        else:
-            # case is using the partial experiment
-            self.p_props.t_start = float(self.edit_start.text())
-            self.p_props.t_finish = float(self.edit_finish.text())
-
-        # updates the duration flag
-        self.p_props.t_dur = self.p_props.t_finish - self.p_props.t_start
-        self.p_props.is_updating = False
-
-        # resets the plot views
         if self.is_init:
+            # resets the start/finish duration fields
+            self.p_props.is_updating = True
+            if self.get('use_full'):
+                # case is using the entire experiment
+                self.set('t_start', 0)
+                self.set('t_finish', self.t_dur)
+
+            else:
+                # case is using the partial experiment
+                self.set('t_start', float(self.edit_start.text()))
+                self.set('t_finish', float(self.edit_finish.text()))
+
+            # updates the duration flag
+            self.set('t_dur', self.get('t_finish') - self.get('t_start'))
+            self.p_props.is_updating = False
+
+            # resets the plot views
             self.reset_plot_views()
 
     def edit_update(self, p_str):
@@ -154,14 +153,21 @@ class GeneralProps(PropWidget):
         # flag that property values are being updated manually
         self.p_props.is_updating = True
 
+        # updates the dependent field(s)
+        fld_update = []
         match p_str:
             case p_str if p_str in ['t_start', 't_finish']:
-                self.p_props.t_dur = self.p_props.t_finish - self.p_props.t_start
-                self.edit_dur.setText(str(self.p_props.t_dur))
+                fld_update = ['t_dur']
+                self.set('t_dur', self.get('t_finish') - self.get('t_start'))
 
             case 't_dur':
-                self.p_props.t_finish = self.p_props.t_start + self.p_props.t_dur
-                self.edit_finish.setText(str(self.p_props.t_finish))
+                fld_update = ['t_finish']
+                self.set('t_finish', self.get('t_start') + self.get('t_dur'))
+
+        # resets the parameter fields
+        for pf in fld_update:
+            edit_obj = self.findChild(cw.QLineEdit, name=pf)
+            edit_obj.setText(str(self.get(pf)))
 
         # resets the property check flag
         self.p_props.is_updating = False
@@ -169,6 +175,10 @@ class GeneralProps(PropWidget):
         # resets the plot views
         if self.is_init:
             self.reset_plot_views()
+
+    # ---------------------------------------------------------------------------
+    # Plot View Update Functions
+    # ---------------------------------------------------------------------------
 
     def reset_plot_views(self):
 
