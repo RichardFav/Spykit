@@ -11,7 +11,7 @@ import spike_pipeline.common.common_widget as cw
 from spike_pipeline.plotting.utils import PlotWidget
 
 # pyqtgraph modules
-from pyqtgraph import exporters, mkPen, mkColor, ImageItem, PlotCurveItem, LinearRegionItem, ColorMap
+from pyqtgraph import exporters, mkPen, mkBrush, ImageItem, PlotCurveItem, LinearRegionItem, ColorMap
 from pyqtgraph.Qt import QtGui
 
 # pyqt6 module import
@@ -40,6 +40,7 @@ class TriggerPlot(PlotWidget):
     l_pen = mkPen(width=3, color='y')
     l_pen_hover = mkPen(width=3, color='g')
     l_pen_trig = mkPen(color=cf.get_colour_value('g'), width=1)
+    l_brush = mkBrush(color=cf.get_colour_value('k', alpha=200))
 
     def __init__(self, session_info):
         super(TriggerPlot, self).__init__('trigger', b_icon=b_icon, b_type=b_type, tt_lbl=tt_lbl)
@@ -52,6 +53,7 @@ class TriggerPlot(PlotWidget):
         self.t_dur = s_props.get_value('t_dur')
         self.s_freq = s_props.get_value('s_freq')
         self.n_samples = s_props.get_value('n_samples')
+        self.n_run = self.session_info.session.get_run_count()
         self.t_lim = [0, self.t_dur]
 
         # field retrieval
@@ -64,8 +66,12 @@ class TriggerPlot(PlotWidget):
         self.trace_release_fcn = None
         self.trace_dclick_fcn = None
 
-        # class widgets
+        # linear region objects
         self.l_reg_x = None
+        self.l_reg_xs = np.empty(self.n_run, dtype=object)
+        self.n_reg_xs = np.zeros(self.n_run, dtype=int)
+
+        # class widgets
         self.i_sel_tr = None
         self.frame_img = None
         self.ximage_item = ImageItem()
@@ -109,7 +115,7 @@ class TriggerPlot(PlotWidget):
             pb.clicked.connect(cb_fcn)
 
         # sets the axis limits
-        self.v_box[0, 0].setLimits(xMin=0, xMax=self.session_info.session_props.t_dur, yMin=0, yMax=1)
+        self.v_box[0, 0].setLimits(xMin=0, xMax=self.session_info.session_props.t_dur, yMin=0.01, yMax=0.99)
         self.v_box[0, 0].setMouseMode(self.v_box[0, 0].RectMode)
 
         # adds the traces to the main plot
@@ -154,8 +160,8 @@ class TriggerPlot(PlotWidget):
     def update_trigger_trace(self):
 
         # sets up the trace plot
-        i_tr = self.session_info.session.get_run_index(self.session_info.current_run)
-        y_tr_new = self.p_ofs + (1 - 2 * self.p_ofs) * cf.normalise_trace(self.y_tr[i_tr])
+        i_run = self.get_run_index()
+        y_tr_new = self.p_ofs + (1 - 2 * self.p_ofs) * cf.normalise_trace(self.y_tr[i_run])
 
         # resets the trigger trace data
         self.trig_trace.clear()
@@ -164,6 +170,69 @@ class TriggerPlot(PlotWidget):
     def setup_frame_image(self):
 
         return np.linspace(0, 1, self.n_col_img).reshape(-1, 1)
+
+    # ---------------------------------------------------------------------------
+    # Supression Region Functions
+    # ---------------------------------------------------------------------------
+
+    def add_region(self, nw_row):
+
+        # creates the linear region
+        l_reg = LinearRegionItem([nw_row[1], nw_row[2]], bounds=[0, self.t_dur], span=[0, 1],
+                                 pen=self.l_pen, hoverPen=self.l_pen_hover, brush=self.l_brush)
+        l_reg.sigRegionChangeFinished.connect(functools.partial(self.xtrig_region_move, l_reg))
+        l_reg.setZValue(10)
+
+        # stores the linear region object
+        i_run = self.get_run_index()
+        if self.n_reg_xs[i_run] == 0:
+            # case is this is the first linear region
+            self.l_reg_xs[i_run] = [l_reg]
+
+        else:
+            # case is there are multiple linear regions
+            self.l_reg_xs[i_run].append(l_reg)
+
+        # increments the linear region count
+        self.n_reg_xs[i_run] += 1
+
+        # adds the region to the trigger trace
+        self.h_plot[0, 0].addItem(l_reg)
+
+    def delete_region(self, i_reg):
+
+        # removes the linear item from the list/plot item
+        i_run = self.get_run_index()
+        l_reg_del = self.l_reg_xs[i_run].pop(i_reg)
+        self.h_plot[0, 0].removeItem(l_reg_del)
+
+        # decrements the linear region count
+        self.n_reg_xs[i_run] -= 1
+
+    def update_region(self, i_reg):
+
+        # removes the linear item from the list/plot item
+        i_run = self.get_run_index()
+        t_row = self.trig_props.get_table_row(i_reg)
+
+        # resets the region position
+        self.is_updating = True
+        self.l_reg_xs[i_run][i_reg].setRegion((t_row[1], t_row[2]))
+        self.is_updating = False
+
+    def hide_regions(self, i_run=None):
+
+        if i_run is None:
+            i_run = self.get_run_index()
+
+        [x.hide() for x in self.l_reg_xs[i_run]]
+
+    def show_regions(self, i_run=None):
+
+        if i_run is None:
+            i_run = self.get_run_index()
+
+        [x.show() for x in self.l_reg_xs[i_run]]
 
     # ---------------------------------------------------------------------------
     # Frame Region Event Functions
@@ -176,6 +245,20 @@ class TriggerPlot(PlotWidget):
 
         self.t_lim = list(self.l_reg_x.getRegion())
         self.v_box[0, 0].setXRange(self.t_lim[0], self.t_lim[1], padding=0)
+
+    def xtrig_region_move(self, l_reg):
+
+        if self.is_updating:
+            return
+
+        # field retrieval
+        i_run = self.get_run_index()
+        x_reg = list(l_reg.getRegion())
+        i_reg = next((i for i, x in enumerate(self.l_reg_xs[i_run]) if l_reg == x))
+
+        # updates the trigger table cells
+        self.trig_props.set_table_cell(i_reg, 1, np.round(x_reg[0], 4))
+        self.trig_props.set_table_cell(i_reg, 2, np.round(x_reg[1], 4))
 
     # ---------------------------------------------------------------------------
     # Plot Button Event Functions
@@ -230,3 +313,11 @@ class TriggerPlot(PlotWidget):
 
         self.trig_props = trig_props_new
         trig_props_new.set_trig_view(self)
+
+    # ---------------------------------------------------------------------------
+    # Miscellaneous Functions
+    # ---------------------------------------------------------------------------
+
+    def get_run_index(self):
+
+        return self.session_info.session.get_run_index(self.session_info.current_run)

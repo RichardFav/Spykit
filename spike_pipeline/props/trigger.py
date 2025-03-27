@@ -11,13 +11,60 @@ from spike_pipeline.props.utils import PropWidget, PropPara
 
 # pyqt imports
 from PyQt6.QtWidgets import QTableWidget, QHeaderView
-from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtCore import Qt, pyqtSignal, QObject
 from PyQt6.QtGui import QFont
 
 # ----------------------------------------------------------------------------------------------------------------------
 
 # widget dimensions
 x_gap = 5
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+"""
+    TableArray:
+"""
+
+
+class TableArray(QObject):
+    def __init__(self, n_row=0, n_col=0):
+        super(TableArray, self).__init__()
+
+        self.n_row = 0
+        self.n_col = None
+        self.data = None
+
+    def add_row(self, nw_row):
+
+        if self.n_col is None:
+            # case is initialising the data array
+            self.n_col = len(nw_row)
+            self.data = np.zeros((1, self.n_col))
+            self.data[0, :] = np.array(nw_row)
+
+        else:
+            # otherwise, append the row to the data array
+            self.data = np.vstack((self.data, np.array(nw_row)))
+
+        # increments the row counter
+        self.n_row += 1
+
+    def remove_row(self, i_row):
+
+        # removes the table row (decrements the index row where required)
+        self.data = np.delete(self.data, i_row, axis=0)
+        self.data[(i_row+1):, 0] -= 1
+
+        # decrements the row counter
+        self.n_row -= 1
+
+    def set(self, i_row, i_col, value):
+
+        self.data[i_row, i_col] = value
+
+    def get(self, i_row, i_col):
+
+        return self.data[i_row, i_col]
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -73,7 +120,12 @@ class TriggerProps(PropWidget):
         self.n_row = 0
         self.b_state = 0
         self.i_row_sel = None
+        self.i_col_sel = None
         self.trig_view = None
+        self.n_run = self.main_obj.session_obj.session.get_run_count()
+
+        # memory allocation
+        self.t_data = [TableArray() for _ in range(self.n_run)]
 
         # initialises the property widget
         self.setup_prop_fields()
@@ -138,16 +190,36 @@ class TriggerProps(PropWidget):
     def table_selected(self):
 
         self.i_row_sel = self.table_region.currentRow()
+        self.i_col_sel = self.table_region.currentColumn()
         self.button_pair.set_enabled(1, True)
 
     def table_changed(self):
 
+        # if manually updating, then exit the function
         if self.is_updating:
             return
+
+        # field retrieval
+        i_run = self.get_run_index()
+        t_min, t_max = 0, self.get_run_duration()
+        item_sel = self.table_region.item(self.i_row_sel, self.i_col_sel)
+
+        chk_val = cf.check_edit_num(item_sel.text(), min_val=t_min, max_val=t_max)
+        if chk_val[1] is None:
+            # updates the table data array
+            self.t_data[i_run].set(self.i_row_sel, self.i_col_sel, chk_val[0])
+            self.trig_view.update_region(self.i_row_sel)
+
+        else:
+            # otherwise, reset the previous value
+            self.is_updating = True
+            item_sel.setText('%g' % self.t_data[i_run].get(self.i_row_sel, self.i_col_sel))
+            self.is_updating = True
 
     def pair_update(self):
 
         # determines the selected button
+        i_run = self.get_run_index()
         i_button = int(np.log2(abs(self.b_state - self.p_props.button_flag)))
 
         # resets the table row count
@@ -158,6 +230,8 @@ class TriggerProps(PropWidget):
             # case is adding a new row
             nw_row = [self.n_row, 0, 0]
             self.table_region.setRowCount(self.n_row)
+            self.t_data[i_run].add_row(nw_row)
+            self.trig_view.add_region(nw_row)
 
             for i_col, c_val in enumerate(nw_row):
                 # creates the widget item
@@ -181,11 +255,25 @@ class TriggerProps(PropWidget):
             # resets the other properties
             self.button_pair.set_enabled(1, False)
             self.table_region.removeRow(self.i_row_sel)
+            self.t_data[i_run].remove_row(self.i_row_sel)
+            self.trig_view.delete_region(self.i_row_sel)
             self.i_row_sel = None
 
         # resets the button state
         self.is_updating = False
         self.b_state = self.p_props.button_flag
+
+    def set_table_cell(self, i_row, i_col, value):
+
+        # updates the table data
+        i_run = self.get_run_index()
+        self.t_data[i_run].set(i_row, i_col, value)
+
+        # updates the table cell string
+        self.is_updating = True
+        item = self.table_region.item(i_row, i_col)
+        item.setText(str(value))
+        self.is_updating = False
 
     # ---------------------------------------------------------------------------
     # Plot View Setter Functions
@@ -194,3 +282,24 @@ class TriggerProps(PropWidget):
     def set_trig_view(self, trig_view_new):
 
         self.trig_view = trig_view_new
+
+    # ---------------------------------------------------------------------------
+    # Miscellaneous Functions
+    # ---------------------------------------------------------------------------
+
+    def get_run_index(self):
+
+        curr_run = self.main_obj.session_obj.current_run
+        return self.main_obj.session_obj.session.get_run_index(curr_run)
+
+    def get_table_row(self, i_row):
+
+        return self.t_data[self.get_run_index()].data[i_row, :]
+
+    def get_run_duration(self):
+
+        if self.trig_view is None:
+            return self.main_obj.session_obj.session_props.t_dur
+
+        else:
+            return self.trig_view.gen_props.get('t_dur')

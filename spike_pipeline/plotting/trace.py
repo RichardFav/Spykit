@@ -334,12 +334,12 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         # resets the start time
         t_start = self.t_lim[0]
         self.trace_props.set_n('t_start', t_start)
-        self.trace_props.edit_start.setText(str(t_start))
+        self.trace_props.edit_start.setText('{0:.4f}'.format(t_start))
 
         # resets the finish time
         t_finish = self.t_lim[1]
         self.trace_props.set_n('t_finish', t_finish)
-        self.trace_props.edit_finish.setText(str(t_finish))
+        self.trace_props.edit_finish.setText('{0:.4f}'.format(t_finish))
 
     def reset_trace_view(self, reset_limits=True):
 
