@@ -193,4 +193,4 @@ class GeneralProps(PropWidget):
 
     def reset_plot_views(self):
 
-        a = 1
+        self.trace_view.reset_gen_props()

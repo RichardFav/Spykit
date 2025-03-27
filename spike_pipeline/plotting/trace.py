@@ -180,6 +180,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         # trace label class fields
         self.n_plt = 0
         self.n_show = 0
+        self.t_start_ofs = 0
         self.labels = []
         self.i_trace = None
         self.y_trace = None
@@ -345,10 +346,67 @@ class TracePlot(TraceLabelMixin, PlotWidget):
             return np.linspace(0, 1, self.n_row_yscl).reshape(1, -1)
 
     # ---------------------------------------------------------------------------
-    # Plot Update/Reset Functions
+    # Property Reset/Update Functions
     # ---------------------------------------------------------------------------
 
+    def reset_trace_props(self):
+
+        # class field updates
+        self.x_window = self.trace_props.get('t_span')
+        self.t_lim = [self.trace_props.get('t_start'), self.trace_props.get('t_finish')]
+        self.c_lim_lo = self.trace_props.get('c_lim_lo')
+        self.c_lim_hi = self.trace_props.get('c_lim_hi')
+
+        # resets the plot view axis
+        self.v_box[0, 0].setXRange(self.t_lim[0], self.t_lim[1], padding=0)
+        self.reset_trace_view()
+
+        # resets the plot item visibility
+        self.reset_plot_items()
+
+        # resets the linear region
+        self.is_updating = True
+        self.l_reg_x.setRegion((self.t_lim[0], self.t_lim[1]))
+        self.is_updating = False
+
+    def reset_gen_props(self):
+
+        # calculates the change in start time
+        t_start_ofs_new = self.gen_props.get('t_start')
+        dt_start_ofs = t_start_ofs_new - self.t_start_ofs
+
+        # class field updates
+        self.t_dur = self.gen_props.get('t_dur')
+        self.t_start_ofs = t_start_ofs_new
+
+        # ensures the limits are correct
+        self.t_lim = list(np.asarray(self.t_lim) - dt_start_ofs)
+        if self.t_lim[0] < 0:
+            self.t_lim = [0, self.x_window]
+
+        elif self.t_lim[1] > self.t_dur:
+            self.t_lim = list(self.t_dur - np.asarray([self.x_window, 0]))
+
+        # resets the plot view axis
+        self.v_box[0, 0].setLimits(xMin=0, xMax=self.t_dur, yMin=0, yMax=self.y_lim_tr)
+        self.v_box[0, 0].setXRange(self.t_lim[0], self.t_lim[1], padding=0)
+        self.reset_trace_view()
+        self.update_trace_props()
+
+        # resets the x-axis linear item transform
+        tr_x = QtGui.QTransform()
+        tr_x.scale(self.t_dur / self.n_col_img, 1.0)
+        self.ximage_item.setTransform(tr_x)
+
+        # resets the linear region
+        self.is_updating = True
+        self.l_reg_x.setRegion((self.t_lim[0], self.t_lim[1]))
+        self.is_updating = False
+
     def update_trace_props(self):
+
+        # indicate that manual updating is taking place
+        self.trace_props.is_updating = True
 
         # resets the start time
         t_start = self.t_lim[0]
@@ -360,6 +418,13 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.trace_props.set_n('t_finish', t_finish)
         self.trace_props.edit_finish.setText('{0:.4f}'.format(t_finish))
 
+        # resets the update flag
+        self.trace_props.is_updating = False
+
+    # ---------------------------------------------------------------------------
+    # Other Reset Functions
+    # ---------------------------------------------------------------------------
+
     def reset_trace_view(self, reset_limits=True):
 
         # retrieves the currently selected channels
@@ -369,10 +434,12 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.reset_plot_items()
 
         if self.n_plt:
-            # sets the frame range indices
+            # field retrieval
             s_freq = self.session_info.session_props.s_freq
-            i_frm0 = int(self.t_lim[0] * s_freq)
-            i_frm1 = int(self.t_lim[1] * s_freq)
+
+            # sets the frame range indices
+            i_frm0 = int((self.t_lim[0] + self.t_start_ofs) * s_freq)
+            i_frm1 = int((self.t_lim[1] + self.t_start_ofs) * s_freq)
             n_frm = i_frm1 - i_frm0
 
             # sets the maximum y-axis trace range
@@ -382,10 +449,8 @@ class TracePlot(TraceLabelMixin, PlotWidget):
             ch_ids = self.session_info.get_channel_ids(i_channel)
             y0 = self.session_info.get_traces(start_frame=i_frm0, end_frame=i_frm1, channel_ids=ch_ids)
 
-            # sets up the x-data array
+            # sets up the heatmap/trace items
             if is_map:
-                # resets the image item
-
                 # removes the median value (if required)
                 if self.trace_props.get('subtract_mean'):
                     y0 = y0 - np.median(y0)
@@ -449,36 +514,9 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         if self.is_show:
             self.update_labels()
 
-    def reset_trace_props(self):
-
-        self.x_window = self.trace_props.get('t_span')
-        self.t_lim = [self.trace_props.get('t_start'), self.trace_props.get('t_finish')]
-        self.c_lim_lo = self.trace_props.get('c_lim_lo')
-        self.c_lim_hi = self.trace_props.get('c_lim_hi')
-
-        # resets the plot view axis
-        self.v_box[0, 0].setXRange(self.t_lim[0], self.t_lim[1], padding=0)
-        self.reset_trace_view()
-
-        # resets the plot item visibility
-        self.reset_plot_items()
-
-        # resets the linear region
-        self.is_updating = True
-        self.l_reg_x.setRegion((self.t_lim[0], self.t_lim[1]))
-        self.is_updating = False
-
     def reset_frame_image(self):
 
         a = 1
-
-    def get_plot_mode(self, n_channel=None):
-
-        if n_channel is None:
-            n_channel = len(self.session_info.get_selected_channels())
-
-        p_type = self.trace_props.get('plot_type')
-        return (p_type == 'Heatmap') or ((p_type == 'Auto') and (n_channel >= self.n_plt_max))
 
     def reset_plot_items(self):
 
@@ -486,8 +524,6 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
         self.image_item.show() if is_map else self.image_item.hide()
         self.main_trace.hide() if is_map else self.main_trace.show()
-        self.highlight_trace.hide() if is_map else self.highlight_trace.show()
-        self.bad_trace.hide() if is_map else self.bad_trace.show()
 
     # ---------------------------------------------------------------------------
     # Signal Trace Plot Event Functions
@@ -679,3 +715,11 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
         self.trace_props = trace_props_new
         trace_props_new.set_trace_view(self)
+
+    def get_plot_mode(self, n_channel=None):
+
+        if n_channel is None:
+            n_channel = len(self.session_info.get_selected_channels())
+
+        p_type = self.trace_props.get('plot_type')
+        return (p_type == 'Heatmap') or ((p_type == 'Auto') and (n_channel >= self.n_plt_max))

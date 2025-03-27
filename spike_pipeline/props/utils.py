@@ -646,11 +646,19 @@ class PropWidget(QWidget):
 
             case 't_start':
                 # case is the start time
-                p_min, p_max = 0, self.t_dur - self.get('t_span')
+                if hasattr(self.p_props, 't_span'):
+                    p_min, p_max = 0, self.t_dur - self.get('t_span')
+
+                else:
+                    p_min, p_max = 0, self.get('t_finish')
 
             case 't_finish':
                 # case is the start time
-                p_min, p_max = self.get('t_span'), self.t_dur
+                if hasattr(self.p_props, 't_span'):
+                    p_min, p_max = self.get('t_span'), self.t_dur
+
+                else:
+                    p_min, p_max = self.get('t_start'), self.t_dur
 
             case 't_span':
                 # case is the trace window span
@@ -658,7 +666,7 @@ class PropWidget(QWidget):
 
             case 't_dur':
                 # case is the experiment duration
-                p_min, p_max = 0.1, self.t_dur
+                p_min, p_max = 0.1, self.t_dur - self.get('t_start')
 
         # returns the limits and integer flag
         return p_min, p_max, is_int
