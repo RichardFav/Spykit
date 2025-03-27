@@ -388,7 +388,8 @@ class TracePlot(TraceLabelMixin, PlotWidget):
             self.t_lim = list(self.t_dur - np.asarray([self.x_window, 0]))
 
         # resets the plot view axis
-        self.v_box[0, 0].setLimits(xMin=0, xMax=self.t_dur, yMin=0, yMax=self.y_lim_tr)
+        self.v_box[0, 0].setLimits(xMin=0, xMax=self.t_dur)
+        self.v_box[1, 0].setLimits(xMin=0, xMax=self.t_dur)
         self.v_box[0, 0].setXRange(self.t_lim[0], self.t_lim[1], padding=0)
         self.reset_trace_view()
         self.update_trace_props()

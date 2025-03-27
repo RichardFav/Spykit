@@ -254,14 +254,18 @@ class TriggerProps(PropWidget):
 
             # resets the other properties
             self.button_pair.set_enabled(1, False)
-            self.table_region.removeRow(self.i_row_sel)
-            self.t_data[i_run].remove_row(self.i_row_sel)
-            self.trig_view.delete_region(self.i_row_sel)
+            self.delete_region(i_run, self.i_row_sel)
             self.i_row_sel = None
 
         # resets the button state
         self.is_updating = False
         self.b_state = self.p_props.button_flag
+
+    def delete_region(self, i_run, i_row):
+
+        self.table_region.removeRow(i_row)
+        self.t_data[i_run].remove_row(i_row)
+        self.trig_view.delete_region(i_row)
 
     def set_table_cell(self, i_row, i_col, value):
 
@@ -303,3 +307,54 @@ class TriggerProps(PropWidget):
 
         else:
             return self.trig_view.gen_props.get('t_dur')
+
+    def reset_region_timing(self, t_dur, dt):
+
+        # updates the table data
+        i_run = self.get_run_index()
+        n_reg = self.t_data[i_run].n_row
+
+        # resets the table data
+        self.t_data[i_run].data[:, 1:] = self.t_data[i_run].data[:, 1:] - dt
+
+        #
+        is_ok = np.ones(n_reg, dtype=bool)
+        for i_reg in np.flip(range(n_reg)):
+            # determines if regions are feasible wrt the start point
+            s_feas = self.t_data[i_run].data[i_reg, 1:] >= 0
+            if not np.any(s_feas):
+                # case is the region is infeasible
+                is_ok[i_reg] = False
+
+            elif not np.all(s_feas):
+                # otherwise, reset the parameter values
+                self.t_data[i_run].data[i_reg, 1:] = np.maximum(0, self.t_data[i_run].data[i_reg, 1:])
+
+            # determines if regions are feasible wrt the start point
+            f_feas = self.t_data[i_run].data[i_reg, 1:] <= t_dur
+            if not np.any(f_feas):
+                # case is the region is infeasible
+                is_ok[i_reg] = False
+
+            elif not np.all(f_feas):
+                # otherwise, reset the parameter values
+                self.t_data[i_run].data[i_reg, 1:] = np.minimum(t_dur, self.t_data[i_run].data[i_reg, 1:])
+
+            # removes the
+            if not is_ok[i_reg]:
+                self.delete_region(i_run, i_reg)
+
+            else:
+                # flag that manual field updating is taking place
+                self.is_updating = True
+
+                for i_col in range(1, self.t_data[i_run].n_col):
+                    item = self.table_region.item(i_reg, i_col)
+                    item_val = self.t_data[i_run].get(i_reg, i_col)
+                    item.setText(str(item_val))
+
+                    self.trig_view.update_region(i_reg)
+
+                # resets the update flag
+                self.is_updating = False
+

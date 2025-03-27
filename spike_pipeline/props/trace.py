@@ -196,4 +196,5 @@ class TraceProps(PropWidget):
 
     def reset_trace_props(self):
 
-        self.trace_view.reset_trace_props()
+        if self.trace_view is not None:
+            self.trace_view.reset_trace_props()

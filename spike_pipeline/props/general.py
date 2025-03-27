@@ -193,4 +193,8 @@ class GeneralProps(PropWidget):
 
     def reset_plot_views(self):
 
-        self.trace_view.reset_gen_props()
+        if self.trace_view is not None:
+            self.trace_view.reset_gen_props()
+
+        if self.trig_view is not None:
+            self.trig_view.reset_gen_props()

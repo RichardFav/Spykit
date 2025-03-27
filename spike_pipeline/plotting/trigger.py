@@ -50,6 +50,7 @@ class TriggerPlot(PlotWidget):
         s_props = self.session_info.session_props
 
         # experiment properties
+        self.t_start_ofs = 0
         self.t_dur = s_props.get_value('t_dur')
         self.s_freq = s_props.get_value('s_freq')
         self.n_samples = s_props.get_value('n_samples')
@@ -161,11 +162,15 @@ class TriggerPlot(PlotWidget):
 
         # sets up the trace plot
         i_run = self.get_run_index()
-        y_tr_new = self.p_ofs + (1 - 2 * self.p_ofs) * cf.normalise_trace(self.y_tr[i_run])
+        i_frm0 = int(self.t_start_ofs * self.s_freq)
+        i_frm1 = int((self.t_start_ofs + self.t_dur) * self.s_freq)
+
+        # sets up the scaled trigger trace
+        y_tr_new = self.p_ofs + (1 - 2 * self.p_ofs) * cf.normalise_trace(self.y_tr[i_run][i_frm0:i_frm1])
 
         # resets the trigger trace data
         self.trig_trace.clear()
-        self.trig_trace.setData(self.x_tr, y_tr_new)
+        self.trig_trace.setData(self.x_tr[i_frm0:i_frm1] - self.t_start_ofs, y_tr_new)
 
     def setup_frame_image(self):
 
@@ -180,7 +185,7 @@ class TriggerPlot(PlotWidget):
         # creates the linear region
         l_reg = LinearRegionItem([nw_row[1], nw_row[2]], bounds=[0, self.t_dur], span=[0, 1],
                                  pen=self.l_pen, hoverPen=self.l_pen_hover, brush=self.l_brush)
-        l_reg.sigRegionChangeFinished.connect(functools.partial(self.xtrig_region_move, l_reg))
+        l_reg.sigRegionChanged.connect(functools.partial(self.xtrig_region_move, l_reg))
         l_reg.setZValue(10)
 
         # stores the linear region object
@@ -301,8 +306,39 @@ class TriggerPlot(PlotWidget):
         self.is_updating = False
 
     # ---------------------------------------------------------------------------
-    # Parameter Object Setter Functions
+    # Property Object Functions
     # ---------------------------------------------------------------------------
+
+    def reset_gen_props(self):
+
+        # calculates the change in start time
+        t_start_ofs_new = self.gen_props.get('t_start')
+        dt_start_ofs = t_start_ofs_new - self.t_start_ofs
+
+        # class field updates
+        self.t_start_ofs = t_start_ofs_new
+        self.t_dur = self.gen_props.get('t_dur')
+
+        # ensures the limits are correct
+        self.t_lim = list(np.asarray(self.t_lim) - dt_start_ofs)
+        if self.t_lim[0] < 0:
+            self.t_lim[0] = 0
+
+        if self.t_lim[1] > self.t_dur:
+            self.t_lim[1] = self.t_dur
+
+        # resets the plot view axis
+        self.v_box[0, 0].setLimits(xMin=0, xMax=self.t_dur)
+        self.v_box[1, 0].setLimits(xMin=0, xMax=self.t_dur)
+        self.v_box[0, 0].setXRange(self.t_lim[0], self.t_lim[1], padding=0)
+        self.v_box[1, 0].setXRange(0, self.t_dur, padding=0)
+        self.trig_props.reset_region_timing(self.t_dur, dt_start_ofs)
+        self.update_trigger_trace()
+
+        # resets the linear region
+        self.is_updating = True
+        self.l_reg_x.setRegion((self.t_lim[0], self.t_lim[1]))
+        self.is_updating = False
 
     def set_gen_props(self, gen_props_new):
 
