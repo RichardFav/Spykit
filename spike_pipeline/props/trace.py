@@ -153,13 +153,13 @@ class TraceProps(PropWidget):
 
         # resets the plot views
         if self.is_init:
-            self.reset_plot_views()
+            self.reset_trace_props()
 
     def combo_update(self, p_str):
 
         # resets the plot views
         if self.is_init:
-            self.reset_plot_views()
+            self.reset_trace_props()
 
     # ---------------------------------------------------------------------------
     # Plot View Setter Functions
@@ -173,6 +173,6 @@ class TraceProps(PropWidget):
     # Plot View Update Functions
     # ---------------------------------------------------------------------------
 
-    def reset_plot_views(self):
+    def reset_trace_props(self):
 
-        a = 1
+        self.trace_view.reset_trace_props()

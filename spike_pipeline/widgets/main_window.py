@@ -166,8 +166,8 @@ class MainWindow(QMainWindow):
         # -----------------------------------------------------------------------
 
         # field retrieval
-        c_list = ['channel_ids', 'shank_ids', 'contact_ids',  'device_channel_indices', 'x', 'y', 'status']
-        c_hdr = ['', 'Channel ID', 'Shank ID', 'Contact ID', 'Channel Index', 'X-Coord', 'Y-Coord', 'Status']
+        c_list = ['channel_ids', 'contact_ids',  'device_channel_indices', 'x', 'y', 'shank_ids', 'status']
+        c_hdr = ['', 'Channel ID', 'Contact ID', 'Channel Index', 'X-Coord', 'Y-Coord', 'Shank ID', 'Status']
 
         # retrieves the necessary channel information data
         ch_info = self.session_obj.get_channel_info()

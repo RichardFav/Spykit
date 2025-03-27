@@ -15,7 +15,7 @@ class ChannelInfoTab(InfoTab):
     # pyqtSignal signal functions
     run_change = pyqtSignal(QWidget)
     data_change = pyqtSignal(QWidget)
-    status_change = pyqtSignal(QWidget)
+    status_change = pyqtSignal(QWidget, object)
 
     def __init__(self, t_str):
         super(ChannelInfoTab, self).__init__(t_str)
@@ -24,6 +24,7 @@ class ChannelInfoTab(InfoTab):
         self.data_flds = None
 
         # boolean class fields
+        self.is_filt = None
         self.is_updating = False
 
         # adds the plot data type combobox
@@ -42,6 +43,7 @@ class ChannelInfoTab(InfoTab):
 
         # creates the table widget
         self.create_table_widget()
+        self.get_filtered_items()
 
     def reset_combobox_fields(self, cb_type, cb_list):
 
@@ -123,12 +125,23 @@ class ChannelInfoTab(InfoTab):
         # resets the update flag
         self.is_updating = False
 
-    def check_filter_item(self):
+    def get_filtered_items(self):
 
-        #
+        # determines the selected filter items
         sel_filt = self.status_filter.get_selected_items()
+
+        # determines which items meet the filter selection
+        self.is_filt = np.zeros(self.table.rowCount(), dtype=bool)
         for i_row in range(self.table.rowCount()):
             item = self.table.item(i_row, self.table.columnCount() - 1)
-            self.table.setRowHidden(i_row, item.text() not in sel_filt)
+            self.is_filt[i_row] = item.text() in sel_filt
 
-        self.status_change.emit(self)
+    def check_filter_item(self):
+
+        self.get_filtered_items()
+
+        for i_row in range(self.table.rowCount()):
+            self.table.setRowHidden(i_row, not self.is_filt[i_row])
+
+        self.status_change.emit(self, self.is_filt)
+        self.data_change.emit(self)

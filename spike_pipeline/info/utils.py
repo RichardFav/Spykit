@@ -147,6 +147,7 @@ class InfoManager(QWidget):
                         # case is the channel tab
                         tab_widget.data_change.connect(self.channel_combobox_update)
                         tab_widget.run_change.connect(self.channel_combobox_update)
+                        tab_widget.status_change.connect(self.channel_status_update)
 
             # appends the tab to the tab group
             self.tab_group_table.addTab(tab_widget, t_lbl)
@@ -178,6 +179,16 @@ class InfoManager(QWidget):
 
         # resets the trace view
         self.main_obj.plot_manager.reset_trace_views(False)
+
+    def channel_status_update(self, tab_obj, is_filt):
+
+        self.session_obj.channel_data.set_filter_flag(is_filt)
+
+        probe_view = self.main_obj.plot_manager.get_plot_view('probe')
+        probe_view.sub_view.create_probe_plot()
+
+        trace_view = self.main_obj.plot_manager.get_plot_view('trace')
+        trace_view.reset_trace_view()
 
     def init_channel_comboboxes(self):
 

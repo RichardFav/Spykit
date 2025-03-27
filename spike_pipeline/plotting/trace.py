@@ -310,7 +310,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         # creates the linear region
         self.l_reg_y = LinearRegionItem([0, self.n_row_yscl], bounds=[0, self.n_row_yscl], span=[0, 1],
                                         pen=self.l_pen, hoverPen=self.l_pen_hover, orientation='horizontal')
-        self.l_reg_y.sigRegionChangeFinished.connect(self.yframe_region_move)
+        self.l_reg_y.sigRegionChanged.connect(self.yframe_region_move)
         self.l_reg_y.setZValue(10)
         self.h_plot[0, 1].addItem(self.l_reg_y)
 
@@ -397,13 +397,26 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.plot_item.setDownsampling(auto=True)
         self.plot_item.setClipToView(True)
 
+        # resets the y-axis range
         if reset_limits:
-            # resets the y-axis range
             self.reset_yaxis_limits()
 
         # updates the plot labels
         if self.is_show:
             self.update_labels()
+
+    def reset_trace_props(self):
+
+        # resets the plot view axis
+        self.t_lim = [self.trace_props.get('t_start'), self.trace_props.get('t_finish')]
+        self.v_box[0, 0].setXRange(self.t_lim[0], self.t_lim[1], padding=0)
+        self.reset_trace_view()
+
+        # resets the linear region
+        self.is_updating = True
+        self.x_window = self.trace_props.get('t_span')
+        self.l_reg_x.setRegion((self.t_lim[0], self.t_lim[1]))
+        self.is_updating = False
 
     def reset_frame_image(self):
 
@@ -453,7 +466,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
         # retrieves the new axis limit
         self.y_lim = self.v_box[0, 0].viewRange()[1]
-        self.t_lim = self.v_box[0, 0].viewRange()[0]
+        self.h_plot[0, 0].setXRange(self.t_lim[0], self.t_lim[1], padding=0)
 
         # resets the x/y-axis linear regions
         self.l_reg_x.setRegion(self.t_lim)

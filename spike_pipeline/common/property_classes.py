@@ -107,7 +107,8 @@ class SessionWorkBook(QObject):
 
     def get_selected_channels(self):
 
-        return np.where(self.channel_data.is_selected)[0]
+        can_show = np.logical_and(self.channel_data.is_selected, self.channel_data.is_filt)
+        return np.where(can_show)[0]
 
     def get_min_max_values(self, t_lim, i_ch):
 
@@ -565,6 +566,7 @@ class ChannelData:
         self.n_channel = probe_rec.get_num_channels()
 
         # memory allocation
+        self.is_filt = np.ones(self.n_channel, dtype=bool)
         self.is_selected = np.zeros(self.n_channel, dtype=bool)
 
     def toggle_channel_flag(self, i_channel, state):
@@ -582,6 +584,10 @@ class ChannelData:
 
                 case 2:
                     self.is_selected[i_ch] = True
+
+    def set_filter_flag(self, is_filt_new):
+
+        self.is_filt = is_filt_new
 
 
 # ----------------------------------------------------------------------------------------------------------------------

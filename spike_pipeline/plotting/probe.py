@@ -382,6 +382,8 @@ class ProbeView(GraphicsObject):
 
         # polygon setup
         p_poly = QPolygonF(self.p_vert)
+        is_show = np.logical_and(self.session_info.channel_data.is_selected,
+                                 self.session_info.channel_data.is_filt)
 
         # painter object setup
         p = QPainter(self.picture)
@@ -399,7 +401,7 @@ class ProbeView(GraphicsObject):
                 p.setBrush(mkBrush(self.c_col_hover))
                 p.drawPolygon(c_p)
 
-            if (self.session_info is not None) and self.session_info.channel_data.is_selected[i_p]:
+            if (self.session_info is not None) and is_show[i_p]:
                 # case is the contact has been selected
                 p.setBrush(mkBrush(self.c_col_selected))
                 p.drawPolygon(c_p)
