@@ -28,6 +28,7 @@ class TracePara(PropPara):
     # pyqtSignal functions
     combo_update = pyqtSignal(str)
     edit_update = pyqtSignal(str)
+    check_update = pyqtSignal(str)
 
     def __init__(self, p_info):
         self.is_updating = True
@@ -50,11 +51,21 @@ class TracePara(PropPara):
         if not _self.is_updating:
             _self.edit_update.emit(p_str)
 
+    @staticmethod
+    def _check_update(p_str, _self):
+
+        if not _self.is_updating:
+            _self.check_update.emit(p_str)
+
     # trace property observer properties
     plot_type = cf.ObservableProperty(pfcn(_combo_update, 'plot_type'))
     t_start = cf.ObservableProperty(pfcn(_edit_update, 't_start'))
     t_finish = cf.ObservableProperty(pfcn(_edit_update, 't_finish'))
     t_span = cf.ObservableProperty(pfcn(_edit_update, 't_span'))
+
+    subtract_mean = cf.ObservableProperty(pfcn(_check_update, 'subtract_mean'))
+    c_lim_lo = cf.ObservableProperty(pfcn(_edit_update, 'c_lim_lo'))
+    c_lim_hi = cf.ObservableProperty(pfcn(_edit_update, 'c_lim_hi'))
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -95,6 +106,7 @@ class TraceProps(PropWidget):
         # connects the slot functions
         self.p_props.edit_update.connect(self.edit_update)
         self.p_props.combo_update.connect(self.combo_update)
+        self.p_props.check_update.connect(self.check_update)
 
         # flag initialisation is complete
         self.is_init = True
@@ -107,6 +119,9 @@ class TraceProps(PropWidget):
             't_start': self.create_para_field('Start Time (s)', 'edit', 0),
             't_finish': self.create_para_field('Finish Time (s)', 'edit', self.t_span0),
             't_span': self.create_para_field('Duration (s)', 'edit', self.t_span0),
+            'subtract_mean': self.create_para_field('Subtract Signal Mean', 'checkbox', True),
+            'c_lim_lo': self.create_para_field('Lower Colour Limit', 'edit', -200),
+            'c_lim_hi': self.create_para_field('Upper Colour Limit', 'edit', 200),
         }
 
         # updates the class field
@@ -156,6 +171,12 @@ class TraceProps(PropWidget):
             self.reset_trace_props()
 
     def combo_update(self, p_str):
+
+        # resets the plot views
+        if self.is_init:
+            self.reset_trace_props()
+
+    def check_update(self, p_str):
 
         # resets the plot views
         if self.is_init:

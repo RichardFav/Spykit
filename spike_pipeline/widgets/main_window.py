@@ -497,12 +497,14 @@ class MenuBar(QObject):
         matplotlib.use('Agg')
 
         ses = self.main_obj.session_obj.session
-        ses._s.plot_preprocessed(
+        h_fig = ses._s.plot_preprocessed(
             show=True,
-            time_range=(0, 1),
+            time_range=(0, 0.1),
             show_channel_ids=False,
             mode="map",
         )
+
+        a = 1
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions

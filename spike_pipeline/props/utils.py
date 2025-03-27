@@ -219,7 +219,7 @@ class PropPara(QWidget):
 
 class PropWidget(QWidget):
     # widget dimensions
-    lbl_width = 100
+    lbl_width = 125
 
     def __init__(self, main_obj, p_type, p_info):
         super(PropWidget, self).__init__()

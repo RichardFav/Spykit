@@ -6,7 +6,7 @@ import functools
 import numpy as np
 
 # pyqtgraph modules
-from pyqtgraph import exporters, mkPen, mkColor, TextItem, ImageItem, PlotCurveItem, LinearRegionItem, ColorMap
+from pyqtgraph import exporters, mkPen, mkColor, TextItem, ImageItem, PlotCurveItem, LinearRegionItem, colormap
 from pyqtgraph.Qt import QtGui
 
 # spike pipeline imports
@@ -132,6 +132,11 @@ class TracePlot(TraceLabelMixin, PlotWidget):
     n_row_yscl = 100
     t_dur_max0 = 0.1
     n_plt_max = 64
+    c_lim_hi = 200
+    c_lim_lo = -200
+
+    # image colourmap
+    c_map = colormap.get("RdBu_r", source="matplotlib", skipCache=False)
 
     # pen widgets
     l_pen = mkPen(width=3, color='y')
@@ -185,6 +190,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.l_reg_y = None
         self.i_sel_tr = None
         self.frame_img = None
+        self.image_item = ImageItem()
         self.ximage_item = ImageItem()
         self.yimage_item = ImageItem()
 
@@ -218,6 +224,11 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         # Trace Subplot Setup
         # ---------------------------------------------------------------------------
 
+        # creates the image transform
+        tr_map = QtGui.QTransform()
+        tr_map.scale(self.x_window / self.n_col_img, 1.0)
+
+
         # sets the plot item properties
         self.plot_item.setMouseEnabled()
         self.plot_item.hideAxis('left')
@@ -240,6 +251,14 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.h_plot[0, 0].addItem(self.main_trace)
         self.h_plot[0, 0].addItem(self.highlight_trace)
         self.h_plot[0, 0].addItem(self.bad_trace)
+
+        # adds the image frame
+        self.image_item.setTransform(tr_map)
+        self.image_item.setColorMap(self.c_map)
+        self.image_item.setImage(None)
+        self.image_item.setLevels([self.c_lim_lo, self.c_lim_hi])
+        self.image_item.hide()
+        self.h_plot[0, 0].addItem(self.image_item)
 
         # sets the signal trace plot event functions
         self.trace_dclick_fcn = self.h_plot[0, 0].mousePressEvent
@@ -345,7 +364,9 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
         # retrieves the currently selected channels
         i_channel = self.session_info.get_selected_channels()
+        is_map = self.get_plot_mode(len(i_channel))
         self.n_plt = len(i_channel)
+        self.reset_plot_items()
 
         if self.n_plt:
             # sets the frame range indices
@@ -354,41 +375,64 @@ class TracePlot(TraceLabelMixin, PlotWidget):
             i_frm1 = int(self.t_lim[1] * s_freq)
             n_frm = i_frm1 - i_frm0
 
-            # sets up the x-data array
-            self.y_tr = np.empty((self.n_plt, n_frm))
-            self.x_tr = np.empty((self.n_plt, n_frm))
-            self.x_tr[:] = np.linspace(self.t_lim[0], self.t_lim[1], n_frm)
+            # sets the maximum y-axis trace range
+            self.y_lim_tr = 1 + (self.n_plt - 1) * self.y_gap
 
             # sets up the y-data array
             ch_ids = self.session_info.get_channel_ids(i_channel)
             y0 = self.session_info.get_traces(start_frame=i_frm0, end_frame=i_frm1, channel_ids=ch_ids)
 
-            for i in range(self.n_plt):
-                # determines the signal range values
-                y_min, y_max = np.min(y0[:, i]), np.max(y0[:, i])
-                if y_min == y_max:
-                    y_scl = 0.5 * np.ones(n_frm, dtype=float)
+            # sets up the x-data array
+            if is_map:
+                # resets the image item
 
-                else:
-                    y_scl = (y0[:, i] - y_min) / (y_max - y_min)
+                # removes the median value (if required)
+                if self.trace_props.get('subtract_mean'):
+                    y0 = y0 - np.median(y0)
 
-                # calculates the scaled traces
-                self.y_tr[i, :] = (i * self.y_gap + self.y_ofs) + (1 - self.y_ofs) * y_scl
+                # resets the image item
+                x_scl = self.x_window / n_frm
+                self.image_item.setImage(np.clip(y0, self.c_lim_lo, self.c_lim_hi))
+                self.image_item.setLevels([self.c_lim_lo, self.c_lim_hi])
 
-            # sets up the connection array
-            c = np.ones((self.n_plt, n_frm), dtype=np.ubyte)
-            c[:, -1] = False
+                # creates the image transform
+                tr_map = QtGui.QTransform()
+                tr_map.scale(x_scl, self.y_lim_tr / self.n_plt)
+                tr_map.translate(self.t_lim[0] / x_scl, 0)
+                self.image_item.setTransform(tr_map)
 
-            # resets the curve data
-            self.main_trace.clear()
-            self.main_trace.setData(self.x_tr.flatten(), self.y_tr.flatten(), connect=c.flatten())
+            else:
+                self.y_tr = np.empty((self.n_plt, n_frm))
+                self.x_tr = np.empty((self.n_plt, n_frm))
+                self.x_tr[:] = np.linspace(self.t_lim[0], self.t_lim[1], n_frm)
 
-            # sets the maximum y-axis trace range
-            self.y_lim_tr = 1 + (self.n_plt - 1) * self.y_gap
+                for i in range(self.n_plt):
+                    # determines the signal range values
+                    y_min, y_max = np.min(y0[:, i]), np.max(y0[:, i])
+                    if y_min == y_max:
+                        y_scl = 0.5 * np.ones(n_frm, dtype=float)
+
+                    else:
+                        y_scl = (y0[:, i] - y_min) / (y_max - y_min)
+
+                    # calculates the scaled traces
+                    self.y_tr[i, :] = (i * self.y_gap + self.y_ofs) + (1 - self.y_ofs) * y_scl
+
+                # sets up the connection array
+                c = np.ones((self.n_plt, n_frm), dtype=np.ubyte)
+                c[:, -1] = False
+
+                # resets the curve data
+                self.main_trace.clear()
+                self.main_trace.setData(self.x_tr.flatten(), self.y_tr.flatten(), connect=c.flatten())
 
         else:
             # case is there are no plots (collapse y-axis range)
             self.y_lim_tr = self.y_ofs / 2.
+
+            # removes the heatmap image (if mapping)
+            if is_map:
+                self.image_item.setImage(None)
 
         # resets the maximum y-axis trace range
         self.v_box[0, 0].setLimits(yMax=self.y_lim_tr)
@@ -407,20 +451,43 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
     def reset_trace_props(self):
 
-        # resets the plot view axis
+        self.x_window = self.trace_props.get('t_span')
         self.t_lim = [self.trace_props.get('t_start'), self.trace_props.get('t_finish')]
+        self.c_lim_lo = self.trace_props.get('c_lim_lo')
+        self.c_lim_hi = self.trace_props.get('c_lim_hi')
+
+        # resets the plot view axis
         self.v_box[0, 0].setXRange(self.t_lim[0], self.t_lim[1], padding=0)
         self.reset_trace_view()
 
+        # resets the plot item visibility
+        self.reset_plot_items()
+
         # resets the linear region
         self.is_updating = True
-        self.x_window = self.trace_props.get('t_span')
         self.l_reg_x.setRegion((self.t_lim[0], self.t_lim[1]))
         self.is_updating = False
 
     def reset_frame_image(self):
 
         a = 1
+
+    def get_plot_mode(self, n_channel=None):
+
+        if n_channel is None:
+            n_channel = len(self.session_info.get_selected_channels())
+
+        p_type = self.trace_props.get('plot_type')
+        return (p_type == 'Heatmap') or ((p_type == 'Auto') and (n_channel >= self.n_plt_max))
+
+    def reset_plot_items(self):
+
+        is_map = self.get_plot_mode()
+
+        self.image_item.show() if is_map else self.image_item.hide()
+        self.main_trace.hide() if is_map else self.main_trace.show()
+        self.highlight_trace.hide() if is_map else self.highlight_trace.show()
+        self.bad_trace.hide() if is_map else self.bad_trace.show()
 
     # ---------------------------------------------------------------------------
     # Signal Trace Plot Event Functions
@@ -589,7 +656,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
             self.i_sel_tr = None
 
         # highlights the required trace (if turning on highlight)
-        if is_on:
+        if is_on and (not self.get_plot_mode()):
             # ensures the trace is visible
             if not self.highlight_trace.isVisible():
                 self.highlight_trace.setVisible(True)
