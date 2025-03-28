@@ -380,7 +380,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.t_start_ofs = t_start_ofs_new
 
         # ensures the limits are correct
-        self.t_lim = list(np.asarray(self.t_lim) - dt_start_ofs)
+        self.t_lim = cf.list_add(self.t_lim, -dt_start_ofs)
         if self.t_lim[0] < 0:
             self.t_lim = [0, self.x_window]
 

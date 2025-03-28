@@ -126,6 +126,7 @@ class TriggerPlot(PlotWidget):
         # sets the signal trace plot event functions
         self.trace_dclick_fcn = self.h_plot[0, 0].mousePressEvent
         self.h_plot[0, 0].mouseDoubleClickEvent = self.trace_double_click
+        self.h_plot[1, 0].mouseDoubleClickEvent = self.trace_double_click
 
         # ---------------------------------------------------------------------------
         # X-Axis Range Finder Setup
@@ -186,6 +187,7 @@ class TriggerPlot(PlotWidget):
         l_reg = LinearRegionItem([nw_row[1], nw_row[2]], bounds=[0, self.t_dur], span=[0, 1],
                                  pen=self.l_pen, hoverPen=self.l_pen_hover, brush=self.l_brush)
         l_reg.sigRegionChanged.connect(functools.partial(self.xtrig_region_move, l_reg))
+        l_reg.sigRegionChangeFinished.connect(functools.partial(self.xtrig_region_moved, l_reg))
         l_reg.setZValue(10)
 
         # stores the linear region object
@@ -200,6 +202,10 @@ class TriggerPlot(PlotWidget):
 
         # increments the linear region count
         self.n_reg_xs[i_run] += 1
+
+        # if not the left-most region, then reset limits with previous region
+        if self.n_reg_xs[i_run] > 1:
+            self.reset_region_limits(i_run, self.n_reg_xs[i_run] - 2, self.n_reg_xs[i_run] - 1)
 
         # adds the region to the trigger trace
         self.h_plot[0, 0].addItem(l_reg)
@@ -265,6 +271,53 @@ class TriggerPlot(PlotWidget):
         self.trig_props.set_table_cell(i_reg, 1, np.round(x_reg[0], 4))
         self.trig_props.set_table_cell(i_reg, 2, np.round(x_reg[1], 4))
 
+    def xtrig_region_moved(self, l_reg):
+
+        if self.is_updating:
+            return
+
+        # field retrieval
+        i_run = self.get_run_index()
+        i_reg = self.get_region_index(l_reg, i_run)
+
+        if i_reg > 0:
+            # if not the left-most region, then reset limits with previous region
+            self.reset_region_limits(i_run, i_reg - 1, i_reg)
+
+        if (i_reg + 1) < self.n_reg_xs[i_run]:
+            # if not the right-most region, then reset limits with next region
+            self.reset_region_limits(i_run, i_reg, i_reg + 1)
+
+    def reset_region_limits(self, i_run, i_reg0, i_reg1):
+
+        # retrieves the previous region object/region
+        l_reg0 = self.l_reg_xs[i_run][i_reg0]
+        x_reg0 = l_reg0.getRegion()
+
+        # retrieves the next region object/region
+        l_reg1 = self.l_reg_xs[i_run][i_reg1]
+        x_reg1 = l_reg1.getRegion()
+
+        # resets the previous region limits
+        if i_reg0 == 0:
+            # previous region is the first region
+            l_reg0.setBounds([0, x_reg1[0]])
+
+        else:
+            # otherwise, reset regions based on region preceeding previous
+            x_reg0_pre = self.l_reg_xs[i_run][i_reg0 - 1].getRegion()
+            l_reg0.setBounds([x_reg0_pre[1], x_reg1[0]])
+
+        # resets the region limits
+        if (i_reg1 + 1) == self.n_reg_xs[i_run]:
+            # next region is the last region
+            l_reg1.setBounds([x_reg0[1], self.t_dur])
+
+        else:
+            # otherwise, reset regions based on region proceeding next
+            x_reg1_post = self.l_reg_xs[i_run][i_reg1 + 1].getRegion()
+            l_reg1.setBounds([x_reg0[1], x_reg1_post])
+
     # ---------------------------------------------------------------------------
     # Plot Button Event Functions
     # ---------------------------------------------------------------------------
@@ -295,7 +348,8 @@ class TriggerPlot(PlotWidget):
 
         # runs the original mouse event function
         if evnt is not None:
-            self.trace_dclick_fcn(evnt)
+            # runs the mouse event
+            PlotWidget.mousePressEvent(self, evnt)
 
             # updates the time limits
             self.t_lim = [0, self.t_dur]
@@ -320,7 +374,7 @@ class TriggerPlot(PlotWidget):
         self.t_dur = self.gen_props.get('t_dur')
 
         # ensures the limits are correct
-        self.t_lim = list(np.asarray(self.t_lim) - dt_start_ofs)
+        self.t_lim = cf.list_add(self.t_lim, -dt_start_ofs)
         if self.t_lim[0] < 0:
             self.t_lim[0] = 0
 
@@ -357,3 +411,7 @@ class TriggerPlot(PlotWidget):
     def get_run_index(self):
 
         return self.session_info.session.get_run_index(self.session_info.current_run)
+
+    def get_region_index(self, l_reg, i_run):
+
+        return next((i for i, x in enumerate(self.l_reg_xs[i_run]) if l_reg == x))

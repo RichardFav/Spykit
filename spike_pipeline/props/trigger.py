@@ -103,6 +103,10 @@ class TriggerPara(PropPara):
 
 
 class TriggerProps(PropWidget):
+    # parameters
+    pt_dur = 0.1
+    t_win_min = 5
+
     # array class fields
     c_hdr = ['Region', 'Start (s)', 'Finish (s)']
     item_index = Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
@@ -228,11 +232,12 @@ class TriggerProps(PropWidget):
 
         if i_button == 0:
             # case is adding a new row
-            nw_row = [self.n_row, 0, 0]
-            self.table_region.setRowCount(self.n_row)
-            self.t_data[i_run].add_row(nw_row)
-            self.trig_view.add_region(nw_row)
+            nw_row = self.get_new_table_row()
+            if nw_row is None:
+                return
 
+            # adds the new region/table item
+            self.add_region(i_run, nw_row)
             for i_col, c_val in enumerate(nw_row):
                 # creates the widget item
                 item = cw.QTableWidgetItemSortable(None)
@@ -261,11 +266,13 @@ class TriggerProps(PropWidget):
         self.is_updating = False
         self.b_state = self.p_props.button_flag
 
-    def delete_region(self, i_run, i_row):
+    # ---------------------------------------------------------------------------
+    # Setter Functions
+    # ---------------------------------------------------------------------------
 
-        self.table_region.removeRow(i_row)
-        self.t_data[i_run].remove_row(i_row)
-        self.trig_view.delete_region(i_row)
+    def set_trig_view(self, trig_view_new):
+
+        self.trig_view = trig_view_new
 
     def set_table_cell(self, i_row, i_col, value):
 
@@ -280,15 +287,7 @@ class TriggerProps(PropWidget):
         self.is_updating = False
 
     # ---------------------------------------------------------------------------
-    # Plot View Setter Functions
-    # ---------------------------------------------------------------------------
-
-    def set_trig_view(self, trig_view_new):
-
-        self.trig_view = trig_view_new
-
-    # ---------------------------------------------------------------------------
-    # Miscellaneous Functions
+    # Getter Functions
     # ---------------------------------------------------------------------------
 
     def get_run_index(self):
@@ -307,6 +306,60 @@ class TriggerProps(PropWidget):
 
         else:
             return self.trig_view.gen_props.get('t_dur')
+
+    def get_new_table_row(self):
+
+        from scipy.ndimage import distance_transform_edt
+
+        # pre-calculations
+        i_run = self.get_run_index()
+        t_dur = self.get_run_duration()
+
+        if self.n_row == 1:
+            # case is the first region
+            ind_row = [0, int(self.pt_dur * t_dur)]
+
+        else:
+            # case is the other regions
+            t_final = self.t_data[i_run].get(self.n_row - 2, 2)
+            t_win = t_dur - t_final
+
+            if t_win < self.t_win_min:
+                # insufficient space available for new region
+                cf.show_error('Insufficient space for new trigger region.')
+                return None
+
+            else:
+                # determines the new region size
+                dt_win = int(self.pt_dur * t_win)
+                t_reg = np.max([self.t_win_min, dt_win])
+
+                # calculates the new region start/finish times
+                t_ofs = np.min([t_win - t_reg, t_reg]) + t_final
+                ind_row = cf.list_add([0, t_reg], t_ofs)
+
+        # returns the table row
+        return [self.n_row] + ind_row
+
+    # ---------------------------------------------------------------------------
+    # Linear Region Add/Remove Functions
+    # ---------------------------------------------------------------------------
+
+    def add_region(self, i_run, nw_row):
+
+        self.table_region.setRowCount(self.n_row)
+        self.t_data[i_run].add_row(nw_row)
+        self.trig_view.add_region(nw_row)
+
+    def delete_region(self, i_run, i_row):
+
+        self.table_region.removeRow(i_row)
+        self.t_data[i_run].remove_row(i_row)
+        self.trig_view.delete_region(i_row)
+
+    # ---------------------------------------------------------------------------
+    # Miscellaneous Functions
+    # ---------------------------------------------------------------------------
 
     def reset_region_timing(self, t_dur, dt):
 
@@ -358,3 +411,6 @@ class TriggerProps(PropWidget):
                 # resets the update flag
                 self.is_updating = False
 
+        # resets the linear region bounds
+        for l_reg in self.trig_view.l_reg_xs[i_run]:
+            self.trig_view.xtrig_region_moved(l_reg)

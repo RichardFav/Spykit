@@ -384,3 +384,7 @@ def normalise_trace(y):
 
     else:
         return (y - y_min) / (y_max - y_min)
+
+
+def list_add(y, dy):
+    return list(np.asarray(y) + dy)
