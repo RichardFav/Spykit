@@ -60,7 +60,17 @@ align_flag = {
 }
 
 # file path/filter modes
-f_mode_ssf = "Spike Pipeline Session File (*.ssf)"
+f_mode = {
+    'session': "Spike Pipeline Session File (*.ssf)",
+    'trigger': "Experiment Trigger File (*.npy)",
+    'config': "Spike Pipeline Config File (*.cfig)",
+}
+
+f_name = {
+    'session': "Session",
+    'trigger': "Trigger",
+    'config': "Configuration",
+}
 
 # parameter/resource folder paths
 data_dir = "C:\\Work\\Other Projects\\EPhys Project\\Data"

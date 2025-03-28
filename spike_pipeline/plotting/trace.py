@@ -358,7 +358,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
         # resets the plot view axis
         self.v_box[0, 0].setXRange(self.t_lim[0], self.t_lim[1], padding=0)
-        self.reset_trace_view()
+        self.reset_trace_view(reset_limits=False)
 
         # resets the plot item visibility
         self.reset_plot_items()

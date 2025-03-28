@@ -8,7 +8,7 @@ import pyqtgraph as pg
 
 # pyqt6 module import
 from PyQt6.QtWidgets import (QMainWindow, QHBoxLayout, QFormLayout, QWidget, QGridLayout,
-                             QScrollArea, QSizePolicy, QDialog, QMenuBar, QToolBar)
+                             QScrollArea, QSizePolicy, QDialog, QMenuBar, QToolBar, QMenu)
 from PyQt6.QtCore import Qt, QSize, QRect, pyqtSignal, QObject
 from PyQt6.QtGui import QFont, QColor, QIcon, QAction
 
@@ -191,7 +191,7 @@ class MainWindow(QMainWindow):
 
         # enables the menubar items
         self.menu_bar.set_menu_enabled('save', True)
-        self.menu_bar.set_menu_enabled('prep_test', True)
+        # self.menu_bar.set_menu_enabled('run_test', True)
 
         # resets the session flags
         self.session_obj.state = 1
@@ -374,11 +374,37 @@ class MenuBar(QObject):
 
         # initialisations
         p_str = ['new', 'open', 'save', None, 'close']
-        p_lbl = ['New Session', 'Load Session', 'Save Session', None, 'Close Window']
-        cb_fcn = [self.new_session, self.load_session, self.save_session, None, self.close_window]
+        p_lbl = ['New...', 'Load...', 'Save...', None, 'Close Window']
+        cb_fcn = [self.new_session, None, None, None, self.close_window]
 
         # adds the file menu items
         self.add_menu_items(h_menu_file, p_lbl, cb_fcn, p_str, True)
+
+        # ---------------------------------------------------------------------------
+        # Save Menubar Item Setup
+        # ---------------------------------------------------------------------------
+
+        # field retrieval
+        h_file_open = self.get_menu_item('open')
+        p_str = ['load_session', 'load_trigger', 'load_config']
+        p_lbl = ['Session', 'Trigger File', 'Config File']
+        cb_fcn = [self.load_session, self.load_trigger, self.load_config]
+
+        # adds the file menu items
+        self.add_menu_items(h_file_open, p_lbl, cb_fcn, p_str, False)
+
+        # ---------------------------------------------------------------------------
+        # Save Menubar Item Setup
+        # ---------------------------------------------------------------------------
+
+        # field retrieval
+        h_file_save = self.get_menu_item('save')
+        p_str = ['save_session', 'save_trigger', 'save_config']
+        p_lbl = ['Session', 'Trigger File', 'Config File']
+        cb_fcn = [self.save_session, self.save_trigger, self.save_config]
+
+        # adds the file menu items
+        self.add_menu_items(h_file_save, p_lbl, cb_fcn, p_str, False)
 
         # ---------------------------------------------------------------------------
         # Preprocessing Menubar Item Setup
@@ -413,17 +439,24 @@ class MenuBar(QObject):
 
             else:
                 # creates the menu item
-                if add_tool:
+                if add_tool and (cbf is not None):
                     h_tool = QAction(QIcon(cw.icon_path[ps]), pl, self)
                     h_tool.triggered.connect(cbf)
                     h_tool.setObjectName(ps)
                     self.tool_bar.addAction(h_tool)
 
+                if cbf is not None:
+                    h_menu = QAction(pl, h_menu_parent)
+                    h_menu_parent.addAction(h_menu)
+                    h_menu.triggered.connect(cbf)
+
+                else:
+                    h_menu = QMenu(pl, h_menu_parent)
+                    h_menu_parent.addMenu(h_menu)
+
                 # creates the menu item
-                h_menu = QAction(pl, self)
+                h_menu.setParent(h_menu_parent)
                 h_menu.setObjectName(ps)
-                h_menu.triggered.connect(cbf)
-                h_menu_parent.addAction(h_menu)
 
     # ---------------------------------------------------------------------------
     # File Menubar Functions
@@ -436,16 +469,10 @@ class MenuBar(QObject):
 
     def load_session(self, file_info=None):
 
-        # runs the save file dialog (if file path not given)
-        if not isinstance(file_info, str):
-            file_dlg = cw.FileDialogModal(None, 'Select Session File', cw.f_mode_ssf, cw.data_dir, is_save=False)
-            if file_dlg.exec() == QDialog.DialogCode.Accepted:
-                # if successful, then retrieve the file name
-                file_info = file_dlg.selectedFiles()[0]
-
-            else:
-                # otherwise, exit the function
-                return
+        # prompts the user for the file name (exit if the user cancels)
+        file_info = self.load_file(file_info, 'session')
+        if file_info is None:
+            return
 
         # loads data from the file
         with open(file_info, 'rb') as f:
@@ -464,18 +491,57 @@ class MenuBar(QObject):
         if 'trigger' not in self.main_obj.plot_manager.types:
             self.main_obj.sync_channel_change()
 
+    def load_trigger(self, file_info=None):
+
+        # prompts the user for the file name (exit if the user cancels)
+        file_info = self.load_file(file_info, 'trigger')
+        if file_info is None:
+            return
+
+        # loads data from the file
+        with open(file_info, 'rb') as f:
+            trig_data = pickle.load(f)
+
+        # finish me!!
+        pass
+
+    def load_config(self, file_info=None):
+
+        # prompts the user for the file name (exit if the user cancels)
+        file_info = self.load_file(file_info, 'config')
+        if file_info is None:
+            return
+
+        # loads data from the file
+        with open(file_info, 'rb') as f:
+            config_data = pickle.load(f)
+
+        # finish me!!
+        pass
+
     def save_session(self):
 
-        # runs the save file dialog
-        file_dlg = cw.FileDialogModal(None, 'Set Session Filename', cw.f_mode_ssf, cw.data_dir, is_save=True)
-        if file_dlg.exec() == QDialog.DialogCode.Accepted:
-            # retrieves the current session data
-            session_data = self.main_obj.session_obj.get_session_save_data()
+        # retrieves the output data
+        session_data = self.main_obj.session_obj.get_session_save_data()
 
-            # saves the session data to file
-            file_info = file_dlg.selectedFiles()
-            with open(file_info[0], 'wb') as f:
-                pickle.dump(session_data, f)
+        # saves the session file
+        self.save_file('session', session_data)
+
+    def save_trigger(self):
+
+        # retrieves the output data
+        trigger_data = {'Finish': "Me!"}
+
+        # saves the session file
+        self.save_file('trigger', trigger_data)
+
+    def save_config(self):
+
+        # retrieves the output data
+        config_data = {'Finish': "Me!"}
+
+        # saves the session file
+        self.save_file('config', config_data)
 
     def close_window(self):
 
@@ -512,13 +578,39 @@ class MenuBar(QObject):
 
     def set_menu_enabled(self, menu_name, state):
 
-        h_menu_new = self.get_menu_item(menu_name)
-        [x.setEnabled(state) for x in h_menu_new]
+        self.get_menu_item(menu_name).setEnabled(state)
 
     def get_menu_item(self, menu_name):
 
-        return self.findChildren(QAction, name=menu_name)
+        return self.menu_bar.findChild(QWidget, name=menu_name)
 
     def context_menu_event(self, evnt):
 
         evnt.ignore()
+
+    def load_file(self, file_info, f_type):
+
+        # runs the save file dialog (if file path not given)
+        if not isinstance(file_info, str):
+            f_title = 'Select {0} File'.format(cw.f_name[f_type])
+            file_dlg = cw.FileDialogModal(None, f_title, cw.f_mode[f_type], cw.data_dir, is_save=False)
+            if file_dlg.exec() == QDialog.DialogCode.Accepted:
+                # if successful, then retrieve the file name
+                file_info = file_dlg.selectedFiles()[0]
+
+            else:
+                # otherwise, exit the function
+                return None
+
+        return file_info
+
+    def save_file(self, f_type, output_data):
+
+        # runs the save file dialog
+        f_title = 'Select {0} File'.format(cw.f_name[f_type])
+        file_dlg = cw.FileDialogModal(None, f_title, cw.f_mode[f_type], cw.data_dir, is_save=True)
+        if file_dlg.exec() == QDialog.DialogCode.Accepted:
+            # saves the session data to file
+            file_info = file_dlg.selectedFiles()
+            with open(file_info[0], 'wb') as f:
+                pickle.dump(output_data, f)
