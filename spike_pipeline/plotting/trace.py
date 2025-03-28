@@ -229,7 +229,6 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         tr_map = QtGui.QTransform()
         tr_map.scale(self.x_window / self.n_col_img, 1.0)
 
-
         # sets the plot item properties
         self.plot_item.setMouseEnabled()
         self.plot_item.hideAxis('left')

@@ -193,7 +193,7 @@ class TriggerProps(PropWidget):
 
     def table_selected(self):
 
-        self.i_row_sel = self.table_region.currentRow()
+        self.i_row_sel = self.get_current_row()
         self.i_col_sel = self.table_region.currentColumn()
         self.button_pair.set_enabled(1, True)
 
@@ -205,7 +205,7 @@ class TriggerProps(PropWidget):
 
         # field retrieval
         i_run = self.get_run_index()
-        t_min, t_max = 0, self.get_run_duration()
+        t_min, t_max = self.get_time_limits(i_run)
         item_sel = self.table_region.item(self.i_row_sel, self.i_col_sel)
 
         chk_val = cf.check_edit_num(item_sel.text(), min_val=t_min, max_val=t_max)
@@ -218,7 +218,7 @@ class TriggerProps(PropWidget):
             # otherwise, reset the previous value
             self.is_updating = True
             item_sel.setText('%g' % self.t_data[i_run].get(self.i_row_sel, self.i_col_sel))
-            self.is_updating = True
+            self.is_updating = False
 
     def pair_update(self):
 
@@ -340,6 +340,24 @@ class TriggerProps(PropWidget):
 
         # returns the table row
         return [self.n_row] + ind_row
+
+    def get_current_row(self):
+
+        i_row = self.table_region.currentRow()
+        return None if (i_row < 0) else i_row
+
+    def get_time_limits(self, i_run):
+
+        # limit initialisation
+        t_min, t_max = 0, self.get_run_duration()
+
+        if self.i_row_sel > 0:
+            t_min = self.t_data[i_run].get(self.i_row_sel - 1, 2)
+
+        if (self.i_row_sel + 1) < self.trig_view.n_reg_xs[i_run]:
+            t_max = self.t_data[i_run].get(self.i_row_sel + 1, 1)
+
+        return t_min, t_max
 
     # ---------------------------------------------------------------------------
     # Linear Region Add/Remove Functions

@@ -225,11 +225,15 @@ class TriggerPlot(PlotWidget):
         # removes the linear item from the list/plot item
         i_run = self.get_run_index()
         t_row = self.trig_props.get_table_row(i_reg)
+        l_reg = self.l_reg_xs[i_run][i_reg]
 
         # resets the region position
         self.is_updating = True
-        self.l_reg_xs[i_run][i_reg].setRegion((t_row[1], t_row[2]))
+        l_reg.setRegion((t_row[1], t_row[2]))
         self.is_updating = False
+
+        # updates the region limits
+        self.xtrig_region_moved(l_reg)
 
     def hide_regions(self, i_run=None):
 
