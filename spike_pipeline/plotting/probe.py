@@ -382,8 +382,12 @@ class ProbeView(GraphicsObject):
 
         # polygon setup
         p_poly = QPolygonF(self.p_vert)
-        is_show = np.logical_and(self.session_info.channel_data.is_selected,
-                                 self.session_info.channel_data.is_filt)
+        if self.session_info is None:
+            is_show = np.zeros(len(self.c_poly), dtype=bool)
+
+        else:
+            is_show = np.logical_and(self.session_info.channel_data.is_selected,
+                                     self.session_info.channel_data.is_filt)
 
         # painter object setup
         p = QPainter(self.picture)

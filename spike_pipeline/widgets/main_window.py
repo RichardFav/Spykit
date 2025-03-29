@@ -72,8 +72,8 @@ class MainWindow(QMainWindow):
         # sets the widget style sheets
         self.set_styles()
 
-        # REMOVE ME LATER
-        self.testing()
+        # # REMOVE ME LATER
+        # self.testing()
 
     # ---------------------------------------------------------------------------
     # Class Widget Setup Functions
@@ -144,15 +144,14 @@ class MainWindow(QMainWindow):
         c_id[:, :2] = self.plot_manager.get_plot_index('trace')
         c_id[:, -1] = self.plot_manager.get_plot_index('probe')
 
-        if self.has_session:
-            if not np.any([x is None for x in self.session_obj.session.sync_ch]):
-                # create the trigger plot view
-                self.plot_manager.get_plot_view('trigger', expand_grid=False)
-                c_id[-1, :2] = self.plot_manager.get_plot_index('trigger')
+        if not np.any([x is None for x in self.session_obj.session.sync_ch]):
+            # create the trigger plot view
+            self.prop_manager.add_prop_tabs('trigger')
+            self.plot_manager.get_plot_view('trigger', expand_grid=False)
+            c_id[-1, :2] = self.plot_manager.get_plot_index('trigger')
 
-                # appends the trigger plot view to the prop manager
-                self.prop_manager.add_prop_tabs('trigger')
-                self.prop_manager.add_config_view('Trigger')
+            # appends the trigger plot view to the prop manager
+            self.prop_manager.add_config_view('Trigger')
 
         # updates the grid plots
         self.plot_manager.update_plot_config(c_id)
@@ -185,6 +184,10 @@ class MainWindow(QMainWindow):
         self.info_manager.setup_info_table(p_dframe, 'Channel', c_hdr)
         self.info_manager.init_channel_comboboxes()
 
+        # appends the channel status flags (if available)
+        if not np.any([x is None for x in self.session_obj.session.bad_ch]):
+            self.bad_channel_change()
+
         # -----------------------------------------------------------------------
         # House-Keeping Exercises
         # -----------------------------------------------------------------------
@@ -209,11 +212,16 @@ class MainWindow(QMainWindow):
             self.prop_manager.add_config_view('Trigger')
             self.prop_manager.set_tab_visible('trigger', False)
 
-    def bad_channel_change(self):
+    def bad_channel_change(self, session=None):
 
-        # retrieves the channel status flags
-        i_run = self.session_obj.session.get_run_index(self.session_obj.current_run)
-        ch_status = self.session_obj.session.bad_ch[i_run]
+        if session is None:
+            # case running session from MainWindow
+            i_run = self.session_obj.session.get_run_index(self.session_obj.current_run)
+            ch_status = self.session_obj.session.bad_ch[i_run]
+
+        else:
+            # case running session from OpenSession
+            ch_status = session.bad_ch[0]
 
         # updates the channel status flags
         channel_tab = self.info_manager.get_info_tab('channel')
@@ -570,7 +578,7 @@ class MenuBar(QObject):
             mode="map",
         )
 
-        a = 1
+        h_fig['run-001_g0_imec0'].savefig('TestHeatmap.png')
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions

@@ -441,6 +441,8 @@ class TracePlot(TraceLabelMixin, PlotWidget):
             i_frm0 = int((self.t_lim[0] + self.t_start_ofs) * s_freq)
             i_frm1 = int((self.t_lim[1] + self.t_start_ofs) * s_freq)
             n_frm = i_frm1 - i_frm0
+            if n_frm == 0:
+                return
 
             # sets the maximum y-axis trace range
             self.y_lim_tr = 1 + (self.n_plt - 1) * self.y_gap
@@ -629,7 +631,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.t_lim = t_lim_nw
         self.v_box[0, 0].setXRange(self.t_lim[0], self.t_lim[1], padding=0)
         self.update_trace_props()
-        self.reset_trace_view()
+        self.reset_trace_view(False)
 
         # updates the labels (if currently displaying)
         if self.is_show:

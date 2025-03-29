@@ -100,6 +100,7 @@ class OpenSession(QMainWindow):
 
         # other class fields
         self.session = None
+        self.session_obj.open_session = True
         self.scr_sz = QApplication.primaryScreen().size()
         self.probe_width = dlg_width - (file_width + 2 * x_gap)
 
@@ -180,6 +181,7 @@ class OpenSession(QMainWindow):
         self.file.setFixedWidth(file_width)
         self.file.session_loaded.connect(self.session_load)
         self.file.session_reset.connect(self.session_reset)
+        self.file.channel_calc.connect(self.channel_calc)
 
         # disables the probe info panel
         self.probe.setVisible(False)
@@ -227,6 +229,11 @@ class OpenSession(QMainWindow):
             self.probe.clear_probe_frame()
             self.reset_dialog_width(False)
 
+    def channel_calc(self, ch_type, session):
+
+        if not self.session_obj.open_session:
+            self.session_obj.channel_calc(ch_type, session)
+
     def close_window(self):
 
         # initialisations
@@ -252,8 +259,10 @@ class OpenSession(QMainWindow):
         time.sleep(0.25)
 
         # updates the session class field
+        self.session_obj.open_session = False
         if update_session:
             self.session_obj.session = self.session
+            time.sleep(0.1)
 
         # sets the parent widget to be visible (if available)
         if self.parent() is not None:
@@ -335,10 +344,11 @@ class OpenSession(QMainWindow):
 
 class SessionFile(QWidget):
     # pyqtsignal functions
-    session_reset = pyqtSignal()
-    session_loaded = pyqtSignal()
     open_session = pyqtSignal()
     reset_session = pyqtSignal()
+    session_reset = pyqtSignal()
+    session_loaded = pyqtSignal()
+    channel_calc = pyqtSignal(str, object)
 
     # widget dimensions
     lbl_width = 150
@@ -905,6 +915,11 @@ class SessionFile(QWidget):
 
         # creates the session object
         self.main_widget.session = SessionObject(s_props)
+        self.main_widget.session.channel_calc.connect(self.channel_calc_slot)
+
+    def channel_calc_slot(self, ch_type, session):
+
+        self.channel_calc.emit(ch_type, session)
 
     def check_run_table(self, h_chk, i_row):
 

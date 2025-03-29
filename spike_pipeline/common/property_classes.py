@@ -31,7 +31,7 @@ class SessionWorkBook(QObject):
     # signal functions
     session_change = pyqtSignal()
     sync_channel_change = pyqtSignal()
-    bad_channel_change = pyqtSignal()
+    bad_channel_change = pyqtSignal(object)
 
     def __init__(self):
         super(SessionWorkBook, self).__init__()
@@ -58,6 +58,7 @@ class SessionWorkBook(QObject):
 
         # resets the initialisation flag
         self.has_init = True
+        self.open_session = False
 
     # ---------------------------------------------------------------------------
     # Getter Functions
@@ -180,7 +181,7 @@ class SessionWorkBook(QObject):
 
         # resets the session object
         self.session = SessionObject(ses_data['session_props'], True)
-        self.session.channels_detected.connect(self.channel_detected)
+        self.session.channel_calc.connect(self.channel_calc)
 
         # resets the other class fields
         self.state = ses_data['state']
@@ -192,14 +193,15 @@ class SessionWorkBook(QObject):
         # self.y_min = np.min(y, axis=0)
         # self.y_max = np.max(y, axis=0)
 
-    def channel_detected(self, ch_type):
+    def channel_calc(self, ch_type, session=None):
 
+        # runs the signal function (based on data type)
         match ch_type:
             case 'sync':
                 self.sync_channel_change.emit()
 
             case 'bad':
-                self.bad_channel_change.emit()
+                self.bad_channel_change.emit(session)
 
     # ---------------------------------------------------------------------------
     # Static Methods
@@ -236,7 +238,7 @@ class SessionWorkBook(QObject):
 class SessionObject(QObject):
     # pyqtsignal functions
     channel_data_setup = pyqtSignal(object)
-    channels_detected = pyqtSignal(str)
+    channel_calc = pyqtSignal(str, object)
 
     def __init__(self, s_props, ssf_load=False):
         super(SessionObject, self).__init__()
@@ -251,6 +253,7 @@ class SessionObject(QObject):
         self.t_min_max = None
         self.min_max = None
         self.ssf_load = ssf_load
+        self.data_init = {'bad': False, 'sync': False}
 
         # creates the session property fields from the input dictionary
         for sp in s_props:
@@ -404,7 +407,8 @@ class SessionObject(QObject):
 
         # if all runs have been detected, then run the signal function
         if np.all([x is not None for x in self.bad_ch]):
-            self.channels_detected.emit('bad')
+            self.data_init['bad'] = True
+            self.channel_calc.emit('bad', self)
 
         print("Bad Channel {0} Data Detected - {1}".format(i_run, time.time() - t0))
 
@@ -415,7 +419,8 @@ class SessionObject(QObject):
 
         # if all runs have been detected, then run the signal function
         if np.all([x is not None for x in self.sync_ch]):
-            self.channels_detected.emit('sync')
+            self.data_init['sync'] = True
+            self.channel_calc.emit('sync', self)
 
         print("Sync Channel {0} Data Detected - {1}".format(i_run, time.time() - t0))
 
