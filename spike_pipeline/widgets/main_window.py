@@ -144,14 +144,15 @@ class MainWindow(QMainWindow):
         c_id[:, :2] = self.plot_manager.get_plot_index('trace')
         c_id[:, -1] = self.plot_manager.get_plot_index('probe')
 
-        if not np.any([x is None for x in self.session_obj.session.sync_ch]):
-            # create the trigger plot view
-            self.prop_manager.add_prop_tabs('trigger')
-            self.plot_manager.get_plot_view('trigger', expand_grid=False)
-            c_id[-1, :2] = self.plot_manager.get_plot_index('trigger')
+        if self.session_obj.session.sync_ch is not None:
+            if not np.any([x is None for x in self.session_obj.session.sync_ch]):
+                # create the trigger plot view
+                self.prop_manager.add_prop_tabs('trigger')
+                self.plot_manager.get_plot_view('trigger', expand_grid=False)
+                c_id[-1, :2] = self.plot_manager.get_plot_index('trigger')
 
-            # appends the trigger plot view to the prop manager
-            self.prop_manager.add_config_view('Trigger')
+                # appends the trigger plot view to the prop manager
+                self.prop_manager.add_config_view('Trigger')
 
         # updates the grid plots
         self.plot_manager.update_plot_config(c_id)
@@ -185,8 +186,9 @@ class MainWindow(QMainWindow):
         self.info_manager.init_channel_comboboxes()
 
         # appends the channel status flags (if available)
-        if not np.any([x is None for x in self.session_obj.session.bad_ch]):
-            self.bad_channel_change()
+        if self.session_obj.session.bad_ch is not None:
+            if not np.any([x is None for x in self.session_obj.session.bad_ch]):
+                self.bad_channel_change()
 
         # -----------------------------------------------------------------------
         # House-Keeping Exercises
