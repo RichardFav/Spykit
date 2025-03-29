@@ -1,7 +1,4 @@
 # module import
-import os
-import time
-import numpy as np
 from functools import partial as pfcn
 
 # spike pipeline imports

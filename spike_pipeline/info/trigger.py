@@ -1,6 +1,6 @@
 # custom module imports
 import spike_pipeline.common.common_widget as cw
-from spike_pipeline.info.common import InfoTab
+from spike_pipeline.info.utils import InfoWidget
 from spike_pipeline.common.common_widget import QWidget, QLabelCombo, font_lbl
 
 # pyqt imports
@@ -9,7 +9,7 @@ from PyQt6.QtCore import pyqtSignal
 # ----------------------------------------------------------------------------------------------------------------------
 
 
-class TriggerInfoTab(InfoTab):
+class TriggerInfoTab(InfoWidget):
     # pyqtSignal signal functions
     run_change = pyqtSignal(QWidget)
     init_para = pyqtSignal(str, object)

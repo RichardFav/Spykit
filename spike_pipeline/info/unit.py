@@ -1,11 +1,11 @@
 # custom module imports
 import spike_pipeline.common.common_widget as cw
-from spike_pipeline.info.common import InfoTab
+from spike_pipeline.info.utils import InfoWidget
 
 # ----------------------------------------------------------------------------------------------------------------------
 
 
-class UnitInfoTab(InfoTab):
+class UnitInfoTab(InfoWidget):
     def __init__(self, t_str):
         super(UnitInfoTab, self).__init__(t_str)
 

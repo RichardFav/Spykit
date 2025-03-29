@@ -2,7 +2,7 @@
 import numpy as np
 
 # custom module imports
-from spike_pipeline.info.common import InfoTab
+from spike_pipeline.info.utils import InfoWidget
 from spike_pipeline.common.common_widget import QWidget, QLabelCombo, QLabelCheckCombo, font_lbl
 
 # pyqt imports
@@ -11,7 +11,7 @@ from PyQt6.QtCore import pyqtSignal
 # ----------------------------------------------------------------------------------------------------------------------
 
 
-class ChannelInfoTab(InfoTab):
+class ChannelInfoTab(InfoWidget):
     # pyqtSignal signal functions
     run_change = pyqtSignal(QWidget)
     data_change = pyqtSignal(QWidget)

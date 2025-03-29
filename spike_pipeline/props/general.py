@@ -11,7 +11,7 @@ from spike_pipeline.props.utils import PropWidget, PropPara
 
 # pyqt imports
 from PyQt6.QtWidgets import QCheckBox
-from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtCore import pyqtSignal
 
 # ----------------------------------------------------------------------------------------------------------------------
 

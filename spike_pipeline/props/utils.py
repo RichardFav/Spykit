@@ -219,15 +219,16 @@ class PropPara(QWidget):
 
 class PropWidget(QWidget):
     # widget dimensions
-    lbl_width = 125
+    lbl_width = 160
 
-    def __init__(self, main_obj, p_type, p_info):
+    def __init__(self, main_obj, p_type, p_info, f_layout=None):
         super(PropWidget, self).__init__()
 
         # main class fields
         self.p_type = p_type
         self.p_info = p_info
         self.main_obj = main_obj
+        self.f_layout = f_layout
 
         # other class fields
         self.n_para = 0
@@ -249,20 +250,23 @@ class PropWidget(QWidget):
         tab_type = self.p_info['type']
         tab_para = self.p_info['ch_fld']
 
+        # sets the frame layout (if not provided)
+        if self.f_layout is None:
+            self.f_layout = QGridLayout() if tab_type == 'g_panel' else QFormLayout()
+
         # sets up the property tab layout
-        f_layout = QGridLayout() if tab_type == 'g_panel' else QFormLayout()
-        if isinstance(f_layout, QGridLayout):
+        if isinstance(self.f_layout, QGridLayout):
             # sets the column stretch (Grid Layout only)
             for i in range(3):
-                f_layout.setColumnStretch(i, 1)
+                self.f_layout.setColumnStretch(i, 1)
 
         # creates the parameter objects
         for ps_ch in tab_para:
-            self.create_para_object(f_layout, ps_ch, tab_para[ps_ch], [self.p_type, ps_ch])
+            self.create_para_object(self.f_layout, ps_ch, tab_para[ps_ch], [self.p_type, ps_ch])
             self.n_para += 1
 
         # adds the widget to the table
-        self.setLayout(f_layout)
+        self.setLayout(self.f_layout)
 
     # ---------------------------------------------------------------------------
     # Widget Event Functions
@@ -679,7 +683,7 @@ class PropWidget(QWidget):
     def create_para_field(name, obj_type, value, p_fld=None, p_list=None, p_misc=None, ch_fld=None):
 
         return {'name': name, 'type': obj_type, 'value': value, 'p_fld': p_fld,
-                'p_list': p_list, 'p_misc': p_misc, 'ch_fld': ch_fld}
+                'p_list': p_list, 'p_misc': p_misc, 'ch_fld': ch_fld, 'is_odd': None, 'is_int': False}
 
 
 # ----------------------------------------------------------------------------------------------------------------------

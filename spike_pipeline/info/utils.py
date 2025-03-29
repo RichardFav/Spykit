@@ -1,16 +1,21 @@
 # module imports
-import numpy as np
+import re
 import functools
+import numpy as np
+from copy import deepcopy
+
 
 # custom module imports
 import spike_pipeline.common.common_func as cf
 import spike_pipeline.common.common_widget as cw
+from spike_pipeline.common.common_widget import SearchMixin
 
 # pyqt imports
-from PyQt6.QtWidgets import (QWidget, QLineEdit, QComboBox, QCheckBox, QPushButton, QSizePolicy, QVBoxLayout, QGroupBox,
-                             QHeaderView, QFormLayout, QGridLayout, QColorDialog, QTableWidget, QTableWidgetItem)
+from PyQt6.QtWidgets import (QWidget, QTreeWidget, QFrame, QCheckBox, QPushButton, QSizePolicy, QVBoxLayout, QGroupBox,
+                             QHeaderView, QTreeWidgetItem, QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox,
+                             QTableWidget, QFormLayout)
 from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QFont
+from PyQt6.QtGui import QFont, QColor
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -39,9 +44,9 @@ class InfoManager(QWidget):
 
     # field names
     table_name = 'Channel/Unit Information'
-    table_tab_lbl = ['Channel Info', 'Unit Info']
+    table_tab_lbl = ['Channel Info', 'Unit Info', 'Status Info']
     table_tab_type = ['channel', 'unit']
-    tab_type = ['channel', 'preprocess', 'unit']
+    tab_type = ['channel', 'preprocess', 'status', 'unit']
 
     # font types
     table_font = cw.create_font_obj(size=8)
@@ -65,7 +70,7 @@ class InfoManager(QWidget):
 
         # boolean class fields
         self.is_updating = False
-        self.tab_show = [True, True, False]
+        self.tab_show = [True, True, True, False]
 
         # widget layout setup
         self.tabs = []
@@ -111,6 +116,9 @@ class InfoManager(QWidget):
         self.group_table.setSizePolicy(QSizePolicy(cf.q_exp, cf.q_exp))
 
     def init_table_group(self):
+
+        # module import
+        import spike_pipeline.info.info_type as it
 
         # sets the property tab group properties
         self.tab_group_table.setVisible(False)
@@ -287,6 +295,9 @@ class InfoManager(QWidget):
 
     def get_table_widget(self, t_type):
 
+        # module import
+        import spike_pipeline.info.info_type as it
+
         info_c = it.info_types[t_type.split()[0].lower()]
         i_tab = next(i for i, x in enumerate(self.tabs) if isinstance(x, info_c))
         return self.tabs[i_tab].findChild(QTableWidget)
@@ -401,7 +412,467 @@ class InfoManager(QWidget):
         return {'name': name, 'type': obj_type, 'value': value, 'p_fld': p_fld,
                 'p_list': p_list, 'p_misc': p_misc, 'ch_fld': ch_fld}
 
+
 # ----------------------------------------------------------------------------------------------------------------------
 
-# module imports (required here as will cause circular import error otherwise)
-import spike_pipeline.info.info_type as it
+"""
+    InfoWidget: 
+"""
+
+
+class InfoWidget(QWidget):
+    #
+    x_gap = 5
+
+    # widget stylesheets
+    table_style = """
+        QTableWidget {
+            font: Arial 6px;
+            border: 1px solid;
+        }
+        QHeaderView {
+            font: Arial 6px;
+            font-weight: 1000;
+        }
+    """
+
+    def __init__(self, t_lbl, layout=QVBoxLayout):
+        super(InfoWidget, self).__init__()
+
+        # field initialisations
+        self.table = None
+        self.t_lbl = t_lbl
+
+        # field retrieval
+        self.tab_layout = layout(self)
+        self.tab_layout.setContentsMargins(0, 0, 0, 0)
+        self.setLayout(self.tab_layout)
+
+    def create_table_widget(self):
+
+        # creates the table object
+        self.table = QTableWidget(None)
+
+        # sets the table properties
+        self.table.setRowCount(0)
+        self.table.setColumnCount(0)
+        self.table.setObjectName(self.t_lbl)
+        self.table.setStyleSheet(self.table_style)
+        self.table.verticalHeader().setVisible(False)
+
+        # adds the table to the layout
+        self.tab_layout.addWidget(self.table)
+
+        # resets the channel table style
+        table_style = cw.CheckBoxStyle(self.table.style())
+        self.table.setStyle(table_style)
+
+        # table header setup
+        table_header = cw.CheckTableHeader(self.table)
+        self.table.setHorizontalHeader(table_header)
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+
+"""
+    InfoWidgetPara: 
+"""
+
+
+class InfoWidgetPara(InfoWidget, SearchMixin):
+    # dimensions
+    x_gap = 5
+    item_row_size = 23
+
+    # array class fields
+    tree_hdr = ['Property', 'Value']
+
+    # font objects
+    gray_col = QColor(160, 160, 160, 255)
+    item_font = cw.create_font_obj(9, True, QFont.Weight.Bold)
+    item_child_font = cw.create_font_obj(8)
+
+    # widget stylesheets
+    tree_style = """    
+        QTreeWidget {
+            font: Arial 8px;
+        }
+
+        QTreeWidget::item {
+            height: 23px;
+        }        
+
+        QTreeWidget::item:has-children {
+            background: #A0A0A0;
+            padding-left: 5px;
+            color: white;
+        }
+    """
+
+    def __init__(self, t_lbl, layout=QVBoxLayout):
+        super(InfoWidgetPara, self).__init__(t_lbl, layout)
+        SearchMixin.__init__(self)
+
+        # initialisations
+        self.p_props = {}
+        self.s_props = {}
+        self.s_type = None
+        self.p_prop_flds = {}
+        self.s_prop_flds = None
+
+        # boolean class fields
+        self.is_updating = False
+        self.is_sort_para = False
+
+        # initialisations
+        self.n_grp, self.n_para = 0, 0
+        self.h_grp, self.h_para = {}, []
+        self.para_name0, self.para_name, self.para_grp, self.grp_name = [], [], [], []
+
+        # property sorting group widgets
+        self.edit_search = None
+        self.tree_prop = QTreeWidget(self)
+
+    def init_filter_edit(self):
+
+        # sets the layout properties
+        self.tab_layout.setSpacing(5)
+        self.tab_layout.setHorizontalSpacing(0)
+
+        # initialises the filter widgets
+        self.init_search_widgets()
+
+    def init_property_frame(self):
+
+        # sets the tree-view properties
+        self.tree_prop.setLineWidth(1)
+        self.tree_prop.setColumnCount(2)
+        self.tree_prop.setIndentation(10)
+        self.tree_prop.setItemsExpandable(True)
+        self.tree_prop.setStyleSheet(self.tree_style)
+        self.tree_prop.setHeaderLabels(self.tree_hdr)
+        self.tree_prop.setFrameStyle(QFrame.Shape.WinPanel | QFrame.Shadow.Plain)
+        self.tree_prop.setAlternatingRowColors(True)
+        self.tree_prop.setItemDelegateForColumn(0, cw.HTMLDelegate())
+
+        # creates the full property tree
+        for pp_s, pp_h in self.p_prop_flds.items():
+            # creates the parent item
+            item = QTreeWidgetItem(self.tree_prop)
+
+            # sets the item properties
+            item.setText(0, pp_h['name'])
+            item.setFont(0, self.item_font)
+            item.setFirstColumnSpanned(True)
+            item.setExpanded(True)
+
+            # adds the main group to the search widget
+            self.append_grp_obj(item, pp_s)
+
+            # adds the tree widget item
+            self.tree_prop.addTopLevelItem(item)
+            for k, p in pp_h['props'].items():
+                # creates the property name field
+                item_ch, obj_prop = self.create_child_tree_item(p, [pp_s, k])
+                item_ch.setTextAlignment(0, cw.align_flag['right'] | cw.align_flag['vcenter'])
+                obj_prop.setFixedHeight(self.item_row_size)
+
+                # adds the child tree widget item
+                item.addChild(item_ch)
+                self.append_para_obj(item_ch, pp_s)
+                self.tree_prop.setItemWidget(item_ch, 1, obj_prop)
+
+        # adds the tree widget to the parent widget
+        self.tab_layout.addWidget(self.tree_prop)
+
+        # resizes the columns to fit, then resets to fixed size
+        tree_header = self.tree_prop.header()
+        tree_header.setDefaultAlignment(cf.align_type['center'])
+        tree_header.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
+        # tree_header.updateSection(0)
+        # tree_header.updateSection(1)
+        # tree_header.setSectionResizeMode(QHeaderView.ResizeMode.Fixed)
+        tree_header.setStyleSheet("background: rgba(240, 240, 255, 255);")
+
+    # ---------------------------------------------------------------------------
+    # Property Field Functions
+    # ---------------------------------------------------------------------------
+
+    def create_para_object(self, layout, p_str, p_val, p_type, p_str_p):
+
+        # retrieves the sort parameter
+        is_sort = deepcopy(self.is_sort_para)
+
+        match p_type:
+            case 'tab':
+                # case is a tab widget
+
+                # creates the tab widget
+                obj_tab = QWidget()
+                obj_tab.setObjectName(p_str)
+
+                # creates the children objects for the current parent object
+                tab_layout = QFormLayout(obj_tab)
+                tab_layout.setSpacing(0)
+                tab_layout.setContentsMargins(1, 1, 0, 0)
+                tab_layout.setLabelAlignment(cf.align_type['right'])
+
+                # creates the panel object
+                panel_frame = QFrame()
+                panel_frame.setFrameStyle(QFrame.Shadow.Plain | QFrame.Shape.Box)
+                panel_frame.setSizePolicy(QSizePolicy(cf.q_exp, cf.q_exp))
+                tab_layout.addWidget(panel_frame)
+
+                # sets up the parameter layout
+                layout_para = QFormLayout(panel_frame)
+                layout_para.setLabelAlignment(cf.align_type['right'])
+                layout_para.setSpacing(self.x_gap)
+                layout_para.setContentsMargins(2 * self.x_gap, 2 * self.x_gap, 2 * self.x_gap, self.x_gap)
+
+                # creates the tab parameter objects
+                for k, v in p_val.items():
+                    self.create_para_object(layout_para, k, v, v['type'], p_str_p + [k])
+
+                # sets the tab layout
+                panel_frame.setLayout(layout_para)
+                obj_tab.setLayout(tab_layout)
+
+                # returns the tab object
+                return obj_tab
+
+            case 'edit':
+                # sets up the editbox string
+                lbl_str = '{0}: '.format(p_val['name'])
+                if p_val['value'] is None:
+                    # parameter string is empty
+                    edit_str = ''
+
+                elif isinstance(p_val['value'], str):
+                    # parameter is a string
+                    edit_str = p_val['value']
+
+                else:
+                    # parameter is numeric
+                    edit_str = '%g' % (p_val['value'])
+
+                # creates the label/editbox widget combo
+                obj_edit = cw.QLabelEdit(None, lbl_str, edit_str, name=p_str, font_lbl=cw.font_lbl)
+                # obj_edit.obj_lbl.setFixedWidth(self.lbl_width)
+                layout.addRow(obj_edit)
+
+                # sets up the label/editbox slot function
+                cb_fcn = functools.partial(self.prop_update, p_str_p, is_sort)
+                obj_edit.connect(cb_fcn)
+
+            # case is a combobox
+            case 'combobox':
+                # creates the label/combobox widget combo
+                lbl_str = '{0}: '.format(p_val['name'])
+                obj_combo = cw.QLabelCombo(
+                    None, lbl_str, p_val['p_list'], p_val['value'], name=p_str, font_lbl=cw.font_lbl)
+                layout.addRow(obj_combo)
+
+                # sets up the slot function
+                cb_fcn = functools.partial(self.prop_update, p_str_p, is_sort)
+                obj_combo.connect(cb_fcn)
+                obj_combo.obj_lbl.setStyleSheet('padding-top: 3 px;')
+
+            # case is a checkbox
+            case 'checkbox':
+                # creates the checkbox widget
+                obj_checkbox = cw.create_check_box(
+                    None, p_val['name'], p_val['value'], font=cw.font_lbl, name=p_str)
+                obj_checkbox.setContentsMargins(0, 0, 0, 0)
+
+                # adds the widget to the layout
+                layout.addRow(obj_checkbox)
+
+                # sets up the slot function
+                cb_fcn = functools.partial(self.prop_update, p_str_p, is_sort, obj_checkbox)
+                obj_checkbox.stateChanged.connect(cb_fcn)
+
+    def prop_update(self, p_str, is_sort, h_obj):
+
+        # if manually updating elsewhere, then exit
+        if self.is_updating:
+            return
+
+        if isinstance(h_obj, QCheckBox):
+            self.check_prop_update(h_obj, is_sort, p_str)
+
+        elif isinstance(h_obj, QLineEdit):
+            self.edit_prop_update(h_obj, is_sort, p_str)
+
+        elif isinstance(h_obj, QComboBox):
+            self.combo_prop_update(h_obj, is_sort, p_str)
+
+        elif isinstance(h_obj, QSpinBox) or isinstance(h_obj, QDoubleSpinBox):
+            self.spinbox_prop_update(h_obj, is_sort, p_str)
+
+    def check_prop_update(self, h_obj, is_sort, p_str):
+
+        p = self.get_prop_field(is_sort)
+        cf.set_multi_dict_value(p, p_str, h_obj.isChecked())
+
+    def edit_prop_update(self, h_obj, is_sort, p_str):
+
+        # field retrieval
+        str_para = []
+        nw_val = h_obj.text()
+        p = self.get_prop_field(is_sort)
+
+        if p_str in str_para:
+            # case is a string field
+            cf.set_multi_dict_value(p, p_str, nw_val)
+
+        else:
+            # determines if the new value is valid
+            chk_val = cf.check_edit_num(nw_val, min_val=0)
+            if chk_val[1] is None:
+                # case is the value is valid
+                cf.set_multi_dict_value(p, p_str, chk_val[0])
+
+            else:
+                # otherwise, reset the previous value
+                p_val_pr = p[p_str[0]][p_str[1]]
+                if (p_val_pr is None) or isinstance(p_val_pr, str):
+                    # case is the parameter is empty
+                    h_obj.setText('')
+
+                else:
+                    # otherwise, update the numeric string
+                    h_obj.setText('%g' % p_val_pr)
+
+    def combo_prop_update(self, h_obj, is_sort, p_str):
+
+        p = self.get_prop_field(is_sort)
+        cf.set_multi_dict_value(p, p_str, h_obj.currentText())
+
+    def spinbox_prop_update(self, h_obj, is_sort, p_str):
+
+        p = self.get_prop_field(is_sort)
+        spin_val = cf.check_edit_num(h_obj.text(), min_val=0)
+        cf.set_multi_dict_value(p, p_str, spin_val[0])
+
+    def sort_tab_change(self):
+
+        i_tab_nw = self.tab_group_sort.currentIndex()
+        self.s_type = list(self.s_prop_flds)[i_tab_nw]
+
+    def node_value_update(self):
+
+        a = 1
+
+    # ---------------------------------------------------------------------------
+    # Miscellaneous Functions
+    # ---------------------------------------------------------------------------
+
+    def get_prop_field(self, is_sort):
+
+        return self.s_props if is_sort else self.p_props
+
+    def get_all_prop_fields(self):
+
+        return self.p_props, self.s_props
+
+    def append_para_obj(self, item, group_name):
+
+        # increments the count
+        self.n_para += 1
+        p_name_s = re.sub(r'<[^>]*>|[&;]+', '', item.text(0))
+
+        # appends the objects
+        self.h_para.append(item)
+        self.para_name.append(p_name_s.lower())
+        self.para_name0.append(p_name_s)
+        self.para_grp.append(group_name)
+
+    def append_grp_obj(self, item, group_str):
+
+        # increments the count
+        self.n_grp += 1
+
+        # appends the objects
+        self.h_grp[group_str] = item
+        self.grp_name.append(item.text(0))
+
+    # ---------------------------------------------------------------------------
+    # Static Methods
+    # ---------------------------------------------------------------------------
+
+    @staticmethod
+    def create_para_field(name, obj_type, value, p_fld=None, p_list=None, p_misc=None, ch_fld=None):
+
+        return {'name': name, 'type': obj_type, 'value': value, 'p_fld': p_fld,
+                'p_list': p_list, 'p_misc': p_misc, 'ch_fld': ch_fld}
+
+    def create_child_tree_item(self, props, p_name):
+
+        # initialisations
+        lbl_str = '{0}:'.format(props['name'])
+        cb_fcn_base = functools.partial(self.prop_update, p_name, False)
+
+        # creates the tree widget item
+        item_ch = QTreeWidgetItem(None)
+        item_ch.setText(0, lbl_str)
+
+        match props['type']:
+            case 'edit':
+                # case is a lineedit
+                if isinstance(props['value'], int):
+                    h_obj = QSpinBox()
+                else:
+                    h_obj = QDoubleSpinBox()
+
+                # sets the widget properties
+                h_obj.setRange(0, 100000)
+                h_obj.setValue(props['value'])
+
+                # sets the object callback functions
+                cb_fcn = functools.partial(cb_fcn_base, h_obj)
+                h_obj.editingFinished.connect(cb_fcn)
+                h_obj.textChanged.connect(cb_fcn)
+
+            case 'combobox':
+                # case is a comboboxW
+                h_obj = QComboBox()
+
+                # adds the combobox items
+                for p in props['p_list']:
+                    h_obj.addItem(p)
+
+                # sets the widget properties
+                i_sel0 = props['p_list'].index(props['value'])
+                h_obj.setCurrentIndex(i_sel0)
+
+                # sets the object callback functions
+                cb_fcn = functools.partial(cb_fcn_base, h_obj)
+                h_obj.currentIndexChanged.connect(cb_fcn)
+
+            case 'checkbox':
+                # case is a checkbox
+                h_obj = QCheckBox()
+
+                # sets the widget properties
+                h_obj.setCheckState(cf.chk_state[props['value']])
+                h_obj.setStyleSheet("padding-left: 5px;")
+
+                # sets the object callback functions
+                cb_fcn = functools.partial(cb_fcn_base, h_obj)
+                h_obj.clicked.connect(cb_fcn)
+
+            case _:
+                # default case
+                if isinstance(props['value'], str):
+                    p_str = props['value']
+
+                else:
+                    p_str = "%g" % props['value']
+
+                h_obj = cw.QLabel(p_str)
+
+        # returns the objects
+        return item_ch, h_obj
+
+# ----------------------------------------------------------------------------------------------------------------------
+

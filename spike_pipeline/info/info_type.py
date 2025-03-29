@@ -4,6 +4,7 @@ from spike_pipeline.info.unit import UnitInfoTab
 from spike_pipeline.info.channel import ChannelInfoTab
 from spike_pipeline.info.preprocess import PreprocessInfoTab
 from spike_pipeline.info.trigger import TriggerInfoTab
+from spike_pipeline.info.status import StatusInfoTab
 
 # list of all plot types
 info_types = {
@@ -11,6 +12,7 @@ info_types = {
     'channel': ChannelInfoTab,              # channel information tab
     'preprocess': PreprocessInfoTab,        # preprocess information tab
     'trigger': TriggerInfoTab,              # trigger channel information tab
+    'status': StatusInfoTab,                # status calculation information tab
 }
 
 # list of plot title names
@@ -19,4 +21,5 @@ info_names = {
     'channel': 'Channel',
     'preprocess': 'Preprocessing',
     'trigger': 'Trigger',
+    'status': 'Status',
 }

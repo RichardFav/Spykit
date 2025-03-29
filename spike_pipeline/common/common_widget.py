@@ -18,10 +18,13 @@ import spike_pipeline.common.common_func as cf
 from PyQt6.QtWidgets import (QWidget, QHBoxLayout, QGridLayout, QVBoxLayout, QPushButton, QGroupBox, QTabWidget,
                              QFormLayout, QLabel, QCheckBox, QLineEdit, QComboBox, QSizePolicy, QFileDialog,
                              QApplication, QTreeView, QFrame, QRadioButton, QAbstractItemView, QStylePainter,
-                             QStyleOptionComboBox, QStyle, QProxyStyle, QStyledItemDelegate, QStyleOptionViewItem,
-                             QHeaderView, QStyleOptionButton, QTableWidget, QTableWidgetItem)
-from PyQt6.QtCore import Qt, QRect, QRectF, QMimeData, pyqtSignal, QItemSelectionModel, QAbstractTableModel, QObject, QVariant
-from PyQt6.QtGui import QFont, QDrag, QCursor, QStandardItemModel, QStandardItem, QPalette, QPixmap
+                             QStyleOptionComboBox, QStyle, QProxyStyle, QItemDelegate,  QStyleOptionViewItem,
+                             QHeaderView, QStyleOptionButton, QTableWidgetItem)
+from PyQt6.QtCore import (Qt, QRect, QRectF, QMimeData, pyqtSignal, QItemSelectionModel, QAbstractTableModel,
+                          QSizeF, QSize, QObject, QVariant)
+from PyQt6.QtGui import (QFont, QDrag, QCursor, QStandardItemModel, QStandardItem, QPalette, QPixmap,
+                         QTextDocument, QAbstractTextDocumentLayout, QIcon)
+
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -1177,7 +1180,7 @@ class QCollapseGroup(QWidget):
     def add_group_row(self, h_obj1, h_obj2):
 
         # adds the object to the layout
-        self.form_layout.addRow(h_obj1, h_obj2)
+        self.form_layout.addWidget(h_obj1, h_obj2)
 
     # PANEL EVENT FUNCTIONS ---------------------------------------------------
 
@@ -1359,6 +1362,120 @@ class QFileSpec(QGroupBox):
         cb_fcn = functools.partial(cb_fcn0, self)
         self.h_but.clicked.connect(cb_fcn)
 
+# ----------------------------------------------------------------------------------------------------------------------
+
+"""
+    HTMLDelegate:
+"""
+
+
+class HTMLDelegate(QItemDelegate):
+    def __init__(self):
+        super(HTMLDelegate, self).__init__()
+
+    def paint(self, painter, option, index):
+
+        painter.save()
+        doc = QTextDocument()
+        doc.setHtml(index.data())
+        context = QAbstractTextDocumentLayout.PaintContext()
+        doc.setPageSize(QSizeF(option.rect.size()))
+        painter.setClipRect(option.rect)
+        painter.translate(option.rect.x(), option.rect.y())
+        doc.documentLayout().draw(painter, context)
+        painter.restore()
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+
+class SearchMixin:
+
+    def init_search_widgets(self):
+
+        # initialisations
+        close_pixmap = QIcon(icon_path['close']).pixmap(QSize(cf.but_height, cf.but_height))
+        search_pixmap = QIcon(icon_path['search']).pixmap(QSize(cf.but_height, cf.but_height))
+
+        # creates the pixmap object
+        filter_obj = QLabelEdit(None, '', '')
+
+        # filter label properties
+        filter_obj.obj_lbl.setPixmap(search_pixmap)
+        filter_obj.obj_lbl.setFixedHeight(cf.but_height)
+        filter_obj.obj_lbl.setSizePolicy(QSizePolicy(cf.q_fix, cf.q_fix))
+
+        # filter label properties
+        close_obj = create_text_label(None, '')
+        close_obj.setPixmap(close_pixmap)
+        close_obj.setFixedHeight(cf.but_height)
+        close_obj.setSizePolicy(QSizePolicy(cf.q_fix, cf.q_fix))
+        close_obj.mouseReleaseEvent = self.label_clear_search
+        filter_obj.layout.addWidget(close_obj)
+
+        # filter line edit properties
+        self.edit_search = filter_obj.obj_edit
+        self.edit_search.textChanged.connect(self.edit_search_change)
+        self.edit_search.setPlaceholderText("Search Filter")
+        self.edit_search.setFixedHeight(cf.but_height)
+        self.edit_search.setSizePolicy(QSizePolicy(cf.q_expm, cf.q_min))
+
+        # sets the object style sheets
+        filter_obj.obj_lbl.setStyleSheet("""
+            border: 1px solid;
+            border-right-style: None;
+        """)
+        self.edit_search.setStyleSheet("""
+            border: 1px solid;                
+            border-left-style: None;  
+            border-right-style: None;                        
+        """)
+        close_obj.setStyleSheet("""
+            border: 1px solid;                
+            border-left-style: None;                     
+        """)
+
+        # adds the widget to the layout
+        self.tab_layout.addWidget(filter_obj)
+
+    def edit_search_change(self):
+
+        # field retrieval
+        s_txt = self.edit_search.text().lower()
+        ns_txt = len(s_txt)
+
+        if ns_txt:
+            ind_s = [[m.start() for m in re.finditer(s_txt, n)] for n in self.para_name]
+        else:
+            ind_s = [[] for _ in range(self.n_para)]
+
+        # determines the groups which have a match
+        has_s = np.array([len(x) > 0 for x in ind_s])
+        grp_s = np.unique(np.array(self.para_grp)[has_s])
+
+        # updates the group text labels
+        for i, hg in enumerate(self.h_grp):
+            col = 'yellow' if hg in grp_s else '#A0A0A0'
+            t_lbl = cf.set_text_background_colour(self.grp_name[i], col)
+            self.h_grp[hg].setText(0, t_lbl)
+
+        # resets the parameter label strings
+        for ii, nn, hh in zip(ind_s, self.para_name0, self.h_para):
+            # sets the highlighted text string
+            for xi0 in np.flip(ii):
+                nn = self.add_highlight(nn, xi0, ns_txt)
+
+            # updates the property label text
+            hh.setText(0, nn)
+
+    def label_clear_search(self, evnt):
+
+        if len(self.edit_search.text()):
+            self.edit_search.setText("")
+
+    @staticmethod
+    def add_highlight(s, i0, n):
+
+        return '{0}{1}{2}'.format(s[0:i0], cf.set_text_background_colour(s[i0:(i0 + n)], 'yellow'), s[(i0 + n):])
 
 # ----------------------------------------------------------------------------------------------------------------------
 # BASE WIDGET COMBINATIONS

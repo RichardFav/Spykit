@@ -108,6 +108,7 @@ class TriggerProps(PropWidget):
     t_win_min = 5
 
     # array class fields
+    b_str = ['Add Row', 'Remove Row']
     c_hdr = ['Region', 'Start (s)', 'Finish (s)']
     item_index = Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
     item_flag = item_index | Qt.ItemFlag.ItemIsEditable
@@ -175,12 +176,9 @@ class TriggerProps(PropWidget):
 
     def setup_prop_fields(self):
 
-        # array fields
-        b_str = ['Add Row', 'Remove Row']
-
         # sets up the subgroup fields
         p_tmp = {
-            'button_flag': self.create_para_field(b_str, 'buttonpair', 0),
+            'button_flag': self.create_para_field(self.b_str, 'buttonpair', 0),
             'region_index': self.create_para_field('Region Indices', 'table', None),
         }
 

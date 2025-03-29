@@ -24,7 +24,7 @@ from spike_pipeline.info.preprocess import PreprocessSetup, prep_task_map
 
 # widget dimensions
 x_gap = 15
-info_width = 300
+info_width = 330
 
 # object dimensions
 dlg_width = 1650
@@ -72,8 +72,8 @@ class MainWindow(QMainWindow):
         # sets the widget style sheets
         self.set_styles()
 
-        # # REMOVE ME LATER
-        # self.testing()
+        # REMOVE ME LATER
+        self.testing()
 
     # ---------------------------------------------------------------------------
     # Class Widget Setup Functions
