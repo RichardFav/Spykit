@@ -388,3 +388,13 @@ def normalise_trace(y):
 
 def list_add(y, dy):
     return list(np.asarray(y) + dy)
+
+
+def list_mult(y, dy):
+    return list(np.asarray(y) * dy)
+
+
+def resize_limits(y, yscl):
+    y = np.asarray(y)
+    dy = np.diff(y)[0]
+    return list(y + np.array([-1, 1]) * (yscl / 2) * dy)

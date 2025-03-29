@@ -115,11 +115,11 @@ class ProbePlot(PlotWidget):
         self.main_view.update_roi.connect(self.main_roi_moved)
         self.main_view.reset_axes_limits(False)
 
-        # resets the main axis limits
-        self.v_box[0, 0].setLimits(
-            xMin=self.main_view.x_lim[0], xMax=self.main_view.x_lim[1],
-            yMin=self.main_view.y_lim[0], yMax=self.main_view.y_lim[1],
-        )
+        # # resets the main axis limits
+        # self.v_box[0, 0].setLimits(
+        #     xMin=self.main_view.x_lim[0], xMax=self.main_view.x_lim[1],
+        #     yMin=self.main_view.y_lim[0], yMax=self.main_view.y_lim[1],
+        # )
 
         # sets the inset probe view properties
         self.h_plot[1, 0].addItem(self.sub_view)
@@ -307,6 +307,7 @@ class ProbePlot(PlotWidget):
 class ProbeView(GraphicsObject):
     # parameters
     dp = 0.1
+    p_gap = 0.05
 
     # plot pen widgets
     pen = mkPen(width=2, color='b')
@@ -461,7 +462,8 @@ class ProbeView(GraphicsObject):
 
         if i_shank is not None:
             # case is using domain reduced to a single shank
-            _x_lim, _y_lim = self.x_lim_shank[i_shank], self.y_lim_shank[i_shank]
+            _x_lim = self.x_lim_shank[i_shank]
+            _y_lim = self.y_lim_shank[i_shank]
 
         elif is_full:
             # case is using the full probe domain
@@ -491,8 +493,8 @@ class ProbeView(GraphicsObject):
         p_min_ex, p_max_ex = self.calc_reduced_limits(p_pos, c_min_ex, c_max_ex)
 
         # sets the contact x/y axes limits
-        self.x_lim = [c_min_ex[0], c_max_ex[0]]
-        self.y_lim = [c_min_ex[1], c_max_ex[1]]
+        self.x_lim = cf.resize_limits([c_min_ex[0], c_max_ex[0]], self.p_gap)
+        self.y_lim = cf.resize_limits([c_min_ex[1], c_max_ex[1]], self.p_gap)
         self.x_lim_full = [p_min_ex[0], p_max_ex[0]]
         self.y_lim_full = [p_min_ex[1], p_max_ex[1]]
 
