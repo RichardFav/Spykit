@@ -1,6 +1,7 @@
 # module import
 # import os
 # import functools
+import os
 import pickle
 import numpy as np
 
@@ -8,7 +9,7 @@ import pyqtgraph as pg
 
 # pyqt6 module import
 from PyQt6.QtWidgets import (QMainWindow, QHBoxLayout, QFormLayout, QWidget, QGridLayout,
-                             QScrollArea, QSizePolicy, QDialog, QMenuBar, QToolBar, QMenu)
+                             QScrollArea, QMessageBox, QDialog, QMenuBar, QToolBar, QMenu)
 from PyQt6.QtCore import Qt, QSize, QRect, pyqtSignal, QObject
 from PyQt6.QtGui import QFont, QColor, QIcon, QAction
 
@@ -166,16 +167,16 @@ class MainWindow(QMainWindow):
         # -----------------------------------------------------------------------
 
         # field retrieval
-        c_list = ['channel_ids', 'contact_ids',  'device_channel_indices', 'x', 'y', 'shank_ids', 'status']
-        c_hdr = ['', 'Channel ID', 'Contact ID', 'Channel Index', 'X-Coord', 'Y-Coord', 'Shank ID', 'Status']
+        c_list = ['status', 'channel_ids', 'contact_ids',  'device_channel_indices', 'x', 'y', 'shank_ids']
+        c_hdr = ['', 'Status', 'Channel ID', 'Contact ID', 'Channel Index', 'X-Coord', 'Y-Coord', 'Shank ID']
 
         # retrieves the necessary channel information data
         ch_info = self.session_obj.get_channel_info()
-        p_dframe = ch_info[ch_info.columns.intersection(c_list)][c_list[:-1]]
+        p_dframe = ch_info[ch_info.columns.intersection(c_list)][c_list[1:]]
 
         # inserts the "status" column
         n_row, n_col = p_dframe.shape
-        p_dframe.insert(n_col, 'status', np.array(['***'] * n_row))
+        p_dframe.insert(0, 'status', np.array(['***'] * n_row))
 
         # appends the show
         is_show = np.zeros(p_dframe.shape[0], dtype=bool)
@@ -228,6 +229,12 @@ class MainWindow(QMainWindow):
         # updates the channel status flags
         channel_tab = self.info_manager.get_info_tab('channel')
         channel_tab.update_channel_status(ch_status[0][1])
+
+        # resets the status button toggle value (if pressed)
+        status_tab = self.info_manager.get_info_tab('status')
+        if status_tab.toggle_calc.isChecked():
+            status_tab.toggle_calc.setChecked(False)
+            status_tab.toggle_calc.setText(status_tab.b_str[0])
 
     def update_config(self, c_id):
 
@@ -383,9 +390,9 @@ class MenuBar(QObject):
         # ---------------------------------------------------------------------------
 
         # initialisations
-        p_str = ['new', 'open', 'save', None, 'close']
-        p_lbl = ['New...', 'Load...', 'Save...', None, 'Close Window']
-        cb_fcn = [self.new_session, None, None, None, self.close_window]
+        p_str = ['new', 'open', 'save', None, 'clear', None, 'close']
+        p_lbl = ['New...', 'Load...', 'Save...', None, 'Clear Session', None, 'Close Window']
+        cb_fcn = [self.new_session, None, None, None, self.clear_session, None, self.close_window]
 
         # adds the file menu items
         self.add_menu_items(h_menu_file, p_lbl, cb_fcn, p_str, True)
@@ -450,10 +457,11 @@ class MenuBar(QObject):
             else:
                 # creates the menu item
                 if add_tool and (cbf is not None):
-                    h_tool = QAction(QIcon(cw.icon_path[ps]), pl, self)
-                    h_tool.triggered.connect(cbf)
-                    h_tool.setObjectName(ps)
-                    self.tool_bar.addAction(h_tool)
+                    if ps in cw.icon_path:
+                        h_tool = QAction(QIcon(cw.icon_path[ps]), pl, self)
+                        h_tool.triggered.connect(cbf)
+                        h_tool.setObjectName(ps)
+                        self.tool_bar.addAction(h_tool)
 
                 if cbf is not None:
                     h_menu = QAction(pl, h_menu_parent)
@@ -500,6 +508,15 @@ class MenuBar(QObject):
         # creates the trigger plot view (if missing)
         if 'trigger' not in self.main_obj.plot_manager.types:
             self.main_obj.sync_channel_change()
+
+    def clear_session(self):
+
+        # if there is a parameter change, then prompt the user if they want to change
+        q_str = 'Are you sure you want to clear the current session?'
+        u_choice = QMessageBox.question(self.main_obj, 'Clear Session?', q_str, cf.q_yes_no, cf.q_yes)
+        if u_choice == cf.q_no:
+            # exit if they cancelled
+            return
 
     def load_trigger(self, file_info=None):
 

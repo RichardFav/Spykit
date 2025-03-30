@@ -304,6 +304,10 @@ class SessionObject(QObject):
         self.t_min_max = np.empty(n_run, dtype=object)
         self.min_max = np.empty((n_run, 2), dtype=object)
 
+        # field initialisation
+        self.data_init['bad'] = True
+        self.data_init['sync'] = False
+
         for i_run in range(n_run):
             # retrieves the raw session run object
             t0 = time.time()
@@ -328,6 +332,34 @@ class SessionObject(QObject):
         # pauses for things to catch up...
         time.sleep(0.1)
 
+    def recalc_bad_channel_detect(self, p_props):
+
+        # pauses for things to catch up...
+        time.sleep(0.1)
+
+        # memory allocation
+        t_worker = []
+        n_run = self.get_run_count()
+        self.bad_ch = np.empty(n_run, dtype=object)
+
+        # field initialisation
+        self.data_init['bad'] = False
+
+        for i_run in range(n_run):
+            # retrieves the raw session run object
+            t0 = time.time()
+            ses_run = self.get_session_runs(i_run)
+
+            # sets up the bad channel detection worker
+            t_worker_new = ThreadWorker(self.get_bad_channel, (ses_run, i_run, t0, p_props))
+            t_worker_new.work_finished.connect(self.post_get_bad_channel)
+            t_worker_new.start()
+
+            # appends the worker objects
+            t_worker.append(t_worker_new)
+
+        return t_worker
+
     # ---------------------------------------------------------------------------
     # Thread worker functions
     # ---------------------------------------------------------------------------
@@ -336,12 +368,17 @@ class SessionObject(QObject):
     def get_bad_channel(run_data):
 
         # field retrieval
-        ses_run, i_run, t0 = run_data
+        if len(run_data) == 3:
+            p_props = {}
+            ses_run, i_run, t0 = run_data
+
+        else:
+            ses_run, i_run, t0, p_props = run_data
 
         # retrieves the sync channels for each session/run
         b_channel = []
         for probe in ses_run._raw.values():
-            b_channel.append(si.preprocessing.detect_bad_channels(probe))
+            b_channel.append(si.preprocessing.detect_bad_channels(probe, **p_props))
 
         # returns the bad channels
         return b_channel, i_run, t0

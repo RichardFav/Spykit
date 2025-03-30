@@ -113,7 +113,7 @@ class ChannelInfoTab(InfoWidget):
 
         # updates the table with the new information
         for i_row, c_stat in enumerate(ch_status):
-            item = self.table.item(i_row, n_col - 1)
+            item = self.table.item(i_row, 1)
             item.setText(c_stat)
 
         # resets the status filter

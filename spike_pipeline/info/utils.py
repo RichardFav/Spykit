@@ -3,7 +3,7 @@ import re
 import functools
 import numpy as np
 from copy import deepcopy
-
+from collections import ChainMap
 
 # custom module imports
 import spike_pipeline.common.common_func as cf
@@ -67,6 +67,7 @@ class InfoManager(QWidget):
         # class property fields
         self.n_para = 0
         self.p_info = {}
+        self.calc_worker = []
 
         # boolean class fields
         self.is_updating = False
@@ -157,6 +158,10 @@ class InfoManager(QWidget):
                         tab_widget.run_change.connect(self.channel_combobox_update)
                         tab_widget.status_change.connect(self.channel_status_update)
 
+                case 'status':
+                    tab_widget.start_recalc.connect(self.start_recalc)
+                    tab_widget.cancel_recalc.connect(self.cancel_recalc)
+
             # appends the tab to the tab group
             self.tab_group_table.addTab(tab_widget, t_lbl)
             self.tab_group_table.setTabEnabled(i_tab, self.tab_show[i_tab])
@@ -197,6 +202,18 @@ class InfoManager(QWidget):
 
         trace_view = self.main_obj.plot_manager.get_plot_view('trace')
         trace_view.reset_trace_view()
+
+    def start_recalc(self, p_props):
+
+        status_tab = self.get_info_tab('status')
+        p_props_final = dict(ChainMap(*list(p_props.values())))
+        status_tab.t_worker = self.session_obj.session.recalc_bad_channel_detect(p_props_final)
+
+    def cancel_recalc(self):
+
+        status_tab = self.get_info_tab('status')
+        for t in status_tab.t_worker:
+            t.force_quit()
 
     def init_channel_comboboxes(self):
 
@@ -259,7 +276,7 @@ class InfoManager(QWidget):
 
         # resizes the table to the contents
         table_obj.setSortingEnabled(True)
-        table_obj.horizontalHeader().setSortIndicator(1, Qt.SortOrder.AscendingOrder)
+        table_obj.horizontalHeader().setSortIndicator(2, Qt.SortOrder.AscendingOrder)
         # table_obj.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
         # table_obj.resizeRowsToContents()
         # table_obj.resizeColumnsToContents()
@@ -276,7 +293,7 @@ class InfoManager(QWidget):
 
         # retrieves the table widget
         table_obj = self.get_table_widget(t_type)
-        i_row = int(table_obj.item(i_row_s, 1).text())
+        i_row = int(table_obj.item(i_row_s, 2).text())
         self.update()
 
         match t_type.lower():
@@ -480,6 +497,9 @@ class InfoWidget(QWidget):
 
 
 class InfoWidgetPara(InfoWidget, SearchMixin):
+    # pyqtSignal functions
+    prop_updated = pyqtSignal()
+
     # dimensions
     x_gap = 5
     item_row_size = 23
@@ -533,6 +553,10 @@ class InfoWidgetPara(InfoWidget, SearchMixin):
         self.edit_search = None
         self.tree_prop = QTreeWidget(self)
 
+    # ---------------------------------------------------------------------------
+    # Class Widget Setup Functions
+    # ---------------------------------------------------------------------------
+
     def init_filter_edit(self):
 
         # sets the layout properties
@@ -547,7 +571,7 @@ class InfoWidgetPara(InfoWidget, SearchMixin):
         # sets the tree-view properties
         self.tree_prop.setLineWidth(1)
         self.tree_prop.setColumnCount(2)
-        self.tree_prop.setIndentation(10)
+        self.tree_prop.setIndentation(12)
         self.tree_prop.setItemsExpandable(True)
         self.tree_prop.setStyleSheet(self.tree_style)
         self.tree_prop.setHeaderLabels(self.tree_hdr)
@@ -589,9 +613,9 @@ class InfoWidgetPara(InfoWidget, SearchMixin):
         tree_header = self.tree_prop.header()
         tree_header.setDefaultAlignment(cf.align_type['center'])
         tree_header.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
-        # tree_header.updateSection(0)
-        # tree_header.updateSection(1)
-        # tree_header.setSectionResizeMode(QHeaderView.ResizeMode.Fixed)
+        tree_header.updateSection(0)
+        tree_header.updateSection(1)
+        tree_header.setSectionResizeMode(QHeaderView.ResizeMode.Fixed)
         tree_header.setStyleSheet("background: rgba(240, 240, 255, 255);")
 
     # ---------------------------------------------------------------------------
@@ -642,7 +666,7 @@ class InfoWidgetPara(InfoWidget, SearchMixin):
 
             case 'edit':
                 # sets up the editbox string
-                lbl_str = '{0}: '.format(p_val['name'])
+                lbl_str = '{0}'.format(p_val['name'])
                 if p_val['value'] is None:
                     # parameter string is empty
                     edit_str = ''
@@ -667,7 +691,7 @@ class InfoWidgetPara(InfoWidget, SearchMixin):
             # case is a combobox
             case 'combobox':
                 # creates the label/combobox widget combo
-                lbl_str = '{0}: '.format(p_val['name'])
+                lbl_str = '{0}'.format(p_val['name'])
                 obj_combo = cw.QLabelCombo(
                     None, lbl_str, p_val['p_list'], p_val['value'], name=p_str, font_lbl=cw.font_lbl)
                 layout.addRow(obj_combo)
@@ -706,8 +730,14 @@ class InfoWidgetPara(InfoWidget, SearchMixin):
         elif isinstance(h_obj, QComboBox):
             self.combo_prop_update(h_obj, is_sort, p_str)
 
-        elif isinstance(h_obj, QSpinBox) or isinstance(h_obj, QDoubleSpinBox):
+        elif isinstance(h_obj, QSpinBox):
             self.spinbox_prop_update(h_obj, is_sort, p_str)
+
+        elif isinstance(h_obj, QDoubleSpinBox):
+            self.doublespinbox_prop_update(h_obj, is_sort, p_str)
+
+        # flag that the property has been updated
+        self.prop_updated.emit()
 
     def check_prop_update(self, h_obj, is_sort, p_str):
 
@@ -751,7 +781,13 @@ class InfoWidgetPara(InfoWidget, SearchMixin):
     def spinbox_prop_update(self, h_obj, is_sort, p_str):
 
         p = self.get_prop_field(is_sort)
-        spin_val = cf.check_edit_num(h_obj.text(), min_val=0)
+        spin_val = cf.check_edit_num(h_obj.text(), is_int=True)
+        cf.set_multi_dict_value(p, p_str, spin_val[0])
+
+    def doublespinbox_prop_update(self, h_obj, is_sort, p_str):
+
+        p = self.get_prop_field(is_sort)
+        spin_val = cf.check_edit_num(h_obj.text(), is_int=False)
         cf.set_multi_dict_value(p, p_str, spin_val[0])
 
     def sort_tab_change(self):
@@ -809,7 +845,7 @@ class InfoWidgetPara(InfoWidget, SearchMixin):
     def create_child_tree_item(self, props, p_name):
 
         # initialisations
-        lbl_str = '{0}:'.format(props['name'])
+        lbl_str = '{0}'.format(props['name'])
         cb_fcn_base = functools.partial(self.prop_update, p_name, False)
 
         # creates the tree widget item
@@ -819,14 +855,32 @@ class InfoWidgetPara(InfoWidget, SearchMixin):
         match props['type']:
             case 'edit':
                 # case is a lineedit
-                if isinstance(props['value'], int):
-                    h_obj = QSpinBox()
+                p_value = props['value']
+
+                # calculates the parameter spinbox step value
+                if p_value == 0:
+                    # case is the parameter value is zero
+                    step = 1
+
                 else:
+                    # case is the parameter value is non-zero
+                    step = 10 ** np.floor(np.log10(np.abs(p_value)) - 1)
+
+                # creates the spinbox based on the parameter type
+                if isinstance(props['value'], int):
+                    # case is the parameter is an integer
+                    h_obj = QSpinBox()
+                    step = int(np.max([1, step]))
+
+                else:
+                    # case is the parameter is a float
                     h_obj = QDoubleSpinBox()
 
                 # sets the widget properties
-                h_obj.setRange(0, 100000)
+                h_obj.setRange(-1000, 1000)
                 h_obj.setValue(props['value'])
+                h_obj.setObjectName(p_name[-1])
+                h_obj.setSingleStep(step)
 
                 # sets the object callback functions
                 cb_fcn = functools.partial(cb_fcn_base, h_obj)

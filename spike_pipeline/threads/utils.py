@@ -43,4 +43,4 @@ class ThreadWorker(QThread):
 
         # force quits the thread worker
         self.is_running = False
-        self.quit()
+        self.terminate()
