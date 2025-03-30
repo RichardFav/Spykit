@@ -1,6 +1,9 @@
 # module import
 import numpy as np
 
+#
+import spike_pipeline.common.common_func as cf
+
 # custom module imports
 from spike_pipeline.info.utils import InfoWidget
 from spike_pipeline.common.common_widget import QWidget, QLabelCombo, QLabelCheckCombo, font_lbl
@@ -16,6 +19,14 @@ class ChannelInfoTab(InfoWidget):
     run_change = pyqtSignal(QWidget)
     data_change = pyqtSignal(QWidget)
     status_change = pyqtSignal(QWidget, object)
+    set_update_flag = pyqtSignal(bool)
+
+    row_col = {
+        'good': cf.get_colour_value('g', 128),
+        'dead': cf.get_colour_value('r', 128),
+        'noise': cf.get_colour_value('dg', 128),
+        'out': cf.get_colour_value('y', 128),
+    }
 
     def __init__(self, t_str):
         super(ChannelInfoTab, self).__init__(t_str)
@@ -109,11 +120,12 @@ class ChannelInfoTab(InfoWidget):
 
         # initialisations
         self.is_updating = True
-        n_col = self.table.columnCount()
+        self.set_update_flag.emit(True)
 
         # updates the table with the new information
         for i_row, c_stat in enumerate(ch_status):
             item = self.table.item(i_row, 1)
+            self.set_table_row_colour(i_row, c_stat)
             item.setText(c_stat)
 
         # resets the status filter
@@ -124,6 +136,7 @@ class ChannelInfoTab(InfoWidget):
 
         # resets the update flag
         self.is_updating = False
+        self.set_update_flag.emit(False)
 
     def get_filtered_items(self):
 
@@ -133,7 +146,7 @@ class ChannelInfoTab(InfoWidget):
         # determines which items meet the filter selection
         self.is_filt = np.zeros(self.table.rowCount(), dtype=bool)
         for i_row in range(self.table.rowCount()):
-            item = self.table.item(i_row, self.table.columnCount() - 1)
+            item = self.table.item(i_row, 1)
             self.is_filt[i_row] = item.text() in sel_filt
 
     def check_filter_item(self):
@@ -145,3 +158,8 @@ class ChannelInfoTab(InfoWidget):
 
         self.status_change.emit(self, self.is_filt)
         self.data_change.emit(self)
+
+    def set_table_row_colour(self, i_row, c_stat):
+
+        for i_col in range(self.table.columnCount()):
+            self.table.item(i_row, i_col).setBackground(self.row_col[c_stat])

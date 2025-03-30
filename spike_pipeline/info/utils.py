@@ -157,6 +157,7 @@ class InfoManager(QWidget):
                         tab_widget.data_change.connect(self.channel_combobox_update)
                         tab_widget.run_change.connect(self.channel_combobox_update)
                         tab_widget.status_change.connect(self.channel_status_update)
+                        tab_widget.set_update_flag.connect(self.update_flag_change)
 
                 case 'status':
                     tab_widget.start_recalc.connect(self.start_recalc)
@@ -202,6 +203,10 @@ class InfoManager(QWidget):
 
         trace_view = self.main_obj.plot_manager.get_plot_view('trace')
         trace_view.reset_trace_view()
+
+    def update_flag_change(self, is_updating):
+
+        self.is_updating = is_updating
 
     def start_recalc(self, p_props):
 
