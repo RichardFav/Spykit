@@ -15,9 +15,9 @@ from spike_pipeline.plotting.utils import PlotWidget, PlotPara
 from pyqtgraph import PlotCurveItem, GraphicsObject, ROI, TextItem, mkPen, mkBrush, exporters
 
 # plot button fields
-b_icon = ['toggle', 'save', 'close']
-b_type = ['button', 'button', 'button']
-tt_lbl = ['Toggle Selection', 'Save Figure', 'Close ProbeView']
+b_icon = ['trace', 'toggle', 'save', 'close']
+b_type = ['toggle', 'button', 'button', 'button']
+tt_lbl = ['Show Outside Line', 'Toggle Selection', 'Save Figure', 'Close ProbeView']
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -38,6 +38,7 @@ class ProbePlot(PlotWidget):
     # list class fields
     add_lbl = ['remove', 'toggle', 'add']
     add_tt_str = ['Remove Selection', 'Toggle Selection', 'Add Selection']
+    lbl_tt_str = ['Hide Outside Line', 'Show Outside Line']
 
     def __init__(self, session_info):
         super(ProbePlot, self).__init__('probe', b_icon=b_icon, b_type=b_type, tt_lbl=tt_lbl)
@@ -171,8 +172,20 @@ class ProbePlot(PlotWidget):
     def plot_button_clicked(self, b_str):
 
         match b_str:
+            case 'trace':
+                # case is the trace toggle button
+                obj_but = self.findChild(cw.QPushButton, name=b_str)
+
+                # updates the tooltip string
+                is_show = obj_but.isChecked()
+                obj_but.setToolTip(self.lbl_tt_str[int(is_show)])
+
+                # resets the trace visibility
+                self.main_view.set_out_line_visible(is_show)
+                self.sub_view.set_out_line_visible(is_show)
+
             case 'toggle':
-                # case is the save button
+                # case is the toggle button
 
                 # updates the status flag
                 self.i_status = (self.i_status + 1) % 3
@@ -417,6 +430,7 @@ class ProbeView(GraphicsObject):
         self.y_out = None
         self.out_line = None
         self.out_label = None
+        self.show_out = False
 
         # field retrieval
         self.n_dim = probe.ndim
@@ -533,6 +547,11 @@ class ProbeView(GraphicsObject):
     # Miscellaneous Functions
     # ---------------------------------------------------------------------------
 
+    def set_out_line_visible(self, is_show):
+
+        self.show_out = is_show
+        self.out_line.setVisible(self.show_out)
+
     def reset_out_line(self, y_out_new):
 
         # updates the out location
@@ -554,9 +573,10 @@ class ProbeView(GraphicsObject):
         if self.y_out is not None:
             # updates the output label text
             self.out_label.setText('Out Location = {0}'.format(self.y_out))
+            self.out_line.setVisible(self.show_out)
             self.out_label.update()
 
-            #
+            # updates the line data
             self.out_line.setData(self.x_lim_full, [self.y_out, self.y_out])
 
     def reset_axes_limits(self, is_full=True, i_shank=None):

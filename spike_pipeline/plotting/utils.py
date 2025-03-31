@@ -448,7 +448,7 @@ class PlotWidget(QWidget):
         self.main_layout.addWidget(self.obj_plot_gbox)
 
         # sets the groupbox properties
-        self.obj_plot_gbox.setObjectName('selected')
+        self.obj_plot_gbox.setObjectName(None)
         self.obj_plot_gbox.setFont(cw.font_hdr)
         self.obj_plot_gbox.setCheckable(False)
         self.obj_plot_gbox.setSizePolicy(QSizePolicy(cf.q_exp, cf.q_exp))

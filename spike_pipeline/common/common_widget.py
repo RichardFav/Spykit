@@ -102,6 +102,8 @@ icon_path = {
     'arrow_up': os.path.join(icon_dir, 'arrow_up_icon.png'),
     'arrow_down': os.path.join(icon_dir, 'arrow_down_icon.png'),
     'tick': os.path.join(icon_dir, 'tick_icon.png'),
+    'trace_on': os.path.join(icon_dir, 'trace_on_icon.png'),
+    'trace_off': os.path.join(icon_dir, 'trace_off_icon.png'),
 }
 
 # widget dimensions

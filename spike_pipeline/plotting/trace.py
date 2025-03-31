@@ -615,17 +615,27 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
         # retrieves the current region limits
         t_lim_nw = np.array(self.l_reg_x.getRegion())
-        t_lim_half = np.mean(t_lim_nw)
+        dt_lim = np.sign(t_lim_nw - self.t_lim)
 
-        # case is the window size need to be fixed
-        if t_lim_half < self.x_window / 2:
-            t_lim_nw = [0, self.x_window]
+        if np.any(dt_lim != 0):
+            if dt_lim[0] != 0:
+                # case is the left side has moved
+                if t_lim_nw[0] > (self.t_dur - self.x_window):
+                    t_lim_nw = [self.t_dur - self.x_window, self.t_dur]
 
-        elif t_lim_half > (self.t_dur - self.x_window / 2):
-            t_lim_nw = [self.t_dur - self.x_window, self.t_dur]
+                else:
+                    # otherwise, recalculate the lower limit
+                    t_lim_nw[1] = t_lim_nw[0] + self.x_window
 
-        else:
-            t_lim_nw = t_lim_half + (self.x_window / 2) * np.array([-1, 1])
+            else:
+                # case is the right side has moved
+                if t_lim_nw[1] < self.x_window:
+                    # case is the region is too close to the edge
+                    t_lim_nw = [0, self.x_window]
+
+                else:
+                    # otherwise, recalculate the lower limit
+                    t_lim_nw[0] = t_lim_nw[1] - self.x_window
 
         # resets the x-linear region view size
         self.is_updating = True
