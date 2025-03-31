@@ -77,9 +77,11 @@ class SessionWorkBook(QObject):
         else:
             return probe_rec.channel_ids[i_ch]
 
-    def get_traces(self, **kwargs):
+    def get_traces(self, probe_rec=None, **kwargs):
 
-        probe_rec = self.get_current_recording_probe()
+        if probe_rec is None:
+            probe_rec = self.get_current_recording_probe()
+
         return probe_rec.get_traces(**kwargs)
 
     def get_selected_channels(self):

@@ -13,6 +13,7 @@ from pyqtgraph.Qt import QtGui
 import spike_pipeline.common.common_func as cf
 import spike_pipeline.common.common_widget as cw
 from spike_pipeline.plotting.utils import PlotWidget, PlotPara
+from spikeinterface.preprocessing import depth_order
 
 # pyqt6 module import
 from PyQt6.QtWidgets import (QWidget)
@@ -449,12 +450,17 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
             # sets up the y-data array
             ch_ids = self.session_info.get_channel_ids(i_channel)
-            y0 = self.session_info.get_traces(start_frame=i_frm0, end_frame=i_frm1, channel_ids=ch_ids)
+            y0 = self.session_info.get_traces(
+                start_frame=i_frm0,
+                end_frame=i_frm1,
+                channel_ids=ch_ids,
+                return_scaled=self.trace_props.get('scale_signal'),
+            )
 
             # sets up the heatmap/trace items
             if is_map:
-                # removes the median value (if required)
-                if self.trace_props.get('subtract_mean'):
+                # removes the median value (raw signal only)
+                if (self.session_info.prep_type is None) or self.session_info.prep_type.endswith('raw'):
                     y0 = y0 - np.median(y0)
 
                 # resets the image item

@@ -655,20 +655,18 @@ class MenuBar(QObject):
 
     def run_test(self):
 
-        self.main_obj.info_manager.prog_widget.toggle_progbar_state()
+        import matplotlib
+        matplotlib.use('Agg')
 
-        # import matplotlib
-        # matplotlib.use('Agg')
-        #
-        # ses = self.main_obj.session_obj.session
-        # h_fig = ses._s.plot_preprocessed(
-        #     show=True,
-        #     time_range=(0, 0.1),
-        #     show_channel_ids=False,
-        #     mode="map",
-        # )
-        #
-        # h_fig['run-001_g0_imec0'].savefig('TestHeatmap.png')
+        ses = self.main_obj.session_obj.session
+        h_fig = ses._s.plot_preprocessed(
+            show=True,
+            time_range=(0, 0.1),
+            show_channel_ids=False,
+            mode="map",
+        )
+
+        h_fig['run-001_g0_imec0'].savefig('TestHeatmap.png')
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions

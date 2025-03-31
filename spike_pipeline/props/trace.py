@@ -61,8 +61,7 @@ class TracePara(PropPara):
     t_span = cf.ObservableProperty(pfcn(_edit_update, 't_span'))
     c_lim_lo = cf.ObservableProperty(pfcn(_edit_update, 'c_lim_lo'))
     c_lim_hi = cf.ObservableProperty(pfcn(_edit_update, 'c_lim_hi'))
-    subtract_mean = cf.ObservableProperty(pfcn(_check_update, 'subtract_mean'))
-
+    scale_signal = cf.ObservableProperty(pfcn(_check_update, 'scale_signal'))
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -118,7 +117,7 @@ class TraceProps(PropWidget):
             't_span': self.create_para_field('Duration (s)', 'edit', self.t_span0),
             'c_lim_lo': self.create_para_field('Lower Colour Limit', 'edit', -200),
             'c_lim_hi': self.create_para_field('Upper Colour Limit', 'edit', 200),
-            'subtract_mean': self.create_para_field('Subtract Signal Mean', 'checkbox', True),
+            'scale_signal': self.create_para_field('Scale Signals', 'checkbox', True),
         }
 
         # updates the class field

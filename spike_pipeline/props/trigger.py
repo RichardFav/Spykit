@@ -364,15 +364,19 @@ class TriggerProps(PropWidget):
 
         # limit initialisation
         if self.i_col_sel == 1:
+            # case is the lower limit is being altered
             t_min, t_max = 0, self.p_props[i_run].get(self.i_row_sel, 2)
 
         else:
+            # case is the upper limit is being altered
             t_min, t_max = self.p_props[i_run].get(self.i_row_sel, 1), self.get_run_duration()
 
         if self.i_row_sel > 0:
+            # case is the selected row is not the first
             t_min = self.p_props[i_run].get(self.i_row_sel - 1, 2)
 
         if (self.i_row_sel + 1) < self.trig_view.n_reg_xs[i_run]:
+            # case is the selected row is not the last
             t_max = self.p_props[i_run].get(self.i_row_sel + 1, 1)
 
         return t_min, t_max
