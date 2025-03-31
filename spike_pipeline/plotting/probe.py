@@ -12,7 +12,7 @@ import spike_pipeline.common.common_widget as cw
 from spike_pipeline.plotting.utils import PlotWidget, PlotPara
 
 # pyqtgraph modules
-from pyqtgraph import GraphicsObject, ROI, TextItem, mkPen, mkBrush, exporters
+from pyqtgraph import PlotCurveItem, GraphicsObject, ROI, TextItem, mkPen, mkBrush, exporters
 
 # plot button fields
 b_icon = ['toggle', 'save', 'close']
@@ -32,6 +32,8 @@ class ProbePlot(PlotWidget):
     hide_plot = pyqtSignal()
     probe_clicked = pyqtSignal(object)
     reset_highlight = pyqtSignal(bool, object)
+
+    y_out_dist = 20
 
     # list class fields
     add_lbl = ['remove', 'toggle', 'add']
@@ -53,6 +55,7 @@ class ProbePlot(PlotWidget):
         self.vb_sub = None
         self.sub_xhair = None
         self.sub_label = None
+        self.out_label = None
 
         # other class fields
         self.i_status = 1
@@ -112,20 +115,13 @@ class ProbePlot(PlotWidget):
 
         # sets the main probe view properties
         self.h_plot[0, 0].addItem(self.main_view)
+        self.h_plot[0, 0].scene().sigMouseMoved.connect(self.main_mouse_move)
         self.main_view.update_roi.connect(self.main_roi_moved)
         self.main_view.reset_axes_limits(False)
-
-        # # resets the main axis limits
-        # self.v_box[0, 0].setLimits(
-        #     xMin=self.main_view.x_lim[0], xMax=self.main_view.x_lim[1],
-        #     yMin=self.main_view.y_lim[0], yMax=self.main_view.y_lim[1],
-        # )
 
         # sets the inset probe view properties
         self.h_plot[1, 0].addItem(self.sub_view)
         self.h_plot[1, 0].scene().sigMouseMoved.connect(self.sub_mouse_move)
-        # self.h_plot[1, 0].scene().sigMouseClicked.connect(self.sub_mouse_click)
-        # self.sub_xhair = PlotCrossHair(self.h_plot[1, 0], self.v_box[1, 0])
 
         # resets the plot enter/leave events
         self.h_plot[1, 0].enterEvent = self.enter_sub_view
@@ -227,11 +223,45 @@ class ProbePlot(PlotWidget):
         # resets the axis limits
         self.sub_view.reset_axes_limits(False)
 
+    def main_mouse_move(self, p_pos):
+
+        # updates the crosshair position
+        m_pos = self.v_box[0, 0].mapSceneToView(p_pos)
+
+        if self.main_view.y_out is not None:
+            dy_out = np.abs(m_pos.y() - self.main_view.y_out)
+            if dy_out < self.y_out_dist:
+                # calculates the label x/y-offsets
+                dx_pos, dy_pos = self.convert_coords()
+
+                # resets the label visibility/position
+                self.main_view.out_label.setVisible(True)
+                self.main_view.out_label.setPos(m_pos + QPointF(-dx_pos, dy_pos))
+                return
+
+            else:
+                # resets the label visibility
+                self.main_view.out_label.setVisible(False)
+
     def sub_mouse_move(self, p_pos):
 
         # updates the crosshair position
         m_pos = self.v_box[1, 0].mapSceneToView(p_pos)
-        # self.sub_xhair.set_position(m_pos)
+
+        if self.sub_view.y_out is not None:
+            dy_out = np.abs(m_pos.y() - self.sub_view.y_out)
+            if dy_out < self.y_out_dist:
+                # calculates the label x/y-offsets
+                dx_pos, dy_pos = self.convert_coords()
+
+                # resets the label visibility/position
+                self.sub_view.out_label.setVisible(True)
+                self.sub_view.out_label.setPos(m_pos + QPointF(-dx_pos, dy_pos))
+                return
+
+            else:
+                # resets the label visibility
+                self.sub_view.out_label.setVisible(False)
 
         i_contact = self.sub_view.inside_polygon_single(m_pos)
         if i_contact is not None:
@@ -283,10 +313,47 @@ class ProbePlot(PlotWidget):
 
         return scaled_width, scaled_height
 
+    # ---------------------------------------------------------------------------
+    # Miscellaneous Functions
+    # ---------------------------------------------------------------------------
+
     def reset_probe_views(self):
 
         self.main_view.create_probe_plot()
         self.sub_view.create_probe_plot()
+
+    def reset_out_line(self, ch_status):
+
+        # determines the "out" channels
+        is_out = ch_status == 'out'
+
+        # calculates the out location
+        if np.any(is_out):
+            # retrieves the position of the out channels
+            probe = self.session_info.get_current_recording_probe()
+            p_loc0 = probe.get_channel_locations()
+            p_loc = p_loc0[is_out, 1]
+
+            # determines the out location
+            if np.min(p_loc0) in p_loc:
+                # case is from the bottom
+                y_out = np.max(p_loc)
+
+            else:
+                # case is from the top
+                y_out = np.min(p_loc)
+
+        else:
+            # case is no out channels were detected
+            y_out = None
+
+        # resets the sub-view probe out line
+        self.main_view.reset_out_line(y_out)
+        self.sub_view.reset_out_line(y_out)
+
+    # ---------------------------------------------------------------------------
+    # Static Methods
+    # ---------------------------------------------------------------------------
 
     @staticmethod
     def update_probe(_self):
@@ -319,6 +386,9 @@ class ProbeView(GraphicsObject):
     c_col_hover = cf.get_colour_value('b', 220)
     c_col_selected = cf.get_colour_value('g', 128)
 
+    # line pen widgets
+    l_pen_out = mkPen(color=cf.get_colour_value('m'), width=2)
+
     # pyqtsignal functions
     update_roi = pyqtSignal(object)
 
@@ -342,6 +412,11 @@ class ProbeView(GraphicsObject):
         self.i_sel_contact = None
         self.i_sel_trace = None
         self.session_info = session_info
+
+        # out location class widgets
+        self.y_out = None
+        self.out_line = None
+        self.out_label = None
 
         # field retrieval
         self.n_dim = probe.ndim
@@ -457,6 +532,32 @@ class ProbeView(GraphicsObject):
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
     # ---------------------------------------------------------------------------
+
+    def reset_out_line(self, y_out_new):
+
+        # updates the out location
+        self.y_out = y_out_new
+
+        # creates the outside line (if not created)
+        if self.out_line is None:
+            # creates the outside line object
+            self.out_line = PlotCurveItem(pen=self.l_pen_out)
+            self.main_obj.addItem(self.out_line)
+
+            # sets the label properties
+            self.out_label = TextItem(color=(0, 0, 0, 255), fill=(255, 255, 255, 255), ensureInBounds=True)
+            self.out_label.setVisible(False)
+            self.main_obj.addItem(self.out_label)
+
+        # updates the line location
+        self.out_line.clear()
+        if self.y_out is not None:
+            # updates the output label text
+            self.out_label.setText('Out Location = {0}'.format(self.y_out))
+            self.out_label.update()
+
+            #
+            self.out_line.setData(self.x_lim_full, [self.y_out, self.y_out])
 
     def reset_axes_limits(self, is_full=True, i_shank=None):
 

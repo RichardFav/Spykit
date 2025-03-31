@@ -243,6 +243,10 @@ class MainWindow(QMainWindow):
             status_tab.toggle_calc.setChecked(False)
             status_tab.toggle_calc.setText(status_tab.b_str[0])
 
+        # updates the probe-view
+        probe_view = self.plot_manager.get_plot_view('probe')
+        probe_view.reset_out_line(ch_status[0][1])
+
     # ---------------------------------------------------------------------------
     # Progress Worker Slot Functions
     # ---------------------------------------------------------------------------

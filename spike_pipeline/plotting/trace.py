@@ -459,9 +459,8 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
             # sets up the heatmap/trace items
             if is_map:
-                # removes the median value (raw signal only)
-                if (self.session_info.prep_type is None) or self.session_info.prep_type.endswith('raw'):
-                    y0 = y0 - np.median(y0)
+                # removes the signal median value (help to better visualise raw signals)
+                y0 = y0 - np.median(y0)
 
                 # resets the image item
                 x_scl = self.x_window / n_frm
