@@ -78,9 +78,40 @@ class TriggerPara(PropPara):
     pair_update = pyqtSignal()
 
     def __init__(self, p_info):
+
+        self.t_arr = TableArray()
+
         self.is_updating = True
         super(TriggerPara, self).__init__(p_info)
         self.is_updating = False
+
+    # ---------------------------------------------------------------------------
+    #
+    # ---------------------------------------------------------------------------
+
+    def add_row(self, nw_row):
+
+        self.t_arr.add_row(nw_row)
+        self.region_index = self.t_arr.data
+
+    def remove_row(self, i_row):
+
+        self.t_arr.remove_row(i_row)
+        self.region_index = self.t_arr.data
+
+    def set(self, i_row, i_col, value):
+
+        self.t_arr.set(i_row, i_col, value)
+        self.region_index = self.t_arr.data
+
+    def set_arr(self, i_col, values):
+
+        self.t_arr.data[:, i_col] = values
+        self.region_index = self.t_arr.data
+
+    def get(self, i_row, i_col):
+
+        return self.t_arr.get(i_row, i_col)
 
     # ---------------------------------------------------------------------------
     # Observable Property Event Callbacks
@@ -129,15 +160,12 @@ class TriggerProps(PropWidget):
         self.trig_view = None
         self.n_run = self.main_obj.session_obj.session.get_run_count()
 
-        # memory allocation
-        self.t_data = [TableArray() for _ in range(self.n_run)]
-
         # initialises the property widget
         self.setup_prop_fields()
         super(TriggerProps, self).__init__(self.main_obj, 'trigger', self.p_info)
 
-        # sets up the parameter fields
-        self.p_props = TriggerPara(self.p_info['ch_fld'])
+        # memory allocation
+        self.p_props = [TriggerPara(self.p_info['ch_fld']) for _ in range(self.n_run)]
 
         # widget field retrieval
         self.button_pair = self.findChild(cw.QButtonPair)
@@ -149,14 +177,14 @@ class TriggerProps(PropWidget):
     def init_other_class_fields(self):
 
         # connects the slot functions
-        self.p_props.pair_update.connect(self.pair_update)
+        for i_run in range(self.n_run):
+            self.p_props[i_run].pair_update.connect(self.pair_update)
 
         # resets the table properties
         n_col = len(self.c_hdr)
         self.table_region.setColumnCount(n_col)
         self.table_region.setHorizontalHeaderLabels(self.c_hdr)
         self.table_region.verticalHeader().setVisible(False)
-
         self.table_region.cellChanged.connect(self.table_changed)
         self.table_region.cellClicked.connect(self.table_selected)
 
@@ -209,20 +237,20 @@ class TriggerProps(PropWidget):
         chk_val = cf.check_edit_num(item_sel.text(), min_val=t_min, max_val=t_max)
         if chk_val[1] is None:
             # updates the table data array
-            self.t_data[i_run].set(self.i_row_sel, self.i_col_sel, chk_val[0])
+            self.p_props[i_run].set(self.i_row_sel, self.i_col_sel, chk_val[0])
             self.trig_view.update_region(self.i_row_sel)
 
         else:
             # otherwise, reset the previous value
             self.is_updating = True
-            item_sel.setText('%g' % self.t_data[i_run].get(self.i_row_sel, self.i_col_sel))
+            item_sel.setText('%g' % self.p_props[i_run].get(self.i_row_sel, self.i_col_sel))
             self.is_updating = False
 
     def pair_update(self):
 
-        # determines the selected button
+        # field retrieval
         i_run = self.get_run_index()
-        i_button = int(np.log2(abs(self.b_state - self.p_props.button_flag)))
+        i_button = int(np.log2(abs(self.b_state - self.p_props[i_run].button_flag)))
 
         # resets the table row count
         self.is_updating = True
@@ -236,18 +264,6 @@ class TriggerProps(PropWidget):
 
             # adds the new region/table item
             self.add_region(i_run, nw_row)
-            for i_col, c_val in enumerate(nw_row):
-                # creates the widget item
-                item = cw.QTableWidgetItemSortable(None)
-                item.setFont(self.table_font)
-
-                # case is a string field
-                item.setFlags(self.item_index if i_col == 0 else self.item_flag)
-                item.setText(str(c_val))
-
-                # adds the item to the table
-                item.setTextAlignment(cf.align_type['center'])
-                self.table_region.setItem(self.n_row - 1, i_col, item)
 
         else:
             # case is removing a row
@@ -262,7 +278,7 @@ class TriggerProps(PropWidget):
 
         # resets the button state
         self.is_updating = False
-        self.b_state = self.p_props.button_flag
+        self.b_state = self.p_props[i_run].button_flag
 
     # ---------------------------------------------------------------------------
     # Setter Functions
@@ -276,7 +292,7 @@ class TriggerProps(PropWidget):
 
         # updates the table data
         i_run = self.get_run_index()
-        self.t_data[i_run].set(i_row, i_col, value)
+        self.p_props[i_run].set(i_row, i_col, value)
 
         # updates the table cell string
         self.is_updating = True
@@ -295,7 +311,7 @@ class TriggerProps(PropWidget):
 
     def get_table_row(self, i_row):
 
-        return self.t_data[self.get_run_index()].data[i_row, :]
+        return self.p_props[self.get_run_index()].t_arr.data[i_row, :]
 
     def get_run_duration(self):
 
@@ -319,7 +335,7 @@ class TriggerProps(PropWidget):
 
         else:
             # case is the other regions
-            t_final = self.t_data[i_run].get(self.n_row - 2, 2)
+            t_final = self.p_props[i_run].get(self.n_row - 2, 2)
             t_win = t_dur - t_final
 
             if t_win < self.t_win_min:
@@ -347,13 +363,17 @@ class TriggerProps(PropWidget):
     def get_time_limits(self, i_run):
 
         # limit initialisation
-        t_min, t_max = 0, self.get_run_duration()
+        if self.i_col_sel == 1:
+            t_min, t_max = 0, self.p_props[i_run].get(self.i_row_sel, 2)
+
+        else:
+            t_min, t_max = self.p_props[i_run].get(self.i_row_sel, 1), self.get_run_duration()
 
         if self.i_row_sel > 0:
-            t_min = self.t_data[i_run].get(self.i_row_sel - 1, 2)
+            t_min = self.p_props[i_run].get(self.i_row_sel - 1, 2)
 
         if (self.i_row_sel + 1) < self.trig_view.n_reg_xs[i_run]:
-            t_max = self.t_data[i_run].get(self.i_row_sel + 1, 1)
+            t_max = self.p_props[i_run].get(self.i_row_sel + 1, 1)
 
         return t_min, t_max
 
@@ -364,13 +384,29 @@ class TriggerProps(PropWidget):
     def add_region(self, i_run, nw_row):
 
         self.table_region.setRowCount(self.n_row)
-        self.t_data[i_run].add_row(nw_row)
+        self.p_props[i_run].add_row(nw_row)
         self.trig_view.add_region(nw_row)
+
+        for i_col, c_val in enumerate(nw_row):
+            # creates the widget item
+            item = cw.QTableWidgetItemSortable(None)
+            item.setFont(self.table_font)
+
+            # case is a string field
+            item.setFlags(self.item_index if i_col == 0 else self.item_flag)
+            if i_col == 0:
+                item.setText(str(int(c_val)))
+            else:
+                item.setText(str(c_val))
+
+            # adds the item to the table
+            item.setTextAlignment(cf.align_type['center'])
+            self.table_region.setItem(self.n_row - 1, i_col, item)
 
     def delete_region(self, i_run, i_row):
 
         self.table_region.removeRow(i_row)
-        self.t_data[i_run].remove_row(i_row)
+        self.p_props[i_run].remove_row(i_row)
         self.trig_view.delete_region(i_row)
 
     # ---------------------------------------------------------------------------
@@ -380,34 +416,35 @@ class TriggerProps(PropWidget):
     def reset_region_timing(self, t_dur, dt):
 
         # updates the table data
+        xi_col = np.array([1, 2])
         i_run = self.get_run_index()
-        n_reg = self.t_data[i_run].n_row
+        n_reg = self.p_props[i_run].t_arr.n_row
 
         # resets the table data
-        self.t_data[i_run].data[:, 1:] = self.t_data[i_run].data[:, 1:] - dt
+        self.p_props[i_run].set_arr(xi_col, self.p_props[i_run].t_arr.data[:, 1:] - dt)
 
         #
         is_ok = np.ones(n_reg, dtype=bool)
         for i_reg in np.flip(range(n_reg)):
             # determines if regions are feasible wrt the start point
-            s_feas = self.t_data[i_run].data[i_reg, 1:] >= 0
+            s_feas = self.p_props[i_run].t_arr.data[i_reg, 1:] >= 0
             if not np.any(s_feas):
                 # case is the region is infeasible
                 is_ok[i_reg] = False
 
             elif not np.all(s_feas):
                 # otherwise, reset the parameter values
-                self.t_data[i_run].data[i_reg, 1:] = np.maximum(0, self.t_data[i_run].data[i_reg, 1:])
+                self.p_props[i_run].set_arr(xi_col, np.maximum(0, self.p_props[i_run].t_arr.data[i_reg, 1:]))
 
             # determines if regions are feasible wrt the start point
-            f_feas = self.t_data[i_run].data[i_reg, 1:] <= t_dur
+            f_feas = self.p_props[i_run].t_arr.data[i_reg, 1:] <= t_dur
             if not np.any(f_feas):
                 # case is the region is infeasible
                 is_ok[i_reg] = False
 
             elif not np.all(f_feas):
                 # otherwise, reset the parameter values
-                self.t_data[i_run].data[i_reg, 1:] = np.minimum(t_dur, self.t_data[i_run].data[i_reg, 1:])
+                self.p_props[i_run].set_arr(xi_col, np.minimum(t_dur, self.p_props[i_run].t_arr.data[i_reg, 1:]))
 
             # removes the
             if not is_ok[i_reg]:
@@ -417,9 +454,9 @@ class TriggerProps(PropWidget):
                 # flag that manual field updating is taking place
                 self.is_updating = True
 
-                for i_col in range(1, self.t_data[i_run].n_col):
+                for i_col in range(1, self.p_props[i_run].t_arr.n_col):
                     item = self.table_region.item(i_reg, i_col)
-                    item_val = self.t_data[i_run].get(i_reg, i_col)
+                    item_val = self.p_props[i_run].get(i_reg, i_col)
                     item.setText(str(item_val))
 
                     self.trig_view.update_region(i_reg)

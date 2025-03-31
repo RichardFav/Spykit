@@ -73,8 +73,8 @@ class MainWindow(QMainWindow):
         # sets the widget style sheets
         self.set_styles()
 
-        # # REMOVE ME LATER
-        # self.testing()
+        # REMOVE ME LATER
+        self.testing()
 
     # ---------------------------------------------------------------------------
     # Class Widget Setup Functions
@@ -117,7 +117,7 @@ class MainWindow(QMainWindow):
         self.session_obj.worker_job_finished.connect(self.worker_job_finished)
 
     # ---------------------------------------------------------------------------
-    # Signal Slot Functions
+    # Calculation Signal Slot Functions
     # ---------------------------------------------------------------------------
 
     def new_session(self):
@@ -243,6 +243,10 @@ class MainWindow(QMainWindow):
             status_tab.toggle_calc.setChecked(False)
             status_tab.toggle_calc.setText(status_tab.b_str[0])
 
+    # ---------------------------------------------------------------------------
+    # Progress Worker Slot Functions
+    # ---------------------------------------------------------------------------
+
     def worker_job_started(self, job_name):
 
         # initialisations
@@ -251,21 +255,29 @@ class MainWindow(QMainWindow):
         match job_name:
             case 'bad':
                 # case is bad channel detection
-                job_desc = "Bad Channel Detection..."
+                job_desc = "Bad Channel Detection"
 
             case 'sync':
                 # case is trigger channel detection
-                job_desc = "Trigger Channel Detection..."
+                job_desc = "Trigger Channel Detection"
 
             case 'minmax':
                 # case is bad channel detection
-                job_desc = "Min/Max Signal Calculations..."
+                job_desc = "Min/Max Signal Calculations"
+
+            case 'preprocess':
+                # case is the preprocessing calculations
+                job_desc = "Running Preprocessing"
 
         self.info_manager.add_job(job_name, job_desc)
 
     def worker_job_finished(self, job_name):
 
         self.info_manager.delete_job(job_name)
+
+    # ---------------------------------------------------------------------------
+    # Signal Slot Functions
+    # ---------------------------------------------------------------------------
 
     def update_config(self, c_id):
 
@@ -312,6 +324,9 @@ class MainWindow(QMainWindow):
 
     def run_preproccessing(self, prep_task):
 
+        # starts the job worker
+        self.worker_job_started('preprocess')
+
         # runs the session pre-processing
         prep_tab = self.info_manager.get_info_tab('preprocess')
         configs = prep_tab.setup_config_dict(prep_task)
@@ -325,7 +340,6 @@ class MainWindow(QMainWindow):
         # updates the channel data types
         channel_tab = self.info_manager.get_info_tab('channel')
         channel_tab.reset_data_types(['Raw'] + prep_task, pp_data_flds)
-        # self.session_obj.set_prep_type(pp_data_flds[-1])
 
         # updates the trace views
         self.plot_manager.reset_trace_views()
@@ -527,11 +541,13 @@ class MenuBar(QObject):
         with open(file_info, 'rb') as f:
             ses_data = pickle.load(f)
 
+        # field retrieval
+        channel_data = ses_data['channel_data']
+
         # creates the session data
         self.main_obj.session_obj.reset_session(ses_data)
-        self.main_obj.session_obj.session.set_bad_channel(ses_data['bad_channel'])
-        self.main_obj.session_obj.session.set_sync_channel(ses_data['sync_channel'])
-        self.main_obj.session_obj.session.set_min_max_values(ses_data['signal_data'])
+        self.main_obj.session_obj.session.set_bad_channel(channel_data['bad'])
+        self.main_obj.session_obj.session.set_sync_channel(channel_data['sync'])
 
         # updates the channel status table fields
         self.main_obj.bad_channel_change()
@@ -539,6 +555,10 @@ class MenuBar(QObject):
         # creates the trigger plot view (if missing)
         if 'trigger' not in self.main_obj.plot_manager.types:
             self.main_obj.sync_channel_change()
+
+        # resets the property/information panel fields
+        self.main_obj.prop_manager.set_prop_para(ses_data['prop_para'])
+        self.main_obj.info_manager.set_info_para(ses_data['info_para'])
 
     def clear_session(self):
 
@@ -581,8 +601,24 @@ class MenuBar(QObject):
 
     def save_session(self):
 
-        # retrieves the output data
-        session_data = self.main_obj.session_obj.get_session_save_data()
+        # field retrieval
+        ses_obj = self.main_obj.session_obj
+
+        # info/property parameter retrieval
+        info_list = ["preprocess", "status"]
+        prop_list = ["general", "trace", "trigger"]
+
+        # sets up the session save data dictionary
+        session_data = {
+            'state': ses_obj.state,
+            'session_props': ses_obj.session.get_session_props(),
+            'prop_para': self.main_obj.prop_manager.get_prop_para(prop_list),
+            'info_para': self.main_obj.info_manager.get_info_para(info_list),
+            'channel_data': {
+                'bad': ses_obj.session.bad_ch,
+                'sync': ses_obj.session.sync_ch,
+            }
+        }
 
         # saves the session file
         self.save_file('session', session_data)

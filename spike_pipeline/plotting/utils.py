@@ -131,13 +131,13 @@ class PlotManager(QWidget):
 
             case 'trace':
                 # case is the trace view
-                plot_new.set_gen_props(self.main_obj.prop_manager.get_tab('general'))
-                plot_new.set_trace_props(self.main_obj.prop_manager.get_tab('trace'))
+                plot_new.set_gen_props(self.main_obj.prop_manager.get_prop_tab('general'))
+                plot_new.set_trace_props(self.main_obj.prop_manager.get_prop_tab('trace'))
 
             case 'trigger':
                 # case is the trigger view
-                plot_new.set_gen_props(self.main_obj.prop_manager.get_tab('general'))
-                plot_new.set_trig_props(self.main_obj.prop_manager.get_tab('trigger'))
+                plot_new.set_gen_props(self.main_obj.prop_manager.get_prop_tab('general'))
+                plot_new.set_trig_props(self.main_obj.prop_manager.get_prop_tab('trigger'))
 
     def get_plot_view(self, p_type, is_add=True, expand_grid=True, show_plot=True):
 
@@ -157,7 +157,7 @@ class PlotManager(QWidget):
     def clear_plot_view(self, p_type):
 
         # retrieves the configuration tab object
-        config_tab = self.main_obj.prop_manager.get_tab('config')
+        config_tab = self.main_obj.prop_manager.get_prop_tab('config')
 
         # removes the current plot from the configuration id array
         p_id = self.types[p_type]

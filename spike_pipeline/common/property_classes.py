@@ -9,7 +9,7 @@ import time
 import numpy as np
 from PyQt6.QtWidgets import (QMainWindow, QHBoxLayout, QFormLayout, QWidget,
                              QScrollArea, QSizePolicy, QStatusBar, QMenuBar)
-from PyQt6.QtCore import Qt, QSize, QRect, pyqtSignal, QObject
+from PyQt6.QtCore import Qt, QSize, QRect, pyqtSignal, pyqtBoundSignal, QObject
 
 # spikewrap modules
 import spikewrap as sw
@@ -61,28 +61,6 @@ class SessionWorkBook(QObject):
     # ---------------------------------------------------------------------------
     # Getter Functions
     # ---------------------------------------------------------------------------
-
-    def get_session_save_data(self):
-
-        # sets the raw signal data
-        signal_data_raw = {
-            't': self.session.t_min_max,
-            'y': self.session.min_max
-        }
-
-        # sets up the session save data dictionary
-        save_data = {
-            'state': self.state,
-            'session_props': self.session.get_session_props(),
-            'sync_channel': self.session.sync_ch,
-            'bad_channel': self.session.bad_ch,
-            'channel_data': self.channel_data,
-            'calculated_data': self.calculated_data,
-            'signal_data': signal_data_raw,
-        }
-
-        # returns the data struct
-        return save_data
 
     def get_channel_info(self):
 
@@ -151,10 +129,6 @@ class SessionWorkBook(QObject):
     # Setter Functions
     # ---------------------------------------------------------------------------
 
-    def set_min_max_values(self, signal_data):
-
-        self.session.set_min_max_values(signal_data)
-
     def set_all_channel_states(self, is_checked):
 
         self.channel_data.is_selected[:] = is_checked
@@ -183,13 +157,6 @@ class SessionWorkBook(QObject):
 
         # resets the other class fields
         self.state = ses_data['state']
-        self.channel_data = ses_data['channel_data']
-        self.calculated_data = ses_data['calculated_data']
-
-        # calculates the min/max potentials
-        # y = self.get_traces()
-        # self.y_min = np.min(y, axis=0)
-        # self.y_max = np.max(y, axis=0)
 
     def channel_calc(self, ch_type, session=None):
 
@@ -253,8 +220,6 @@ class SessionObject(QObject):
         # bad/sync channels
         self.bad_ch = None
         self.sync_ch = None
-        self.t_min_max = None
-        self.min_max = None
         self.ssf_load = ssf_load
         self.data_init = {'bad': False, 'sync': False}
 
@@ -304,45 +269,34 @@ class SessionObject(QObject):
         n_run = self.get_run_count()
         self.bad_ch = np.empty(n_run, dtype=object)
         self.sync_ch = np.empty(n_run, dtype=object)
-        self.t_min_max = np.empty(n_run, dtype=object)
-        self.min_max = np.empty((n_run, 2), dtype=object)
 
         # field initialisation
-        self.data_init['bad'] = True
+        self.data_init['bad'] = False
         self.data_init['sync'] = False
 
         for i_run in range(n_run):
             # retrieves the raw session run object
-            t0 = time.time()
             ses_run = self.get_session_runs(i_run)
 
             # sets up the bad channel detection worker
-            t_worker_bad = ThreadWorker(self.get_bad_channel, (ses_run, i_run, t0))
+            t_worker_bad = ThreadWorker(self.get_bad_channel, (ses_run, i_run))
             t_worker_bad.work_finished.connect(self.post_get_bad_channel)
             t_worker_bad.start()
 
             # sets up the sync channel detection worker
-            t_worker_sync = ThreadWorker(self.get_sync_channel, (self._s, i_run, t0))
+            t_worker_sync = ThreadWorker(self.get_sync_channel, (self._s, i_run))
             t_worker_sync.work_finished.connect(self.post_get_sync_channel)
             t_worker_sync.start()
-
-            # sets up the min/max calculation
-            ses_run_copy = copy.deepcopy(ses_run)
-            t_worker_mm = ThreadWorker(self.calc_trace_minmax, (ses_run_copy, i_run, t0))
-            t_worker_mm.work_finished.connect(self.post_calc_trace_minmax)
-            t_worker_mm.start()
 
             # updates the signal function
             if self.sig_fcn is not None:
                 if isinstance(self.sig_fcn, pyqtSignal):
                     self.sig_fcn.emit('bad')
                     self.sig_fcn.emit('sync')
-                    self.sig_fcn.emit('minmax')
 
                 else:
                     self.sig_fcn('bad')
                     self.sig_fcn('sync')
-                    self.sig_fcn('minmax')
 
         # pauses for things to catch up...
         time.sleep(0.1)
@@ -366,7 +320,7 @@ class SessionObject(QObject):
             ses_run = self.get_session_runs(i_run)
 
             # sets up the bad channel detection worker
-            t_worker_new = ThreadWorker(self.get_bad_channel, (ses_run, i_run, t0, p_props))
+            t_worker_new = ThreadWorker(self.get_bad_channel, (ses_run, i_run, p_props))
             t_worker_new.work_finished.connect(self.post_get_bad_channel)
             t_worker_new.start()
 
@@ -375,7 +329,7 @@ class SessionObject(QObject):
 
             # updates the signal function
             if self.sig_fcn is not None:
-                if isinstance(self.sig_fcn, pyqtSignal):
+                if isinstance(self.sig_fcn, pyqtBoundSignal):
                     self.sig_fcn.emit('bad')
 
                 else:
@@ -391,12 +345,12 @@ class SessionObject(QObject):
     def get_bad_channel(run_data):
 
         # field retrieval
-        if len(run_data) == 3:
+        if len(run_data) == 2:
             p_props = {}
-            ses_run, i_run, t0 = run_data
+            ses_run, i_run = run_data
 
         else:
-            ses_run, i_run, t0, p_props = run_data
+            ses_run, i_run, p_props = run_data
 
         # retrieves the sync channels for each session/run
         b_channel = []
@@ -404,22 +358,22 @@ class SessionObject(QObject):
             b_channel.append(si.preprocessing.detect_bad_channels(probe, **p_props))
 
         # returns the bad channels
-        return b_channel, i_run, t0
+        return b_channel, i_run
 
     @staticmethod
     def get_sync_channel(run_data):
 
         # field retrieval
-        ses_obj, i_run, t0 = run_data
+        ses_obj, i_run = run_data
 
         # returns the sync channels
-        return ses_obj.get_sync_channel(i_run).flatten(), i_run, t0
+        return ses_obj.get_sync_channel(i_run).flatten(), i_run
 
     @staticmethod
     def calc_trace_minmax(run_data):
 
         # field retrieval
-        ses_run, i_run, t0 = run_data
+        ses_run, i_run = run_data
 
         # memory allocation
         y_min, y_max = [], []
@@ -454,7 +408,7 @@ class SessionObject(QObject):
             y_max.append(y_max_tmp)
 
         # returns the min/max values
-        return t_blk, y_min, y_max, i_run, t0
+        return t_blk, y_min, y_max, i_run
 
     # ---------------------------------------------------------------------------
     # Post thread worker functions
@@ -462,7 +416,7 @@ class SessionObject(QObject):
 
     def post_get_bad_channel(self, data):
 
-        ch_data, i_run, t0 = data
+        ch_data, i_run = data
         self.bad_ch[i_run] = ch_data
 
         # if all runs have been detected, then run the signal function
@@ -470,11 +424,9 @@ class SessionObject(QObject):
             self.data_init['bad'] = True
             self.channel_calc.emit('bad', self)
 
-        print("Bad Channel {0} Data Detected - {1}".format(i_run, time.time() - t0))
-
     def post_get_sync_channel(self, data):
 
-        ch_data, i_run, t0 = data
+        ch_data, i_run = data
         self.sync_ch[i_run] = ch_data
 
         # if all runs have been detected, then run the signal function
@@ -482,11 +434,9 @@ class SessionObject(QObject):
             self.data_init['sync'] = True
             self.channel_calc.emit('sync', self)
 
-        print("Sync Channel {0} Data Detected - {1}".format(i_run, time.time() - t0))
-
     def post_calc_trace_minmax(self, data):
 
-        t_blk, y_min, y_max, i_run, t0 = data
+        t_blk, y_min, y_max, i_run = data
         self.t_min_max[i_run] = t_blk
         self.min_max[i_run, :] = [y_min, y_max]
 
@@ -495,8 +445,6 @@ class SessionObject(QObject):
             self.data_init['minmax'] = True
             self.channel_calc.emit('minmax', self)
 
-        print("Min/Max Calculated for Channel {0} - {1}".format(i_run, time.time() - t0))
-
     def set_sync_channel(self, sync_ch_data):
 
         self.sync_ch = sync_ch_data
@@ -504,11 +452,6 @@ class SessionObject(QObject):
     def set_bad_channel(self, bad_ch_data):
 
         self.bad_ch = bad_ch_data
-
-    def set_min_max_values(self, signal_data):
-
-        self.t_min_max = signal_data['t']
-        self.min_max = signal_data['y']
 
     # ---------------------------------------------------------------------------
     # Session wrapper functions
@@ -658,19 +601,6 @@ class ChannelData:
     def set_filter_flag(self, is_filt_new):
 
         self.is_filt = is_filt_new
-
-
-# ----------------------------------------------------------------------------------------------------------------------
-
-"""
-    CalculatedData: 
-"""
-
-
-class CalculatedData:
-    def __init__(self):
-        # FINISH ME!
-        a = 1
 
 
 # ----------------------------------------------------------------------------------------------------------------------

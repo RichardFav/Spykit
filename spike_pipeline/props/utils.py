@@ -1,5 +1,5 @@
 # module imports
-import copy
+from copy import deepcopy
 
 import numpy as np
 import functools
@@ -139,31 +139,92 @@ class PropManager(QWidget):
 
     def config_reset(self):
 
-        config_tab = self.get_tab('config')
+        config_tab = self.get_prop_tab('config')
         self.axes_reset.emit(config_tab.obj_rconfig)
 
     def update_config(self):
 
-        config_tab = self.get_tab('config')
+        config_tab = self.get_prop_tab('config')
         self.config_update.emit(config_tab.obj_rconfig.c_id)
 
     def set_region_config(self, c_id):
 
-        self.get_tab('config').set_region_config(c_id)
+        self.get_prop_tab('config').set_region_config(c_id)
 
     def add_config_view(self, v_type):
 
-        self.get_tab('config').add_config_view(v_type)
+        self.get_prop_tab('config').add_config_view(v_type)
 
     def tab_change_props(self):
 
         pass
 
     # ---------------------------------------------------------------------------
+    # Property Parameter Get/Set Functions
+    # --------------------------------------------------------------------------
+
+    def get_prop_para(self, p_type):
+
+        # memory allocation
+        p_para = []
+
+        # retrieves the parameter values for each property type
+        for pt in p_type:
+            # retrieves the property tab object and parameter fields
+            p_tab = self.get_prop_tab(pt)
+            p_props = deepcopy(p_tab.p_info['ch_fld'])
+
+            # retrieves the parameter values
+            if isinstance(p_tab.p_props, list):
+                p_dict_full = [[getattr(x, k) for k in p_props] for x in p_tab.p_props]
+                p_dict_new = [dict(zip(p_props.keys(), x)) for x in p_dict_full]
+
+            else:
+                p_dict_new = dict(zip(p_props.keys(), [p_tab.get(k) for k in p_props]))
+
+            # appends the new dictionary to the list
+            p_para.append(p_dict_new)
+
+        return dict(zip(p_type, p_para))
+
+    def set_prop_para(self, p_para):
+
+        # retrieves the parameter values for each info type
+        for pt, pv in p_para.items():
+            # retrieves the property tab object and parameter fields
+            p_tab = self.get_prop_tab(pt)
+            p_tab.is_updating = True
+
+            # retrieves the parameter values
+            for p, v in p_tab.p_info['ch_fld'].items():
+                if isinstance(p_tab.p_props, list):
+                    # case is multi-run property
+                    for i_run in range(len(p_tab.p_props)):
+                        # updates the parameter field
+                        p_tab.set_n(p, pv[i_run][p], i_run)
+
+                        # updates the parameter object (if current run)
+                        if i_run == self.get_run_index():
+                            self.reset_para_field(p_tab, p, v['type'], pv[i_run][p], i_run)
+
+                else:
+                    # resets the property parameter value
+                    p_tab.set_n(p, pv[p])
+                    self.reset_para_field(p_tab, p, v['type'], pv[p])
+
+            # resets the update flag
+            p_tab.is_updating = False
+
+    # ---------------------------------------------------------------------------
     # Miscellaneous Functions
     # ---------------------------------------------------------------------------
 
-    def get_tab(self, tab_type):
+    def get_run_index(self):
+
+        ses_obj = self.main_obj.session_obj
+        return ses_obj.session.get_run_index(ses_obj.current_run)
+
+    def get_prop_tab(self, tab_type):
 
         return self.tabs[self.t_types.index(tab_type)]
 
@@ -194,6 +255,45 @@ class PropManager(QWidget):
         self.tab_group_props.setStyleSheet(info_groupbox_style)
         self.group_props.setStyleSheet(info_groupbox_style)
 
+    @staticmethod
+    def reset_para_field(p_tab, p_name, p_type, p_val, i_run=None):
+
+        match p_type:
+            case 'checkbox':
+                # case is a checkbox parameter
+                p_tab.findChild(QCheckBox, name=p_name).setChecked(p_val)
+
+            case 'combobox':
+                # case is a combobox parameter
+                p_tab.findChild(QComboBox, name=p_name).setCurrentText(p_val)
+
+            case 'edit':
+                # case is a line edit parameter
+                para_obj = p_tab.findChild(QLineEdit, name=p_name)
+                if isinstance(p_val, int):
+                    # case is an integer parameter
+                    para_obj.setText(str(p_val))
+
+                elif isinstance(p_val, float):
+                    # case is a float parameter
+                    para_obj.setText("%g" % p_val)
+
+                else:
+                    # case is a string parameter
+                    para_obj.setText(p_val)
+
+            case 'table':
+                # case is a table
+                if p_val is not None:
+                    for i_row in range(p_val.shape[0]):
+                        p_tab.n_row += 1
+                        p_tab.add_region(i_run, p_val[i_row, :])
+
+            case 'buttonpair':
+                # case is a button pair
+                p_tab.p_props[i_run].is_updating = True
+                setattr(p_tab.p_props[i_run], p_name, 0)
+                p_tab.p_props[i_run].is_updating = False
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -621,19 +721,42 @@ class PropWidget(QWidget):
     # Parameter Getter/Setter Methods
     # ---------------------------------------------------------------------------
 
-    def get(self, p_fld):
+    def get(self, p_fld, i_run=None):
 
-        return getattr(self.p_props, p_fld)
+        if isinstance(self.p_props, list):
+            if i_run is None:
+                i_run = self.get_run_index()
 
-    def set(self, p_fld, p_value):
+            return getattr(self.p_props[i_run], p_fld)
 
-        setattr(self.p_props, p_fld, p_value)
+        else:
+            return getattr(self.p_props, p_fld)
 
-    def set_n(self, p_fld, p_value):
+    def set(self, p_fld, p_value, i_run=None):
 
-        self.p_props.is_updating = True
-        setattr(self.p_props, p_fld, p_value)
-        self.p_props.is_updating = False
+        if isinstance(self.p_props, list):
+            if i_run is None:
+                i_run = self.get_run_index()
+
+            setattr(self.p_props[i_run], p_fld, p_value)
+
+        else:
+            setattr(self.p_props, p_fld, p_value)
+
+    def set_n(self, p_fld, p_value, i_run=None):
+
+        if isinstance(self.p_props, list):
+            if i_run is None:
+                i_run = self.get_run_index()
+
+            self.p_props[i_run].is_updating = True
+            setattr(self.p_props[i_run], p_fld, p_value)
+            self.p_props[i_run].is_updating = False
+
+        else:
+            self.p_props.is_updating = True
+            setattr(self.p_props, p_fld, p_value)
+            self.p_props.is_updating = False
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Methods
@@ -674,6 +797,11 @@ class PropWidget(QWidget):
 
         # returns the limits and integer flag
         return p_min, p_max, is_int
+
+    def get_run_index(self):
+
+        ses_obj = self.main_obj.session_obj
+        return ses_obj.session.get_run_index(ses_obj.current_run)
 
     # ---------------------------------------------------------------------------
     # Static Methods

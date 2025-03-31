@@ -395,6 +395,64 @@ class InfoManager(QWidget):
                 self.unit_header_check.emit(i_state == 2)
 
     # ---------------------------------------------------------------------------
+    # Information Parameter Get/Set Functions
+    # --------------------------------------------------------------------------
+
+    def get_info_para(self, p_type):
+
+        # memory allocation
+        p_para = []
+
+        # retrieves the parameter values for each info type
+        for pt in p_type:
+            # retrieves the property tab object and parameter fields
+            p_tab = self.get_info_tab(pt)
+            p_props = deepcopy(p_tab.p_props)
+
+            # retrieves the parameter values
+            p_dict_new = dict(zip(p_props.keys(), [p_tab.p_props.get(k) for k in p_props]))
+            p_para.append(p_dict_new)
+
+        return dict(zip(p_type, p_para))
+
+    def set_info_para(self, p_para):
+
+        # retrieves the parameter values for each info type
+        for pt, pv in p_para.items():
+            # retrieves the property tab object and parameter fields
+            p_tab = self.get_info_tab(pt)
+            p_tab.is_updating = True
+
+            # resets the parameter fields
+            for gt, gv in p_tab.p_props.items():
+                for p, v in gv.items():
+                    # updates the parameter value
+                    cf.set_multi_dict_value(p_tab.p_props, [gt, p], v)
+                    self.reset_para_field(p_tab, p, v)
+
+            # resets the update flag
+            p_tab.is_updating = False
+
+    @staticmethod
+    def reset_para_field(p_tab, p_name, p_val):
+
+        if isinstance(p_val, bool):
+            h_obj = p_tab.tree_prop.findChild(QCheckBox, name=p_name)
+            h_obj.setChecked(p_val)
+
+        elif isinstance(p_val, int):
+            h_obj = p_tab.tree_prop.findChild(QSpinBox, name=p_name)
+            h_obj.setValue(p_val)
+
+        elif isinstance(p_val, float):
+            h_obj = p_tab.tree_prop.findChild(QDoubleSpinBox, name=p_name)
+            h_obj.setValue(p_val)
+
+        elif isinstance(p_val, str):
+            h_obj = p_tab.tree_prop.findChild(QComboBox, name=p_name)
+            h_obj.setCurrentText(p_val)
+
+    # ---------------------------------------------------------------------------
     # Miscellaneous Functions
     # ---------------------------------------------------------------------------
 
@@ -915,6 +973,7 @@ class InfoWidgetPara(InfoWidget, SearchMixin):
                 # sets the widget properties
                 i_sel0 = props['p_list'].index(props['value'])
                 h_obj.setCurrentIndex(i_sel0)
+                h_obj.setObjectName(p_name[-1])
 
                 # sets the object callback functions
                 cb_fcn = functools.partial(cb_fcn_base, h_obj)
@@ -927,6 +986,7 @@ class InfoWidgetPara(InfoWidget, SearchMixin):
                 # sets the widget properties
                 h_obj.setCheckState(cf.chk_state[props['value']])
                 h_obj.setStyleSheet("padding-left: 5px;")
+                h_obj.setObjectName(p_name[-1])
 
                 # sets the object callback functions
                 cb_fcn = functools.partial(cb_fcn_base, h_obj)

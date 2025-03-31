@@ -2,6 +2,7 @@
 import spike_pipeline.common.common_widget as cw
 import spike_pipeline.common.common_func as cf
 from spike_pipeline.info.utils import InfoWidgetPara
+from spike_pipeline.threads.utils import ThreadWorker
 
 # pyqt imports
 from PyQt6.QtWidgets import (QWidget, QFrame, QTabWidget, QVBoxLayout, QFormLayout, QHBoxLayout,
@@ -413,8 +414,12 @@ class PreprocessSetup(QDialog):
             for i in range(self.add_list.count()):
                 prep_task.append(self.add_list.item(i).text())
 
+            # sets up the bad channel detection worker
+            t_worker = ThreadWorker(self.run_preprocessing_worker, prep_task)
+            t_worker.work_finished.connect(self.preprocessing_complete)
+            t_worker.start()
+
             # runs the pre-processing
-            self.main_obj.run_preproccessing(prep_task)
             self.close_window()
 
     def close_window(self):
@@ -435,3 +440,15 @@ class PreprocessSetup(QDialog):
         self.button_control[2].setEnabled(is_added_sel and (i_row_add > 0))
         self.button_control[3].setEnabled(is_added_sel and (i_row_add < n_added))
         self.button_control[4].setEnabled(n_added >= 0)
+
+    # ---------------------------------------------------------------------------
+    # Thread Worker Functions
+    # ---------------------------------------------------------------------------
+
+    def run_preprocessing_worker(self, prep_task):
+
+        self.main_obj.run_preproccessing(prep_task)
+
+    def preprocessing_complete(self):
+
+        self.main_obj.worker_job_finished('preprocess')
