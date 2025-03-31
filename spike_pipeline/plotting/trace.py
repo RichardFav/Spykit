@@ -139,14 +139,15 @@ class TracePlot(TraceLabelMixin, PlotWidget):
     # image colourmap
     c_map = colormap.get("RdBu_r", source="matplotlib", skipCache=False)
 
+    # list class fields
+    lbl_tt_str = ['Show Channel Labels', 'Hide Channel Labels']
+
     # pen widgets
     l_pen = mkPen(width=3, color='y')
     l_pen_hover = mkPen(width=3, color='g')
     l_pen_trace = mkPen(color=cf.get_colour_value('g'), width=1)
     l_pen_high = mkPen(color=cf.get_colour_value('y'), width=1)
     l_pen_bad = mkPen(color=cf.get_colour_value('r'), width=1)
-
-    lbl_tt_str = ['Hide Channel Labels', 'Show Channel Labels']
 
     def __init__(self, session_info):
         TraceLabelMixin.__init__(self)

@@ -33,12 +33,13 @@ class ProbePlot(PlotWidget):
     probe_clicked = pyqtSignal(object)
     reset_highlight = pyqtSignal(bool, object)
 
+    # parameters
     y_out_dist = 20
 
     # list class fields
     add_lbl = ['remove', 'toggle', 'add']
     add_tt_str = ['Remove Selection', 'Toggle Selection', 'Add Selection']
-    lbl_tt_str = ['Hide Outside Line', 'Show Outside Line']
+    lbl_tt_str = ['Show Outside Line', 'Hide Outside Line']
 
     def __init__(self, session_info):
         super(ProbePlot, self).__init__('probe', b_icon=b_icon, b_type=b_type, tt_lbl=tt_lbl)
@@ -60,6 +61,7 @@ class ProbePlot(PlotWidget):
 
         # other class fields
         self.i_status = 1
+        self.show_out = False
 
         # sets up the plot regions
         self.setup_subplots(n_r=2, n_c=1, vb=[None, cw.ROIViewBox()])
@@ -177,12 +179,12 @@ class ProbePlot(PlotWidget):
                 obj_but = self.findChild(cw.QPushButton, name=b_str)
 
                 # updates the tooltip string
-                is_show = obj_but.isChecked()
-                obj_but.setToolTip(self.lbl_tt_str[int(is_show)])
+                self.show_out = obj_but.isChecked()
+                obj_but.setToolTip(self.lbl_tt_str[int(self.show_out)])
 
                 # resets the trace visibility
-                self.main_view.set_out_line_visible(is_show)
-                self.sub_view.set_out_line_visible(is_show)
+                self.main_view.set_out_line_visible(self.show_out)
+                self.sub_view.set_out_line_visible(self.show_out)
 
             case 'toggle':
                 # case is the toggle button
@@ -241,11 +243,19 @@ class ProbePlot(PlotWidget):
         # updates the crosshair position
         m_pos = self.v_box[0, 0].mapSceneToView(p_pos)
 
-        if self.main_view.y_out is not None:
+        if (self.main_view.y_out is not None) and self.show_out:
             dy_out = np.abs(m_pos.y() - self.main_view.y_out)
             if dy_out < self.y_out_dist:
                 # calculates the label x/y-offsets
-                dx_pos, dy_pos = self.convert_coords()
+                dx_pos, dy_pos = self.convert_coords(True)
+
+                # resets the y-label offset (if near the top)
+                if m_pos.y() > (self.main_view.y_lim[1] - dy_pos):
+                    dy_pos = 0
+
+                # resets the x-label offset (if near the right-side)
+                if m_pos.x() < (self.main_view.x_lim[1] - dx_pos):
+                    dx_pos = 0
 
                 # resets the label visibility/position
                 self.main_view.out_label.setVisible(True)
@@ -261,11 +271,19 @@ class ProbePlot(PlotWidget):
         # updates the crosshair position
         m_pos = self.v_box[1, 0].mapSceneToView(p_pos)
 
-        if self.sub_view.y_out is not None:
+        if (self.sub_view.y_out is not None) and self.show_out:
             dy_out = np.abs(m_pos.y() - self.sub_view.y_out)
             if dy_out < self.y_out_dist:
                 # calculates the label x/y-offsets
-                dx_pos, dy_pos = self.convert_coords()
+                dx_pos, dy_pos = self.convert_coords(False)
+
+                # resets the y-label offset (if near the top)
+                if m_pos.y() > (self.sub_view.y_lim[1] - dy_pos):
+                    dy_pos = 0
+
+                # resets the x-label offset (if near the right-side)
+                if m_pos.x() < (self.sub_view.x_lim[1] - dx_pos):
+                    dx_pos = 0
 
                 # resets the label visibility/position
                 self.sub_view.out_label.setVisible(True)
@@ -292,7 +310,7 @@ class ProbePlot(PlotWidget):
                 self.sub_label.update()
 
             # calculates the label x/y-offsets
-            dx_pos, dy_pos = self.convert_coords()
+            dx_pos, dy_pos = self.convert_coords(False)
 
             # resets the y-label offset (if near the top)
             if m_pos.y() > (self.sub_view.y_lim[1] - dy_pos):
@@ -314,15 +332,25 @@ class ProbePlot(PlotWidget):
             # disables the trace highlight
             self.reset_highlight.emit(False, None)
 
-    def convert_coords(self):
+    def convert_coords(self, is_main):
 
-        y_scale = np.diff(self.sub_view.y_lim)[0]
-        plt_height = float(self.h_plot[1, 0].height())
-        scaled_height = (y_scale / plt_height) * self.sub_label.boundingRect().height()
+        if is_main:
+            y_scale = np.diff(self.main_view.y_lim)[0]
+            plt_height = float(self.h_plot[0, 0].height())
+            scaled_height = (y_scale / plt_height) * self.main_view.out_label.boundingRect().height()
 
-        x_scale = np.diff(self.sub_view.x_lim)[0]
-        plt_width = float(self.h_plot[1, 0].width())
-        scaled_width = (x_scale / plt_width) * self.sub_label.boundingRect().width()
+            x_scale = np.diff(self.main_view.x_lim)[0]
+            plt_width = float(self.h_plot[0, 0].width())
+            scaled_width = (x_scale / plt_width) * self.main_view.out_label.boundingRect().width()
+
+        else:
+            y_scale = np.diff(self.sub_view.y_lim)[0]
+            plt_height = float(self.h_plot[1, 0].height())
+            scaled_height = (y_scale / plt_height) * self.sub_view.out_label.boundingRect().height()
+
+            x_scale = np.diff(self.sub_view.x_lim)[0]
+            plt_width = float(self.h_plot[1, 0].width())
+            scaled_width = (x_scale / plt_width) * self.sub_view.out_label.boundingRect().width()
 
         return scaled_width, scaled_height
 
