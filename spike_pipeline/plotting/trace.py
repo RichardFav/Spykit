@@ -6,7 +6,8 @@ import functools
 import numpy as np
 
 # pyqtgraph modules
-from pyqtgraph import exporters, mkPen, mkColor, TextItem, ImageItem, PlotCurveItem, LinearRegionItem, colormap
+from pyqtgraph import (exporters, mkPen, mkColor, TextItem, ImageItem, PlotCurveItem, LinearRegionItem,
+                       colormap, RectROI, PlotItem)
 from pyqtgraph.Qt import QtGui
 
 # spike pipeline imports
@@ -47,11 +48,15 @@ class TraceLabelMixin:
             self.plot_item.addItem(label)
             self.labels.append(label)
 
-    def update_labels(self):
+    def update_labels(self, force_hide=False):
 
         # determines the indices of the traces within the view
-        self.get_view_trace_indices()
-        n_trace = len(self.i_trace)
+        if force_hide:
+            n_trace = 0
+
+        else:
+            self.get_view_trace_indices()
+            n_trace = len(self.i_trace)
 
         if (n_trace == 0) or (n_trace > self.n_lbl_max):
             # if no/too many traces, then hide the labels
@@ -148,6 +153,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
     l_pen_trace = mkPen(color=cf.get_colour_value('g'), width=1)
     l_pen_high = mkPen(color=cf.get_colour_value('y'), width=1)
     l_pen_bad = mkPen(color=cf.get_colour_value('r'), width=1)
+    l_pen_hm = mkPen(color=cf.get_colour_value('y', 150), width=3)
 
     def __init__(self, session_info):
         TraceLabelMixin.__init__(self)
@@ -164,8 +170,10 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.n_samples = s_props.get_value('n_samples')
 
         # plot item mouse event functions
-        self.trace_release_fcn = None
-        self.trace_dclick_fcn = None
+        self.enter_fcn = None
+        self.leave_fcn = None
+        self.release_fcn = None
+        self.double_click_fcn = None
 
         # trace fields
         self.x_tr = None
@@ -196,6 +204,22 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.image_item = ImageItem()
         self.ximage_item = ImageItem()
         self.yimage_item = ImageItem()
+
+        # creates the label object
+        self.hm_label = TextItem(
+            f'Test',
+            color='#FFFFFF',
+            anchor=(0, 0.5),
+            border=None,
+            fill=self.lbl_col)
+        self.hm_roi = RectROI(
+            [0, 0],
+            [0, self.x_window],
+            movable=False,
+            rotatable=False,
+            resizable=False,
+            pen=self.l_pen_hm,
+            hoverPen=self.l_pen_hm)
 
         # trace items
         self.main_trace = PlotCurveItem(pen=self.l_pen_trace, skipFiniteCheck=False)
@@ -253,6 +277,13 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.h_plot[0, 0].addItem(self.main_trace)
         self.h_plot[0, 0].addItem(self.highlight_trace)
         self.h_plot[0, 0].addItem(self.bad_trace)
+        self.h_plot[0, 0].addItem(self.hm_label)
+        self.h_plot[0, 0].addItem(self.hm_roi)
+
+        # hides the
+        self.hm_roi.hide()
+        self.hm_label.hide()
+        self.hm_roi.setZValue(10)
 
         # adds the image frame
         self.image_item.setTransform(tr_map)
@@ -262,11 +293,18 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.image_item.hide()
         self.h_plot[0, 0].addItem(self.image_item)
 
+        # retrieves the original event methods
+        self.enter_fcn = self.h_plot[0, 0].enterEvent
+        self.leave_fcn = self.h_plot[0, 0].leaveEvent
+        self.release_fcn = self.h_plot[0, 0].mouseReleaseEvent
+        self.double_click_fcn = self.h_plot[0, 0].mouseDoubleClickEvent
+
         # sets the signal trace plot event functions
-        self.trace_dclick_fcn = self.h_plot[0, 0].mousePressEvent
-        self.trace_release_fcn = self.h_plot[0, 0].mouseReleaseEvent
+        self.h_plot[0, 0].enterEvent = self.heatmap_enter
+        self.h_plot[0, 0].leaveEvent = self.heatmap_leave
         self.h_plot[0, 0].mouseReleaseEvent = self.trace_mouse_release
         self.h_plot[0, 0].mouseDoubleClickEvent = self.trace_double_click
+        self.h_plot[0, 0].scene().sigMouseMoved.connect(self.heatmap_mouse_move)
 
         # sets up the trace label widgets
         self.setup_trace_labels()
@@ -446,9 +484,6 @@ class TracePlot(TraceLabelMixin, PlotWidget):
             if n_frm == 0:
                 return
 
-            # sets the maximum y-axis trace range
-            self.y_lim_tr = 1 + (self.n_plt - 1) * self.y_gap
-
             # sets up the y-data array
             ch_ids = self.session_info.get_channel_ids(i_channel)
             y0 = self.session_info.get_traces(
@@ -462,6 +497,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
             if is_map:
                 # removes the signal median value (help to better visualise raw signals)
                 y0 = y0 - np.median(y0)
+                self.y_lim_tr = self.n_plt
 
                 # resets the image item
                 x_scl = self.x_window / n_frm
@@ -475,6 +511,9 @@ class TracePlot(TraceLabelMixin, PlotWidget):
                 self.image_item.setTransform(tr_map)
 
             else:
+                # sets the maximum y-axis trace range
+                self.y_lim_tr = 1 + (self.n_plt - 1) * self.y_gap
+
                 self.y_tr = np.empty((self.n_plt, n_frm))
                 self.x_tr = np.empty((self.n_plt, n_frm))
                 self.x_tr[:] = np.linspace(self.t_lim[0], self.t_lim[1], n_frm)
@@ -537,6 +576,47 @@ class TracePlot(TraceLabelMixin, PlotWidget):
     # Signal Trace Plot Event Functions
     # ---------------------------------------------------------------------------
 
+    def heatmap_mouse_move(self, p_pos):
+
+        # determines the selected channels
+        i_channel = self.session_info.get_selected_channels()
+        n_channel = len(i_channel)
+
+        # if not in heatmap mode, or no channels are selected, then exit
+        if (not self.get_plot_mode(n_channel)) or (n_channel == 0):
+            return
+
+        # updates the crosshair position
+        m_pos = self.v_box[0, 0].mapSceneToView(p_pos)
+        i_row = int(np.floor(m_pos.y()))
+
+        # updates the text label
+        lbl_txt = "Channel {0}".format(i_channel[i_row])
+        self.hm_label.setText(lbl_txt)
+
+        # resets the ROI position
+        self.hm_roi.setPos(0, i_row)
+        self.hm_roi.setSize(QPointF(self.x_window, 1))
+
+    def heatmap_leave(self, evnt):
+
+        self.leave_fcn(evnt)
+
+        self.hm_roi.hide()
+        self.hm_label.hide()
+
+    def heatmap_enter(self, evnt):
+
+        self.enter_fcn(evnt)
+
+        # if not in heatmap mode, or no channels are selected, then exit
+        n_channel = self.get_channel_count()
+        if (not self.get_plot_mode(n_channel)) or (n_channel == 0):
+            return
+
+        self.hm_roi.show()
+        self.hm_label.show()
+
     def trace_double_click(self, evnt=None) -> None:
 
         # flag that updating is taking place
@@ -544,7 +624,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
         # runs the original mouse event function
         if evnt is not None:
-            self.trace_dclick_fcn(evnt)
+            self.double_click_fcn(evnt)
 
             # resets the y-axis range
             self.reset_yaxis_limits()
@@ -573,7 +653,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.is_updating = True
 
         # runs the original mouse event function
-        self.trace_release_fcn(evnt)
+        self.release_fcn(evnt)
 
         # retrieves the new axis limit
         self.y_lim = self.v_box[0, 0].viewRange()[1]
@@ -589,6 +669,8 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
         # resets the update flag
         self.is_updating = False
+
+
 
     # ---------------------------------------------------------------------------
     # Axis Limit Reset Functions
@@ -737,7 +819,11 @@ class TracePlot(TraceLabelMixin, PlotWidget):
     def get_plot_mode(self, n_channel=None):
 
         if n_channel is None:
-            n_channel = len(self.session_info.get_selected_channels())
+            n_channel = self.get_channel_count()
 
         p_type = self.trace_props.get('plot_type')
         return (p_type == 'Heatmap') or ((p_type == 'Auto') and (n_channel >= self.n_plt_max))
+
+    def get_channel_count(self):
+
+        return len(self.session_info.get_selected_channels())
