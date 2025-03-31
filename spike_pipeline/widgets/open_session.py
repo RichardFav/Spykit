@@ -83,6 +83,7 @@ class OpenSession(QMainWindow):
         super(OpenSession, self).__init__(parent)
 
         # input arguments
+        self.main_obj = parent
         self.session_obj = session_obj
 
         # creates the toolbar widgets
@@ -234,6 +235,9 @@ class OpenSession(QMainWindow):
         if not self.session_obj.open_session:
             self.session_obj.channel_calc(ch_type, session)
 
+        else:
+            self.main_obj.worker_job_finished(ch_type)
+
     def close_window(self):
 
         # initialisations
@@ -380,6 +384,7 @@ class SessionFile(QWidget):
         super(SessionFile, self).__init__(parent)
 
         # class fields
+        self.open_ses = parent
         self.n_para = None
         self.use_run = None
         self.f_type = 'folder'
@@ -914,7 +919,8 @@ class SessionFile(QWidget):
                 pass
 
         # creates the session object
-        self.main_widget.session = SessionObject(s_props)
+        sig_fcn = self.open_ses.main_obj.worker_job_started
+        self.main_widget.session = SessionObject(s_props, sig_fcn=sig_fcn)
         self.main_widget.session.channel_calc.connect(self.channel_calc_slot)
 
     def channel_calc_slot(self, ch_type, session):

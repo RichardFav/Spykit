@@ -4,6 +4,8 @@ import re
 import colorsys
 import textwrap
 import functools
+import time
+
 import numpy as np
 from copy import deepcopy
 from skimage.measure import label, regionprops
@@ -18,13 +20,12 @@ import spike_pipeline.common.common_func as cf
 from PyQt6.QtWidgets import (QWidget, QHBoxLayout, QGridLayout, QVBoxLayout, QPushButton, QGroupBox, QTabWidget,
                              QFormLayout, QLabel, QCheckBox, QLineEdit, QComboBox, QSizePolicy, QFileDialog,
                              QApplication, QTreeView, QFrame, QRadioButton, QAbstractItemView, QStylePainter,
-                             QStyleOptionComboBox, QStyle, QProxyStyle, QItemDelegate,  QStyleOptionViewItem,
-                             QHeaderView, QStyleOptionButton, QTableWidgetItem)
+                             QStyleOptionComboBox, QStyle, QProxyStyle, QItemDelegate, QStyleOptionViewItem,
+                             QHeaderView, QStyleOptionButton, QTableWidgetItem, QProgressBar)
 from PyQt6.QtCore import (Qt, QRect, QRectF, QMimeData, pyqtSignal, QItemSelectionModel, QAbstractTableModel,
-                          QSizeF, QSize, QObject, QVariant)
+                          QSizeF, QSize, QObject, QVariant, QTimeLine)
 from PyQt6.QtGui import (QFont, QDrag, QCursor, QStandardItemModel, QStandardItem, QPalette, QPixmap,
-                         QTextDocument, QAbstractTextDocumentLayout, QIcon)
-
+                         QTextDocument, QAbstractTextDocumentLayout, QIcon, QLinearGradient)
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -843,7 +844,7 @@ class QTraceTree(QWidget):
         # increments the counter
         self.n_trace += 1
         self.obj_txt_lbl.set_label(str(self.n_trace))
-        
+
         # resets the tree-viewer properties
         self.reset_tview_props()
 
@@ -1353,14 +1354,13 @@ class QFileSpec(QGroupBox):
         self.h_but.setFixedWidth(25)
 
     def set_text(self, f_str):
-
         self.h_edit.setText(f_str)
         self.h_edit.setToolTip(f_str)
 
     def connect(self, cb_fcn0):
-
         cb_fcn = functools.partial(cb_fcn0, self)
         self.h_but.clicked.connect(cb_fcn)
+
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -1374,7 +1374,6 @@ class HTMLDelegate(QItemDelegate):
         super(HTMLDelegate, self).__init__()
 
     def paint(self, painter, option, index):
-
         painter.save()
         doc = QTextDocument()
         doc.setHtml(index.data())
@@ -1384,6 +1383,7 @@ class HTMLDelegate(QItemDelegate):
         painter.translate(option.rect.x(), option.rect.y())
         doc.documentLayout().draw(painter, context)
         painter.restore()
+
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -1477,6 +1477,7 @@ class SearchMixin:
 
         return '{0}{1}{2}'.format(s[0:i0], cf.set_text_background_colour(s[i0:(i0 + n)], 'yellow'), s[(i0 + n):])
 
+
 # ----------------------------------------------------------------------------------------------------------------------
 # BASE WIDGET COMBINATIONS
 # ----------------------------------------------------------------------------------------------------------------------
@@ -1509,7 +1510,6 @@ class QLabelText(QWidget):
         self.obj_lbl.adjustSize()
 
     def set_label(self, txt_str):
-
         self.obj_txt.setText(txt_str)
 
 
@@ -1545,19 +1545,15 @@ class QLabelEdit(QWidget):
         self.obj_edit.setStyleSheet(edit_style_sheet)
 
     def get_text(self):
-
         return self.obj_edit.text()
 
     def set_text(self, edit_str):
-
         self.obj_edit.setText(edit_str)
 
     def set_tooltip(self, tt_str):
-
         self.obj_lbl.setToolTip(tt_str)
 
     def connect(self, cb_fcn0):
-
         cb_fcn = functools.partial(cb_fcn0, self.obj_edit)
         self.obj_edit.editingFinished.connect(cb_fcn)
 
@@ -1594,7 +1590,6 @@ class QLabelButton(QWidget):
         self.obj_but.setCursor(Qt.CursorShape.PointingHandCursor)
 
     def connect(self, cb_fcn0):
-
         cb_fcn = functools.partial(cb_fcn0, self.obj_but)
         self.obj_but.clicked.connect(cb_fcn)
 
@@ -1639,6 +1634,7 @@ class QButtonPair(QWidget):
     def set_enabled(self, i_button, state):
 
         self.obj_but[i_button].setEnabled(state)
+
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -1876,24 +1872,19 @@ class QLabelCheckCombo(QWidget):
         self.layout.addWidget(self.h_combo)
 
     def add_item(self, t, state=False):
-
         self.h_combo.add_item(t, state)
 
     def get_selected_items(self):
-
         return self.h_combo.get_selected_items()
 
     def check_update(self, item):
-
         self.item_clicked.emit(item)
 
     def setEnabled(self, state):
-
         self.h_lbl.setEnabled(state)
         self.h_combo.setEnabled(state)
 
     def clear(self):
-
         self.h_combo.clear()
 
 
@@ -1932,31 +1923,178 @@ class QCheckboxHTML(QWidget):
         self.layout.addWidget(self.h_lbl)
 
     def connect(self, cb_fcn):
-
         self.h_chk.stateChanged.connect(cb_fcn)
         self.h_lbl.mousePressEvent = self.label_clicked
 
     def label_clicked(self, evnt):
-
         self.h_chk.setChecked(not self.h_chk.isChecked())
 
     def set_label_text(self, t_lbl):
-
         self.h_lbl.setText(t_lbl)
 
     def set_enabled(self, state):
-
         self.h_lbl.setEnabled(state)
         self.h_chk.setEnabled(state)
 
     def set_check(self, state):
-
         self.h_chk.setChecked(state)
 
     def get_check(self):
-
         return self.h_chk.isChecked()
 
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+"""
+    QProgressWidget:
+"""
+
+
+class QProgressWidget(QWidget):
+    # static string fields
+    dp_max = 10
+    p_max = 1000
+    t_period = 1000
+    lbl_width = 170
+    wait_lbl = "Waiting For Process..."
+
+    prog_style = """
+        QProgressBar {
+            border: 2px solid black;
+            border-radius: 5px;
+            background-color: #E0E0E0;
+        }
+        QProgressBar::chunk {
+            background-color: #19e326;
+            width: 10px; 
+            margin: 0.25px;
+        }
+    """
+
+    def __init__(self, parent=None, font=None):
+        super(QProgressWidget, self).__init__(parent)
+
+        # widget setup
+        self.layout = QHBoxLayout(self)
+        self.lbl_obj = create_text_label(self, self.wait_lbl, font, align='right')
+        self.prog_bar = QProgressBar(self, minimum=0, maximum=self.p_max, textVisible=False)
+        self.time_line = QTimeLine(self.t_period)
+
+        # other class fields
+        self.n_jobs = 0
+        self.job_name = []
+        self.job_desc = []
+        self.is_running = False
+        self.p_max_r = self.p_max + 2 * self.dp_max
+
+        # initialises the class fields
+        self.init_class_fields()
+
+    def init_class_fields(self):
+
+        # sets up the layout properties
+        self.layout.setSpacing(x_gap)
+        self.layout.setContentsMargins(0, x_gap, 0, 0)
+        self.setLayout(self.layout)
+
+        # adds the widgets to the layout
+        self.layout.addWidget(self.lbl_obj)
+        self.layout.addWidget(self.prog_bar)
+
+        # sets the label properties
+        self.lbl_obj.setContentsMargins(0, x_gap, 0, 0)
+        self.lbl_obj.setFixedWidth(self.lbl_width)
+
+        # sets the progressbar properties
+        self.prog_bar.setStyleSheet(self.prog_style)
+
+        # sets the timeline properties
+        self.time_line.setLoopCount(int(1e6))
+        self.time_line.setFrameRange(0, self.p_max)
+        self.time_line.frameChanged.connect(self.prog_update)
+        self.time_line.setUpdateInterval(20)
+
+    def prog_update(self):
+
+        p_val = int(self.p_max_r * self.time_line.currentValue()) - self.dp_max
+        p_val = np.min([self.p_max, np.max([0, p_val])])
+        self.prog_bar.setValue(p_val)
+
+    def add_job(self, job_name_add, job_desc_add):
+
+        # appends the new name/description
+        self.job_name.append(job_name_add)
+        self.job_desc.append(job_desc_add)
+
+        # increments the job counter
+        self.n_jobs += 1
+        self.update_message_label()
+
+        # stops the progressbar (if there are no more jobs)
+        if not self.is_running:
+            self.set_progbar_state(True)
+
+    def delete_job(self, job_name_del):
+
+        if job_name_del not in self.job_name:
+            return
+
+        # removes the job name/description
+        i_del = self.job_name.index(job_name_del)
+        self.job_name.pop(i_del)
+        self.job_desc.pop(i_del)
+
+        # decrements the job counter
+        self.n_jobs -= 1
+        self.update_message_label()
+
+        # stops the progressbar (if there are no more jobs)
+        if self.n_jobs == 0:
+            self.set_progbar_state(False)
+
+    def set_progbar_state(self, state=None):
+
+        if state is None:
+            state = self.is_running
+
+        if state:
+            # starts the timeline widget
+            self.time_line.start()
+            self.is_running = True
+
+        else:
+            # stops the timeline widget
+            self.time_line.stop()
+            self.is_running = False
+
+            # resets the progressbar
+            self.prog_bar.setValue(self.p_max)
+            time.sleep(0.25)
+            self.prog_bar.setValue(0)
+
+            # resets the text label
+            self.lbl_obj.setText(self.wait_lbl)
+
+    def toggle_progbar_state(self):
+
+        self.is_running ^= True
+        self.set_progbar_state()
+
+    def update_message_label(self):
+
+        match self.n_jobs:
+            case 0:
+                # case is only one job is running
+                self.lbl_obj.setText(self.wait_lbl)
+
+            case 1:
+                # case is only one job is running
+                self.lbl_obj.setText(self.job_desc[0])
+
+            case _:
+                # case is only multiple jobs are running
+                desc_txt = '{0} Jobs Currently Running...'.format(self.n_jobs)
+                self.lbl_obj.setText(desc_txt)
 
 # ----------------------------------------------------------------------------------------------------------------------
 # TABLE WIDGET CUSTOM MODEL CLASSES
@@ -1972,6 +2110,7 @@ class PandasModel(QAbstractTableModel):
     """
     Class to populate a table view with a pandas dataframe
     """
+
     def __init__(self, data, parent=None):
         QAbstractTableModel.__init__(self, parent)
         self._data = data
@@ -2338,6 +2477,7 @@ class QTableWidgetItemSortable(QTableWidgetItem):
         except ValueError:
             return t_str
 
+
 # ----------------------------------------------------------------------------------------------------------------------
 # WIDGET STYLE CLASSES
 # ----------------------------------------------------------------------------------------------------------------------
@@ -2351,7 +2491,7 @@ class QTableWidgetItemSortable(QTableWidgetItem):
 class CheckBoxStyle(QProxyStyle):
     def subElementRect(self, element, option, widget=None):
         r = super().subElementRect(element, option, widget)
-        if element == QStyle.SubElement.SE_ItemViewItemCheckIndicator .SE_ItemViewItemCheckIndicator:
+        if element == QStyle.SubElement.SE_ItemViewItemCheckIndicator.SE_ItemViewItemCheckIndicator:
             r.moveCenter(option.rect.center())
         return r
 
@@ -2385,12 +2525,10 @@ class PlotCrossHair(QObject):
         self.set_visible(False)
 
     def set_position(self, m_pos):
-
         self.v_line.setPos(m_pos.x())
         self.h_line.setPos(m_pos.y())
 
     def set_visible(self, state):
-
         self.h_line.setVisible(state)
         self.v_line.setVisible(state)
 
@@ -2400,7 +2538,6 @@ class PlotCrossHair(QObject):
 # ----------------------------------------------------------------------------------------------------------------------
 
 def create_text_label(parent, text, font=None, align='right', name=None):
-
     # sets the label font properties
     if font is None:
         font = create_font_obj()
@@ -2425,7 +2562,6 @@ def create_text_label(parent, text, font=None, align='right', name=None):
 
 
 def create_line_edit(parent, text, font=None, align='center', name=None):
-
     # sets the label font properties
     if font is None:
         font = create_font_obj()
@@ -2454,7 +2590,6 @@ def create_line_edit(parent, text, font=None, align='center', name=None):
 
 
 def create_push_button(parent, text, font=None, name=None):
-
     # creates a default font object (if not provided)
     if font is None:
         font = create_font_obj()
@@ -2475,7 +2610,6 @@ def create_push_button(parent, text, font=None, name=None):
 
 
 def create_combo_box(parent, text=None, font=None, name=None):
-
     # creates a default font object (if not provided)
     if font is None:
         font = create_font_obj()
@@ -2500,7 +2634,6 @@ def create_combo_box(parent, text=None, font=None, name=None):
 
 
 def create_check_box(parent, text, state, font=None, name=None):
-
     # sets the label font properties
     if font is None:
         font = create_font_obj()
@@ -2522,7 +2655,6 @@ def create_check_box(parent, text, state, font=None, name=None):
 
 
 def create_radio_button(parent, text, state, font=None, name=None):
-
     # sets the label font properties
     if font is None:
         font = create_font_obj()
@@ -2544,7 +2676,6 @@ def create_radio_button(parent, text, state, font=None, name=None):
 
 
 def create_tab_group(parent, font=None, name=None):
-
     # creates a default font object (if not provided)
     if font is None:
         font = create_font_obj()
@@ -2564,7 +2695,6 @@ def create_tab_group(parent, font=None, name=None):
 
 
 def create_font_obj(size=9, is_bold=False, font_weight=QFont.Weight.Normal):
-
     # creates the font object
     font = QFont()
 
@@ -2578,14 +2708,12 @@ def create_font_obj(size=9, is_bold=False, font_weight=QFont.Weight.Normal):
 
 
 def setup_colour_map(n_lvl):
-
     p_rgb = []
     for i_lvl in range(n_lvl):
         p_hsv = (0.5 - (i_lvl / (2 * n_lvl)), 0.5, 0.5)
         p_rgb.append([int(255 * x) for x in list(colorsys.hsv_to_rgb(*p_hsv))])
 
     return ColorMap(pos=np.linspace(0.0, 1.0, n_lvl), color=p_rgb)
-
 
 
 # ----------------------------------------------------------------------------------------------------------------------

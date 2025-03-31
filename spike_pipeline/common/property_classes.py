@@ -1,7 +1,7 @@
 # module import
 import copy
 import os
-import functools
+from functools import partial as pfcn
 
 # pyqt6 module import
 import time
@@ -32,6 +32,8 @@ class SessionWorkBook(QObject):
     session_change = pyqtSignal()
     sync_channel_change = pyqtSignal()
     bad_channel_change = pyqtSignal(object)
+    worker_job_started = pyqtSignal(str)
+    worker_job_finished = pyqtSignal(str)
 
     def __init__(self):
         super(SessionWorkBook, self).__init__()
@@ -51,10 +53,6 @@ class SessionWorkBook(QObject):
         self.current_ses = None
         self.prep_type = None
         self.n_channels = None
-
-        # # REMOVE ME LATER
-        # self.y_min = None
-        # self.y_max = None
 
         # resets the initialisation flag
         self.has_init = True
@@ -180,7 +178,7 @@ class SessionWorkBook(QObject):
     def reset_session(self, ses_data):
 
         # resets the session object
-        self.session = SessionObject(ses_data['session_props'], True)
+        self.session = SessionObject(ses_data['session_props'], True, self.worker_job_started)
         self.session.channel_calc.connect(self.channel_calc)
 
         # resets the other class fields
@@ -195,6 +193,9 @@ class SessionWorkBook(QObject):
 
     def channel_calc(self, ch_type, session=None):
 
+        # flags that the job worker has finished
+        self.worker_job_finished.emit(ch_type)
+
         # runs the signal function (based on data type)
         match ch_type:
             case 'sync':
@@ -202,6 +203,7 @@ class SessionWorkBook(QObject):
 
             case 'bad':
                 self.bad_channel_change.emit(session)
+
 
     # ---------------------------------------------------------------------------
     # Static Methods
@@ -240,12 +242,13 @@ class SessionObject(QObject):
     channel_data_setup = pyqtSignal(object)
     channel_calc = pyqtSignal(str, object)
 
-    def __init__(self, s_props, ssf_load=False):
+    def __init__(self, s_props, ssf_load=False, sig_fcn=None):
         super(SessionObject, self).__init__()
 
         # class field initialisations
         self._s = None
         self._s_props = s_props
+        self.sig_fcn = sig_fcn
 
         # bad/sync channels
         self.bad_ch = None
@@ -329,6 +332,18 @@ class SessionObject(QObject):
             t_worker_mm.work_finished.connect(self.post_calc_trace_minmax)
             t_worker_mm.start()
 
+            # updates the signal function
+            if self.sig_fcn is not None:
+                if isinstance(self.sig_fcn, pyqtSignal):
+                    self.sig_fcn.emit('bad')
+                    self.sig_fcn.emit('sync')
+                    self.sig_fcn.emit('minmax')
+
+                else:
+                    self.sig_fcn('bad')
+                    self.sig_fcn('sync')
+                    self.sig_fcn('minmax')
+
         # pauses for things to catch up...
         time.sleep(0.1)
 
@@ -357,6 +372,14 @@ class SessionObject(QObject):
 
             # appends the worker objects
             t_worker.append(t_worker_new)
+
+            # updates the signal function
+            if self.sig_fcn is not None:
+                if isinstance(self.sig_fcn, pyqtSignal):
+                    self.sig_fcn.emit('bad')
+
+                else:
+                    self.sig_fcn('bad')
 
         return t_worker
 
@@ -466,6 +489,11 @@ class SessionObject(QObject):
         t_blk, y_min, y_max, i_run, t0 = data
         self.t_min_max[i_run] = t_blk
         self.min_max[i_run, :] = [y_min, y_max]
+
+        # if all runs have been detected, then run the signal function
+        if np.all([x is not None for x in self.t_min_max]):
+            self.data_init['minmax'] = True
+            self.channel_calc.emit('minmax', self)
 
         print("Min/Max Calculated for Channel {0} - {1}".format(i_run, time.time() - t0))
 

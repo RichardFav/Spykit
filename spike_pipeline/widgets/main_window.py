@@ -73,8 +73,8 @@ class MainWindow(QMainWindow):
         # sets the widget style sheets
         self.set_styles()
 
-        # REMOVE ME LATER
-        self.testing()
+        # # REMOVE ME LATER
+        # self.testing()
 
     # ---------------------------------------------------------------------------
     # Class Widget Setup Functions
@@ -113,6 +113,8 @@ class MainWindow(QMainWindow):
         self.session_obj.session_change.connect(self.new_session)
         self.session_obj.sync_channel_change.connect(self.sync_channel_change)
         self.session_obj.bad_channel_change.connect(self.bad_channel_change)
+        self.session_obj.worker_job_started.connect(self.worker_job_started)
+        self.session_obj.worker_job_finished.connect(self.worker_job_finished)
 
     # ---------------------------------------------------------------------------
     # Signal Slot Functions
@@ -120,8 +122,12 @@ class MainWindow(QMainWindow):
 
     def new_session(self):
 
-        # if there is a session already loaded, then clear the main window
-        if self.has_session:
+        if self.session_obj.session is None:
+            # if the session has been cleared, then exit
+            return
+
+        elif self.has_session:
+            # if there is a session already loaded, then clear the main window
             a = 1
 
         # adds the widgets to the information panel
@@ -197,6 +203,7 @@ class MainWindow(QMainWindow):
 
         # enables the menubar items
         self.menu_bar.set_menu_enabled('save', True)
+        self.menu_bar.set_menu_enabled('clear', True)
         # self.menu_bar.set_menu_enabled('run_test', True)
 
         # resets the session flags
@@ -235,6 +242,30 @@ class MainWindow(QMainWindow):
         if status_tab.toggle_calc.isChecked():
             status_tab.toggle_calc.setChecked(False)
             status_tab.toggle_calc.setText(status_tab.b_str[0])
+
+    def worker_job_started(self, job_name):
+
+        # initialisations
+        job_desc = "Error!"
+
+        match job_name:
+            case 'bad':
+                # case is bad channel detection
+                job_desc = "Bad Channel Detection..."
+
+            case 'sync':
+                # case is trigger channel detection
+                job_desc = "Trigger Channel Detection..."
+
+            case 'minmax':
+                # case is bad channel detection
+                job_desc = "Min/Max Signal Calculations..."
+
+        self.info_manager.add_job(job_name, job_desc)
+
+    def worker_job_finished(self, job_name):
+
+        self.info_manager.delete_job(job_name)
 
     def update_config(self, c_id):
 
@@ -341,7 +372,7 @@ class MainWindow(QMainWindow):
 
 class MenuBar(QObject):
     # field initialisations
-    disabled_list = ['save']
+    disabled_list = ['save', 'clear']
 
     def __init__(self, main_obj):
         super(MenuBar, self).__init__()
@@ -518,6 +549,8 @@ class MenuBar(QObject):
             # exit if they cancelled
             return
 
+        a = 1
+
     def load_trigger(self, file_info=None):
 
         # prompts the user for the file name (exit if the user cancels)
@@ -586,18 +619,20 @@ class MenuBar(QObject):
 
     def run_test(self):
 
-        import matplotlib
-        matplotlib.use('Agg')
+        self.main_obj.info_manager.prog_widget.toggle_progbar_state()
 
-        ses = self.main_obj.session_obj.session
-        h_fig = ses._s.plot_preprocessed(
-            show=True,
-            time_range=(0, 0.1),
-            show_channel_ids=False,
-            mode="map",
-        )
-
-        h_fig['run-001_g0_imec0'].savefig('TestHeatmap.png')
+        # import matplotlib
+        # matplotlib.use('Agg')
+        #
+        # ses = self.main_obj.session_obj.session
+        # h_fig = ses._s.plot_preprocessed(
+        #     show=True,
+        #     time_range=(0, 0.1),
+        #     show_channel_ids=False,
+        #     mode="map",
+        # )
+        #
+        # h_fig['run-001_g0_imec0'].savefig('TestHeatmap.png')
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
@@ -609,7 +644,7 @@ class MenuBar(QObject):
 
     def get_menu_item(self, menu_name):
 
-        return self.menu_bar.findChild(QWidget, name=menu_name)
+        return self.menu_bar.findChild((QWidget, QAction), name=menu_name)
 
     def context_menu_event(self, evnt):
 

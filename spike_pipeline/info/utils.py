@@ -8,7 +8,7 @@ from collections import ChainMap
 # custom module imports
 import spike_pipeline.common.common_func as cf
 import spike_pipeline.common.common_widget as cw
-from spike_pipeline.common.common_widget import SearchMixin
+from spike_pipeline.common.common_widget import SearchMixin, QProgressWidget
 
 # pyqt imports
 from PyQt6.QtWidgets import (QWidget, QTreeWidget, QFrame, QCheckBox, QPushButton, QSizePolicy, QVBoxLayout, QGroupBox,
@@ -84,7 +84,7 @@ class InfoManager(QWidget):
         self.tab_group_table = cw.create_tab_group(self)
 
         # other widget setup
-        self.status_lbl = cw.create_text_label(None, 'Waiting for process...', cw.font_lbl, align='left')
+        self.prog_widget = QProgressWidget(None, cw.font_lbl)
 
         # initialises the class fields
         self.init_class_fields()
@@ -109,7 +109,7 @@ class InfoManager(QWidget):
         self.main_layout.setContentsMargins(x_gap2, 0, x_gap2, x_gap2)
         self.main_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         self.main_layout.addWidget(self.group_table)
-        self.main_layout.addWidget(self.status_lbl)
+        self.main_layout.addWidget(self.prog_widget)
 
         # sets the outer group-box properties
         self.group_table.setLayout(self.table_layout)
@@ -362,6 +362,18 @@ class InfoManager(QWidget):
         # resets the table header checkbox value
         table_obj = self.get_table_widget(t_type)
         table_obj.horizontalHeader().setCheckState(i_status)
+
+    # ---------------------------------------------------------------------------
+    # Progressbar Functions
+    # ---------------------------------------------------------------------------
+
+    def add_job(self, job_name, job_desc):
+
+        self.prog_widget.add_job(job_name, job_desc)
+
+    def delete_job(self, job_name):
+
+        self.prog_widget.delete_job(job_name)
 
     # ---------------------------------------------------------------------------
     # Widget Event Functions
