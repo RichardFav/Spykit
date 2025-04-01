@@ -34,6 +34,8 @@ class ProbePlot(PlotWidget):
     reset_highlight = pyqtSignal(bool, object)
 
     # parameters
+    pw_y = 2
+    pw_x = 1.1
     y_out_dist = 20
 
     # list class fields
@@ -250,17 +252,16 @@ class ProbePlot(PlotWidget):
                 dx_pos, dy_pos = self.convert_coords(True)
 
                 # resets the y-label offset (if near the top)
-                if m_pos.y() > (self.main_view.y_lim[1] - dy_pos):
+                if (m_pos.y() + self.pw_y * dy_pos) > self.main_view.y_lim[1]:
                     dy_pos = 0
 
                 # resets the x-label offset (if near the right-side)
-                if m_pos.x() < (self.main_view.x_lim[1] - dx_pos):
+                if (m_pos.x() + self.pw_x * dx_pos) < self.main_view.y_lim[1]:
                     dx_pos = 0
 
                 # resets the label visibility/position
                 self.main_view.out_label.setVisible(True)
                 self.main_view.out_label.setPos(m_pos + QPointF(-dx_pos, dy_pos))
-                return
 
             else:
                 # resets the label visibility
@@ -275,14 +276,14 @@ class ProbePlot(PlotWidget):
             dy_out = np.abs(m_pos.y() - self.sub_view.y_out)
             if dy_out < self.y_out_dist:
                 # calculates the label x/y-offsets
-                dx_pos, dy_pos = self.convert_coords(False)
+                dx_pos, dy_pos = self.convert_coords(False, True)
 
                 # resets the y-label offset (if near the top)
-                if m_pos.y() > (self.sub_view.y_lim[1] - dy_pos):
+                if (m_pos.y() + self.pw_y * dy_pos) > self.sub_view.y_lim[1]:
                     dy_pos = 0
 
                 # resets the x-label offset (if near the right-side)
-                if m_pos.x() < (self.sub_view.x_lim[1] - dx_pos):
+                if (m_pos.x() + self.pw_x * dx_pos) < self.sub_view.x_lim[1]:
                     dx_pos = 0
 
                 # resets the label visibility/position
@@ -313,11 +314,11 @@ class ProbePlot(PlotWidget):
             dx_pos, dy_pos = self.convert_coords(False)
 
             # resets the y-label offset (if near the top)
-            if m_pos.y() > (self.sub_view.y_lim[1] - dy_pos):
+            if (m_pos.y() + self.pw_y * dy_pos) > self.sub_view.y_lim[1]:
                 dy_pos = 0
 
             # resets the x-label offset (if near the right-side)
-            if m_pos.x() < (self.sub_view.x_lim[1] - dx_pos):
+            if (m_pos.x() + self.pw_x * dx_pos) < self.sub_view.x_lim[1]:
                 dx_pos = 0
 
             # resets the label position
@@ -332,27 +333,22 @@ class ProbePlot(PlotWidget):
             # disables the trace highlight
             self.reset_highlight.emit(False, None)
 
-    def convert_coords(self, is_main):
+    def convert_coords(self, is_main, is_out=False):
+
+        vb = self.v_box[1, 0]
 
         if is_main:
-            y_scale = np.diff(self.main_view.y_lim)[0]
-            plt_height = float(self.h_plot[0, 0].height())
-            scaled_height = (y_scale / plt_height) * self.main_view.out_label.boundingRect().height()
+            vb = self.v_box[0, 0]
+            lbl_bb = self.main_view.out_label.boundingRect()
 
-            x_scale = np.diff(self.main_view.x_lim)[0]
-            plt_width = float(self.h_plot[0, 0].width())
-            scaled_width = (x_scale / plt_width) * self.main_view.out_label.boundingRect().width()
+        elif is_out:
+            lbl_bb = self.sub_view.out_label.boundingRect()
 
         else:
-            y_scale = np.diff(self.sub_view.y_lim)[0]
-            plt_height = float(self.h_plot[1, 0].height())
-            scaled_height = (y_scale / plt_height) * self.sub_view.out_label.boundingRect().height()
+            lbl_bb = self.sub_label.boundingRect()
 
-            x_scale = np.diff(self.sub_view.x_lim)[0]
-            plt_width = float(self.h_plot[1, 0].width())
-            scaled_width = (x_scale / plt_width) * self.sub_view.out_label.boundingRect().width()
-
-        return scaled_width, scaled_height
+        bb_rect = vb.mapSceneToView(lbl_bb).boundingRect()
+        return bb_rect.width(), bb_rect.height()
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions

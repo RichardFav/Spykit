@@ -493,11 +493,13 @@ class TracePlot(TraceLabelMixin, PlotWidget):
                 return_scaled=self.trace_props.get('scale_signal'),
             )
 
+            # sets the maximum y-axis trace range
+            self.y_lim_tr = 2 + (self.n_plt - 1) * self.y_gap
+
             # sets up the heatmap/trace items
             if is_map:
                 # removes the signal median value (help to better visualise raw signals)
-                y0 = y0 - np.median(y0)
-                self.y_lim_tr = self.n_plt
+                # y0 = y0 - np.median(y0)
 
                 # resets the image item
                 x_scl = self.x_window / n_frm
@@ -511,9 +513,6 @@ class TracePlot(TraceLabelMixin, PlotWidget):
                 self.image_item.setTransform(tr_map)
 
             else:
-                # sets the maximum y-axis trace range
-                self.y_lim_tr = 1 + (self.n_plt - 1) * self.y_gap
-
                 self.y_tr = np.empty((self.n_plt, n_frm))
                 self.x_tr = np.empty((self.n_plt, n_frm))
                 self.x_tr[:] = np.linspace(self.t_lim[0], self.t_lim[1], n_frm)
@@ -586,17 +585,22 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         if (not self.get_plot_mode(n_channel)) or (n_channel == 0):
             return
 
-        # updates the crosshair position
+        # calculates the mapped coordinates
         m_pos = self.v_box[0, 0].mapSceneToView(p_pos)
-        i_row = int(np.floor(m_pos.y()))
+        if (m_pos.x() < 0) or (m_pos.x() > self.x_window) or (m_pos.y() < 0) or (m_pos.y() > self.y_lim_tr):
+            return
+
+        # updates the crosshair position
+        y_mlt = self.n_plt / self.y_lim_tr
+        i_row = int(np.floor(m_pos.y() * y_mlt))
 
         # updates the text label
         lbl_txt = "Channel {0}".format(i_channel[i_row])
         self.hm_label.setText(lbl_txt)
 
         # resets the ROI position
-        self.hm_roi.setPos(0, i_row)
-        self.hm_roi.setSize(QPointF(self.x_window, 1))
+        self.hm_roi.setPos(0, i_row / y_mlt)
+        self.hm_roi.setSize(QPointF(self.x_window, self.y_lim_tr / self.n_plt))
 
     def heatmap_leave(self, evnt):
 
