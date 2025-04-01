@@ -34,8 +34,8 @@ class ProbePlot(PlotWidget):
     reset_highlight = pyqtSignal(bool, object)
 
     # parameters
-    pw_y = 2
-    pw_x = 1.1
+    pw_y = 1.05
+    pw_x = 1.05
     y_out_dist = 20
 
     # list class fields
@@ -133,8 +133,7 @@ class ProbePlot(PlotWidget):
         self.h_plot[1, 0].leaveEvent = self.leave_sub_view
 
         # create the main view ROI
-        self.main_view.create_inset_roi(
-            self.sub_view.x_lim_shank[0], self.sub_view.y_lim_shank[0], False)
+        self.main_view.create_inset_roi(is_full=False)
 
         # sets up the probe dataframe
         self.sub_view.reset_axes_limits(False, i_shank=0)
@@ -307,7 +306,7 @@ class ProbePlot(PlotWidget):
 
                 # updates the label properties
                 self.sub_label.setVisible(True)
-                self.sub_label.setText('Channel ID #{}'.format(i_contact))
+                self.sub_label.setText(self.setup_label_text(i_contact))
                 self.sub_label.update()
 
             # calculates the label x/y-offsets
@@ -335,20 +334,36 @@ class ProbePlot(PlotWidget):
 
     def convert_coords(self, is_main, is_out=False):
 
-        vb = self.v_box[1, 0]
+        # initialisations
+        vb = self.v_box[1 - int(is_main), 0]
 
+        # label bounding box retrieval
         if is_main:
-            vb = self.v_box[0, 0]
+            # case is the main view outside label
             lbl_bb = self.main_view.out_label.boundingRect()
 
         elif is_out:
+            # case is the sub view outside label
             lbl_bb = self.sub_view.out_label.boundingRect()
 
         else:
+            # case is the sub view channel label
             lbl_bb = self.sub_label.boundingRect()
 
+        # retrieves the converted coordinates
         bb_rect = vb.mapSceneToView(lbl_bb).boundingRect()
         return bb_rect.width(), bb_rect.height()
+
+    def setup_label_text(self, i_channel):
+
+        loc_ch = self.session_info.get_channel_location(i_channel)
+        status_ch = self.session_info.get_channel_status(i_channel)
+
+        return "Channel #{0}\nDepth = {1}\nStatus = {2}".format(i_channel, loc_ch[1], status_ch)
+
+    def setup_init_roi_limits(self):
+
+        a = 1
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
@@ -411,11 +426,14 @@ class ProbePlot(PlotWidget):
 class ProbeView(GraphicsObject):
     # parameters
     dp = 0.1
+    pw = 0.05
+    n_ar = 10
     p_gap = 0.05
 
     # plot pen widgets
     pen = mkPen(width=2, color='b')
     pen_h = mkPen(width=2, color='g')
+    pen_sel = mkPen(width=1, color='k')
 
     # probe polygon colours
     p_col_probe = cf.get_colour_value('r', 128)
@@ -424,7 +442,7 @@ class ProbeView(GraphicsObject):
     c_col_selected = cf.get_colour_value('g', 128)
 
     # line pen widgets
-    l_pen_out = mkPen(color=cf.get_colour_value('m'), width=2)
+    l_pen_out = mkPen(color=cf.get_colour_value('k'), width=2)
 
     # pyqtsignal functions
     update_roi = pyqtSignal(object)
@@ -505,6 +523,7 @@ class ProbeView(GraphicsObject):
 
         # painter object setup
         p = QPainter(self.picture)
+        pen_p = mkPen(self.c_col_probe)
 
         # probe shape plot
         p.setPen(mkPen(self.p_col_probe))
@@ -512,29 +531,35 @@ class ProbeView(GraphicsObject):
         p.drawPolygon(p_poly)
 
         # probe contact plots
-        p.setPen(mkPen(self.c_col_probe))
+        p.setPen(pen_p)
         for i_p, c_p in enumerate(self.c_poly):
+            p.setPen(pen_p)
             if i_p == self.i_sel_contact:
                 # case is the contact is being hovered over
                 p.setBrush(mkBrush(self.c_col_hover))
                 p.drawPolygon(c_p)
 
-            if (self.session_info is not None) and is_show[i_p]:
-                # case is the contact has been selected
-                p.setBrush(mkBrush(self.c_col_selected))
-                p.drawPolygon(c_p)
+            # retrieves the channel fill colour
+            ch_status = self.session_info.get_channel_status(i_p)
 
-            else:
-                # case is a normal polygon
-                p.setBrush(mkBrush(self.c_col_probe))
-                p.drawPolygon(c_p)
+            if (self.session_info is not None) and is_show[i_p]:
+                # case is the contact is selected
+                p.setBrush(mkBrush(self.c_col_selected))
+                p.setPen(self.pen_sel)
+
+            # case is a normal polygon
+            p.setBrush(mkBrush(cw.p_col_status[ch_status]))
+            p.drawPolygon(c_p)
 
         # ends the drawing
         p.end()
 
         self.update()
 
-    def create_inset_roi(self, x_lim_s, y_lim_s, is_full=True):
+    def create_inset_roi(self, x_lim_s=None, y_lim_s=None, is_full=True):
+
+        if x_lim_s is None:
+            x_lim_s, y_lim_s = self.get_init_roi_limits()
 
         # pre-calculations
         p_0 = [x_lim_s[0], y_lim_s[0]]
@@ -607,8 +632,7 @@ class ProbeView(GraphicsObject):
 
         if i_shank is not None:
             # case is using domain reduced to a single shank
-            _x_lim = self.x_lim_shank[i_shank]
-            _y_lim = self.y_lim_shank[i_shank]
+            _x_lim, _y_lim = self.get_init_roi_limits()
 
         elif is_full:
             # case is using the full probe domain
@@ -646,7 +670,7 @@ class ProbeView(GraphicsObject):
         # sets the shank coordinate limits
         for sh in probe.get_shanks():
             c_vert_sh = np.vstack(c_vert[sh.device_channel_indices])
-            sh_min_ex, sh_max_ex = self.calc_reduced_limits(c_vert_sh)
+            sh_min_ex, sh_max_ex = self.calc_reduced_limits(c_vert_sh, p_exp=[0, 0])
             self.x_lim_shank.append([sh_min_ex[0], sh_max_ex[0]])
             self.y_lim_shank.append([sh_min_ex[1], sh_max_ex[1]])
 
@@ -654,7 +678,36 @@ class ProbeView(GraphicsObject):
         self.width = self.x_lim_full[1] - self.x_lim_full[0]
         self.height = self.y_lim_full[1] - self.y_lim_full[0]
 
-    def calc_reduced_limits(self, p, c_min=None, c_max=None):
+    def get_shank_axes_limits(self, i_shank=0):
+
+        x_lim0 = self.x_lim_shank[i_shank]
+        y_lim0 = self.y_lim_shank[i_shank]
+
+        dx_lim, dy_lim = np.diff(x_lim0)[0], np.diff(y_lim0)[0]
+        if dx_lim < dy_lim:
+            dy_lim = np.min([dy_lim, self.n_ar * dx_lim])
+            _x_lim, _y_lim = x_lim0, cf.list_add([-dy_lim, 0], y_lim0[1])
+
+        else:
+            dx_lim = np.min([dx_lim, self.n_ar * dy_lim])
+            _x_lim, _y_lim = cf.list_add([0, dx_lim], x_lim0[0]), y_lim0
+
+        return _x_lim, _y_lim
+
+    def get_init_roi_limits(self):
+
+        x_lim0, y_lim0 = self.get_shank_axes_limits()
+        dx_lim0, dy_lim0 = np.diff(x_lim0)[0], np.diff(y_lim0)[0]
+
+        x_lim = cf.list_add([0, (1 + 2 * self.pw) * dx_lim0], x_lim0[0] - self.pw * dx_lim0)
+        y_lim = cf.list_add([0, (1 + 2 * self.pw) * dy_lim0], y_lim0[0] - self.pw * dy_lim0)
+
+        return x_lim, y_lim
+
+    def calc_reduced_limits(self, p, c_min=None, c_max=None, p_exp=None):
+
+        if p_exp is None:
+            p_exp = [0.05, 0.05]
 
         if c_min is None:
             p_min0 = np.min(p, axis=0)
@@ -665,7 +718,7 @@ class ProbeView(GraphicsObject):
             p_max0 = np.vstack((np.max(p, axis=0), c_max))
 
         p_lim_tot = np.vstack((p_min0, p_max0))
-        return self.calc_expanded_limits(p_lim_tot, np.array([0.1, 0.05]))
+        return self.calc_expanded_limits(p_lim_tot, np.array(p_exp))
 
     def inside_polygon_single(self, m_pos):
 

@@ -21,7 +21,7 @@ from PyQt6.QtWidgets import (QWidget, QHBoxLayout, QGridLayout, QVBoxLayout, QPu
                              QFormLayout, QLabel, QCheckBox, QLineEdit, QComboBox, QSizePolicy, QFileDialog,
                              QApplication, QTreeView, QFrame, QRadioButton, QAbstractItemView, QStylePainter,
                              QStyleOptionComboBox, QStyle, QProxyStyle, QItemDelegate, QStyleOptionViewItem,
-                             QHeaderView, QStyleOptionButton, QTableWidgetItem, QProgressBar)
+                             QHeaderView, QStyleOptionButton, QTableWidgetItem, QProgressBar, QSpacerItem)
 from PyQt6.QtCore import (Qt, QRect, QRectF, QMimeData, pyqtSignal, QItemSelectionModel, QAbstractTableModel,
                           QSizeF, QSize, QObject, QVariant, QTimeLine)
 from PyQt6.QtGui import (QFont, QDrag, QCursor, QStandardItemModel, QStandardItem, QPalette, QPixmap,
@@ -106,6 +106,58 @@ icon_path = {
     'trace_off': os.path.join(icon_dir, 'trace_off_icon.png'),
 }
 
+# channel status colour values
+p_col_status = {
+    'good': cf.get_colour_value('g', 150),
+    'dead': cf.get_colour_value('r', 150),
+    'out': cf.get_colour_value('y', 150),
+    'noise': cf.get_colour_value('m', 150),
+    'na': cf.get_colour_value('w', 150),
+}
+
+# matplotlib colourmap strings
+cmap = {
+    # sequential colour maps
+    'Sequential': [
+        'Greys', 'Purples', 'Blues', 'Greens', 'Oranges', 'Reds',
+        'YlOrBr', 'YlOrRd', 'OrRd', 'PuRd', 'RdPu', 'BuPu',
+        'GnBu', 'PuBu', 'YlGnBu', 'PuBuGn', 'BuGn', 'YlGn'
+    ],
+
+    # sequential2 colour maps
+    'Sequential2': [
+        'binary', 'gist_yarg', 'gist_gray', 'gray', 'bone',
+        'pink', 'spring', 'summer', 'autumn', 'winter', 'cool',
+        'Wistia', 'hot', 'afmhot', 'gist_heat', 'copper'
+    ],
+
+    # diverging colour maps
+    'Diverging': [
+        'PiYG', 'PRGn', 'BrBG', 'PuOr', 'RdGy', 'RdBu', 'RdYlBu',
+        'RdYlGn', 'Spectral', 'coolwarm', 'bwr', 'seismic',
+        'berlin', 'managua', 'vanimo'
+    ],
+
+    # cyclic colour maps
+    'Cyclic': [
+        'twilight', 'twilight_shifted', 'hsv'
+    ],
+
+    # qualitative colour maps
+    'Qualitative': [
+        'Pastel1', 'Pastel2', 'Paired', 'Accent', 'Dark2',
+        'Set1', 'Set2', 'Set3', 'tab10', 'tab20', 'tab20b', 'tab20c'
+    ],
+
+    # miscellaneous colour maps
+    'Miscellaneous': [
+        'flag', 'prism', 'ocean', 'gist_earth', 'terrain',
+        'gist_stern', 'gnuplot', 'gnuplot2', 'CMRmap',
+        'cubehelix', 'brg', 'gist_rainbow', 'rainbow', 'jet',
+        'turbo', 'nipy_spectral', 'gist_ncar'
+    ],
+}
+
 # widget dimensions
 x_gap = 5
 row_height = 16.5
@@ -182,12 +234,12 @@ class QRegionConfig(QWidget):
         t_lbl = ['Row', 'Column']
         p_str = ['n_row', 'n_col']
 
-        # widget setup
+        # row/column widget setup
         self.rc_layout = QHBoxLayout()
         self.rc_layout.setSpacing(0)
         self.rc_layout.setContentsMargins(0, 0, 0, 5)
 
-        # widget setup
+        # region config widget setup
         self.rc_widget = QWidget()
         self.rc_widget.setLayout(self.rc_layout)
 
@@ -217,6 +269,9 @@ class QRegionConfig(QWidget):
         self.obj_lbl_combo.obj_lbl.setFixedWidth(80)
         self.obj_lbl_combo.connect(self.combo_update_trace)
 
+        # region config widget setup
+        self.v_spacer = QSpacerItem(5, 0, cf.q_min, cf.q_max)
+
         # trace index/colour fields
         self.i_trace = self.obj_lbl_combo.obj_cbox.currentIndex()
         self.tr_col = self.p_col[self.i_trace]
@@ -237,6 +292,7 @@ class QRegionConfig(QWidget):
 
         # adds the widget to the class widget
         self.main_layout.addWidget(self.obj_gbox)
+        self.main_layout.addItem(self.v_spacer)
 
         # sets the initial config groupbox height
         if is_expanded:
@@ -588,6 +644,9 @@ class QRegionConfig(QWidget):
     def reset_config_group_height(self):
 
         d_hght = self.calc_groupbox_height()
+        sz_spacer = self.v_spacer.minimumSize()
+
+        self.v_spacer.changeSize(5, sz_spacer.height() - d_hght)
         self.obj_gbox.setFixedHeight(self.obj_gbox.height() + d_hght)
 
     @staticmethod
@@ -1371,6 +1430,24 @@ class QFileSpec(QGroupBox):
 """
 
 
+class QColorMapChooser(QWidget):
+    def __init__(self, parent=None):
+        super(QColorMapChooser, self).__init__(parent)
+
+        # initialises the class fields
+        self.init_class_fields()
+
+    def init_class_fields(self):
+
+        pass
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+"""
+    HTMLDelegate:
+"""
+
+
 class HTMLDelegate(QItemDelegate):
     def __init__(self):
         super(HTMLDelegate, self).__init__()
@@ -1389,6 +1466,9 @@ class HTMLDelegate(QItemDelegate):
 
 # ----------------------------------------------------------------------------------------------------------------------
 
+"""
+    SearchMixin:
+"""
 
 class SearchMixin:
 

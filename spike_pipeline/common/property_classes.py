@@ -127,6 +127,21 @@ class SessionWorkBook(QObject):
 
         return self.session.get_prep_data_names(self.current_run, self.current_ses)
 
+    def get_channel_location(self, i_channel):
+
+        probe = self.get_current_recording_probe()
+        return probe.get_channel_locations()[i_channel]
+
+    def get_channel_status(self, i_channel):
+
+        i_run = self.session.get_run_index(self.current_run)
+
+        if (self.session.bad_ch is None) or (self.session.bad_ch[i_run] is None):
+            return 'na'
+
+        else:
+            return self.session.bad_ch[i_run][0][1][i_channel]
+
     # ---------------------------------------------------------------------------
     # Setter Functions
     # ---------------------------------------------------------------------------

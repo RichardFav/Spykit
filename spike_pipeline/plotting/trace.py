@@ -119,16 +119,13 @@ class TraceLabelMixin:
 
 # ----------------------------------------------------------------------------------------------------------------------
 
-"""
-    TracePlot:
-"""
-
-
 class TracePlot(TraceLabelMixin, PlotWidget):
     # pyqtsignal functions
     hide_plot = pyqtSignal()
 
     # parameters
+    pw_y = 1.05
+    pw_x = 1.05
     n_frm_plt = 10000
     y_gap = 2
     y_ofs = 0.2
@@ -152,8 +149,6 @@ class TracePlot(TraceLabelMixin, PlotWidget):
     l_pen_hover = mkPen(width=3, color='g')
     l_pen_trace = mkPen(color=cf.get_colour_value('g'), width=1)
     l_pen_high = mkPen(color=cf.get_colour_value('y'), width=1)
-    l_pen_bad = mkPen(color=cf.get_colour_value('r'), width=1)
-    l_pen_hm = mkPen(color=cf.get_colour_value('y', 150), width=3)
 
     def __init__(self, session_info):
         TraceLabelMixin.__init__(self)
@@ -192,6 +187,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.n_show = 0
         self.t_start_ofs = 0
         self.labels = []
+        self.l_pen_status = {}
         self.i_trace = None
         self.y_trace = None
         self.is_show = False
@@ -209,7 +205,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.hm_label = TextItem(
             f'Test',
             color='#FFFFFF',
-            anchor=(0, 0.5),
+            anchor=(0, 0.0),
             border=None,
             fill=self.lbl_col)
         self.hm_roi = RectROI(
@@ -217,14 +213,11 @@ class TracePlot(TraceLabelMixin, PlotWidget):
             [0, self.x_window],
             movable=False,
             rotatable=False,
-            resizable=False,
-            pen=self.l_pen_hm,
-            hoverPen=self.l_pen_hm)
+            resizable=False,)
 
         # trace items
         self.main_trace = PlotCurveItem(pen=self.l_pen_trace, skipFiniteCheck=False)
         self.highlight_trace = PlotCurveItem(pen=self.l_pen_high, skipFiniteCheck=False)
-        self.bad_trace = PlotCurveItem(pen=self.l_pen_bad, skipFiniteCheck=False)
 
         # sets up the plot regions
         self.setup_subplots(n_r=2, n_c=2)
@@ -246,6 +239,9 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.plot_layout.setRowStretch(1, 1)
         self.plot_layout.setColumnStretch(0, 19)
         self.plot_layout.setColumnStretch(1, 1)
+
+        for ps in cw.p_col_status:
+            self.l_pen_status[ps] = mkPen(cw.p_col_status[ps], width=3)
 
         # ---------------------------------------------------------------------------
         # Trace Subplot Setup
@@ -276,14 +272,14 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         # adds the traces to the main plot
         self.h_plot[0, 0].addItem(self.main_trace)
         self.h_plot[0, 0].addItem(self.highlight_trace)
-        self.h_plot[0, 0].addItem(self.bad_trace)
         self.h_plot[0, 0].addItem(self.hm_label)
         self.h_plot[0, 0].addItem(self.hm_roi)
 
         # hides the
         self.hm_roi.hide()
         self.hm_label.hide()
-        self.hm_roi.setZValue(10)
+        self.hm_roi.setZValue(9)
+        self.hm_label.setZValue(10)
 
         # adds the image frame
         self.image_item.setTransform(tr_map)
@@ -595,12 +591,46 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         i_row = int(np.floor(m_pos.y() * y_mlt))
 
         # updates the text label
-        lbl_txt = "Channel {0}".format(i_channel[i_row])
-        self.hm_label.setText(lbl_txt)
+        self.reset_heatmap_label(m_pos, i_channel[i_row])
 
         # resets the ROI position
         self.hm_roi.setPos(0, i_row / y_mlt)
         self.hm_roi.setSize(QPointF(self.x_window, self.y_lim_tr / self.n_plt))
+
+    def reset_heatmap_label(self, m_pos, i_channel):
+
+        # updates the label text
+        self.hm_label.setText(self.setup_label_text(i_channel))
+        self.hm_label.update()
+
+        # calculates the label x/y-offsets
+        dx_pos, dy_pos = self.convert_coords()
+
+        # resets the y-label offset (if near the top)
+        if (m_pos.y() + self.pw_y * dy_pos) > self.y_lim_tr:
+            dy_pos = 0
+
+        # resets the x-label offset (if near the right-side)
+        if (m_pos.x() + self.pw_x * dx_pos) < self.t_lim[1]:
+            dx_pos = 0
+
+        # resets the label position
+        self.hm_label.setPos(m_pos + QPointF(-dx_pos, dy_pos-1))
+
+    def convert_coords(self):
+
+        lbl_bb = self.hm_label.boundingRect()
+        bb_rect = self.v_box[0, 0].mapSceneToView(lbl_bb).boundingRect()
+        return bb_rect.width(), bb_rect.height()
+
+    def setup_label_text(self, i_channel):
+
+        loc_ch = self.session_info.get_channel_location(i_channel)
+        status_ch = self.session_info.get_channel_status(i_channel)
+
+        self.hm_roi.setPen(self.l_pen_status[status_ch])
+
+        return "Channel #{0}\nDepth = {1}\nStatus = {2}".format(i_channel, loc_ch[1], status_ch)
 
     def heatmap_leave(self, evnt):
 
@@ -673,8 +703,6 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
         # resets the update flag
         self.is_updating = False
-
-
 
     # ---------------------------------------------------------------------------
     # Axis Limit Reset Functions
@@ -820,6 +848,10 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.trace_props = trace_props_new
         trace_props_new.set_trace_view(self)
 
+    # ---------------------------------------------------------------------------
+    # Other Getter Functions
+    # ---------------------------------------------------------------------------
+
     def get_plot_mode(self, n_channel=None):
 
         if n_channel is None:
@@ -831,3 +863,12 @@ class TracePlot(TraceLabelMixin, PlotWidget):
     def get_channel_count(self):
 
         return len(self.session_info.get_selected_channels())
+
+    def get_run_index(self):
+
+        return self.session_info.session.get_run_index(self.session_info.current_run)
+
+
+"""
+    TracePlot:
+"""

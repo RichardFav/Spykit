@@ -246,6 +246,7 @@ class MainWindow(QMainWindow):
         # updates the probe-view
         probe_view = self.plot_manager.get_plot_view('probe')
         probe_view.reset_out_line(ch_status[0][1])
+        probe_view.reset_probe_views()
 
     # ---------------------------------------------------------------------------
     # Progress Worker Slot Functions
