@@ -506,6 +506,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
                 x_scl = self.x_window / n_frm
                 self.image_item.setImage(np.clip(y0, self.c_lim_lo, self.c_lim_hi))
                 self.image_item.setLevels([self.c_lim_lo, self.c_lim_hi])
+                self.image_item.show()
 
                 # creates the image transform
                 tr_map = QtGui.QTransform()
@@ -544,7 +545,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
             # removes the heatmap image (if mapping)
             if is_map:
-                self.image_item.setImage(None)
+                self.image_item.hide()
 
         # resets the maximum y-axis trace range
         self.v_box[0, 0].setLimits(yMax=self.y_lim_tr)
@@ -558,7 +559,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
             self.reset_yaxis_limits()
 
         # updates the plot labels
-        if self.is_show:
+        if self.is_show and (not is_map):
             self.update_labels()
 
     def reset_frame_image(self):

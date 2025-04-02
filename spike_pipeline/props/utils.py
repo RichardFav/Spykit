@@ -198,7 +198,7 @@ class PropManager(QWidget):
             # retrieves the parameter values
             for p, v in p_tab.p_info['ch_fld'].items():
                 if isinstance(p_tab.p_props, list):
-                    # case is multi-run property
+                    # case is multi-element property array
                     for i_run in range(len(p_tab.p_props)):
                         # updates the parameter field
                         p_tab.set_n(p, pv[i_run][p], i_run)
@@ -208,6 +208,8 @@ class PropManager(QWidget):
                             self.reset_para_field(p_tab, p, v['type'], pv[i_run][p], i_run)
 
                 elif p in pv:
+                    # case is a single-element property array
+
                     # resets the property parameter value
                     p_tab.set_n(p, pv[p])
                     self.reset_para_field(p_tab, p, v['type'], pv[p])
