@@ -4,6 +4,7 @@ import time
 import colorsys
 import functools
 import numpy as np
+from copy import deepcopy
 
 # spike pipeline imports
 import spike_pipeline.common.common_func as cf
@@ -178,7 +179,7 @@ class TriggerPlot(PlotWidget):
         return np.linspace(0, 1, self.n_col_img).reshape(-1, 1)
 
     # ---------------------------------------------------------------------------
-    # Supression Region Functions
+    # Suppression Region Functions
     # ---------------------------------------------------------------------------
 
     def add_region(self, nw_row):
@@ -202,10 +203,6 @@ class TriggerPlot(PlotWidget):
 
         # increments the linear region count
         self.n_reg_xs[i_run] += 1
-
-        # if not the left-most region, then reset limits with previous region
-        if self.n_reg_xs[i_run] > 1:
-            self.reset_region_limits(i_run, self.n_reg_xs[i_run] - 2, self.n_reg_xs[i_run] - 1)
 
         # adds the region to the trigger trace
         self.h_plot[0, 0].addItem(l_reg)
@@ -385,12 +382,14 @@ class TriggerPlot(PlotWidget):
         if self.t_lim[1] > self.t_dur:
             self.t_lim[1] = self.t_dur
 
+        # resets the region times
+        self.trig_props.reset_region_timing(self.t_dur, dt_start_ofs)
+
         # resets the plot view axis
         self.v_box[0, 0].setLimits(xMin=0, xMax=self.t_dur)
         self.v_box[1, 0].setLimits(xMin=0, xMax=self.t_dur)
         self.v_box[0, 0].setXRange(self.t_lim[0], self.t_lim[1], padding=0)
         self.v_box[1, 0].setXRange(0, self.t_dur, padding=0)
-        self.trig_props.reset_region_timing(self.t_dur, dt_start_ofs)
         self.update_trigger_trace()
 
         # resets the linear region

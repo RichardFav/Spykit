@@ -650,7 +650,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
         # if not in heatmap mode, or no channels are selected, then exit
         n_channel = self.get_channel_count()
-        if (not self.get_plot_mode(n_channel)) or (n_channel == 0):
+        if (not self.get_plot_mode(n_channel)) or (n_channel == 0) or (not self.is_show):
             return
 
         self.hm_roi.show()

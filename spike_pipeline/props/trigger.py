@@ -64,7 +64,11 @@ class TableArray(QObject):
 
     def get(self, i_row, i_col):
 
-        return self.data[i_row, i_col]
+        if i_row is None:
+            return self.data[:, i_col]
+
+        else:
+            return self.data[i_row, i_col]
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -104,9 +108,14 @@ class TriggerPara(PropPara):
         self.t_arr.set(i_row, i_col, value)
         self.region_index = self.t_arr.data
 
-    def set_arr(self, i_col, values):
+    def set_arr(self, i_row, i_col, values):
 
-        self.t_arr.data[:, i_col] = values
+        if i_row is None:
+            self.t_arr.data[:, i_col] = values
+
+        else:
+            self.t_arr.data[i_row, i_col] = values
+
         self.region_index = self.t_arr.data
 
     def get(self, i_row, i_col):
@@ -139,6 +148,7 @@ class TriggerProps(PropWidget):
     t_win_min = 5
 
     # array class fields
+    xi_col = np.array([1, 2])
     b_str = ['Add Row', 'Remove Row']
     c_hdr = ['Region', 'Start (s)', 'Finish (s)']
     item_index = Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
@@ -419,38 +429,71 @@ class TriggerProps(PropWidget):
 
     def reset_region_timing(self, t_dur, dt):
 
-        # updates the table data
-        xi_col = np.array([1, 2])
-        i_run = self.get_run_index()
-        n_reg = self.p_props[i_run].t_arr.n_row
+        # if there is no change in time, then exit
+        if dt == 0:
+            return
 
         # resets the table data
-        self.p_props[i_run].set_arr(xi_col, self.p_props[i_run].t_arr.data[:, 1:] - dt)
+        i_run = self.get_run_index()
+        if self.p_props[i_run].region_index is None:
+            return
 
-        #
+        self.p_props[i_run].set_arr(None, self.xi_col, self.p_props[i_run].get(None, self.xi_col) - dt)
+        self.time_shift_limits(i_run, t_dur)
+
+        # for each remaining region, reset the region bounds/position
+        for i_reg, l_reg in enumerate(self.trig_view.l_reg_xs[i_run]):
+            # resets the region bounds
+            t_lim = [0, t_dur]
+
+            # case is the region is not the first region
+            if i_reg > 0:
+                t_lim[0] = self.trig_view.l_reg_xs[i_run][i_reg - 1].getRegion()[1]
+
+            # case is the region is not the last region
+            if (i_reg + 1) < self.trig_view.n_reg_xs[i_run]:
+                t_lim[1] = self.trig_view.l_reg_xs[i_run][i_reg + 1].getRegion()[0]
+
+            # resets the trigger region bounds
+            self.trig_view.is_updating = True
+            l_reg.setBounds(t_lim)
+            self.trig_view.is_updating = False
+
+            # updates the trigger region position
+            self.trig_view.update_region(i_reg)
+
+    def time_shift_limits(self, i_run, t_dur):
+
+        # field retrieval
+        n_reg = self.p_props[i_run].t_arr.n_row
+
+        # resets the region limits so that they are feasible
         is_ok = np.ones(n_reg, dtype=bool)
         for i_reg in np.flip(range(n_reg)):
             # determines if regions are feasible wrt the start point
-            s_feas = self.p_props[i_run].t_arr.data[i_reg, 1:] >= 0
+            t_data0 = self.p_props[i_run].t_arr.data[i_reg, 1:]
+            s_feas = t_data0 >= 0
             if not np.any(s_feas):
                 # case is the region is infeasible
                 is_ok[i_reg] = False
 
             elif not np.all(s_feas):
                 # otherwise, reset the parameter values
-                self.p_props[i_run].set_arr(xi_col, np.maximum(0, self.p_props[i_run].t_arr.data[i_reg, 1:]))
+                t_data0 = np.maximum(0, t_data0)
+                self.p_props[i_run].set_arr(i_reg, self.xi_col, t_data0)
 
             # determines if regions are feasible wrt the start point
-            f_feas = self.p_props[i_run].t_arr.data[i_reg, 1:] <= t_dur
+            f_feas = t_data0 <= t_dur
             if not np.any(f_feas):
                 # case is the region is infeasible
                 is_ok[i_reg] = False
 
             elif not np.all(f_feas):
                 # otherwise, reset the parameter values
-                self.p_props[i_run].set_arr(xi_col, np.minimum(t_dur, self.p_props[i_run].t_arr.data[i_reg, 1:]))
+                t_data0 = np.minimum(t_dur, t_data0)
+                self.p_props[i_run].set_arr(i_reg, self.xi_col, t_data0)
 
-            # removes the
+            # if the region is infeasible, then remove it
             if not is_ok[i_reg]:
                 self.delete_region(i_run, i_reg)
 
@@ -463,11 +506,9 @@ class TriggerProps(PropWidget):
                     item_val = self.p_props[i_run].get(i_reg, i_col)
                     item.setText(str(item_val))
 
-                    self.trig_view.update_region(i_reg)
-
                 # resets the update flag
                 self.is_updating = False
 
-        # resets the linear region bounds
-        for l_reg in self.trig_view.l_reg_xs[i_run]:
-            self.trig_view.xtrig_region_moved(l_reg)
+        if any(np.logical_not(is_ok)):
+            xi_c = np.array(range(sum(is_ok)))
+            self.p_props[i_run].set_arr(None, 0, xi_c + 1)

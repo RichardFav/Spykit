@@ -212,6 +212,12 @@ class PropManager(QWidget):
                     p_tab.set_n(p, pv[p])
                     self.reset_para_field(p_tab, p, v['type'], pv[p])
 
+            # property tab specific updates
+            match pt:
+                case 'general':
+                    # case is the general property tab
+                    p_tab.check_update()
+
             # resets the update flag
             p_tab.is_updating = False
 
