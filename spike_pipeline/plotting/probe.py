@@ -270,19 +270,21 @@ class ProbePlot(PlotWidget):
 
         # updates the crosshair position
         m_pos = self.v_box[1, 0].mapSceneToView(p_pos)
+        print(m_pos)
 
         if (self.sub_view.y_out is not None) and self.show_out:
             dy_out = np.abs(m_pos.y() - self.sub_view.y_out)
             if dy_out < self.y_out_dist:
                 # calculates the label x/y-offsets
+                ax_rng = self.v_box[1, 0].viewRange()
                 dx_pos, dy_pos = self.convert_coords(False, True)
 
                 # resets the y-label offset (if near the top)
-                if (m_pos.y() + self.pw_y * dy_pos) > self.sub_view.y_lim[1]:
+                if (m_pos.y() + self.pw_y * dy_pos) > ax_rng[1][1]:
                     dy_pos = 0
 
                 # resets the x-label offset (if near the right-side)
-                if (m_pos.x() + self.pw_x * dx_pos) < self.sub_view.x_lim[1]:
+                if (m_pos.x() + self.pw_x * dx_pos) < ax_rng[0][1]:
                     dx_pos = 0
 
                 # resets the label visibility/position
@@ -310,14 +312,15 @@ class ProbePlot(PlotWidget):
                 self.sub_label.update()
 
             # calculates the label x/y-offsets
+            ax_rng = self.v_box[1, 0].viewRange()
             dx_pos, dy_pos = self.convert_coords(False)
 
             # resets the y-label offset (if near the top)
-            if (m_pos.y() + self.pw_y * dy_pos) > self.sub_view.y_lim[1]:
+            if (m_pos.y() + self.pw_y * dy_pos) > ax_rng[1][1]:
                 dy_pos = 0
 
             # resets the x-label offset (if near the right-side)
-            if (m_pos.x() + self.pw_x * dx_pos) < self.sub_view.x_lim[1]:
+            if (m_pos.x() + self.pw_x * dx_pos) < ax_rng[0][1]:
                 dx_pos = 0
 
             # resets the label position
@@ -543,12 +546,10 @@ class ProbeView(GraphicsObject):
                 # retrieves the channel fill colour
                 if is_show[i_p]:
                     # case is the contact is selected
-                    p.setBrush(mkBrush(self.c_col_selected))
                     p.setPen(self.pen_sel)
 
-                else:
-                    ch_status = self.session_info.get_channel_status(i_p)
-                    p.setBrush(mkBrush(cw.p_col_status[ch_status]))
+                ch_status = self.session_info.get_channel_status(i_p)
+                p.setBrush(mkBrush(cw.p_col_status[ch_status]))
 
             # case is a normal polygon
             p.drawPolygon(c_p)

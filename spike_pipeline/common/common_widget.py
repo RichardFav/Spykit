@@ -271,7 +271,8 @@ class QRegionConfig(QWidget):
             # sets the editbox widget properties
             obj_lbl_edit.obj_lbl.setAlignment(Qt.AlignmentFlag.AlignRight)
             obj_lbl_edit.obj_lbl.adjustSize()
-            obj_lbl_edit.obj_lbl.setStyleSheet("padding-left: 5px; padding-top: 5px;")
+            # obj_lbl_edit.obj_lbl.setStyleSheet("padding-left: 5px; padding-top: 5px;")
+            obj_lbl_edit.obj_lbl.setStyleSheet("padding-left: 5px;")
 
             # sets the callback function
             cb_fcn_rc = functools.partial(self.edit_dim_update, ps)
@@ -285,7 +286,7 @@ class QRegionConfig(QWidget):
 
         # sets the label properties
         self.obj_lbl_combo.obj_lbl.setFixedWidth(80)
-        self.obj_lbl_combo.obj_lbl.setStyleSheet("padding-top: 5px;")
+        # self.obj_lbl_combo.obj_lbl.setStyleSheet("padding-top: 5px;")
         self.obj_lbl_combo.connect(self.combo_update_trace)
 
         # region config widget setup
@@ -1456,24 +1457,32 @@ class QColorLabel(QLabel):
     def __init__(self, parent=None, c_map_name='viridis', name=None, n_pts=175):
         super(QColorLabel, self).__init__(parent)
 
+        # field initialisations
+        self.n_pts = n_pts
+        self.xi_c = np.linspace(0, 1, self.n_pts)
+
+        # sets the widget properties
         self.setObjectName(name)
+        self.setSizePolicy(QSizePolicy(cf.q_exp, cf.q_max))
+        self.setStyleSheet("border: 1px solid black;")
 
         # creates the image map
-        xi_c = np.linspace(0, 1, n_pts)
+        self.setup_label_image(c_map_name)
+
+    def setup_label_image(self, c_map_name):
+
+        # sets up the mapped data values
         c_map = colormap.get(c_map_name, source="matplotlib")
-        image_map = c_map.mapToByte(xi_c)[:, :3]
+        image_map = c_map.mapToByte(self.xi_c)[:, :3]
 
         # sets up the colormap image
-        image_data = np.zeros((self.n_rep, n_pts, 3), dtype=np.uint8)
+        image_data = np.zeros((self.n_rep, self.n_pts, 3), dtype=np.uint8)
         for i in range(3):
             image_data[:, :, i] = image_map[:, i]
 
-        self.setStyleSheet("border: 1px solid black;")
-
         # sets image pixmap properties
-        lbl_image = QImage(bytes(image_data), n_pts, self.n_rep, 3 * n_pts, QImage.Format.Format_RGB888)
+        lbl_image = QImage(bytes(image_data), self.n_pts, self.n_rep, 3 * self.n_pts, QImage.Format.Format_RGB888)
         self.setPixmap(QPixmap(lbl_image))
-        self.setSizePolicy(QSizePolicy(cf.q_exp, cf.q_max))
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -1483,6 +1492,8 @@ class QColorLabel(QLabel):
 
 
 class QColorMapChooser(QFrame):
+    # pyqtsignal functions
+    colour_selected = pyqtSignal(str)
 
     # widget stylesheets
     tree_style = """    
@@ -1567,7 +1578,7 @@ class QColorMapChooser(QFrame):
         self.select_layout.addWidget(self.select_name)
         self.select_layout.addWidget(self.select_colour)
 
-        #
+        # sets the selection widget properties
         self.select_name.setFixedWidth(self.lbl_width)
         self.select_colour.setFixedWidth(self.col_wid)
         self.select_lbl.setContentsMargins(0, 3, 0, 0)
@@ -1583,6 +1594,7 @@ class QColorMapChooser(QFrame):
         self.tree_prop.setAlternatingRowColors(False)
         self.tree_prop.setItemDelegateForColumn(0, HTMLDelegate())
         self.tree_prop.header().setStretchLastSection(True)
+        self.tree_prop.doubleClicked.connect(self.tree_double_clicked)
 
         # initialises the tree fields
         self.init_tree_fields()
@@ -1649,6 +1661,16 @@ class QColorMapChooser(QFrame):
         self.para_name.append(p_name_s.lower())
         self.para_name0.append(p_name_s)
         self.para_grp.append(group_name)
+
+    def tree_double_clicked(self, index):
+
+        # resets the property values
+        c_map_new = self.tree_prop.itemFromIndex(index).text(0)
+        self.select_colour.setup_label_image(c_map_new)
+        self.select_name.setText(c_map_new)
+
+        # updates the colour map field
+        self.colour_selected.emit(c_map_new)
 
 # ----------------------------------------------------------------------------------------------------------------------
 

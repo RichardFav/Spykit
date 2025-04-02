@@ -40,6 +40,7 @@ class ChannelInfoTab(InfoWidget):
 
         # adds the plot data type combobox
         self.data_type = QLabelCombo(None, 'Plot Data Type:', None, font_lbl=font_lbl)
+        self.data_type.setContentsMargins(0, self.x_gap, 0, 0)
         self.tab_layout.addWidget(self.data_type)
 
         # adds the session run type combobox

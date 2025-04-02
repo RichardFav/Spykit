@@ -26,7 +26,6 @@ class TracePara(PropPara):
     combo_update = pyqtSignal(str)
     edit_update = pyqtSignal(str)
     check_update = pyqtSignal(str)
-    colormap_update = pyqtSignal(str)
 
     def __init__(self, p_info):
         self.is_updating = True
@@ -55,12 +54,6 @@ class TracePara(PropPara):
         if not _self.is_updating:
             _self.check_update.emit(p_str)
 
-    @staticmethod
-    def _colormap_update(p_str, _self):
-
-        if not _self.is_updating:
-            _self.colormap_update.emit(p_str)
-
     # trace property observer properties
     plot_type = cf.ObservableProperty(pfcn(_combo_update, 'plot_type'))
     t_start = cf.ObservableProperty(pfcn(_edit_update, 't_start'))
@@ -69,7 +62,6 @@ class TracePara(PropPara):
     c_lim_lo = cf.ObservableProperty(pfcn(_edit_update, 'c_lim_lo'))
     c_lim_hi = cf.ObservableProperty(pfcn(_edit_update, 'c_lim_hi'))
     scale_signal = cf.ObservableProperty(pfcn(_check_update, 'scale_signal'))
-    c_map = cf.ObservableProperty(pfcn(_colormap_update, 'c_map'))
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -101,6 +93,7 @@ class TraceProps(PropWidget):
         # widget object field retrieval
         self.edit_start = self.findChild(cw.QLineEdit, name='t_start')
         self.edit_finish = self.findChild(cw.QLineEdit, name='t_finish')
+        self.cmap_chooser = self.findChild(cw.QColorMapChooser, name='c_map')
 
         # initialises the other class fields
         self.init_other_class_fields()
@@ -111,7 +104,9 @@ class TraceProps(PropWidget):
         self.p_props.edit_update.connect(self.edit_update)
         self.p_props.combo_update.connect(self.combo_update)
         self.p_props.check_update.connect(self.check_update)
-        self.p_props.colormap_update.connect(self.colormap_update)
+
+        # sets the colourmap chooser slot function
+        self.cmap_chooser.colour_selected.connect(self.colour_selected)
 
         # flag initialisation is complete
         self.is_init = True
@@ -193,6 +188,11 @@ class TraceProps(PropWidget):
         # resets the plot views
         if self.is_init:
             self.reset_trace_props()
+
+    def colour_selected(self, c_map_new):
+
+        self.p_props.c_map = c_map_new
+        self.reset_trace_props()
 
     # ---------------------------------------------------------------------------
     # Plot View Setter Functions

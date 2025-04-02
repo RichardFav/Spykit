@@ -138,9 +138,6 @@ class TracePlot(TraceLabelMixin, PlotWidget):
     c_lim_hi = 200
     c_lim_lo = -200
 
-    # image colourmap
-    c_map = colormap.get("RdBu_r", source="matplotlib", skipCache=False)
-
     # list class fields
     lbl_tt_str = ['Show Channel Labels', 'Hide Channel Labels']
 
@@ -193,6 +190,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.is_show = False
 
         # class widgets
+        self.c_map = None
         self.l_reg_x = None
         self.l_reg_y = None
         self.i_sel_tr = None
@@ -283,7 +281,6 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
         # adds the image frame
         self.image_item.setTransform(tr_map)
-        self.image_item.setColorMap(self.c_map)
         self.image_item.setImage(None)
         self.image_item.setLevels([self.c_lim_lo, self.c_lim_hi])
         self.image_item.hide()
@@ -397,6 +394,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.reset_trace_view(reset_limits=False)
 
         # resets the plot item visibility
+        self.reset_colour_map()
         self.reset_plot_items()
 
         # resets the linear region
@@ -456,6 +454,12 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
         # resets the update flag
         self.trace_props.is_updating = False
+
+    def reset_colour_map(self):
+
+        c_map_name = self.trace_props.get('c_map')
+        self.c_map = colormap.get(c_map_name, source="matplotlib", skipCache=False)
+        self.image_item.setColorMap(self.c_map)
 
     # ---------------------------------------------------------------------------
     # Other Reset Functions
@@ -846,6 +850,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
     def set_trace_props(self, trace_props_new):
 
         self.trace_props = trace_props_new
+        self.reset_colour_map()
         trace_props_new.set_trace_view(self)
 
     # ---------------------------------------------------------------------------
