@@ -270,7 +270,6 @@ class ProbePlot(PlotWidget):
 
         # updates the crosshair position
         m_pos = self.v_box[1, 0].mapSceneToView(p_pos)
-        print(m_pos)
 
         if (self.sub_view.y_out is not None) and self.show_out:
             dy_out = np.abs(m_pos.y() - self.sub_view.y_out)

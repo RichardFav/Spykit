@@ -295,6 +295,12 @@ class PropManager(QWidget):
                 setattr(p_tab.p_props[i_run], p_name, 0)
                 p_tab.p_props[i_run].is_updating = False
 
+            case 'colormapchooser':
+                # case is the colourmap chooser
+                h_obj = p_tab.findChild(cw.QColorMapChooser, name=p_name)
+                h_obj.select_name.setText(p_val)
+                h_obj.select_colour.setup_label_image(p_val)
+
 # ----------------------------------------------------------------------------------------------------------------------
 
 """

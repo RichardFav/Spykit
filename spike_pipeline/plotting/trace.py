@@ -395,6 +395,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
         # resets the plot item visibility
         self.reset_colour_map()
+        self.plot_button_clicked('datatip')
         self.reset_plot_items()
 
         # resets the linear region
@@ -793,6 +794,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         match b_str:
             case 'datatip':
                 # case is the label toggle button
+                is_map = self.get_plot_mode()
                 obj_but = self.findChild(cw.QPushButton, name=b_str)
 
                 # updates the tooltip string
@@ -800,8 +802,9 @@ class TracePlot(TraceLabelMixin, PlotWidget):
                 obj_but.setToolTip(self.lbl_tt_str[int(self.is_show)])
 
                 # updates the plot labels (depending on toggle value)
-                if self.is_show:
+                if self.is_show and (not is_map):
                     self.update_labels()
+
                 else:
                     self.hide_labels()
 

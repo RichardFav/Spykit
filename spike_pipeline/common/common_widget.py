@@ -1513,9 +1513,9 @@ class QColorMapChooser(QFrame):
     """
 
     # parameters
-    lbl_width = 55
+    col_wid = 105
+    lbl_width = 85
     item_row_size = 23
-    col_wid = 135
 
     # font objects
     gray_col = QColor(160, 160, 160, 255)
@@ -1577,6 +1577,8 @@ class QColorMapChooser(QFrame):
         self.select_layout.addWidget(self.select_lbl)
         self.select_layout.addWidget(self.select_name)
         self.select_layout.addWidget(self.select_colour)
+
+        self.select_lbl.setSizePolicy(QSizePolicy(cf.q_min, cf.q_exp))
 
         # sets the selection widget properties
         self.select_name.setFixedWidth(self.lbl_width)
