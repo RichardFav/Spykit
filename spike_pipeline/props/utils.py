@@ -77,7 +77,7 @@ class PropManager(QWidget):
 
         # sets the main widget properties
         self.setFixedWidth(self.info_width + self.dx_gap)
-        self.setSizePolicy(QSizePolicy(cf.q_fix, cf.q_exp))
+        self.setSizePolicy(QSizePolicy(cf.q_fix, cf.q_fix))
         self.setLayout(self.main_layout)
 
         # sets the widget layout properties
@@ -207,7 +207,7 @@ class PropManager(QWidget):
                         if i_run == self.get_run_index():
                             self.reset_para_field(p_tab, p, v['type'], pv[i_run][p], i_run)
 
-                else:
+                elif p in pv:
                     # resets the property parameter value
                     p_tab.set_n(p, pv[p])
                     self.reset_para_field(p_tab, p, v['type'], pv[p])
@@ -708,6 +708,14 @@ class PropWidget(QWidget):
                 # sets up the slot function
                 cb_fcn = functools.partial(self.button_file_spec, p_str_l)
                 obj_fspec.connect(cb_fcn)
+
+            case 'colormapchooser':
+                # case is a colourmap selection widget
+
+                # creates the file selection widget
+                obj_cmap = cw.QColorMapChooser(None, ps['value'], name=p_name)
+                obj_cmap.tree_prop.setFixedHeight(130)
+                layout.addRow(obj_cmap)
 
     def setup_widget_callback(self, h_widget=None):
 

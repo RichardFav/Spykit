@@ -26,6 +26,7 @@ class TracePara(PropPara):
     combo_update = pyqtSignal(str)
     edit_update = pyqtSignal(str)
     check_update = pyqtSignal(str)
+    colormap_update = pyqtSignal(str)
 
     def __init__(self, p_info):
         self.is_updating = True
@@ -54,6 +55,12 @@ class TracePara(PropPara):
         if not _self.is_updating:
             _self.check_update.emit(p_str)
 
+    @staticmethod
+    def _colormap_update(p_str, _self):
+
+        if not _self.is_updating:
+            _self.colormap_update.emit(p_str)
+
     # trace property observer properties
     plot_type = cf.ObservableProperty(pfcn(_combo_update, 'plot_type'))
     t_start = cf.ObservableProperty(pfcn(_edit_update, 't_start'))
@@ -62,6 +69,7 @@ class TracePara(PropPara):
     c_lim_lo = cf.ObservableProperty(pfcn(_edit_update, 'c_lim_lo'))
     c_lim_hi = cf.ObservableProperty(pfcn(_edit_update, 'c_lim_hi'))
     scale_signal = cf.ObservableProperty(pfcn(_check_update, 'scale_signal'))
+    c_map = cf.ObservableProperty(pfcn(_colormap_update, 'c_map'))
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -103,6 +111,7 @@ class TraceProps(PropWidget):
         self.p_props.edit_update.connect(self.edit_update)
         self.p_props.combo_update.connect(self.combo_update)
         self.p_props.check_update.connect(self.check_update)
+        self.p_props.colormap_update.connect(self.colormap_update)
 
         # flag initialisation is complete
         self.is_init = True
@@ -118,6 +127,7 @@ class TraceProps(PropWidget):
             'c_lim_lo': self.create_para_field('Lower Colour Limit', 'edit', -200),
             'c_lim_hi': self.create_para_field('Upper Colour Limit', 'edit', 200),
             'scale_signal': self.create_para_field('Scale Signals', 'checkbox', True),
+            'c_map': self.create_para_field('Colormap', 'colormapchooser', 'viridis'),
         }
 
         # updates the class field
@@ -173,6 +183,12 @@ class TraceProps(PropWidget):
             self.reset_trace_props()
 
     def check_update(self, p_str):
+
+        # resets the plot views
+        if self.is_init:
+            self.reset_trace_props()
+
+    def colormap_update(self, p_str):
 
         # resets the plot views
         if self.is_init:

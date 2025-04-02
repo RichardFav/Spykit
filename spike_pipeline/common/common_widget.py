@@ -11,7 +11,7 @@ from copy import deepcopy
 from skimage.measure import label, regionprops
 
 #
-from pyqtgraph import ViewBox, RectROI, InfiniteLine, ColorMap
+from pyqtgraph import ViewBox, RectROI, InfiniteLine, ColorMap, colormap
 
 # custom module import
 import spike_pipeline.common.common_func as cf
@@ -20,12 +20,12 @@ import spike_pipeline.common.common_func as cf
 from PyQt6.QtWidgets import (QWidget, QHBoxLayout, QGridLayout, QVBoxLayout, QPushButton, QGroupBox, QTabWidget,
                              QFormLayout, QLabel, QCheckBox, QLineEdit, QComboBox, QSizePolicy, QFileDialog,
                              QApplication, QTreeView, QFrame, QRadioButton, QAbstractItemView, QStylePainter,
-                             QStyleOptionComboBox, QStyle, QProxyStyle, QItemDelegate, QStyleOptionViewItem,
+                             QStyleOptionComboBox, QStyle, QProxyStyle, QItemDelegate, QTreeWidget, QTreeWidgetItem,
                              QHeaderView, QStyleOptionButton, QTableWidgetItem, QProgressBar, QSpacerItem)
 from PyQt6.QtCore import (Qt, QRect, QRectF, QMimeData, pyqtSignal, QItemSelectionModel, QAbstractTableModel,
                           QSizeF, QSize, QObject, QVariant, QTimeLine)
 from PyQt6.QtGui import (QFont, QDrag, QCursor, QStandardItemModel, QStandardItem, QPalette, QPixmap,
-                         QTextDocument, QAbstractTextDocumentLayout, QIcon, QLinearGradient)
+                         QTextDocument, QAbstractTextDocumentLayout, QIcon, QColor, QImage)
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -117,6 +117,11 @@ p_col_status = {
 
 # matplotlib colourmap strings
 cmap = {
+    # uniform sequential
+    'UniformSequential': [
+        'viridis', 'plasma', 'inferno', 'magma', 'cividis'
+    ],
+
     # sequential colour maps
     'Sequential': [
         'Greys', 'Purples', 'Blues', 'Greens', 'Oranges', 'Reds',
@@ -158,10 +163,6 @@ cmap = {
     ],
 }
 
-# widget dimensions
-x_gap = 5
-row_height = 16.5
-
 table_style = """
     QTableWidget {
         font: Arial 6px;
@@ -172,6 +173,23 @@ table_style = """
         font-weight: 1000;
     }
 """
+
+# widget dimensions
+x_gap = 5
+row_height = 16.5
+
+
+def create_font_obj(size=9, is_bold=False, font_weight=QFont.Weight.Normal):
+    # creates the font object
+    font = QFont()
+
+    # sets the font properties
+    font.setPointSize(size)
+    font.setBold(is_bold)
+    font.setWeight(font_weight)
+
+    # returns the font object
+    return font
 
 # ----------------------------------------------------------------------------------------------------------------------
 # SPECIAL WIDGETS
@@ -253,7 +271,7 @@ class QRegionConfig(QWidget):
             # sets the editbox widget properties
             obj_lbl_edit.obj_lbl.setAlignment(Qt.AlignmentFlag.AlignRight)
             obj_lbl_edit.obj_lbl.adjustSize()
-            obj_lbl_edit.obj_lbl.setStyleSheet("padding-left: 5px")
+            obj_lbl_edit.obj_lbl.setStyleSheet("padding-left: 5px; padding-top: 5px;")
 
             # sets the callback function
             cb_fcn_rc = functools.partial(self.edit_dim_update, ps)
@@ -267,10 +285,11 @@ class QRegionConfig(QWidget):
 
         # sets the label properties
         self.obj_lbl_combo.obj_lbl.setFixedWidth(80)
+        self.obj_lbl_combo.obj_lbl.setStyleSheet("padding-top: 5px;")
         self.obj_lbl_combo.connect(self.combo_update_trace)
 
         # region config widget setup
-        self.v_spacer = QSpacerItem(5, 0, cf.q_min, cf.q_max)
+        self.v_spacer = QSpacerItem(5, 0, cf.q_min, cf.q_exp)
 
         # trace index/colour fields
         self.i_trace = self.obj_lbl_combo.obj_cbox.currentIndex()
@@ -283,7 +302,7 @@ class QRegionConfig(QWidget):
         # REGION SELECTOR WIDGET SETUP ----------------------------------------
 
         # initialisations
-        self.gbox_rect = QRect(5, 0, 15, 15)
+        self.gbox_rect = QRect(5, 0, 10, 15)
 
         # creates the groupbox object
         self.obj_gbox = QGroupBox(cf.arr_chr(False))
@@ -1430,16 +1449,206 @@ class QFileSpec(QGroupBox):
 """
 
 
-class QColorMapChooser(QWidget):
-    def __init__(self, parent=None):
+class QColorLabel(QLabel):
+    # array class fields
+    n_rep = 21
+
+    def __init__(self, parent=None, c_map_name='viridis', name=None, n_pts=175):
+        super(QColorLabel, self).__init__(parent)
+
+        self.setObjectName(name)
+
+        # creates the image map
+        xi_c = np.linspace(0, 1, n_pts)
+        c_map = colormap.get(c_map_name, source="matplotlib")
+        image_map = c_map.mapToByte(xi_c)[:, :3]
+
+        # sets up the colormap image
+        image_data = np.zeros((self.n_rep, n_pts, 3), dtype=np.uint8)
+        for i in range(3):
+            image_data[:, :, i] = image_map[:, i]
+
+        self.setStyleSheet("border: 1px solid black;")
+
+        # sets image pixmap properties
+        lbl_image = QImage(bytes(image_data), n_pts, self.n_rep, 3 * n_pts, QImage.Format.Format_RGB888)
+        self.setPixmap(QPixmap(lbl_image))
+        self.setSizePolicy(QSizePolicy(cf.q_exp, cf.q_max))
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+"""
+    HTMLDelegate:
+"""
+
+
+class QColorMapChooser(QFrame):
+
+    # widget stylesheets
+    tree_style = """    
+        QTreeWidget {
+            font: Arial 8px;
+        }
+
+        QTreeWidget::item {
+            height: 23px;
+        }        
+
+        QTreeWidget::item:has-children {
+            background: #A0A0A0;
+            padding-left: 5px;
+            color: white;
+        }
+    """
+
+    # parameters
+    lbl_width = 55
+    item_row_size = 23
+    col_wid = 135
+
+    # font objects
+    gray_col = QColor(160, 160, 160, 255)
+    item_font = create_font_obj(9, True, QFont.Weight.Bold)
+    item_child_font = create_font_obj(8)
+
+    def __init__(self, parent=None, c_map='viridis', name=None):
         super(QColorMapChooser, self).__init__(parent)
+
+        if name is not None:
+            self.setObjectName(name)
+
+        # input arguments
+        self.c_map = c_map
+
+        # initialisations
+        self.n_grp, self.n_para = 0, 0
+        self.h_grp, self.h_para = {}, []
+        self.para_grp, self.grp_name = [], []
+        self.para_name0, self.para_name = [], []
+
+        # property sorting group widgets
+        self.main_layout = QVBoxLayout()
+        self.select_layout = QHBoxLayout()
+
+        # class widget setup
+        self.select_widget = QWidget()
+        self.tree_prop = QTreeWidget(self)
+        self.select_lbl = create_text_label(None, 'Colour Map:', font_lbl, align='right')
+        self.select_name = create_text_label(None, c_map, align='right')
+        self.select_colour = QColorLabel(None, c_map, n_pts=self.col_wid)
 
         # initialises the class fields
         self.init_class_fields()
 
+    # ---------------------------------------------------------------------------
+    # Class Widget Setup Functions
+    # ---------------------------------------------------------------------------
+
     def init_class_fields(self):
 
-        pass
+        # sets the widget properties
+        self.setLayout(self.main_layout)
+        self.setSizePolicy(QSizePolicy(cf.q_exp, cf.q_min))
+        self.setFrameStyle(QFrame.Shape.WinPanel | QFrame.Shadow.Plain)
+
+        # adds the tree widget to the parent widget
+        self.main_layout.setSpacing(x_gap)
+        self.main_layout.setContentsMargins(x_gap, x_gap, x_gap, x_gap)
+        self.select_layout.setSpacing(x_gap)
+        self.select_layout.setContentsMargins(0, 0, 0, 0)
+
+        # add the widgets to the main layout
+        self.main_layout.addWidget(self.select_widget)
+        self.main_layout.addWidget(self.tree_prop)
+
+        # add the widgets to the colourmap selection layout
+        self.select_widget.setLayout(self.select_layout)
+        self.select_layout.addWidget(self.select_lbl)
+        self.select_layout.addWidget(self.select_name)
+        self.select_layout.addWidget(self.select_colour)
+
+        #
+        self.select_name.setFixedWidth(self.lbl_width)
+        self.select_colour.setFixedWidth(self.col_wid)
+        self.select_lbl.setContentsMargins(0, 3, 0, 0)
+        self.select_name.setContentsMargins(0, 3, 0, 0)
+
+        # sets the tree-view properties
+        self.tree_prop.setLineWidth(1)
+        self.tree_prop.setColumnCount(2)
+        self.tree_prop.setIndentation(10)
+        self.tree_prop.setHeaderHidden(True)
+        self.tree_prop.setStyleSheet(self.tree_style)
+        self.tree_prop.setFrameStyle(QFrame.Shape.Box | QFrame.Shadow.Plain)
+        self.tree_prop.setAlternatingRowColors(False)
+        self.tree_prop.setItemDelegateForColumn(0, HTMLDelegate())
+        self.tree_prop.header().setStretchLastSection(True)
+
+        # initialises the tree fields
+        self.init_tree_fields()
+
+    def init_tree_fields(self):
+
+        for cm_type, cm_grp in cmap.items():
+            # creates the parent item
+            item = QTreeWidgetItem(self.tree_prop)
+
+            # sets the item properties
+            item.setText(0, cm_type)
+            item.setFont(0, self.item_font)
+            item.setFirstColumnSpanned(True)
+            item.setExpanded(True)
+
+            # adds the main group to the search widget
+            self.append_grp_obj(item, cm_type)
+
+            # adds the tree widget item
+            self.tree_prop.addTopLevelItem(item)
+            for cm in cm_grp:
+                # creates the property name field
+                item_ch, obj_prop = self.create_child_tree_item(cm)
+                item_ch.setTextAlignment(0, align_flag['right'] | align_flag['vcenter'])
+
+                # adds the child tree widget item
+                item.addChild(item_ch)
+                self.append_para_obj(item_ch, cm)
+
+                if obj_prop is not None:
+                    self.tree_prop.setItemWidget(item_ch, 1, obj_prop)
+
+    def create_child_tree_item(self, props):
+
+        # creates the tree widget item
+        item_ch = QTreeWidgetItem(None)
+        item_ch.setText(0, props)
+
+        # creates the colourmap label
+        h_obj = QColorLabel(None, props)
+        h_obj.setFixedHeight(self.item_row_size)
+
+        # returns the objects
+        return item_ch, h_obj
+
+    def append_grp_obj(self, item, group_str):
+
+        # increments the count
+        self.n_grp += 1
+
+        # appends the objects
+        self.h_grp[group_str] = item
+        self.grp_name.append(item.text(0))
+
+    def append_para_obj(self, item, group_name):
+
+        # increments the count
+        self.n_para += 1
+        p_name_s = re.sub(r'<[^>]*>|[&;]+', '', item.text(0))
+
+        # appends the objects
+        self.h_para.append(item)
+        self.para_name.append(p_name_s.lower())
+        self.para_name0.append(p_name_s)
+        self.para_grp.append(group_name)
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -2776,20 +2985,8 @@ def create_tab_group(parent, font=None, name=None):
     return h_tab_grp
 
 
-def create_font_obj(size=9, is_bold=False, font_weight=QFont.Weight.Normal):
-    # creates the font object
-    font = QFont()
-
-    # sets the font properties
-    font.setPointSize(size)
-    font.setBold(is_bold)
-    font.setWeight(font_weight)
-
-    # returns the font object
-    return font
-
-
 def setup_colour_map(n_lvl):
+
     p_rgb = []
     for i_lvl in range(n_lvl):
         p_hsv = (0.5 - (i_lvl / (2 * n_lvl)), 0.5, 0.5)

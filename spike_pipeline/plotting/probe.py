@@ -539,16 +539,18 @@ class ProbeView(GraphicsObject):
                 p.setBrush(mkBrush(self.c_col_hover))
                 p.drawPolygon(c_p)
 
-            # retrieves the channel fill colour
-            ch_status = self.session_info.get_channel_status(i_p)
+            if self.session_info is not None:
+                # retrieves the channel fill colour
+                if is_show[i_p]:
+                    # case is the contact is selected
+                    p.setBrush(mkBrush(self.c_col_selected))
+                    p.setPen(self.pen_sel)
 
-            if (self.session_info is not None) and is_show[i_p]:
-                # case is the contact is selected
-                p.setBrush(mkBrush(self.c_col_selected))
-                p.setPen(self.pen_sel)
+                else:
+                    ch_status = self.session_info.get_channel_status(i_p)
+                    p.setBrush(mkBrush(cw.p_col_status[ch_status]))
 
             # case is a normal polygon
-            p.setBrush(mkBrush(cw.p_col_status[ch_status]))
             p.drawPolygon(c_p)
 
         # ends the drawing
