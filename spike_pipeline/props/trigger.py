@@ -145,7 +145,7 @@ class TriggerPara(PropPara):
 class TriggerProps(PropWidget):
     # parameters
     pt_dur = 0.1
-    t_win_min = 5
+    pt_win_min = 0.05
 
     # array class fields
     xi_col = np.array([1, 2])
@@ -338,17 +338,18 @@ class TriggerProps(PropWidget):
         # pre-calculations
         i_run = self.get_run_index()
         t_dur = self.get_run_duration()
+        t_win_min = self.pt_win_min * t_dur
 
         if self.n_row == 1:
             # case is the first region
-            ind_row = [0, int(self.pt_dur * t_dur)]
+            ind_row = [0, t_win_min]
 
         else:
             # case is the other regions
             t_final = self.p_props[i_run].get(self.n_row - 2, 2)
             t_win = t_dur - t_final
 
-            if t_win < self.t_win_min:
+            if t_win < t_win_min:
                 # insufficient space available for new region
                 cf.show_error('Insufficient space for new trigger region.')
                 return None
@@ -356,7 +357,7 @@ class TriggerProps(PropWidget):
             else:
                 # determines the new region size
                 dt_win = int(self.pt_dur * t_win)
-                t_reg = np.max([self.t_win_min, dt_win])
+                t_reg = np.max([t_win_min, dt_win])
 
                 # calculates the new region start/finish times
                 t_ofs = np.min([t_win - t_reg, t_reg]) + t_final
@@ -411,7 +412,7 @@ class TriggerProps(PropWidget):
             if i_col == 0:
                 item.setText(str(int(c_val)))
             else:
-                item.setText(str(c_val))
+                item.setText('%g' % c_val)
 
             # adds the item to the table
             item.setTextAlignment(cf.align_type['center'])
@@ -504,7 +505,7 @@ class TriggerProps(PropWidget):
                 for i_col in range(1, self.p_props[i_run].t_arr.n_col):
                     item = self.table_region.item(i_reg, i_col)
                     item_val = self.p_props[i_run].get(i_reg, i_col)
-                    item.setText(str(item_val))
+                    item.setText('%g' % item_val)
 
                 # resets the update flag
                 self.is_updating = False

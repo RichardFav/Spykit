@@ -232,6 +232,8 @@ class MainWindow(QMainWindow):
         else:
             # case running session from OpenSession
             ch_status = session.bad_ch[0]
+            if ch_status is None:
+                return
 
         # updates the channel status flags
         channel_tab = self.info_manager.get_info_tab('channel')
@@ -377,8 +379,10 @@ class MainWindow(QMainWindow):
 
     def testing(self):
 
-        # f_file = 'C:/Work/Other Projects/EPhys Project/Data/z - session_files/test.ssf'
-        f_file = 'C:/Work/Other Projects/EPhys Project/Data/z - session_files/test_large.ssf'
+        f_file = 'C:/Work/Other Projects/EPhys Project/Data/z - session_files/test_tiny (run1_reduced).ssf'
+        # f_file = 'C:/Work/Other Projects/EPhys Project/Data/z - session_files/test_tiny.ssf'
+        # f_file = 'C:/Work/Other Projects/EPhys Project/Data/z - session_files/test_large.ssf'
+
         self.menu_bar.load_session(f_file)
 
 

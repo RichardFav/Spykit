@@ -333,7 +333,6 @@ class SessionObject(QObject):
 
         for i_run in range(n_run):
             # retrieves the raw session run object
-            t0 = time.time()
             ses_run = self.get_session_runs(i_run)
 
             # sets up the bad channel detection worker
@@ -394,7 +393,6 @@ class SessionObject(QObject):
 
         # memory allocation
         y_min, y_max = [], []
-        # hist_range = (-500, 500)
         sz_blk, n_bins, t_blk, n_ds = 150000, 100, 10, 10
 
         for probe in ses_run._raw.values():
@@ -439,7 +437,8 @@ class SessionObject(QObject):
         # if all runs have been detected, then run the signal function
         if np.all([x is not None for x in self.bad_ch]):
             self.data_init['bad'] = True
-            self.channel_calc.emit('bad', self)
+
+        self.channel_calc.emit('bad', self)
 
     def post_get_sync_channel(self, data):
 
@@ -449,7 +448,8 @@ class SessionObject(QObject):
         # if all runs have been detected, then run the signal function
         if np.all([x is not None for x in self.sync_ch]):
             self.data_init['sync'] = True
-            self.channel_calc.emit('sync', self)
+
+        self.channel_calc.emit('sync', self)
 
     def post_calc_trace_minmax(self, data):
 
@@ -460,7 +460,8 @@ class SessionObject(QObject):
         # if all runs have been detected, then run the signal function
         if np.all([x is not None for x in self.t_min_max]):
             self.data_init['minmax'] = True
-            self.channel_calc.emit('minmax', self)
+
+        self.channel_calc.emit('minmax', self)
 
     def set_sync_channel(self, sync_ch_data):
 

@@ -309,6 +309,7 @@ class PropManager(QWidget):
                 h_obj.select_name.setText(p_val)
                 h_obj.select_colour.setup_label_image(p_val)
 
+
 # ----------------------------------------------------------------------------------------------------------------------
 
 """
