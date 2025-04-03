@@ -11,7 +11,7 @@ import spike_pipeline.common.common_widget as cw
 # pyqt imports
 from PyQt6.QtWidgets import (QWidget, QLineEdit, QComboBox, QCheckBox, QPushButton, QSizePolicy, QVBoxLayout, QGroupBox,
                              QHBoxLayout, QFormLayout, QGridLayout, QColorDialog, QTableWidget, QTableWidgetItem)
-from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtCore import Qt, QObject, pyqtSignal
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -175,9 +175,9 @@ class PropManager(QWidget):
             p_props = deepcopy(p_tab.p_info['ch_fld'])
 
             # retrieves the parameter values
-            if isinstance(p_tab.p_props, list):
-                p_dict_full = [[getattr(x, k) for k in p_props] for x in p_tab.p_props]
-                p_dict_new = [dict(zip(p_props.keys(), x)) for x in p_dict_full]
+            if p_tab.p_props.n_run is not None:
+                dict_full = [[p_tab.get(k, i) for i in range(p_tab.p_props.n_run)] for k in p_props]
+                p_dict_new = dict(zip(p_props.keys(), dict_full))
 
             else:
                 p_dict_new = dict(zip(p_props.keys(), [p_tab.get(k) for k in p_props]))
@@ -197,15 +197,15 @@ class PropManager(QWidget):
 
             # retrieves the parameter values
             for p, v in p_tab.p_info['ch_fld'].items():
-                if isinstance(p_tab.p_props, list):
+                if p_tab.p_props.n_run is not None:
                     # case is multi-element property array
-                    for i_run in range(len(p_tab.p_props)):
+                    for i_run in range(p_tab.p_props.n_run):
                         # updates the parameter field
-                        p_tab.set_n(p, pv[i_run][p], i_run)
+                        p_tab.set_n(p, pv[p][i_run], i_run)
 
                         # updates the parameter object (if current run)
                         if i_run == self.get_run_index():
-                            self.reset_para_field(p_tab, p, v['type'], pv[i_run][p], i_run)
+                            self.reset_para_field(p_tab, p, v['type'], pv[p][i_run], i_run)
 
                 elif p in pv:
                     # case is a single-element property array
@@ -213,6 +213,33 @@ class PropManager(QWidget):
                     # resets the property parameter value
                     p_tab.set_n(p, pv[p])
                     self.reset_para_field(p_tab, p, v['type'], pv[p])
+
+            # property tab specific updates
+            match pt:
+                case 'general':
+                    # case is the general property tab
+                    p_tab.check_update()
+
+            # resets the update flag
+            p_tab.is_updating = False
+
+    def reset_run_para_fields(self):
+
+        # retrieves the run index
+        i_run = self.get_run_index()
+
+        # retrieves the parameter values for each info type
+        for p_tab in self.tabs:
+            # retrieves the property tab object and parameter fields
+            if p_tab.p_props.n_run is None:
+                continue
+
+            # flag that manual changes are being made
+            p_tab.is_updating = True
+
+            # resets the property values
+            for p, v in p_tab.p_info['ch_fld'].items():
+                self.reset_para_field(p_tab, p, v['type'], p_tab.get(p, i_run), i_run)
 
             # property tab specific updates
             match pt:
@@ -299,16 +326,14 @@ class PropManager(QWidget):
 
             case 'buttonpair':
                 # case is a button pair
-                p_tab.p_props[i_run].is_updating = True
-                setattr(p_tab.p_props[i_run], p_name, 0)
-                p_tab.p_props[i_run].is_updating = False
+                p_obj = getattr(p_tab.p_props, p_name)
+                p_obj[i_run] = 0
 
             case 'colormapchooser':
                 # case is the colourmap chooser
                 h_obj = p_tab.findChild(cw.QColorMapChooser, name=p_name)
                 h_obj.select_name.setText(p_val)
                 h_obj.select_colour.setup_label_image(p_val)
-
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -317,13 +342,44 @@ class PropManager(QWidget):
 """
 
 
-class PropPara(QWidget):
-    def __init__(self, prop_fld):
+class RunPropPara(object):
+
+    def __init__(self, prop_val, n_run):
+
+        self.p_val = np.repeat(prop_val, n_run).astype(object)
+
+    def __getitem__(self, index):
+
+        return self.p_val[index]
+
+    def __setitem__(self, index, value):
+
+        self.p_val[index] = value
+
+    def __repr__(self):
+
+        return repr(self.p_val)
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+"""
+    PropPara:
+"""
+
+
+class PropPara(QObject):
+    def __init__(self, prop_fld, n_run=None):
         super(PropPara, self).__init__()
 
-        for pf, pv in prop_fld.items():
-            setattr(self, pf, pv['value'])
+        self.n_run = n_run
 
+        if n_run is None:
+            for pf, pv in prop_fld.items():
+                setattr(self, pf, pv['value'])
+
+        else:
+            for pf, pv in prop_fld.items():
+                setattr(self, pf, RunPropPara(pv['value'], n_run))
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -746,40 +802,46 @@ class PropWidget(QWidget):
 
     def get(self, p_fld, i_run=None):
 
-        if isinstance(self.p_props, list):
+        if self.p_props.n_run is not None:
             if i_run is None:
                 i_run = self.get_run_index()
 
-            return getattr(self.p_props[i_run], p_fld)
+            p_obj = deepcopy(getattr(self.p_props, p_fld))
+            return p_obj[i_run]
 
         else:
             return getattr(self.p_props, p_fld)
 
     def set(self, p_fld, p_value, i_run=None):
 
-        if isinstance(self.p_props, list):
+        if self.p_props.n_run is not None:
             if i_run is None:
                 i_run = self.get_run_index()
 
-            setattr(self.p_props[i_run], p_fld, p_value)
+            p_obj = deepcopy(getattr(self.p_props, p_fld))
+            p_obj[i_run] = p_value
+            setattr(self.p_props, p_fld, p_obj)
 
         else:
             setattr(self.p_props, p_fld, p_value)
 
     def set_n(self, p_fld, p_value, i_run=None):
 
-        if isinstance(self.p_props, list):
+        # flag that manual updating is taking place
+        self.p_props.is_updating = True
+
+        if self.p_props.n_run is not None:
             if i_run is None:
                 i_run = self.get_run_index()
 
-            self.p_props[i_run].is_updating = True
-            setattr(self.p_props[i_run], p_fld, p_value)
-            self.p_props[i_run].is_updating = False
+            p_obj = getattr(self.p_props, p_fld)
+            p_obj[i_run] = p_value
 
         else:
-            self.p_props.is_updating = True
             setattr(self.p_props, p_fld, p_value)
-            self.p_props.is_updating = False
+
+        # resets the update flag
+        self.p_props.is_updating = False
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Methods

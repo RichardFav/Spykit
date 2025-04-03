@@ -199,6 +199,11 @@ class PlotManager(QWidget):
         plt_trace = self.plots[self.types['trace'] - 1]
         plt_trace.reset_trace_view(reset_limits)
 
+    def reset_trigger_views(self):
+
+        plt_trig = self.plots[self.types['trigger'] - 1]
+        plt_trig.reset_trig_view()
+
     def get_prop_views(self, c_id):
 
         # memory allocation

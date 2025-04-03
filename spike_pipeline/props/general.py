@@ -2,6 +2,7 @@
 import os
 import time
 import numpy as np
+from copy import deepcopy
 from functools import partial as pfcn
 
 # spike pipeline imports
@@ -30,9 +31,11 @@ class GeneralPara(PropPara):
     check_update = pyqtSignal()
     edit_update = pyqtSignal(str)
 
-    def __init__(self, p_info):
+    def __init__(self, p_info, n_run):
+        self.n_run = n_run
+
         self.is_updating = True
-        super(GeneralPara, self).__init__(p_info)
+        super(GeneralPara, self).__init__(p_info, n_run)
         self.is_updating = False
 
     # ---------------------------------------------------------------------------
@@ -81,7 +84,7 @@ class GeneralProps(PropWidget):
         super(GeneralProps, self).__init__(self.main_obj, 'general', self.p_info)
 
         # sets up the parameter fields
-        self.p_props = [GeneralPara(self.p_info['ch_fld']) for _ in range(self.n_run)]
+        self.p_props = GeneralPara(self.p_info['ch_fld'], self.n_run)
 
         # widget retrieval
         self.check_use_full = self.findChild(QCheckBox, name='use_full')
@@ -95,9 +98,8 @@ class GeneralProps(PropWidget):
     def init_other_class_fields(self):
 
         # connects the slot functions
-        for i_run in range(self.n_run):
-            self.p_props[i_run].edit_update.connect(self.edit_update)
-            self.p_props[i_run].check_update.connect(self.check_update)
+        self.p_props.edit_update.connect(self.edit_update)
+        self.p_props.check_update.connect(self.check_update)
 
         # updates the editbox values
         self.check_update()
@@ -110,7 +112,7 @@ class GeneralProps(PropWidget):
         # sets up the subgroup fields
         p_tmp = {
             'use_full': self.create_para_field('Use Full Experiment', 'checkbox', True),
-            't_start': self.create_para_field('Start Time (s)', 'edit', 0),
+            't_start': self.create_para_field('Start Time (s)', 'edit', 0.),
             't_finish': self.create_para_field('Finish Time (s)', 'edit', self.t_dur),
             't_dur': self.create_para_field('Duration (s)', 'edit', self.t_dur),
         }
@@ -126,26 +128,26 @@ class GeneralProps(PropWidget):
 
         # updates the editbox properties
         i_run = self.get_run_index()
-        self.edit_start.setEnabled(not self.p_props[i_run].use_full)
-        self.edit_finish.setEnabled(not self.p_props[i_run].use_full)
-        self.edit_dur.setEnabled(not self.p_props[i_run].use_full)
+        self.edit_start.setEnabled(not self.p_props.use_full[i_run])
+        self.edit_finish.setEnabled(not self.p_props.use_full[i_run])
+        self.edit_dur.setEnabled(not self.p_props.use_full[i_run])
 
         if self.is_init:
             # resets the start/finish duration fields
-            self.p_props[i_run].is_updating = True
+            self.p_props.is_updating = True
             if self.get('use_full', i_run):
                 # case is using the entire experiment
-                self.set('t_start', 0, i_run)
-                self.set('t_finish', self.t_dur, i_run)
+                self.set_n('t_start', 0., i_run)
+                self.set_n('t_finish', self.t_dur, i_run)
 
             else:
                 # case is using the partial experiment
-                self.set('t_start', float(self.edit_start.text()), i_run)
-                self.set('t_finish', float(self.edit_finish.text()), i_run)
+                self.set_n('t_start', float(self.edit_start.text()), i_run)
+                self.set_n('t_finish', float(self.edit_finish.text()), i_run)
 
             # updates the duration flag
-            self.set('t_dur', self.get('t_finish', i_run) - self.get('t_start', i_run), i_run)
-            self.p_props[i_run].is_updating = False
+            self.set_n('t_dur', self.get('t_finish', i_run) - self.get('t_start', i_run), i_run)
+            self.p_props.is_updating = False
 
             # resets the plot views
             self.reset_plot_views()
@@ -154,18 +156,18 @@ class GeneralProps(PropWidget):
 
         # flag that property values are being updated manually
         i_run = self.get_run_index()
-        self.p_props[i_run].is_updating = True
+        self.p_props.is_updating = True
 
         # updates the dependent field(s)
         fld_update = []
         match p_str:
             case p_str if p_str in ['t_start', 't_finish']:
                 fld_update = ['t_dur']
-                self.set('t_dur', self.get('t_finish', i_run) - self.get('t_start', i_run), i_run)
+                self.set_n('t_dur', self.get('t_finish', i_run) - self.get('t_start', i_run), i_run)
 
             case 't_dur':
                 fld_update = ['t_finish']
-                self.set('t_finish', self.get('t_start', i_run) + self.get('t_dur', i_run), i_run)
+                self.set_n('t_finish', self.get('t_start', i_run) + self.get('t_dur', i_run), i_run)
 
         # resets the parameter fields
         for pf in fld_update:
@@ -173,7 +175,7 @@ class GeneralProps(PropWidget):
             edit_obj.setText(str(self.get(pf)))
 
         # resets the property check flag
-        self.p_props[i_run].is_updating = False
+        self.p_props.is_updating = False
 
         # resets the plot views
         if self.is_init:

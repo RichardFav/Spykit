@@ -73,8 +73,8 @@ class MainWindow(QMainWindow):
         # sets the widget style sheets
         self.set_styles()
 
-        # REMOVE ME LATER
-        self.testing()
+        # # REMOVE ME LATER
+        # self.testing()
 
     # ---------------------------------------------------------------------------
     # Class Widget Setup Functions

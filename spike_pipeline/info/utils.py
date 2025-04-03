@@ -1,9 +1,9 @@
 # module imports
 import re
-import functools
 import numpy as np
 from copy import deepcopy
 from collections import ChainMap
+from functools import partial as pfcn
 
 # custom module imports
 import spike_pipeline.common.common_func as cf
@@ -130,7 +130,7 @@ class InfoManager(QWidget):
         self.table_layout.addWidget(self.tab_group_table)
 
         # sets up the slot function
-        cb_fcn = functools.partial(self.tab_change_table)
+        cb_fcn = pfcn(self.tab_change_table)
         self.tab_group_table.currentChanged.connect(cb_fcn)
         self.tab_group_table.setContentsMargins(0, 0, 0, 0)
 
@@ -147,15 +147,15 @@ class InfoManager(QWidget):
             match t_type:
                 case t_type if t_type in ['channel', 'unit']:
                     # connects the
-                    cb_fcn = functools.partial(self.header_check_update, t_lbl)
+                    cb_fcn = pfcn(self.header_check_update, t_lbl)
                     # tab_widget.set_check_update(cb_fcn)
                     tab_widget.table.horizontalHeader().check_update.connect(cb_fcn)
 
                     # performs tab specific updates
                     if t_type == 'channel':
                         # case is the channel tab
-                        tab_widget.data_change.connect(self.channel_combobox_update)
-                        tab_widget.run_change.connect(self.channel_combobox_update)
+                        tab_widget.data_change.connect(pfcn(self.channel_combobox_update, 'data'))
+                        tab_widget.run_change.connect(pfcn(self.channel_combobox_update, 'run'))
                         tab_widget.status_change.connect(self.channel_status_update)
                         tab_widget.set_update_flag.connect(self.update_flag_change)
 
@@ -176,15 +176,21 @@ class InfoManager(QWidget):
     # Channel Tab Event Functions
     # ---------------------------------------------------------------------------
 
-    def channel_combobox_update(self, tab_obj):
+    def channel_combobox_update(self, d_type, tab_obj):
 
         # if manually updating the combobox, then exit
         if self.is_updating:
             return
 
         # updates the current run flag
-        new_run = tab_obj.run_type.current_text()
-        self.main_obj.session_obj.set_current_run(new_run)
+        match d_type:
+            case 'run':
+                # resets the current run
+                new_run = tab_obj.run_type.current_text()
+                self.main_obj.session_obj.set_current_run(new_run)
+
+                # resets the run parameter fields
+                self.main_obj.prop_manager.reset_run_para_fields()
 
         # updates the current preprocessing data type
         if tab_obj.data_flds is not None:
@@ -192,7 +198,13 @@ class InfoManager(QWidget):
             self.main_obj.session_obj.set_prep_type(tab_obj.data_flds[i_data])
 
         # resets the trace view
-        self.main_obj.plot_manager.reset_trace_views(False)
+        match d_type:
+            case 'run':
+                self.main_obj.plot_manager.reset_trace_views(True)
+                # self.main_obj.plot_manager.reset_trig_views()
+
+            case 'data':
+                self.main_obj.plot_manager.reset_trace_views(False)
 
     def channel_status_update(self, tab_obj, is_filt):
 
@@ -287,7 +299,7 @@ class InfoManager(QWidget):
         # table_obj.resizeColumnsToContents()
 
         # sets the checkbox callback function
-        cb_fcn = functools.partial(self.table_cell_changed, t_type)
+        cb_fcn = pfcn(self.table_cell_changed, t_type)
         table_obj.cellChanged.connect(cb_fcn)
 
     def table_cell_changed(self, t_type, i_row_s, i_col):
@@ -760,7 +772,7 @@ class InfoWidgetPara(InfoWidget, SearchMixin):
                 layout.addRow(obj_edit)
 
                 # sets up the label/editbox slot function
-                cb_fcn = functools.partial(self.prop_update, p_str_p, is_sort)
+                cb_fcn = pfcn(self.prop_update, p_str_p, is_sort)
                 obj_edit.connect(cb_fcn)
 
             # case is a combobox
@@ -772,7 +784,7 @@ class InfoWidgetPara(InfoWidget, SearchMixin):
                 layout.addRow(obj_combo)
 
                 # sets up the slot function
-                cb_fcn = functools.partial(self.prop_update, p_str_p, is_sort)
+                cb_fcn = pfcn(self.prop_update, p_str_p, is_sort)
                 obj_combo.connect(cb_fcn)
                 obj_combo.obj_lbl.setStyleSheet('padding-top: 3 px;')
 
@@ -787,7 +799,7 @@ class InfoWidgetPara(InfoWidget, SearchMixin):
                 layout.addRow(obj_checkbox)
 
                 # sets up the slot function
-                cb_fcn = functools.partial(self.prop_update, p_str_p, is_sort, obj_checkbox)
+                cb_fcn = pfcn(self.prop_update, p_str_p, is_sort, obj_checkbox)
                 obj_checkbox.stateChanged.connect(cb_fcn)
 
     def prop_update(self, p_str, is_sort, h_obj):
@@ -921,7 +933,7 @@ class InfoWidgetPara(InfoWidget, SearchMixin):
 
         # initialisations
         lbl_str = '{0}'.format(props['name'])
-        cb_fcn_base = functools.partial(self.prop_update, p_name, False)
+        cb_fcn_base = pfcn(self.prop_update, p_name, False)
 
         # creates the tree widget item
         item_ch = QTreeWidgetItem(None)
@@ -958,7 +970,7 @@ class InfoWidgetPara(InfoWidget, SearchMixin):
                 h_obj.setSingleStep(step)
 
                 # sets the object callback functions
-                cb_fcn = functools.partial(cb_fcn_base, h_obj)
+                cb_fcn = pfcn(cb_fcn_base, h_obj)
                 h_obj.editingFinished.connect(cb_fcn)
                 h_obj.textChanged.connect(cb_fcn)
 
@@ -976,7 +988,7 @@ class InfoWidgetPara(InfoWidget, SearchMixin):
                 h_obj.setObjectName(p_name[-1])
 
                 # sets the object callback functions
-                cb_fcn = functools.partial(cb_fcn_base, h_obj)
+                cb_fcn = pfcn(cb_fcn_base, h_obj)
                 h_obj.currentIndexChanged.connect(cb_fcn)
 
             case 'checkbox':
@@ -989,7 +1001,7 @@ class InfoWidgetPara(InfoWidget, SearchMixin):
                 h_obj.setObjectName(p_name[-1])
 
                 # sets the object callback functions
-                cb_fcn = functools.partial(cb_fcn_base, h_obj)
+                cb_fcn = pfcn(cb_fcn_base, h_obj)
                 h_obj.clicked.connect(cb_fcn)
 
             case _:

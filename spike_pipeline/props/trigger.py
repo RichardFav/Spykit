@@ -2,6 +2,7 @@
 import os
 import time
 import numpy as np
+from copy import deepcopy
 from functools import partial as pfcn
 
 # spike pipeline imports
@@ -81,46 +82,46 @@ class TriggerPara(PropPara):
     # pyqtSignal functions
     pair_update = pyqtSignal()
 
-    def __init__(self, p_info):
-
-        self.t_arr = TableArray()
+    def __init__(self, p_info, n_run):
+        self.n_run = n_run
+        self.t_arr = [TableArray() for _ in range(n_run)]
 
         self.is_updating = True
-        super(TriggerPara, self).__init__(p_info)
+        super(TriggerPara, self).__init__(p_info, n_run)
         self.is_updating = False
 
     # ---------------------------------------------------------------------------
     #
     # ---------------------------------------------------------------------------
 
-    def add_row(self, nw_row):
+    def add_row(self, i_run, nw_row):
 
-        self.t_arr.add_row(nw_row)
-        self.region_index = self.t_arr.data
+        self.t_arr[i_run].add_row(nw_row)
+        self.region_index[i_run] = self.t_arr[i_run].data
 
-    def remove_row(self, i_row):
+    def remove_row(self, i_run, i_row):
 
-        self.t_arr.remove_row(i_row)
-        self.region_index = self.t_arr.data
+        self.t_arr[i_run].remove_row(i_row)
+        self.region_index = self.t_arr[i_run].data
 
-    def set(self, i_row, i_col, value):
+    def set(self, i_run, i_row, i_col, value):
 
-        self.t_arr.set(i_row, i_col, value)
-        self.region_index = self.t_arr.data
+        self.t_arr[i_run].set(i_row, i_col, value)
+        self.region_index = self.t_arr[i_run].data
 
-    def set_arr(self, i_row, i_col, values):
+    def set_arr(self, i_run, i_row, i_col, values):
 
         if i_row is None:
-            self.t_arr.data[:, i_col] = values
+            self.t_arr[i_run].data[:, i_col] = values
 
         else:
-            self.t_arr.data[i_row, i_col] = values
+            self.t_arr[i_run].data[i_row, i_col] = values
 
-        self.region_index = self.t_arr.data
+        self.region_index = self.t_arr[i_run].data
 
-    def get(self, i_row, i_col):
+    def get(self, i_run, i_row, i_col):
 
-        return self.t_arr.get(i_row, i_col)
+        return self.t_arr[i_run].get(i_row, i_col)
 
     # ---------------------------------------------------------------------------
     # Observable Property Event Callbacks
@@ -175,7 +176,7 @@ class TriggerProps(PropWidget):
         super(TriggerProps, self).__init__(self.main_obj, 'trigger', self.p_info)
 
         # memory allocation
-        self.p_props = [TriggerPara(self.p_info['ch_fld']) for _ in range(self.n_run)]
+        self.p_props = TriggerPara(self.p_info['ch_fld'], self.n_run)
 
         # widget field retrieval
         self.button_pair = self.findChild(cw.QButtonPair)
@@ -187,8 +188,7 @@ class TriggerProps(PropWidget):
     def init_other_class_fields(self):
 
         # connects the slot functions
-        for i_run in range(self.n_run):
-            self.p_props[i_run].pair_update.connect(self.pair_update)
+        self.p_props.pair_update.connect(self.pair_update)
 
         # resets the table properties
         n_col = len(self.c_hdr)
@@ -247,20 +247,20 @@ class TriggerProps(PropWidget):
         chk_val = cf.check_edit_num(item_sel.text(), min_val=t_min, max_val=t_max)
         if chk_val[1] is None:
             # updates the table data array
-            self.p_props[i_run].set(self.i_row_sel, self.i_col_sel, chk_val[0])
+            self.p_props.set(i_run, self.i_row_sel, self.i_col_sel, chk_val[0])
             self.trig_view.update_region(self.i_row_sel)
 
         else:
             # otherwise, reset the previous value
             self.is_updating = True
-            item_sel.setText('%g' % self.p_props[i_run].get(self.i_row_sel, self.i_col_sel))
+            item_sel.setText('%g' % self.p_props.get(i_run, self.i_row_sel, self.i_col_sel))
             self.is_updating = False
 
     def pair_update(self):
 
         # field retrieval
         i_run = self.get_run_index()
-        i_button = int(np.log2(abs(self.b_state - self.p_props[i_run].button_flag)))
+        i_button = int(np.log2(abs(self.b_state - self.p_props.button_flag[i_run])))
 
         # resets the table row count
         self.is_updating = True
@@ -288,7 +288,7 @@ class TriggerProps(PropWidget):
 
         # resets the button state
         self.is_updating = False
-        self.b_state = self.p_props[i_run].button_flag
+        self.b_state = self.p_props.button_flag[i_run]
 
     # ---------------------------------------------------------------------------
     # Setter Functions
@@ -302,7 +302,7 @@ class TriggerProps(PropWidget):
 
         # updates the table data
         i_run = self.get_run_index()
-        self.p_props[i_run].set(i_row, i_col, value)
+        self.p_props.set(i_run, i_row, i_col, value)
 
         # updates the table cell string
         self.is_updating = True
@@ -321,7 +321,7 @@ class TriggerProps(PropWidget):
 
     def get_table_row(self, i_row):
 
-        return self.p_props[self.get_run_index()].t_arr.data[i_row, :]
+        return self.p_props.t_arr[self.get_run_index()].data[i_row, :]
 
     def get_run_duration(self):
 
@@ -346,7 +346,7 @@ class TriggerProps(PropWidget):
 
         else:
             # case is the other regions
-            t_final = self.p_props[i_run].get(self.n_row - 2, 2)
+            t_final = self.p_props.get(i_run, self.n_row - 2, 2)
             t_win = t_dur - t_final
 
             if t_win < t_win_min:
@@ -376,19 +376,19 @@ class TriggerProps(PropWidget):
         # limit initialisation
         if self.i_col_sel == 1:
             # case is the lower limit is being altered
-            t_min, t_max = 0, self.p_props[i_run].get(self.i_row_sel, 2)
+            t_min, t_max = 0, self.p_props.get(i_run, self.i_row_sel, 2)
 
         else:
             # case is the upper limit is being altered
-            t_min, t_max = self.p_props[i_run].get(self.i_row_sel, 1), self.get_run_duration()
+            t_min, t_max = self.p_props.get(i_run, self.i_row_sel, 1), self.get_run_duration()
 
         if self.i_row_sel > 0:
             # case is the selected row is not the first
-            t_min = self.p_props[i_run].get(self.i_row_sel - 1, 2)
+            t_min = self.p_props.get(i_run, self.i_row_sel - 1, 2)
 
         if (self.i_row_sel + 1) < self.trig_view.n_reg_xs[i_run]:
             # case is the selected row is not the last
-            t_max = self.p_props[i_run].get(self.i_row_sel + 1, 1)
+            t_max = self.p_props.get(i_run, self.i_row_sel + 1, 1)
 
         return t_min, t_max
 
@@ -399,7 +399,7 @@ class TriggerProps(PropWidget):
     def add_region(self, i_run, nw_row):
 
         self.table_region.setRowCount(self.n_row)
-        self.p_props[i_run].add_row(nw_row)
+        self.p_props.add_row(i_run, nw_row)
         self.trig_view.add_region(nw_row)
 
         for i_col, c_val in enumerate(nw_row):
@@ -421,7 +421,7 @@ class TriggerProps(PropWidget):
     def delete_region(self, i_run, i_row):
 
         self.table_region.removeRow(i_row)
-        self.p_props[i_run].remove_row(i_row)
+        self.p_props.remove_row(i_run, i_row)
         self.trig_view.delete_region(i_row)
 
     # ---------------------------------------------------------------------------
@@ -436,10 +436,10 @@ class TriggerProps(PropWidget):
 
         # resets the table data
         i_run = self.get_run_index()
-        if self.p_props[i_run].region_index is None:
+        if self.p_props.region_index[i_run] is None:
             return
 
-        self.p_props[i_run].set_arr(None, self.xi_col, self.p_props[i_run].get(None, self.xi_col) - dt)
+        self.p_props.set_arr(i_run, None, self.xi_col, self.p_props.get(i_run, None, self.xi_col) - dt)
         self.time_shift_limits(i_run, t_dur)
 
         # for each remaining region, reset the region bounds/position
@@ -466,13 +466,13 @@ class TriggerProps(PropWidget):
     def time_shift_limits(self, i_run, t_dur):
 
         # field retrieval
-        n_reg = self.p_props[i_run].t_arr.n_row
+        n_reg = self.p_props.t_arr[i_run].n_row
 
         # resets the region limits so that they are feasible
         is_ok = np.ones(n_reg, dtype=bool)
         for i_reg in np.flip(range(n_reg)):
             # determines if regions are feasible wrt the start point
-            t_data0 = self.p_props[i_run].t_arr.data[i_reg, 1:]
+            t_data0 = self.p_props.t_arr[i_run].data[i_reg, 1:]
             s_feas = t_data0 >= 0
             if not np.any(s_feas):
                 # case is the region is infeasible
@@ -481,7 +481,7 @@ class TriggerProps(PropWidget):
             elif not np.all(s_feas):
                 # otherwise, reset the parameter values
                 t_data0 = np.maximum(0, t_data0)
-                self.p_props[i_run].set_arr(i_reg, self.xi_col, t_data0)
+                self.p_props.set_arr(i_run, i_reg, self.xi_col, t_data0)
 
             # determines if regions are feasible wrt the start point
             f_feas = t_data0 <= t_dur
@@ -492,7 +492,7 @@ class TriggerProps(PropWidget):
             elif not np.all(f_feas):
                 # otherwise, reset the parameter values
                 t_data0 = np.minimum(t_dur, t_data0)
-                self.p_props[i_run].set_arr(i_reg, self.xi_col, t_data0)
+                self.p_props.set_arr(i_run, i_reg, self.xi_col, t_data0)
 
             # if the region is infeasible, then remove it
             if not is_ok[i_reg]:
@@ -502,9 +502,9 @@ class TriggerProps(PropWidget):
                 # flag that manual field updating is taking place
                 self.is_updating = True
 
-                for i_col in range(1, self.p_props[i_run].t_arr.n_col):
+                for i_col in range(1, self.p_props.t_arr[i_run].n_col):
                     item = self.table_region.item(i_reg, i_col)
-                    item_val = self.p_props[i_run].get(i_reg, i_col)
+                    item_val = self.p_props.get(i_run, i_reg, i_col)
                     item.setText('%g' % item_val)
 
                 # resets the update flag
@@ -512,4 +512,4 @@ class TriggerProps(PropWidget):
 
         if any(np.logical_not(is_ok)):
             xi_c = np.array(range(sum(is_ok)))
-            self.p_props[i_run].set_arr(None, 0, xi_c + 1)
+            self.p_props.set_arr(i_run, None, 0, xi_c + 1)
