@@ -166,9 +166,13 @@ class SessionWorkBook(QObject):
     # Miscellaneous Functions
     # ---------------------------------------------------------------------------
 
-    def toggle_channel_flag(self, i_channel, state=1):
+    def toggle_channel_flag(self, i_channel, state=1, is_keep=False):
 
-        self.channel_data.toggle_channel_flag(i_channel, state)
+        if is_keep:
+            self.channel_data.toggle_keep_flag(i_channel, state)
+
+        else:
+            self.channel_data.toggle_select_flag(i_channel, state)
 
     def reset_session(self, ses_data):
 
@@ -605,7 +609,7 @@ class ChannelData:
         self.is_selected = np.zeros(self.n_channel, dtype=bool)
         self.is_keep = np.ones(self.n_channel, dtype=bool)
 
-    def toggle_channel_flag(self, i_channel, state):
+    def toggle_select_flag(self, i_channel, state):
 
         if not isinstance(i_channel, list):
             i_channel = [i_channel]
@@ -620,6 +624,22 @@ class ChannelData:
 
                 case 2:
                     self.is_selected[i_ch] = True
+
+    def toggle_keep_flag(self, i_channel, state):
+
+        if not isinstance(i_channel, list):
+            i_channel = [i_channel]
+
+        for i_ch in i_channel:
+            match state:
+                case 0:
+                    self.is_keep[i_ch] = False
+
+                case 1:
+                    self.is_keep[i_ch] ^= True
+
+                case 2:
+                    self.is_keep[i_ch] = True
 
     def set_filter_flag(self, is_filt_new):
 

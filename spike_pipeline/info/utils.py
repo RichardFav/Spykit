@@ -310,7 +310,7 @@ class InfoManager(QWidget):
 
         # retrieves the table widget
         table_obj = self.get_table_widget(t_type)
-        i_row = int(table_obj.item(i_row_s, 2).text())
+        i_row = int(table_obj.item(i_row_s, 3).text())
         self.update()
 
         match t_type.lower():
@@ -318,6 +318,21 @@ class InfoManager(QWidget):
                 # case is the channel information tab
                 if i_col == 0:
                     self.channel_check.emit(i_row)
+
+                elif i_col == 1:
+                    self.session_obj.toggle_channel_flag(i_row, is_keep=True)
+
+                    ch_tab = self.main_obj.info_manager.get_info_tab('channel')
+                    self.is_updating = True
+
+                    if self.main_obj.session_obj.get_keep_channels()[i_row]:
+                        c_status = self.main_obj.session_obj.get_channel_status(i_row)
+                        ch_tab.set_table_row_colour(i_row, c_status)
+
+                    else:
+                        ch_tab.set_table_row_colour(i_row, 'rejected')
+
+                    self.is_updating = False
 
             case 'unit':
                 # case is the unit information tab

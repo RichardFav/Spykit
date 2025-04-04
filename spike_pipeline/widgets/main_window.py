@@ -239,7 +239,7 @@ class MainWindow(QMainWindow):
 
         # updates the channel status flags
         channel_tab = self.info_manager.get_info_tab('channel')
-        channel_tab.update_channel_status(ch_status[0][1])
+        channel_tab.update_channel_status(ch_status[0][1], self.session_obj.get_keep_channels())
 
         # resets the status button toggle value (if pressed)
         status_tab = self.info_manager.get_info_tab('status')
@@ -305,7 +305,7 @@ class MainWindow(QMainWindow):
 
     def update_channel(self, i_row):
 
-        self.session_obj.toggle_channel_flag(i_row)
+        self.session_obj.toggle_channel_flag(i_row, is_keep=False)
         self.plot_manager.reset_probe_views()
         self.plot_manager.reset_trace_views()
 

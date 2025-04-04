@@ -26,6 +26,7 @@ class ChannelInfoTab(InfoWidget):
         'dead': cf.get_colour_value('r', 128),
         'noise': cf.get_colour_value('dg', 128),
         'out': cf.get_colour_value('y', 128),
+        'rejected': cf.get_colour_value('k', 128),
     }
 
     # other parameters
@@ -120,7 +121,7 @@ class ChannelInfoTab(InfoWidget):
         # resets the update flag
         self.is_updating = False
 
-    def update_channel_status(self, ch_status):
+    def update_channel_status(self, ch_status, is_keep):
 
         # initialisations
         self.is_updating = True
@@ -129,7 +130,7 @@ class ChannelInfoTab(InfoWidget):
         # updates the table with the new information
         for i_row, c_stat in enumerate(ch_status):
             item = self.table.item(i_row, self.i_status_col)
-            self.set_table_row_colour(i_row, c_stat)
+            self.set_table_row_colour(i_row, c_stat if is_keep[i_row] else 'rejected')
             item.setText(c_stat)
 
         # resets the status filter
