@@ -73,8 +73,8 @@ class MainWindow(QMainWindow):
         # sets the widget style sheets
         self.set_styles()
 
-        # # REMOVE ME LATER
-        # self.testing()
+        # REMOVE ME LATER
+        self.testing()
 
     # ---------------------------------------------------------------------------
     # Class Widget Setup Functions
@@ -384,6 +384,7 @@ class MainWindow(QMainWindow):
         f_file = 'C:/Work/Other Projects/EPhys Project/Data/z - session_files/test_tiny (run1_reduced).ssf'
         # f_file = 'C:/Work/Other Projects/EPhys Project/Data/z - session_files/test_tiny.ssf'
         # f_file = 'C:/Work/Other Projects/EPhys Project/Data/z - session_files/test_large.ssf'
+        f_file = 'C:/Work/Other Projects/EPhys Project/Data/z - session_files/Moo.ssf'
 
         self.menu_bar.load_session(f_file)
 
@@ -554,6 +555,10 @@ class MenuBar(QObject):
 
         # field retrieval
         channel_data = ses_data['channel_data']
+
+        # resets the trace start time to 0
+        ses_data['prop_para']['trace']['t_start'] = 0
+        ses_data['prop_para']['trace']['t_finish'] = ses_data['prop_para']['trace']['t_span']
 
         # creates the session data
         self.main_obj.session_obj.reset_session(ses_data)

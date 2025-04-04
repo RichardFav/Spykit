@@ -14,6 +14,7 @@ from PyQt6.QtCore import Qt, QSize, QRect, pyqtSignal, pyqtBoundSignal, QObject
 # spikewrap modules
 import spikewrap as sw
 import spikeinterface as si
+from spikeinterface.preprocessing import depth_order
 
 # custom module import
 import spike_pipeline.common.common_func as cf
@@ -71,9 +72,11 @@ class SessionWorkBook(QObject):
 
         return self.channel_data.is_keep
 
-    def get_channel_ids(self, i_ch=None):
+    def get_channel_ids(self, i_ch=None, is_sorted=None):
 
         probe_rec = self.get_current_recording_probe()
+        if is_sorted:
+            probe_rec = depth_order(probe_rec)
 
         if i_ch is None:
             return probe_rec.channel_ids
@@ -131,9 +134,11 @@ class SessionWorkBook(QObject):
 
         return self.session.get_prep_data_names(self.current_run, self.current_ses)
 
-    def get_channel_location(self, i_channel):
+    def get_channel_location(self, i_channel, probe=None):
 
-        probe = self.get_current_recording_probe()
+        if probe is None:
+            probe = self.get_current_recording_probe()
+
         return probe.get_channel_locations()[i_channel]
 
     def get_channel_status(self, i_channel):

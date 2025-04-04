@@ -200,11 +200,11 @@ class InfoManager(QWidget):
         # resets the trace view
         match d_type:
             case 'run':
-                self.main_obj.plot_manager.reset_trace_views(True)
+                self.main_obj.plot_manager.reset_trace_views(1)
                 self.main_obj.plot_manager.reset_trig_views()
 
             case 'data':
-                self.main_obj.plot_manager.reset_trace_views(False)
+                self.main_obj.plot_manager.reset_trace_views(2)
 
     def channel_status_update(self, tab_obj, is_filt):
 

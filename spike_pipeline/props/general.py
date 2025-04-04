@@ -204,6 +204,7 @@ class GeneralProps(PropWidget):
     def reset_plot_views(self):
 
         if self.trace_view is not None:
+            self.trace_view.t_start_ofs = self.get('t_start')
             self.trace_view.reset_gen_props()
 
         if self.trig_view is not None:

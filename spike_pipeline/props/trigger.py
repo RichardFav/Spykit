@@ -438,18 +438,15 @@ class TriggerProps(PropWidget):
     # Miscellaneous Functions
     # ---------------------------------------------------------------------------
 
-    def reset_region_timing(self, t_dur, dt):
+    def reset_region_timing(self, t_dur):
 
-        # if there is no change in time, then exit
-        if dt == 0:
-            return
-
-        # resets the table data
+        # determines if any trigger region exist for the current run
         i_run = self.get_run_index()
         if self.p_props.region_index[i_run] is None:
             return
 
-        self.p_props.set_arr(i_run, None, self.xi_col, self.p_props.get(i_run, None, self.xi_col) - dt)
+        # updates the properties and time-shifts the durationss
+        self.p_props.set_arr(i_run, None, self.xi_col, self.p_props.get(i_run, None, self.xi_col))
         self.time_shift_limits(i_run, t_dur)
 
         # for each remaining region, reset the region bounds/position

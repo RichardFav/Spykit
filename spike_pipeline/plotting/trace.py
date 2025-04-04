@@ -195,6 +195,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.l_reg_y = None
         self.i_sel_tr = None
         self.frame_img = None
+        self.plot_ch_ids = None
         self.image_item = ImageItem()
         self.ximage_item = ImageItem()
         self.yimage_item = ImageItem()
@@ -381,17 +382,20 @@ class TracePlot(TraceLabelMixin, PlotWidget):
     # Property Reset/Update Functions
     # ---------------------------------------------------------------------------
 
-    def reset_trace_props(self):
+    def reset_trace_props(self, p_str):
 
         # class field updates
         self.x_window = self.trace_props.get('t_span')
-        self.t_lim = [self.trace_props.get('t_start'), self.trace_props.get('t_finish')]
         self.c_lim_lo = self.trace_props.get('c_lim_lo')
         self.c_lim_hi = self.trace_props.get('c_lim_hi')
+        self.t_lim = [self.trace_props.get('t_start'), self.trace_props.get('t_finish')]
 
         # resets the plot view axis
         self.v_box[0, 0].setXRange(self.t_lim[0], self.t_lim[1], padding=0)
-        self.reset_trace_view(reset_limits=False)
+        self.reset_trace_view(reset_type=1)
+
+        if self.hm_roi is not None:
+            self.hm_roi.setPos(self.t_lim)
 
         # resets the plot item visibility
         self.reset_colour_map()
@@ -466,9 +470,10 @@ class TracePlot(TraceLabelMixin, PlotWidget):
     # Other Reset Functions
     # ---------------------------------------------------------------------------
 
-    def reset_trace_view(self, reset_limits=True):
+    def reset_trace_view(self, reset_type=0):
 
         # retrieves the currently selected channels
+        depth_sort = self.trace_props.get('sort_by') == 'Depth'
         i_channel = self.session_info.get_selected_channels()
         is_map = self.get_plot_mode(len(i_channel))
         self.n_plt = len(i_channel)
@@ -486,11 +491,11 @@ class TracePlot(TraceLabelMixin, PlotWidget):
                 return
 
             # sets up the y-data array
-            ch_ids = self.session_info.get_channel_ids(i_channel)
+            self.plot_ch_ids = self.session_info.get_channel_ids(i_channel, depth_sort)
             y0 = self.session_info.get_traces(
                 start_frame=i_frm0,
                 end_frame=i_frm1,
-                channel_ids=ch_ids,
+                channel_ids=self.plot_ch_ids,
                 return_scaled=self.trace_props.get('scale_signal'),
             )
 
@@ -555,7 +560,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.plot_item.setClipToView(True)
 
         # resets the y-axis range
-        if reset_limits:
+        if reset_type == 0:
             self.reset_yaxis_limits()
 
         # updates the plot labels
@@ -594,13 +599,13 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
         # updates the crosshair position
         y_mlt = self.n_plt / self.y_lim_tr
-        i_row = int(np.floor(m_pos.y() * y_mlt))
+        i_row = np.min([int(np.floor(m_pos.y() * y_mlt)), len(i_channel) - 1])
 
         # updates the text label
         self.reset_heatmap_label(m_pos, i_channel[i_row])
 
         # resets the ROI position
-        self.hm_roi.setPos(0, i_row / y_mlt)
+        self.hm_roi.setPos(self.t_lim[0], i_row / y_mlt)
         self.hm_roi.setSize(QPointF(self.x_window, self.y_lim_tr / self.n_plt))
 
     def reset_heatmap_label(self, m_pos, i_channel):
@@ -703,6 +708,9 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.l_reg_x.setRegion(self.t_lim)
         self.l_reg_y.setRegion(100 * np.array(self.y_lim) / self.y_lim_tr)
 
+        if self.hm_roi is not None:
+            self.hm_roi.setPos([0, self.t_lim[0]])
+
         # updates the labels (if currently displaying)
         if self.is_show:
             self.update_labels()
@@ -768,6 +776,9 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.v_box[0, 0].setXRange(self.t_lim[0], self.t_lim[1], padding=0)
         self.update_trace_props()
         self.reset_trace_view(False)
+
+        if self.hm_roi is not None:
+            self.hm_roi.setPos([0, self.t_lim[0]])
 
         # updates the labels (if currently displaying)
         if self.is_show:

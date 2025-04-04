@@ -61,6 +61,7 @@ class TracePara(PropPara):
     t_span = cf.ObservableProperty(pfcn(_edit_update, 't_span'))
     c_lim_lo = cf.ObservableProperty(pfcn(_edit_update, 'c_lim_lo'))
     c_lim_hi = cf.ObservableProperty(pfcn(_edit_update, 'c_lim_hi'))
+    sort_by = cf.ObservableProperty(pfcn(_combo_update, 'sort_by'))
     scale_signal = cf.ObservableProperty(pfcn(_check_update, 'scale_signal'))
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -76,6 +77,7 @@ class TraceProps(PropWidget):
 
     # parameters
     t_span0 = 0.1
+    sort_list = ['Depth', 'Channel ID']
     plot_list = ['Trace', 'Heatmap', 'Auto']
 
     def __init__(self, main_obj):
@@ -124,6 +126,7 @@ class TraceProps(PropWidget):
             't_span': self.create_para_field('Duration (s)', 'edit', self.t_span0),
             'c_lim_lo': self.create_para_field('Lower Colour Limit', 'edit', -200),
             'c_lim_hi': self.create_para_field('Upper Colour Limit', 'edit', 200),
+            'sort_by': self.create_para_field('Sort Signals By', 'combobox', self.sort_list[0], p_list=self.sort_list),
             'scale_signal': self.create_para_field('Scale Signals', 'checkbox', True),
             'c_map': self.create_para_field('Colormap', 'colormapchooser', 'viridis'),
         }
@@ -145,22 +148,22 @@ class TraceProps(PropWidget):
         match p_str:
             case 't_start':
                 fld_update = ['t_finish']
-                self.set('t_finish', self.get('t_start') + self.get('t_span'))
+                self.set_n('t_finish', self.get('t_start') + self.get('t_span'))
 
             case 't_finish':
                 fld_update = ['t_start']
-                self.set('t_start', self.get('t_finish') - self.get('t_span'))
+                self.set_n('t_start', self.get('t_finish') - self.get('t_span'))
 
             case 't_span':
                 if (self.t_dur - self.get('t_start')) < self.get('t_span'):
                     # case is the span can't fit within the signal
-                    self.set('t_finish', self.t_dur)
-                    self.set('t_start', self.t_dur - self.get('t_span'))
+                    self.set_n('t_finish', self.t_dur)
+                    self.set_n('t_start', self.t_dur - self.get('t_span'))
                     fld_update = ['t_start', 't_finish']
 
                 else:
                     fld_update = ['t_finish']
-                    self.set('t_finish', self.get('t_start') + self.get('t_span'))
+                    self.set_n('t_finish', self.get('t_start') + self.get('t_span'))
 
         # resets the parameter fields
         for pf in fld_update:
@@ -172,25 +175,25 @@ class TraceProps(PropWidget):
 
         # resets the plot views
         if self.is_init:
-            self.reset_trace_props()
+            self.reset_trace_props(p_str)
 
     def combo_update(self, p_str):
 
         # resets the plot views
         if self.is_init:
-            self.reset_trace_props()
+            self.reset_trace_props(p_str)
 
     def check_update(self, p_str):
 
         # resets the plot views
         if self.is_init:
-            self.reset_trace_props()
+            self.reset_trace_props(p_str)
 
     def colormap_update(self, p_str):
 
         # resets the plot views
         if self.is_init:
-            self.reset_trace_props()
+            self.reset_trace_props(p_str)
 
     def colour_selected(self, c_map_new):
 
@@ -209,7 +212,7 @@ class TraceProps(PropWidget):
     # Plot View Update Functions
     # ---------------------------------------------------------------------------
 
-    def reset_trace_props(self):
+    def reset_trace_props(self, p_str):
 
         if self.trace_view is not None:
-            self.trace_view.reset_trace_props()
+            self.trace_view.reset_trace_props(p_str)
