@@ -15,6 +15,7 @@ from PyQt6.QtCore import Qt, QSize, QRect, pyqtSignal, pyqtBoundSignal, QObject
 import spikewrap as sw
 import spikeinterface as si
 from spikeinterface.preprocessing import depth_order
+from spikeinterface.core import order_channels_by_depth
 
 # custom module import
 import spike_pipeline.common.common_func as cf
@@ -63,9 +64,11 @@ class SessionWorkBook(QObject):
     # Getter Functions
     # ---------------------------------------------------------------------------
 
-    def get_channel_info(self):
+    def get_channel_info(self, probe=None):
 
-        probe = self.get_current_recording_probe().get_probe()
+        if probe is None:
+            probe = self.get_current_recording_probe().get_probe()
+
         return probe.to_dataframe(complete=True)
 
     def get_keep_channels(self):
@@ -78,11 +81,14 @@ class SessionWorkBook(QObject):
         if is_sorted:
             probe_rec = depth_order(probe_rec)
 
+        #
+        dev_id = np.asarray(self.get_channel_info(probe_rec.get_probe())['device_channel_indices'])
+
         if i_ch is None:
-            return probe_rec.channel_ids
+            return probe_rec.channel_ids, dev_id
 
         else:
-            return probe_rec.channel_ids[i_ch]
+            return probe_rec.channel_ids[i_ch], dev_id[i_ch]
 
     def get_traces(self, probe_rec=None, **kwargs):
 
@@ -613,6 +619,9 @@ class ChannelData:
         self.is_filt = np.ones(self.n_channel, dtype=bool)
         self.is_selected = np.zeros(self.n_channel, dtype=bool)
         self.is_keep = np.ones(self.n_channel, dtype=bool)
+
+        # determines the channel depth ordering
+        self.i_sort, self.i_sort_rev = order_channels_by_depth(probe_rec)
 
     def toggle_select_flag(self, i_channel, state):
 

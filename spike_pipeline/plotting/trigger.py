@@ -398,7 +398,7 @@ class TriggerPlot(PlotWidget):
                 self.t_lim[1] = self.t_dur
 
             # resets the region times
-            self.trig_props.reset_region_timing(self.t_dur)
+            self.trig_props.reset_region_timing(self.t_dur, dt_start_ofs)
 
         else:
             self.t_lim = [0, self.t_dur]
