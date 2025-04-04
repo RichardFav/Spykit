@@ -1,6 +1,7 @@
 # module import
 import functools
 import numpy as np
+from functools import partial as pfcn
 
 # pyqt6 module import
 from PyQt6.QtCore import QRectF, QPointF, pyqtSignal, Qt
@@ -58,8 +59,8 @@ class ProbePlot(PlotWidget):
         self.sub_view = None
         self.vb_sub = None
         self.sub_xhair = None
-        self.sub_label = None
-        self.out_label = None
+        # self.sub_label = None
+        # self.out_label = None
 
         # other class fields
         self.i_status = 1
@@ -95,11 +96,6 @@ class ProbePlot(PlotWidget):
         # main class fields
         self.probe_rec = self.session_info.get_current_recording_probe()
 
-        # adds the contact text label
-        self.sub_label = TextItem(color=(0, 0, 0, 255), fill=(255, 255, 255, 255), ensureInBounds=True)
-        self.sub_label.setVisible(False)
-        self.h_plot[1, 0].addItem(self.sub_label)
-
         # sets the inset mouse drag properties
         self.v_box[1, 0].drawing_finished.connect(self.inset_mouse_release)
 
@@ -120,17 +116,17 @@ class ProbePlot(PlotWidget):
 
         # sets the main probe view properties
         self.h_plot[0, 0].addItem(self.main_view)
-        self.h_plot[0, 0].scene().sigMouseMoved.connect(self.main_mouse_move)
+        self.h_plot[0, 0].scene().sigMouseMoved.connect(pfcn(self.view_mouse_move, True))
+        self.h_plot[0, 0].enterEvent = pfcn(self.enter_view, True)
+        self.h_plot[0, 0].leaveEvent = pfcn(self.leave_view, True)
         self.main_view.update_roi.connect(self.main_roi_moved)
         self.main_view.reset_axes_limits(False)
 
         # sets the inset probe view properties
         self.h_plot[1, 0].addItem(self.sub_view)
-        self.h_plot[1, 0].scene().sigMouseMoved.connect(self.sub_mouse_move)
-
-        # resets the plot enter/leave events
-        self.h_plot[1, 0].enterEvent = self.enter_sub_view
-        self.h_plot[1, 0].leaveEvent = self.leave_sub_view
+        self.h_plot[1, 0].scene().sigMouseMoved.connect(pfcn(self.view_mouse_move, False))
+        self.h_plot[1, 0].enterEvent = pfcn(self.enter_view, False)
+        self.h_plot[1, 0].leaveEvent = pfcn(self.leave_view, False)
 
         # create the main view ROI
         self.main_view.create_inset_roi(is_full=False)
@@ -143,13 +139,17 @@ class ProbePlot(PlotWidget):
     # Inset View Mouse Event Functions
     # ---------------------------------------------------------------------------
 
-    def enter_sub_view(self, *_):
+    def enter_view(self, is_main, *_):
 
         pass
 
-    def leave_sub_view(self, *_):
+    def leave_view(self, is_main, *_):
 
-        self.sub_label.setVisible(False)
+        if is_main:
+            self.main_view.ch_label.setVisible(False)
+
+        else:
+            self.main_view.ch_label.setVisible(False)
 
     def inset_mouse_release(self, rect):
 
@@ -239,44 +239,21 @@ class ProbePlot(PlotWidget):
         # resets the axis limits
         self.sub_view.reset_axes_limits(False)
 
-    def main_mouse_move(self, p_pos):
+    def view_mouse_move(self, is_main_view, p_pos):
+
+        # view-dependent field retrieval
+        vb = self.v_box[1 - int(is_main_view), 0]
+        p_view = self.main_view if is_main_view else self.sub_view
 
         # updates the crosshair position
-        m_pos = self.v_box[0, 0].mapSceneToView(p_pos)
+        m_pos = vb.mapSceneToView(p_pos)
 
-        if (self.main_view.y_out is not None) and self.show_out:
-            dy_out = np.abs(m_pos.y() - self.main_view.y_out)
+        if (p_view.y_out is not None) and self.show_out:
+            dy_out = np.abs(m_pos.y() - p_view.y_out)
             if dy_out < self.y_out_dist:
                 # calculates the label x/y-offsets
-                dx_pos, dy_pos = self.convert_coords(True)
-
-                # resets the y-label offset (if near the top)
-                if (m_pos.y() + self.pw_y * dy_pos) > self.main_view.y_lim[1]:
-                    dy_pos = 0
-
-                # resets the x-label offset (if near the right-side)
-                if (m_pos.x() + self.pw_x * dx_pos) < self.main_view.y_lim[1]:
-                    dx_pos = 0
-
-                # resets the label visibility/position
-                self.main_view.out_label.setVisible(True)
-                self.main_view.out_label.setPos(m_pos + QPointF(-dx_pos, dy_pos))
-
-            else:
-                # resets the label visibility
-                self.main_view.out_label.setVisible(False)
-
-    def sub_mouse_move(self, p_pos):
-
-        # updates the crosshair position
-        m_pos = self.v_box[1, 0].mapSceneToView(p_pos)
-
-        if (self.sub_view.y_out is not None) and self.show_out:
-            dy_out = np.abs(m_pos.y() - self.sub_view.y_out)
-            if dy_out < self.y_out_dist:
-                # calculates the label x/y-offsets
-                ax_rng = self.v_box[1, 0].viewRange()
-                dx_pos, dy_pos = self.convert_coords(False, True)
+                ax_rng = vb.viewRange()
+                dx_pos, dy_pos = self.convert_coords(is_main_view, True)
 
                 # resets the y-label offset (if near the top)
                 if (m_pos.y() + self.pw_y * dy_pos) > ax_rng[1][1]:
@@ -287,32 +264,32 @@ class ProbePlot(PlotWidget):
                     dx_pos = 0
 
                 # resets the label visibility/position
-                self.sub_view.out_label.setVisible(True)
-                self.sub_view.out_label.setPos(m_pos + QPointF(-dx_pos, dy_pos))
+                p_view.out_label.setVisible(True)
+                p_view.out_label.setPos(m_pos + QPointF(-dx_pos, dy_pos))
                 return
 
             else:
                 # resets the label visibility
-                self.sub_view.out_label.setVisible(False)
+                p_view.out_label.setVisible(False)
 
-        i_contact = self.sub_view.inside_polygon_single(m_pos)
+        i_contact = p_view.inside_polygon_single(m_pos)
         if i_contact is not None:
-            if self.sub_view.i_sel_contact is None:
-                self.sub_view.i_sel_contact = i_contact
-                self.sub_view.create_probe_plot()
+            if p_view.i_sel_contact is None:
+                p_view.i_sel_contact = i_contact
+                p_view.create_probe_plot()
 
                 # if the contact is selected, then reset the channel highlight
                 if self.session_info.channel_data.is_selected[i_contact]:
                     self.reset_highlight.emit(True, i_contact)
 
                 # updates the label properties
-                self.sub_label.setVisible(True)
-                self.sub_label.setText(self.setup_label_text(i_contact))
-                self.sub_label.update()
+                p_view.ch_label.setVisible(True)
+                p_view.ch_label.setText(self.setup_label_text(i_contact))
+                p_view.ch_label.update()
 
             # calculates the label x/y-offsets
-            ax_rng = self.v_box[1, 0].viewRange()
-            dx_pos, dy_pos = self.convert_coords(False)
+            ax_rng = vb.viewRange()
+            dx_pos, dy_pos = self.convert_coords(is_main_view, False)
 
             # resets the y-label offset (if near the top)
             if (m_pos.y() + self.pw_y * dy_pos) > ax_rng[1][1]:
@@ -323,13 +300,13 @@ class ProbePlot(PlotWidget):
                 dx_pos = 0
 
             # resets the label position
-            self.sub_label.setPos(m_pos + QPointF(-dx_pos, dy_pos))
+            p_view.ch_label.setPos(m_pos + QPointF(-dx_pos, dy_pos))
 
-        elif self.sub_view.i_sel_contact is not None:
+        elif p_view.i_sel_contact is not None:
             # if not hovering over an object, then disable the label
-            self.sub_view.i_sel_contact = None
-            self.sub_view.create_probe_plot()
-            self.sub_label.setVisible(False)
+            p_view.i_sel_contact = None
+            p_view.create_probe_plot()
+            p_view.ch_label.setVisible(False)
 
             # disables the trace highlight
             self.reset_highlight.emit(False, None)
@@ -342,15 +319,18 @@ class ProbePlot(PlotWidget):
         # label bounding box retrieval
         if is_main:
             # case is the main view outside label
-            lbl_bb = self.main_view.out_label.boundingRect()
-
-        elif is_out:
-            # case is the sub view outside label
-            lbl_bb = self.sub_view.out_label.boundingRect()
+            if is_out:
+                lbl_bb = self.main_view.out_label.boundingRect()
+            else:
+                lbl_bb = self.main_view.ch_label.boundingRect()
 
         else:
-            # case is the sub view channel label
-            lbl_bb = self.sub_label.boundingRect()
+            if is_out:
+                # case is the sub view outside label
+                lbl_bb = self.sub_view.out_label.boundingRect()
+            else:
+                # case is the sub view outside label
+                lbl_bb = self.sub_view.ch_label.boundingRect()
 
         # retrieves the converted coordinates
         bb_rect = vb.mapSceneToView(lbl_bb).boundingRect()
@@ -474,6 +454,7 @@ class ProbeView(GraphicsObject):
         self.y_out = None
         self.out_line = None
         self.out_label = None
+        self.ch_label = None
         self.show_out = False
 
         # field retrieval
@@ -618,6 +599,11 @@ class ProbeView(GraphicsObject):
             self.out_label = TextItem(color=(0, 0, 0, 255), fill=(255, 255, 255, 255), ensureInBounds=True)
             self.out_label.setVisible(False)
             self.main_obj.addItem(self.out_label)
+
+            # sets the label properties
+            self.ch_label = TextItem(color=(0, 0, 0, 255), fill=(255, 255, 255, 255), ensureInBounds=True)
+            self.ch_label.setVisible(False)
+            self.main_obj.addItem(self.ch_label)
 
         # updates the line location
         self.out_line.clear()

@@ -219,6 +219,7 @@ class PropManager(QWidget):
                 case 'general':
                     # case is the general property tab
                     p_tab.check_update(False)
+                    p_tab.edit_update('t_dur')
 
                 case 'trigger':
                     p_tab.reset_table_data()
