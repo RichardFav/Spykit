@@ -201,7 +201,7 @@ class InfoManager(QWidget):
         match d_type:
             case 'run':
                 self.main_obj.plot_manager.reset_trace_views(True)
-                # self.main_obj.plot_manager.reset_trig_views()
+                self.main_obj.plot_manager.reset_trig_views()
 
             case 'data':
                 self.main_obj.plot_manager.reset_trace_views(False)
@@ -293,7 +293,7 @@ class InfoManager(QWidget):
 
         # resizes the table to the contents
         table_obj.setSortingEnabled(True)
-        table_obj.horizontalHeader().setSortIndicator(2, Qt.SortOrder.AscendingOrder)
+        table_obj.horizontalHeader().setSortIndicator(3, Qt.SortOrder.AscendingOrder)
         # table_obj.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
         # table_obj.resizeRowsToContents()
         # table_obj.resizeColumnsToContents()

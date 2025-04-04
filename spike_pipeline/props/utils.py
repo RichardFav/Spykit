@@ -218,7 +218,10 @@ class PropManager(QWidget):
             match pt:
                 case 'general':
                     # case is the general property tab
-                    p_tab.check_update()
+                    p_tab.check_update(False)
+
+                case 'trigger':
+                    p_tab.reset_table_data()
 
             # resets the update flag
             p_tab.is_updating = False
@@ -231,7 +234,7 @@ class PropManager(QWidget):
         # retrieves the parameter values for each info type
         for p_tab in self.tabs:
             # retrieves the property tab object and parameter fields
-            if p_tab.p_props.n_run is None:
+            if (p_tab.p_props is None) or (p_tab.p_props.n_run is None):
                 continue
 
             # flag that manual changes are being made
@@ -242,10 +245,10 @@ class PropManager(QWidget):
                 self.reset_para_field(p_tab, p, v['type'], p_tab.get(p, i_run), i_run)
 
             # property tab specific updates
-            match pt:
+            match p_tab.type:
                 case 'general':
                     # case is the general property tab
-                    p_tab.check_update()
+                    p_tab.check_update(False)
 
             # resets the update flag
             p_tab.is_updating = False
@@ -319,10 +322,16 @@ class PropManager(QWidget):
 
             case 'table':
                 # case is a table
+
+                if p_tab.n_row > 0:
+                    for i_row in np.flip(range(p_tab.n_row)):
+                        p_tab.n_row -= 1
+                        p_tab.table_region.removeRow(i_row)
+
                 if p_val is not None:
                     for i_row in range(p_val.shape[0]):
                         p_tab.n_row += 1
-                        p_tab.add_region(i_run, p_val[i_row, :])
+                        p_tab.add_region(i_run, p_val[i_row, :], False)
 
             case 'buttonpair':
                 # case is a button pair

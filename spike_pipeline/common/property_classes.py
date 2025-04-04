@@ -67,6 +67,10 @@ class SessionWorkBook(QObject):
         probe = self.get_current_recording_probe().get_probe()
         return probe.to_dataframe(complete=True)
 
+    def get_keep_channels(self):
+
+        return self.channel_data.is_keep
+
     def get_channel_ids(self, i_ch=None):
 
         probe_rec = self.get_current_recording_probe()
@@ -599,6 +603,7 @@ class ChannelData:
         # memory allocation
         self.is_filt = np.ones(self.n_channel, dtype=bool)
         self.is_selected = np.zeros(self.n_channel, dtype=bool)
+        self.is_keep = np.ones(self.n_channel, dtype=bool)
 
     def toggle_channel_flag(self, i_channel, state):
 

@@ -26,6 +26,9 @@ x_gap = 5
 
 
 class ConfigProps(PropWidget):
+    # field properties
+    type = 'config'
+
     # pyqtsignal functions
     config_reset = pyqtSignal()
 

@@ -28,6 +28,9 @@ class ChannelInfoTab(InfoWidget):
         'out': cf.get_colour_value('y', 128),
     }
 
+    # other parameters
+    i_status_col = 2
+
     def __init__(self, t_str):
         super(ChannelInfoTab, self).__init__(t_str)
 
@@ -125,7 +128,7 @@ class ChannelInfoTab(InfoWidget):
 
         # updates the table with the new information
         for i_row, c_stat in enumerate(ch_status):
-            item = self.table.item(i_row, 1)
+            item = self.table.item(i_row, self.i_status_col)
             self.set_table_row_colour(i_row, c_stat)
             item.setText(c_stat)
 

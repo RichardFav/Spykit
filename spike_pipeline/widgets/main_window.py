@@ -173,16 +173,18 @@ class MainWindow(QMainWindow):
         # -----------------------------------------------------------------------
 
         # field retrieval
-        c_list = ['status', 'channel_ids', 'contact_ids',  'device_channel_indices', 'x', 'y', 'shank_ids']
-        c_hdr = ['', 'Status', 'Channel ID', 'Contact ID', 'Channel Index', 'X-Coord', 'Y-Coord', 'Shank ID']
+        c_list = ['keep', 'status', 'channel_ids', 'contact_ids',  'device_channel_indices', 'x', 'y', 'shank_ids']
+        c_hdr = ['', 'Keep?', 'Status', 'Channel ID', 'Contact ID', 'Channel Index', 'X-Coord', 'Y-Coord', 'Shank ID']
 
         # retrieves the necessary channel information data
         ch_info = self.session_obj.get_channel_info()
-        p_dframe = ch_info[ch_info.columns.intersection(c_list)][c_list[1:]]
+        ch_keep = self.session_obj.get_keep_channels()
+        p_dframe = ch_info[ch_info.columns.intersection(c_list)][c_list[2:]]
 
         # inserts the "status" column
         n_row, n_col = p_dframe.shape
         p_dframe.insert(0, 'status', np.array(['***'] * n_row))
+        p_dframe.insert(0, 'keep', ch_keep)
 
         # appends the show
         is_show = np.zeros(p_dframe.shape[0], dtype=bool)
@@ -626,6 +628,7 @@ class MenuBar(QObject):
             'channel_data': {
                 'bad': ses_obj.session.bad_ch,
                 'sync': ses_obj.session.sync_ch,
+                'keep': ses_obj.get_keep_channels(),
             }
         }
 

@@ -52,6 +52,7 @@ class TriggerPlot(PlotWidget):
 
         # experiment properties
         self.t_start_ofs = 0
+        self.i_run_reg = self.get_run_index()
         self.t_dur = s_props.get_value('t_dur')
         self.s_freq = s_props.get_value('s_freq')
         self.n_samples = s_props.get_value('n_samples')
@@ -160,14 +161,27 @@ class TriggerPlot(PlotWidget):
         # disables the viewbox pan/zooming on the frame selection panel
         self.v_box[1, 0].setMouseEnabled(False, False)
 
-    def update_trigger_trace(self):
+    def update_trigger_trace(self, reset_run=False):
 
         # sets up the trace plot
         i_run = self.get_run_index()
-        i_frm0 = int(self.t_start_ofs * self.s_freq)
-        i_frm1 = int((self.t_start_ofs + self.t_dur) * self.s_freq)
+
+        if reset_run:
+            # hides the current linear regions
+            if self.n_reg_xs[self.i_run_reg]:
+                [x.hide() for x in self.l_reg_xs[self.i_run_reg]]
+
+            # hides the current linear regions
+            if self.n_reg_xs[i_run]:
+                [x.show() for x in self.l_reg_xs[i_run]]
+
+            # resets the run index
+            self.i_run_reg = i_run
+            self.reset_gen_props(False)
 
         # sets up the scaled trigger trace
+        i_frm0 = int(self.t_start_ofs * self.s_freq)
+        i_frm1 = int((self.t_start_ofs + self.t_dur) * self.s_freq)
         y_tr_new = self.p_ofs + (1 - 2 * self.p_ofs) * cf.normalise_trace(self.y_tr[i_run][i_frm0:i_frm1])
 
         # resets the trigger trace data
@@ -364,7 +378,7 @@ class TriggerPlot(PlotWidget):
     # Property Object Functions
     # ---------------------------------------------------------------------------
 
-    def reset_gen_props(self):
+    def reset_gen_props(self, shift_time=True):
 
         # calculates the change in start time
         t_start_ofs_new = self.gen_props.get('t_start')
@@ -375,15 +389,19 @@ class TriggerPlot(PlotWidget):
         self.t_dur = self.gen_props.get('t_dur')
 
         # ensures the limits are correct
-        self.t_lim = cf.list_add(self.t_lim, -dt_start_ofs)
-        if self.t_lim[0] < 0:
-            self.t_lim[0] = 0
+        if shift_time:
+            self.t_lim = cf.list_add(self.t_lim, -dt_start_ofs)
+            if self.t_lim[0] < 0:
+                self.t_lim[0] = 0
 
-        if self.t_lim[1] > self.t_dur:
-            self.t_lim[1] = self.t_dur
+            if self.t_lim[1] > self.t_dur:
+                self.t_lim[1] = self.t_dur
 
-        # resets the region times
-        self.trig_props.reset_region_timing(self.t_dur, dt_start_ofs)
+            # resets the region times
+            self.trig_props.reset_region_timing(self.t_dur, dt_start_ofs)
+
+        else:
+            self.t_lim = [0, self.t_dur]
 
         # resets the plot view axis
         self.v_box[0, 0].setLimits(xMin=0, xMax=self.t_dur)

@@ -71,6 +71,9 @@ class TracePara(PropPara):
 
 
 class TraceProps(PropWidget):
+    # field properties
+    type = 'trace'
+
     # parameters
     t_span0 = 0.1
     plot_list = ['Trace', 'Heatmap', 'Auto']

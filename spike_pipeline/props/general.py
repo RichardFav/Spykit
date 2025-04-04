@@ -68,6 +68,9 @@ class GeneralPara(PropPara):
 
 
 class GeneralProps(PropWidget):
+    # field properties
+    type = 'general'
+
     def __init__(self, main_obj):
 
         # sets the input arguments
@@ -124,7 +127,7 @@ class GeneralProps(PropWidget):
     # Parameter Update Event Functions
     # ---------------------------------------------------------------------------
 
-    def check_update(self):
+    def check_update(self, reset_view=True):
 
         # updates the editbox properties
         i_run = self.get_run_index()
@@ -150,7 +153,8 @@ class GeneralProps(PropWidget):
             self.p_props.is_updating = False
 
             # resets the plot views
-            self.reset_plot_views()
+            if reset_view:
+                self.reset_plot_views()
 
     def edit_update(self, p_str):
 

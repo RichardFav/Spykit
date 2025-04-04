@@ -102,12 +102,12 @@ class TriggerPara(PropPara):
     def remove_row(self, i_run, i_row):
 
         self.t_arr[i_run].remove_row(i_row)
-        self.region_index = self.t_arr[i_run].data
+        self.region_index[i_run] = self.t_arr[i_run].data
 
     def set(self, i_run, i_row, i_col, value):
 
         self.t_arr[i_run].set(i_row, i_col, value)
-        self.region_index = self.t_arr[i_run].data
+        self.region_index[i_run] = self.t_arr[i_run].data
 
     def set_arr(self, i_run, i_row, i_col, values):
 
@@ -117,7 +117,7 @@ class TriggerPara(PropPara):
         else:
             self.t_arr[i_run].data[i_row, i_col] = values
 
-        self.region_index = self.t_arr[i_run].data
+        self.region_index[i_run] = self.t_arr[i_run].data
 
     def get(self, i_run, i_row, i_col):
 
@@ -144,6 +144,9 @@ class TriggerPara(PropPara):
 
 
 class TriggerProps(PropWidget):
+    # field properties
+    type = 'trigger'
+
     # parameters
     pt_dur = 0.1
     pt_win_min = 0.05
@@ -290,6 +293,11 @@ class TriggerProps(PropWidget):
         self.is_updating = False
         self.b_state = self.p_props.button_flag[i_run]
 
+    def reset_table_data(self):
+
+        for i_run in range(self.n_run):
+            self.p_props.t_arr[i_run].data = self.get('region_index', i_run)
+
     # ---------------------------------------------------------------------------
     # Setter Functions
     # ---------------------------------------------------------------------------
@@ -396,11 +404,13 @@ class TriggerProps(PropWidget):
     # Linear Region Add/Remove Functions
     # ---------------------------------------------------------------------------
 
-    def add_region(self, i_run, nw_row):
+    def add_region(self, i_run, nw_row, add_prop=True):
 
         self.table_region.setRowCount(self.n_row)
-        self.p_props.add_row(i_run, nw_row)
         self.trig_view.add_region(nw_row)
+
+        if add_prop:
+            self.p_props.add_row(i_run, nw_row)
 
         for i_col, c_val in enumerate(nw_row):
             # creates the widget item
