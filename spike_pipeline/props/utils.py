@@ -155,6 +155,10 @@ class PropManager(QWidget):
 
         self.get_prop_tab('config').add_config_view(v_type)
 
+    def set_config_enabled(self, state):
+
+        self.get_prop_tab('config').set_config_enabled(state)
+
     def tab_change_props(self):
 
         pass

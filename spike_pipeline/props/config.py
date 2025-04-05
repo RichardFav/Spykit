@@ -83,3 +83,7 @@ class ConfigProps(PropWidget):
         self.obj_rconfig.is_updating = True
         self.obj_rconfig.obj_lbl_combo.obj_cbox.addItem(v_type)
         self.obj_rconfig.is_updating = False
+
+    def set_config_enabled(self, state):
+
+        self.obj_rconfig.set_enabled(state)

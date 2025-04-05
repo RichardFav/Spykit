@@ -209,6 +209,9 @@ class QRegionConfig(QWidget):
     gbox_height0 = 10
     n_col_max = 10
 
+    # array class fields
+    p_list_base = ['(No Plot)']
+
     def __init__(self, parent=None, font=None, is_expanded=False, can_close=True, p_list0=None, gbox_height=None):
         super(QRegionConfig, self).__init__(parent)
 
@@ -279,7 +282,7 @@ class QRegionConfig(QWidget):
             obj_lbl_edit.connect(cb_fcn_rc)
 
         # adds the combo object
-        self.p_list = ['(No Plot)'] + p_list0
+        self.p_list = self.p_list_base + p_list0
         self.p_col = [cf.get_colour_value('lg')] + p_col0
         self.obj_lbl_combo = QLabelCombo(
             None, 'Plot Type: ', self.p_list, self.p_list[0], font_lbl=font)
@@ -335,6 +338,7 @@ class QRegionConfig(QWidget):
 
         # updates the selector widgets
         self.reset_selector_widgets()
+        self.set_enabled(False)
 
         # sets the groupbox properties
         self.obj_gbox.setLayout(self.gb_layout)
@@ -668,6 +672,30 @@ class QRegionConfig(QWidget):
 
         self.v_spacer.changeSize(5, sz_spacer.height() - d_hght)
         self.obj_gbox.setFixedHeight(self.obj_gbox.height() + d_hght)
+
+    def set_enabled(self, state):
+
+        self.obj_lbl_combo.set_enabled(state)
+
+        for p_str in ['n_row', 'n_col']:
+            h_obj = self.findChild(QLineEdit, name=p_str)
+            h_obj.setEnabled(state)
+
+        for h_lbl in self.findChildren(QLabel):
+            h_lbl.setEnabled(state)
+
+    def clear(self):
+
+        # resets the configuration
+        self.reset_selector_widgets(np.zeros((1, 1), dtype=int))
+        self.set_enabled(False)
+        self.config_reset.emit()
+
+        # removes the fields from the
+        self.is_updating = True
+        self.obj_lbl_combo.obj_cbox.clear()
+        self.obj_lbl_combo.obj_cbox.addItem(self.p_list_base[0])
+        self.is_updating = False
 
     @staticmethod
     def get_rgba_string(t_col):

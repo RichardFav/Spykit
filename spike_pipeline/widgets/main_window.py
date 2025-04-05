@@ -164,6 +164,7 @@ class MainWindow(QMainWindow):
         # updates the grid plots
         self.plot_manager.update_plot_config(c_id)
         self.prop_manager.set_region_config(c_id)
+        self.prop_manager.set_config_enabled(True)
 
         # adds the new property tabs
         self.reset_prop_tab_visible(c_id)
@@ -359,7 +360,19 @@ class MainWindow(QMainWindow):
 
     def clear_session(self):
 
-        a = 1
+        # resets the
+        for t, tt in zip(self.prop_manager.tabs, self.prop_manager.t_types):
+            match tt:
+                case 'config':
+                    # case is the configuration tab
+                    t.obj_rconfig.clear()
+
+                case _:
+                    # otherwise, hide the tab
+                    self.prop_manager.set_tab_visible(tt, False)
+
+        # clears the information tabs
+        self.info_manager.tab_group_table.setVisible(False)
 
     # ---------------------------------------------------------------------------
     # Override Functions
@@ -389,10 +402,8 @@ class MainWindow(QMainWindow):
 
     def testing(self):
 
-        f_file = 'C:/Work/Other Projects/EPhys Project/Data/z - session_files/test_tiny (run1_reduced).ssf'
         # f_file = 'C:/Work/Other Projects/EPhys Project/Data/z - session_files/test_tiny.ssf'
-        # f_file = 'C:/Work/Other Projects/EPhys Project/Data/z - session_files/test_large.ssf'
-        f_file = 'C:/Work/Other Projects/EPhys Project/Data/z - session_files/Moo.ssf'
+        f_file = 'C:/Work/Other Projects/EPhys Project/Data/z - session_files/test_large.ssf'
 
         self.menu_bar.load_session(f_file)
 
@@ -593,7 +604,7 @@ class MenuBar(QObject):
             # exit if they cancelled
             return
 
-        a = 1
+        self.main_obj.session_obj.session = None
 
     def load_trigger(self, file_info=None):
 

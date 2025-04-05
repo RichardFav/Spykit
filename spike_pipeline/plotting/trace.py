@@ -585,6 +585,9 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
     def heatmap_mouse_move(self, p_pos):
 
+        if self.session_info.session is None:
+            return
+
         # determines the selected channels
         i_channel = self.session_info.get_selected_channels()
         n_channel = len(i_channel)
@@ -646,12 +649,18 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
     def heatmap_leave(self, evnt):
 
+        if self.session_info.session is None:
+            return
+
         self.leave_fcn(evnt)
 
         self.hm_roi.hide()
         self.hm_label.hide()
 
     def heatmap_enter(self, evnt):
+
+        if self.session_info.session is None:
+            return
 
         self.enter_fcn(evnt)
 

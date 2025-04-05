@@ -319,6 +319,9 @@ class InfoManager(QWidget):
         # retrieves the table widget
         table_obj = self.get_table_widget(t_type)
 
+        # flag that manual update is taking place
+        self.is_updating = True
+
         # clears the table model
         table_obj.clear()
         table_obj.setRowCount(data.shape[0])
@@ -351,6 +354,9 @@ class InfoManager(QWidget):
                 # ads the item to the table
                 item.setTextAlignment(cf.align_type['center'])
                 table_obj.setItem(i_row, i_col, item)
+
+        # resets the update flag
+        self.is_updating = False
 
         # resizes the table to the contents
         table_obj.setSortingEnabled(True)
