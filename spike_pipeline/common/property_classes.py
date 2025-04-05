@@ -77,18 +77,16 @@ class SessionWorkBook(QObject):
 
     def get_channel_ids(self, i_ch=None, is_sorted=None):
 
-        probe_rec = self.get_current_recording_probe()
-        if is_sorted:
-            probe_rec = depth_order(probe_rec)
-
-        #
-        dev_id = np.asarray(self.get_channel_info(probe_rec.get_probe())['device_channel_indices'])
-
+        # field retrieval
+        ch_id = self.channel_data.channel_ids
         if i_ch is None:
-            return probe_rec.channel_ids, dev_id
+            i_ch = np.array(range(len(ch_id)))
 
-        else:
-            return probe_rec.channel_ids[i_ch], dev_id[i_ch]
+        # sorts the channel indices by depth
+        if is_sorted:
+            i_ch = i_ch[np.argsort(self.channel_data.i_sort_rev[i_ch])]
+
+        return ch_id[i_ch], i_ch
 
     def get_traces(self, probe_rec=None, **kwargs):
 

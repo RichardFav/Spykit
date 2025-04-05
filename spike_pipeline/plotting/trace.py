@@ -196,7 +196,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.l_reg_y = None
         self.i_sel_tr = None
         self.frame_img = None
-        self.plot_ch_ids = None
+        self.plot_id = None
         self.image_item = ImageItem()
         self.ximage_item = ImageItem()
         self.yimage_item = ImageItem()
@@ -492,11 +492,11 @@ class TracePlot(TraceLabelMixin, PlotWidget):
                 return
 
             # sets up the y-data array
-            self.plot_ch_ids = self.session_info.get_channel_ids(i_channel, depth_sort)
+            channel_id, self.plot_id = self.session_info.get_channel_ids(i_channel, depth_sort)
             y0 = self.session_info.get_traces(
                 start_frame=i_frm0,
                 end_frame=i_frm1,
-                channel_ids=self.plot_ch_ids,
+                channel_ids=channel_id,
                 return_scaled=self.trace_props.get('scale_signal'),
             )
 
@@ -603,7 +603,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         i_row = np.min([int(np.floor(m_pos.y() * y_mlt)), len(i_channel) - 1])
 
         # updates the text label
-        self.reset_heatmap_label(m_pos, i_channel[i_row])
+        self.reset_heatmap_label(m_pos, self.plot_id[i_row])
 
         # resets the ROI position
         self.hm_roi.setPos(self.t_lim[0], i_row / y_mlt)
