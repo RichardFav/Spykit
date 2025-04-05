@@ -122,13 +122,13 @@ class MainWindow(QMainWindow):
 
     def new_session(self):
 
+        if self.has_session:
+            # if there is a session already loaded, then clear the main window
+            self.clear_session()
+
         if self.session_obj.session is None:
             # if the session has been cleared, then exit
             return
-
-        elif self.has_session:
-            # if there is a session already loaded, then clear the main window
-            a = 1
 
         # adds the widgets to the information panel
         self.info_manager.add_info_widgets()
@@ -352,6 +352,14 @@ class MainWindow(QMainWindow):
 
         # updates the trace views
         self.plot_manager.reset_trace_views()
+
+    # ---------------------------------------------------------------------------
+    # Session Related Functions
+    # ---------------------------------------------------------------------------
+
+    def clear_session(self):
+
+        a = 1
 
     # ---------------------------------------------------------------------------
     # Override Functions

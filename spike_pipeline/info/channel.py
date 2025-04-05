@@ -20,6 +20,9 @@ class ChannelInfoTab(InfoWidget):
     data_change = pyqtSignal(QWidget)
     status_change = pyqtSignal(QWidget, object)
     set_update_flag = pyqtSignal(bool)
+    mouse_move = pyqtSignal(object)
+    mouse_enter = pyqtSignal(object)
+    mouse_leave = pyqtSignal(object)
 
     row_col = {
         'good': cf.get_colour_value('g', 128),
@@ -31,12 +34,15 @@ class ChannelInfoTab(InfoWidget):
 
     # other parameters
     i_status_col = 2
+    i_channel_col = 3
 
     def __init__(self, t_str):
         super(ChannelInfoTab, self).__init__(t_str)
 
         # field initialisations
         self.data_flds = None
+        self.table_move_fcn = None
+        self.table_leave_fcn = None
 
         # boolean class fields
         self.is_filt = None
@@ -44,22 +50,48 @@ class ChannelInfoTab(InfoWidget):
 
         # adds the plot data type combobox
         self.data_type = QLabelCombo(None, 'Plot Data Type:', None, font_lbl=font_lbl)
-        self.data_type.setContentsMargins(0, self.x_gap, 0, 0)
-        self.tab_layout.addWidget(self.data_type)
-
-        # adds the session run type combobox
         self.run_type = QLabelCombo(None, 'Session Run:', None, font_lbl=font_lbl)
+        self.status_filter = QLabelCheckCombo(None, lbl="Status Filter", font=font_lbl)
+
+        # initialises the other class fields
+        self.init_other_class_fields()
+
+    def init_other_class_fields(self):
+
+        # adds the widgets to the main widget
+        self.tab_layout.addWidget(self.data_type)
         self.tab_layout.addWidget(self.run_type)
+        self.tab_layout.addWidget(self.status_filter)
+
+        # sets the data type combobox properties
+        self.data_type.setContentsMargins(0, self.x_gap, 0, 0)
 
         # adds status filter check combobox
-        self.status_filter = QLabelCheckCombo(None, lbl="Status Filter", font=font_lbl)
         self.status_filter.item_clicked.connect(self.check_filter_item)
         self.status_filter.setEnabled(False)
-        self.tab_layout.addWidget(self.status_filter)
 
         # creates the table widget
         self.create_table_widget()
         self.get_filtered_items()
+
+        # resets the table mouse move event
+        self.table.setMouseTracking(True)
+        self.table_leave_fcn = self.table.leaveEvent
+        self.table_move_fcn = self.table.mouseMoveEvent
+
+        # resets the event functions
+        self.table.leaveEvent = self.table_mouse_leave
+        self.table.mouseMoveEvent = self.table_mouse_move
+
+    def table_mouse_move(self, evnt):
+
+        self.table_move_fcn(evnt)
+        self.mouse_move.emit(evnt)
+
+    def table_mouse_leave(self, evnt):
+
+        self.table_leave_fcn(evnt)
+        self.mouse_leave.emit(evnt)
 
     def reset_combobox_fields(self, cb_type, cb_list):
 
@@ -168,3 +200,7 @@ class ChannelInfoTab(InfoWidget):
 
         for i_col in range(self.table.columnCount()):
             self.table.item(i_row, i_col).setBackground(self.row_col[c_stat])
+
+    def get_table_device_id(self, i_row_sel):
+
+        return int(self.table.item(i_row_sel, self.i_channel_col).text())

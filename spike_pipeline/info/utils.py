@@ -14,7 +14,7 @@ from spike_pipeline.common.common_widget import SearchMixin, QProgressWidget
 from PyQt6.QtWidgets import (QWidget, QTreeWidget, QFrame, QCheckBox, QPushButton, QSizePolicy, QVBoxLayout, QGroupBox,
                              QHeaderView, QTreeWidgetItem, QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox,
                              QTableWidget, QFormLayout)
-from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtCore import Qt, QPointF, pyqtSignal
 from PyQt6.QtGui import QFont, QColor
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -41,6 +41,7 @@ class InfoManager(QWidget):
 
     # widget dimensions
     dx_gap = 15
+    i_col_ch = 3
 
     # field names
     table_name = 'Channel/Unit Information'
@@ -68,6 +69,7 @@ class InfoManager(QWidget):
         self.n_para = 0
         self.p_info = {}
         self.calc_worker = []
+        self.i_probe_ch = None
 
         # boolean class fields
         self.is_updating = False
@@ -158,6 +160,8 @@ class InfoManager(QWidget):
                         tab_widget.run_change.connect(pfcn(self.channel_combobox_update, 'run'))
                         tab_widget.status_change.connect(self.channel_status_update)
                         tab_widget.set_update_flag.connect(self.update_flag_change)
+                        tab_widget.mouse_move.connect(self.channel_mouse_move)
+                        tab_widget.mouse_leave.connect(self.channel_mouse_leave)
 
                 case 'status':
                     tab_widget.start_recalc.connect(self.start_recalc)
@@ -219,6 +223,63 @@ class InfoManager(QWidget):
     def update_flag_change(self, is_updating):
 
         self.is_updating = is_updating
+
+    def channel_mouse_move(self, evnt):
+
+        # retrieves the probe view
+        probe_view = self.get_probe_plot_view()
+        if probe_view is None:
+            # if not viewing, then exit
+            return
+
+        # determines the cell being hovered over
+        i_row_sel = int(np.floor(evnt.pos().y() / cw.cell_height))
+
+        # retrieves the channel index
+        ch_tab = self.main_obj.info_manager.get_info_tab('channel')
+        ch_tab.table.viewport().rect().height() / cw.cell_height
+        i_row_ofs = ch_tab.table.verticalScrollBar().value()
+
+        # determines the globally selected row
+        n_row = ch_tab.table.viewport().rect().height() / cw.cell_height
+        dn_row = (self.session_obj.get_channel_count() - int(np.floor(n_row)))
+        if i_row_ofs == dn_row:
+            i_row_fin = int(np.min([np.floor(evnt.pos().y() / cw.cell_height - (n_row % 1)), np.floor(n_row - 1)]))
+            i_row_tot = i_row_ofs + i_row_fin
+
+        else:
+            i_row_tot = i_row_ofs + i_row_sel
+
+        # determines the channel index (from the hovered channel)
+        ch_id = ch_tab.get_table_device_id(i_row_tot)
+        if self.i_probe_ch == ch_id:
+            # if there is no change in the highlighted channel, then exit
+            return
+
+        # shows the main view channel label
+        # if not probe_view.main_view.ch_highlight.isVisible():
+        probe_view.show_channel_highlights()
+
+        # resets the channel label position
+        probe_view.reset_channel_highlights(ch_id)
+
+    def channel_mouse_leave(self, evnt):
+
+        # # if the probe channel is not showing, then exit
+        # if self.i_probe_ch is None:
+        #     return
+
+        # retrieves the probe view
+        probe_view = self.get_probe_plot_view()
+        if probe_view is None:
+            # if not viewing, then exit
+            return
+
+        # hides the channel label
+        probe_view.hide_channel_highlights()
+
+        # resets the probe channel index
+        self.i_probe_ch = None
 
     def start_recalc(self, p_props):
 
@@ -521,6 +582,21 @@ class InfoManager(QWidget):
         # sets the group style sheets
         self.group_table.setStyleSheet(info_groupbox_style)
 
+    def get_probe_plot_view(self):
+
+        # if the probe view has not been created, then exit
+        if 'probe' not in self.main_obj.plot_manager.types:
+            return None
+
+        # retrieves the probe plot view
+        g_id = self.main_obj.plot_manager.grid_id
+        if not np.any(g_id == self.main_obj.plot_manager.types['probe']):
+            # if not currently showing the probe view, then exit
+            return None
+
+        # returns the probe view
+        return self.main_obj.plot_manager.get_plot_view('probe')
+
     # ---------------------------------------------------------------------------
     # Static Methods
     # ---------------------------------------------------------------------------
@@ -542,6 +618,7 @@ class InfoManager(QWidget):
 class InfoWidget(QWidget):
     #
     x_gap = 5
+    hght_row = 25
 
     # widget stylesheets
     table_style = """
@@ -577,7 +654,12 @@ class InfoWidget(QWidget):
         self.table.setColumnCount(0)
         self.table.setObjectName(self.t_lbl)
         self.table.setStyleSheet(self.table_style)
-        self.table.verticalHeader().setVisible(False)
+
+        # resets the header properties
+        v_header = self.table.verticalHeader()
+        v_header.setVisible(False)
+        v_header.setDefaultSectionSize(self.hght_row)
+        v_header.setSectionResizeMode(v_header.ResizeMode.Fixed)
 
         # adds the table to the layout
         self.tab_layout.addWidget(self.table)

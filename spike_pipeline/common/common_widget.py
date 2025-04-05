@@ -177,7 +177,7 @@ table_style = """
 # widget dimensions
 x_gap = 5
 row_height = 16.5
-
+cell_height = 25
 
 def create_font_obj(size=9, is_bold=False, font_weight=QFont.Weight.Normal):
     # creates the font object

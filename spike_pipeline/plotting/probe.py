@@ -13,7 +13,7 @@ import spike_pipeline.common.common_widget as cw
 from spike_pipeline.plotting.utils import PlotWidget, PlotPara
 
 # pyqtgraph modules
-from pyqtgraph import PlotCurveItem, GraphicsObject, ROI, TextItem, mkPen, mkBrush, exporters
+from pyqtgraph import PlotCurveItem, GraphicsObject, ROI, RectROI, TextItem, mkPen, mkBrush, exporters
 
 # plot button fields
 b_icon = ['trace', 'toggle', 'save', 'close']
@@ -239,14 +239,18 @@ class ProbePlot(PlotWidget):
         # resets the axis limits
         self.sub_view.reset_axes_limits(False)
 
-    def view_mouse_move(self, is_main_view, p_pos):
+    def view_mouse_move(self, is_main_view, p_pos, map_coord=True):
 
         # view-dependent field retrieval
         vb = self.v_box[1 - int(is_main_view), 0]
         p_view = self.main_view if is_main_view else self.sub_view
 
-        # updates the crosshair position
-        m_pos = vb.mapSceneToView(p_pos)
+        # retrieves the mapped position
+        if map_coord:
+            m_pos = vb.mapSceneToView(p_pos)
+
+        else:
+            m_pos = p_pos
 
         if (p_view.y_out is not None) and self.show_out:
             dy_out = np.abs(m_pos.y() - p_view.y_out)
@@ -348,6 +352,28 @@ class ProbePlot(PlotWidget):
         a = 1
 
     # ---------------------------------------------------------------------------
+    # Channel Highlight Functions
+    # ---------------------------------------------------------------------------
+
+    def show_channel_highlights(self):
+
+        self.main_view.ch_highlight.show()
+        self.sub_view.ch_highlight.show()
+
+    def hide_channel_highlights(self):
+
+        self.main_view.ch_highlight.hide()
+        self.sub_view.ch_highlight.hide()
+
+    def reset_channel_highlights(self, ch_id):
+
+        bb = self.main_view.c_poly[ch_id].boundingRect()
+        p_pos = [bb.x(), bb.y()]
+
+        self.main_view.reset_highlight_pos(p_pos)
+        self.sub_view.reset_highlight_pos(p_pos)
+
+    # ---------------------------------------------------------------------------
     # Miscellaneous Functions
     # ---------------------------------------------------------------------------
 
@@ -425,6 +451,7 @@ class ProbeView(GraphicsObject):
 
     # line pen widgets
     l_pen_out = mkPen(color=cf.get_colour_value('k'), width=2)
+    l_pen_highlight = mkPen(color=cf.get_colour_value('r'), width=2)
 
     # pyqtsignal functions
     update_roi = pyqtSignal(object)
@@ -444,10 +471,10 @@ class ProbeView(GraphicsObject):
         self.y_lim = None
         self.x_lim_full = None
         self.y_lim_full = None
-        self.x_lim_shank = []
-        self.y_lim_shank = []
         self.i_sel_contact = None
         self.i_sel_trace = None
+        self.x_lim_shank = []
+        self.y_lim_shank = []
         self.session_info = session_info
 
         # out location class widgets
@@ -455,6 +482,7 @@ class ProbeView(GraphicsObject):
         self.out_line = None
         self.out_label = None
         self.ch_label = None
+        self.ch_highlight = None
         self.show_out = False
 
         # field retrieval
@@ -482,6 +510,7 @@ class ProbeView(GraphicsObject):
         self.picture = QPicture()
 
         # creates the probe plot
+        self.create_channel_highlight()
         self.create_probe_plot()
 
     # ---------------------------------------------------------------------------
@@ -492,6 +521,34 @@ class ProbeView(GraphicsObject):
 
         # sets up the contact polygon objects
         return [self.vert_to_pointf(v) for v in vert0]
+
+    def create_channel_highlight(self):
+
+        # pre-calculations
+        bb_rect = self.c_poly[0].boundingRect()
+        sz_rect = QPointF(bb_rect.width(), bb_rect.height())
+
+        # creates the channel highlight
+        self.ch_highlight = RectROI(
+            [0, 0],
+            sz_rect,
+            movable=False,
+            resizable=False,
+            rotatable=False,
+            removable=False,
+        )
+
+        # sets the highlight properties
+        self.ch_highlight.setPen(self.l_pen_highlight)
+        self.ch_highlight.setZValue(10)
+        self.ch_highlight.hide()
+
+        # removes the handles
+        for h in self.ch_highlight.getHandles():
+            h.hide()
+
+        # ads the ROI to the
+        self.main_obj.addItem(self.ch_highlight)
 
     def create_probe_plot(self):
 
@@ -565,6 +622,14 @@ class ProbeView(GraphicsObject):
 
         # adds the roi to the parent plot widget
         self.parent().addItem(self.roi)
+
+    # ---------------------------------------------------------------------------
+    # Channel Highlight Functions
+    # ---------------------------------------------------------------------------
+
+    def reset_highlight_pos(self, p_pos):
+
+        self.ch_highlight.setPos(p_pos)
 
     # ---------------------------------------------------------------------------
     # ROI Movement Functions

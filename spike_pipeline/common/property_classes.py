@@ -205,7 +205,6 @@ class SessionWorkBook(QObject):
             case 'bad':
                 self.bad_channel_change.emit(session)
 
-
     # ---------------------------------------------------------------------------
     # Static Methods
     # ---------------------------------------------------------------------------
@@ -214,13 +213,22 @@ class SessionWorkBook(QObject):
     def update_session(_self):
 
         # resets the current run/session names
-        _self.current_run = _self.session.get_run_names()[0]
-        _self.current_ses = _self.session.get_session_names(0)[0]
+        if _self.session is None:
+            # case is there is no session set (clearing session)
+            _self.current_run = None
+            _self.current_ses = None
+            _self.channel_data = None
+            _self.session_props = None
 
-        # sets up the channel data object
-        _probe_current = _self.get_current_recording_probe()
-        _self.channel_data = ChannelData(_probe_current)
-        _self.session_props = SessionProps(_probe_current)
+        else:
+            # case is there is a new session set (clearing session)
+            _self.current_run = _self.session.get_run_names()[0]
+            _self.current_ses = _self.session.get_session_names(0)[0]
+
+            # sets up the channel data object
+            _probe_current = _self.get_current_recording_probe()
+            _self.channel_data = ChannelData(_probe_current)
+            _self.session_props = SessionProps(_probe_current)
 
         # runs the session change signal function
         if _self.has_init:
