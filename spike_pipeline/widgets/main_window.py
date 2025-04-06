@@ -76,8 +76,8 @@ class MainWindow(QMainWindow):
         # sets the widget style sheets
         self.set_styles()
 
-        # # REMOVE ME LATER
-        # self.testing()
+        # REMOVE ME LATER
+        self.testing()
 
     # ---------------------------------------------------------------------------
     # Class Widget Setup Functions
@@ -511,8 +511,8 @@ class MainWindow(QMainWindow):
 
     def testing(self):
 
-        # f_file = 'C:/Work/Other Projects/EPhys Project/Data/z - session_files/test_tiny.ssf'
-        f_file = 'C:/Work/Other Projects/EPhys Project/Data/z - session_files/test_large.ssf'
+        f_file = 'C:/Work/Other Projects/EPhys Project/Data/z - session_files/test_tiny.ssf'
+        # f_file = 'C:/Work/Other Projects/EPhys Project/Data/z - session_files/test_large.ssf'
 
         self.menu_bar.load_session(f_file)
 

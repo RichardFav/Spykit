@@ -1,4 +1,7 @@
 # custom module imports
+import numpy as np
+from copy import deepcopy
+
 import spike_pipeline.common.common_widget as cw
 import spike_pipeline.common.common_func as cf
 from spike_pipeline.info.utils import InfoWidgetPara
@@ -17,7 +20,8 @@ prep_task_map = {
     'Raw': 'raw',
     'Phase Shift': 'phase_shift',
     'Bandpass Filter': 'bandpass_filter',
-    'Common Reference': 'common_reference',
+    'Bad Channel Interpolation': 'interpolation',
+    'Common Average Reference': 'common_reference',
     'Whitening': 'whitening',
     'Drift Correction': 'drift_correct',
     'Sorting': 'sorting',
@@ -34,8 +38,8 @@ class PreprocessInfoTab(InfoWidgetPara):
     # array class fields
     pp_flds = {
         'bandpass_filter': 'Bandpass Filter',
-        'common_reference': 'Common Reference',
         'phase_shift': 'Phase Shift',
+        'common_reference': 'Common Average Reference',
         'whitening': 'Whitening',
         'drift_correct': 'Drift Correction',
         'waveforms': 'Wave Forms',
@@ -222,13 +226,13 @@ class PreprocessSetup(QDialog):
     x_gap = 5
     gap_sz = 5
     but_height = 20
-    dlg_height = 250
-    dlg_width = 300
+    dlg_height = 200
+    dlg_width = 400
 
     # array class fields
     b_icon = ['arrow_right', 'arrow_left', 'arrow_up', 'arrow_down']
     tt_str = ['Add Task', 'Remove Task', 'Move Task Up', 'Move Task Down']
-    l_task = ['Phase Shift', 'Bandpass Filter', 'Common Reference']
+    l_task = ['Phase Shift', 'Bandpass Filter', 'Bad Channel Interpolation', 'Common Average Reference']
 
     # widget stylesheets
     border_style = "border: 1px solid;"
@@ -252,6 +256,7 @@ class PreprocessSetup(QDialog):
         self.control_layout = QHBoxLayout()
 
         # class widgets
+        self.task_order = []
         self.button_control = []
         self.button_frame = QWidget(self)
         self.add_list = QListWidget(None)
@@ -340,6 +345,7 @@ class PreprocessSetup(QDialog):
         self.button_frame.setContentsMargins(0, 0, 0, 0)
         self.button_frame.setLayout(self.control_layout)
         self.control_layout.setContentsMargins(0, 0, 0, 0)
+        self.control_layout.setSpacing(self.but_height + 2 * self.gap_sz)
 
         # creates the control buttons
         for bs, cb in zip(b_str, cb_fcn):
@@ -361,18 +367,29 @@ class PreprocessSetup(QDialog):
 
         # swaps the selected item between lists
         i_index = self.task_list.currentIndex()
-        task_item = self.task_list.takeItem(i_index.row())
-        self.add_list.addItem(task_item.text())
+        task_add = self.task_list.takeItem(i_index.row()).text()
 
-        # updates the button properties
-        self.set_button_props()
+        if self.check_task_order(self.task_order + [task_add]):
+            # adds the task/list items
+            self.add_list.addItem(task_add)
+            self.task_order.append(task_add)
+
+            # updates the button properties
+            self.set_button_props()
+
+        else:
+            # otherwise, re-add the item to the list item
+            self.task_list.addItem(task_add)
 
     def button_remove(self):
 
         # swaps the selected item between lists
         i_index = self.add_list.currentIndex()
-        add_item = self.add_list.takeItem(i_index.row())
-        self.task_list.addItem(add_item)
+        task_remove = self.add_list.takeItem(i_index.row()).text()
+
+        # removes the task/list items
+        self.task_list.addItem(task_remove)
+        self.task_order.pop(i_index.row())
 
         # updates the button properties
         self.set_button_props()
@@ -384,14 +401,18 @@ class PreprocessSetup(QDialog):
         item_sel = self.add_list.item(i_row_sel)
         item_prev = self.add_list.item(i_row_sel - 1)
 
-        # reorders the items
-        name_sel, name_prev = item_sel.text(), item_prev.text()
-        item_sel.setText(name_prev)
-        item_prev.setText(name_sel)
+        # determines if the new order is feasible
+        task_order_new = self.get_reordered_list(i_row_sel + np.asarray([-1, 0]))
+        if self.check_task_order(task_order_new):
+            # reorders the items
+            name_sel, name_prev = item_sel.text(), item_prev.text()
+            item_sel.setText(name_prev)
+            item_prev.setText(name_sel)
 
-        # resets the row selection and button properties
-        self.add_list.setCurrentRow(i_row_sel - 1)
-        self.set_button_props()
+            # resets the row selection and button properties
+            self.task_order = task_order_new
+            self.add_list.setCurrentRow(i_row_sel - 1)
+            self.set_button_props()
 
     def button_down(self):
 
@@ -400,14 +421,18 @@ class PreprocessSetup(QDialog):
         item_sel = self.add_list.item(i_row_sel)
         item_next = self.add_list.item(i_row_sel + 1)
 
-        # reorders the items
-        name_sel, name_next = item_sel.text(), item_next.text()
-        item_sel.setText(name_next)
-        item_next.setText(name_sel)
+        # determines if the new order is feasible
+        task_order_new = self.get_reordered_list(i_row_sel + np.asarray([0, 1]))
+        if self.check_task_order(task_order_new):
+            # reorders the items
+            name_sel, name_next = item_sel.text(), item_next.text()
+            item_sel.setText(name_next)
+            item_next.setText(name_sel)
 
-        # resets the row selection and button properties
-        self.add_list.setCurrentRow(i_row_sel + 1)
-        self.set_button_props()
+            # resets the row selection and button properties
+            self.task_order = task_order_new
+            self.add_list.setCurrentRow(i_row_sel + 1)
+            self.set_button_props()
 
     def start_preprocess(self):
 
@@ -442,8 +467,38 @@ class PreprocessSetup(QDialog):
         self.button_control[3].setEnabled(is_added_sel and (i_row_add < n_added))
         self.button_control[4].setEnabled(n_added >= 0)
 
-    # ---------------------------------------------------------------------------
-    # Thread Worker Functions
-    # ---------------------------------------------------------------------------
+    def check_task_order(self, task_new):
 
+        # first check: ensure that bad channel interpolation occurs
+        #              before common reference averaging
 
+        # determines if
+        i_fld = np.zeros(2, dtype=int)
+        task_fld = ['Bad Channel Interpolation', 'Common Average Reference']
+
+        # determines if the required tasks have been added
+        for i, tf in enumerate(task_fld):
+            if tf in task_new:
+                # if so, then determine the task index
+                i_fld[i] = task_new.index(tf)
+
+            else:
+                # otherwise, return a false value
+                return True
+
+        # if the order is infeasible, then output an error to screen
+        if np.diff(i_fld)[0] < 0:
+            t_str = 'Preprocessing Order Error'
+            cf.show_error("Bad Channel Interpolation must occur before Common Reference Averaging.", t_str)
+            return False
+
+        # otherwise, return a feasible flag
+        return True
+
+    def get_reordered_list(self, i_swap):
+
+        tasks = deepcopy(self.task_order)
+        print(tasks)
+
+        tasks[i_swap[0]], tasks[i_swap[1]] = tasks[i_swap[1]], tasks[i_swap[0]]
+        return tasks
