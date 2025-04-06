@@ -19,6 +19,8 @@ import spike_pipeline.common.common_widget as cw
 from spike_pipeline.info.utils import InfoManager
 from spike_pipeline.plotting.utils import PlotManager
 from spike_pipeline.props.utils import PropManager
+from spike_pipeline.props.general import GeneralPara
+from spike_pipeline.props.trigger import TriggerPara
 from spike_pipeline.common.property_classes import SessionWorkBook
 from spike_pipeline.widgets.open_session import OpenSession
 from spike_pipeline.info.preprocess import PreprocessSetup, prep_task_map
@@ -133,6 +135,9 @@ class MainWindow(QMainWindow):
         # adds the widgets to the information panel
         self.info_manager.add_info_widgets()
 
+        # flag that there is session data available
+        self.has_session = True
+
         # -----------------------------------------------------------------------
         # Plot View Setup
         # -----------------------------------------------------------------------
@@ -140,10 +145,29 @@ class MainWindow(QMainWindow):
         # adds the general/trace property fields
         prop_type_add = ['general', 'trace']
         self.prop_manager.add_prop_tabs(prop_type_add)
+        for pt in prop_type_add:
+            self.prop_manager.set_tab_visible(pt, True)
 
         # sets up the trace/probe views
         for p_view in ['Trace', 'Probe']:
-            self.plot_manager.get_plot_view(p_view.lower())
+            # if missing, then add the plot type (if required)
+            if p_view.lower() in self.plot_manager.types:
+                # retrieves the plot view widget
+                plot_view = self.plot_manager.get_plot_view(p_view.lower())
+
+                # performs specific view updates
+                match p_view.lower():
+                    case 'probe':
+                        plot_view.probe_rec = self.session_obj.get_current_recording_probe()
+                        self.plot_manager.reset_probe_views()
+
+                    case 'trace':
+                        pass
+
+            else:
+                self.plot_manager.add_plot_view(p_view.lower())
+
+            # adds the configuration view
             self.prop_manager.add_config_view(p_view)
 
         # initial region configuration
@@ -205,13 +229,10 @@ class MainWindow(QMainWindow):
         # -----------------------------------------------------------------------
 
         # enables the menubar items
-        self.menu_bar.set_menu_enabled('save', True)
-        self.menu_bar.set_menu_enabled('clear', True)
-        # self.menu_bar.set_menu_enabled('run_test', True)
+        self.menu_bar.set_menu_enabled_blocks('session-open')
 
         # resets the session flags
         self.session_obj.state = 1
-        self.has_session = True
 
     def sync_channel_change(self):
 
@@ -219,11 +240,19 @@ class MainWindow(QMainWindow):
         if self.has_session:
             # appends the trigger plot view to the info manager
             self.prop_manager.add_prop_tabs('trigger')
-            self.plot_manager.get_plot_view('trigger', expand_grid=False, show_plot=False)
 
-            # appends the trigger plot view to the info manager
+            if 'trigger' in self.plot_manager.types:
+                trig_view = self.plot_manager.get_plot_view('trigger')
+                trig_view.delete_all_regions()
+                trig_view.reset_session_fields(self.session_obj)
+
+            else:
+                # appends the trigger plot view to the info manager
+                self.plot_manager.get_plot_view('trigger', expand_grid=False, show_plot=False)
+                self.prop_manager.set_tab_visible('trigger', False)
+
+            # adds the configuration view field
             self.prop_manager.add_config_view('Trigger')
-            self.prop_manager.set_tab_visible('trigger', False)
 
     def bad_channel_change(self, session=None):
 
@@ -251,7 +280,7 @@ class MainWindow(QMainWindow):
         # updates the probe-view
         probe_view = self.plot_manager.get_plot_view('probe')
         probe_view.reset_out_line(ch_status[0][1])
-        probe_view.reset_probe_views()
+        self.plot_manager.reset_probe_views()
 
     # ---------------------------------------------------------------------------
     # Progress Worker Slot Functions
@@ -360,19 +389,52 @@ class MainWindow(QMainWindow):
 
     def clear_session(self):
 
-        # resets the
+        # array fields
+        base_tab = ['config']
+
+        # resets the property tab widget/visibility fields
         for t, tt in zip(self.prop_manager.tabs, self.prop_manager.t_types):
+            # property specific updates
             match tt:
                 case 'config':
                     # case is the configuration tab
-                    t.obj_rconfig.clear()
+                    if self.session_obj.session is None:
+                        t.obj_rconfig.clear()
 
-                case _:
-                    # otherwise, hide the tab
-                    self.prop_manager.set_tab_visible(tt, False)
+                    else:
+                        t.obj_rconfig.reset()
+
+                case 'trigger':
+                    # case is the trigger tab
+                    trig_view = self.plot_manager.get_plot_view('trigger')
+                    trig_view.delete_all_regions()
+
+            # resets the tab visibility
+            self.prop_manager.set_tab_visible(tt, tt in base_tab)
+
+        # clears the plot view
+        for p_type in self.plot_manager.types:
+            # retrieves the plot view object
+            p_view = self.plot_manager.get_plot_view(p_type)
+            p_view.clear_plot_view()
+
+            # performs the view specific updates
+            match p_type:
+                case 'probe':
+                    pass
+
+                case 'trace':
+                    pass
+
+                case 'trigger':
+                    pass
 
         # clears the information tabs
         self.info_manager.tab_group_table.setVisible(False)
+        self.menu_bar.set_menu_enabled_blocks('init')
+
+        # resets the session flag
+        self.has_session = False
 
     # ---------------------------------------------------------------------------
     # Override Functions
@@ -416,9 +478,6 @@ class MainWindow(QMainWindow):
 
 
 class MenuBar(QObject):
-    # field initialisations
-    disabled_list = ['save', 'clear']
-
     def __init__(self, main_obj):
         super(MenuBar, self).__init__()
 
@@ -443,8 +502,8 @@ class MenuBar(QObject):
         self.main_obj.setMenuBar(self.menu_bar)
 
         # parent menu widgets
-        h_menu_file = self.menu_bar.addMenu('File')
-        h_menu_prep = self.menu_bar.addMenu('Preprocessing')
+        h_menu_file = self.add_main_menu_item('File')
+        h_menu_prep = self.add_main_menu_item('Preprocessing')
 
         # ---------------------------------------------------------------------------
         # Toolbar Setup
@@ -516,7 +575,14 @@ class MenuBar(QObject):
         # ---------------------------------------------------------------------------
 
         # disables the required menu items
-        [self.set_menu_enabled(x, False) for x in self.disabled_list]
+        self.set_menu_enabled_blocks('init')
+
+    def add_main_menu_item(self, label):
+
+        h_menu = self.menu_bar.addMenu(label)
+        h_menu.setObjectName(label.lower())
+
+        return h_menu
 
     def add_menu_items(self, h_menu_parent, p_lbl, cb_fcn, p_str, add_tool):
 
@@ -584,12 +650,16 @@ class MenuBar(QObject):
         self.main_obj.session_obj.session.set_bad_channel(channel_data['bad'])
         self.main_obj.session_obj.session.set_sync_channel(channel_data['sync'])
 
-        # updates the channel status table fields
+        # updates the bad/sync channel status table fields
         self.main_obj.bad_channel_change()
+        self.main_obj.sync_channel_change()
 
-        # creates the trigger plot view (if missing)
-        if 'trigger' not in self.main_obj.plot_manager.types:
-            self.main_obj.sync_channel_change()
+        # resets the multi-run property fields
+        n_run = self.main_obj.session_obj.session.get_run_count()
+        for pt in ['general', 'trigger']:
+            # retrieves the property tab
+            prop_tab = self.main_obj.prop_manager.get_prop_tab(pt)
+            prop_tab.p_props.reset_prop_para(prop_tab.p_info['ch_fld'], n_run)
 
         # resets the property/information panel fields
         self.main_obj.prop_manager.set_prop_para(ses_data['prop_para'])
@@ -714,7 +784,7 @@ class MenuBar(QObject):
 
     def get_menu_item(self, menu_name):
 
-        return self.menu_bar.findChild((QWidget, QAction), name=menu_name)
+        return self.menu_bar.findChild((QWidget, QAction, QMenu), name=menu_name)
 
     def context_menu_event(self, evnt):
 
@@ -746,3 +816,21 @@ class MenuBar(QObject):
             file_info = file_dlg.selectedFiles()
             with open(file_info[0], 'wb') as f:
                 pickle.dump(output_data, f)
+
+    def set_menu_enabled_blocks(self, m_type):
+
+        # initialisations
+        menu_on, menu_off = [], []
+
+        match m_type:
+            case 'init':
+                # case is initialising
+                menu_off = ['save', 'clear', 'preprocessing']
+
+            case 'session-open':
+                # case is post session opening
+                menu_on = ['save', 'clear', 'preprocessing']
+
+        # resets the menu enabled properties
+        [self.set_menu_enabled(m_on, True) for m_on in menu_on]
+        [self.set_menu_enabled(m_off, False) for m_off in menu_off]

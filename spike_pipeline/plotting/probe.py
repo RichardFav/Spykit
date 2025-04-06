@@ -106,32 +106,41 @@ class ProbePlot(PlotWidget):
 
     def setup_probe_views(self):
 
-        # clears any existing plots
-        if self.main_view is not None:
-            a = 1
+        if self.main_view is None:
+            # creates the main view
+            self.main_view = ProbeView(self.h_plot[0, 0], self.probe, self.session_info)
 
-        # creates the main/inset views
-        self.main_view = ProbeView(self.h_plot[0, 0], self.probe, self.session_info)
-        self.sub_view = ProbeView(self.h_plot[1, 0], self.probe, self.session_info)
+            # sets the main probe view properties
+            self.h_plot[0, 0].addItem(self.main_view)
+            self.h_plot[0, 0].scene().sigMouseMoved.connect(pfcn(self.view_mouse_move, True))
+            self.h_plot[0, 0].enterEvent = pfcn(self.enter_view, True)
+            self.h_plot[0, 0].leaveEvent = pfcn(self.leave_view, True)
+            self.main_view.update_roi.connect(self.main_roi_moved)
 
-        # sets the main probe view properties
-        self.h_plot[0, 0].addItem(self.main_view)
-        self.h_plot[0, 0].scene().sigMouseMoved.connect(pfcn(self.view_mouse_move, True))
-        self.h_plot[0, 0].enterEvent = pfcn(self.enter_view, True)
-        self.h_plot[0, 0].leaveEvent = pfcn(self.leave_view, True)
-        self.main_view.update_roi.connect(self.main_roi_moved)
-        self.main_view.reset_axes_limits(False)
+            # create the main view ROI
+            self.main_view.create_inset_roi(is_full=False)
 
-        # sets the inset probe view properties
-        self.h_plot[1, 0].addItem(self.sub_view)
-        self.h_plot[1, 0].scene().sigMouseMoved.connect(pfcn(self.view_mouse_move, False))
-        self.h_plot[1, 0].enterEvent = pfcn(self.enter_view, False)
-        self.h_plot[1, 0].leaveEvent = pfcn(self.leave_view, False)
+        else:
+            #
+            self.main_view.reset_probe_fields(self.probe)
+            self.main_view.reset_inset_roi(False)
 
-        # create the main view ROI
-        self.main_view.create_inset_roi(is_full=False)
+        if self.sub_view is None:
+            # creates the inset view
+            self.sub_view = ProbeView(self.h_plot[1, 0], self.probe, self.session_info)
+
+            # sets the inset probe view properties
+            self.h_plot[1, 0].addItem(self.sub_view)
+            self.h_plot[1, 0].scene().sigMouseMoved.connect(pfcn(self.view_mouse_move, False))
+            self.h_plot[1, 0].enterEvent = pfcn(self.enter_view, False)
+            self.h_plot[1, 0].leaveEvent = pfcn(self.leave_view, False)
+
+        else:
+            #
+            self.sub_view.reset_probe_fields(self.probe)
 
         # sets up the probe dataframe
+        self.main_view.reset_axes_limits(False)
         self.sub_view.reset_axes_limits(False, i_shank=0)
         self.probe_dframe = self.probe.to_dataframe(complete=True)
 
@@ -382,6 +391,8 @@ class ProbePlot(PlotWidget):
         self.main_view.create_probe_plot()
         self.sub_view.create_probe_plot()
 
+        self.main_view.roi.setVisible(True)
+
     def reset_out_line(self, ch_status):
 
         # determines the "out" channels
@@ -410,6 +421,19 @@ class ProbePlot(PlotWidget):
         # resets the sub-view probe out line
         self.main_view.reset_out_line(y_out)
         self.sub_view.reset_out_line(y_out)
+
+    # ---------------------------------------------------------------------------
+    # View Clear Functions
+    # ---------------------------------------------------------------------------
+
+    def clear_plot_view(self):
+
+        # hides the inset ROI object
+        self.main_view.roi.setVisible(False)
+
+        # clears the main/inset probe plot views
+        self.main_view.clear_probe_plot()
+        self.sub_view.clear_probe_plot()
 
     # ---------------------------------------------------------------------------
     # Static Methods
@@ -464,6 +488,7 @@ class ProbeView(GraphicsObject):
         self.setParent(main_obj)
 
         # field initialisation
+        self.p = None
         self.roi = None
         self.width = None
         self.height = None
@@ -473,9 +498,12 @@ class ProbeView(GraphicsObject):
         self.y_lim_full = None
         self.i_sel_contact = None
         self.i_sel_trace = None
-        self.x_lim_shank = []
-        self.y_lim_shank = []
+        self.x_lim_shank = None
+        self.y_lim_shank = None
         self.session_info = session_info
+
+        # plot widgets
+        self.picture = QPicture()
 
         # out location class widgets
         self.y_out = None
@@ -484,6 +512,11 @@ class ProbeView(GraphicsObject):
         self.ch_label = None
         self.ch_highlight = None
         self.show_out = False
+
+        # sets the probe field
+        self.reset_probe_fields(probe)
+
+    def reset_probe_fields(self, probe):
 
         # field retrieval
         self.n_dim = probe.ndim
@@ -506,9 +539,6 @@ class ProbeView(GraphicsObject):
         # sets up the axes limits
         self.get_axes_limits(probe)
 
-        # plot widgets
-        self.picture = QPicture()
-
         # creates the probe plot
         self.create_channel_highlight()
         self.create_probe_plot()
@@ -523,6 +553,10 @@ class ProbeView(GraphicsObject):
         return [self.vert_to_pointf(v) for v in vert0]
 
     def create_channel_highlight(self):
+
+        # exit if the label is already initialised
+        if self.ch_highlight is not None:
+            return
 
         # pre-calculations
         bb_rect = self.c_poly[0].boundingRect()
@@ -552,6 +586,9 @@ class ProbeView(GraphicsObject):
 
     def create_probe_plot(self):
 
+        if self.p is not None:
+            self.clear_probe_plot()
+
         # polygon setup
         p_poly = QPolygonF(self.p_vert)
         if self.session_info is None:
@@ -562,41 +599,47 @@ class ProbeView(GraphicsObject):
                                      self.session_info.channel_data.is_filt)
 
         # painter object setup
-        p = QPainter(self.picture)
+        self.p = QPainter(self.picture)
         pen_p = mkPen(self.c_col_probe)
 
         # probe shape plot
-        p.setPen(mkPen(self.p_col_probe))
-        p.setBrush(mkBrush(self.p_col_probe))
-        p.drawPolygon(p_poly)
+        self.p.setPen(mkPen(self.p_col_probe))
+        self.p.setBrush(mkBrush(self.p_col_probe))
+        self.p.drawPolygon(p_poly)
 
         # probe contact plots
-        p.setPen(pen_p)
+        self.p.setPen(pen_p)
         for i_p, c_p in enumerate(self.c_poly):
-            p.setPen(pen_p)
+            self.p.setPen(pen_p)
             if i_p == self.i_sel_contact:
                 # case is the contact is being hovered over
-                p.setBrush(mkBrush(self.c_col_hover))
-                p.drawPolygon(c_p)
+                self.p.setBrush(mkBrush(self.c_col_hover))
+                self.p.drawPolygon(c_p)
 
             if self.session_info is not None:
                 # retrieves the channel fill colour
                 if is_show[i_p]:
                     # case is the contact is selected
-                    p.setPen(self.pen_sel)
+                    self.p.setPen(self.pen_sel)
 
                 ch_status = self.session_info.get_channel_status(i_p)
-                p.setBrush(mkBrush(cw.p_col_status[ch_status]))
+                self.p.setBrush(mkBrush(cw.p_col_status[ch_status]))
 
             # case is a normal polygon
-            p.drawPolygon(c_p)
+            self.p.drawPolygon(c_p)
 
         # ends the drawing
-        p.end()
-
+        self.p.end()
         self.update()
 
-    def create_inset_roi(self, x_lim_s=None, y_lim_s=None, is_full=True):
+    def clear_probe_plot(self):
+
+        self.p.begin(self.picture)
+        self.p.eraseRect(self.boundingRect())
+        self.p.end()
+        self.update()
+
+    def get_inset_roi_prop(self, is_full, x_lim_s=None, y_lim_s=None):
 
         if x_lim_s is None:
             x_lim_s, y_lim_s = self.get_init_roi_limits()
@@ -610,6 +653,20 @@ class ProbeView(GraphicsObject):
 
         else:
             p_lim = QRectF(self.x_lim[0], self.y_lim[0], np.diff(self.x_lim)[0], np.diff(self.y_lim)[0])
+
+        return p_0, p_sz, p_lim
+
+    def reset_inset_roi(self, is_full):
+
+        p_0, p_sz, self.roi.maxBounds = self.get_inset_roi_prop(is_full)
+
+        self.roi.setPos(p_0)
+        self.roi.setSize(p_sz)
+
+
+    def create_inset_roi(self, x_lim_s=None, y_lim_s=None, is_full=True):
+
+        p_0, p_sz, p_lim = self.get_inset_roi_prop(is_full, x_lim_s, y_lim_s)
 
         # creates the roi object
         self.roi = ROI(p_0, p_sz, pen=self.pen, hoverPen=self.pen_h,
@@ -721,6 +778,8 @@ class ProbeView(GraphicsObject):
         self.y_lim_full = [p_min_ex[1], p_max_ex[1]]
 
         # sets the shank coordinate limits
+        self.x_lim_shank = []
+        self.y_lim_shank = []
         for sh in probe.get_shanks():
             c_vert_sh = np.vstack(c_vert[sh.device_channel_indices])
             sh_min_ex, sh_max_ex = self.calc_reduced_limits(c_vert_sh, p_exp=[0, 0])

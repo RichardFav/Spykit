@@ -28,6 +28,8 @@ class TracePara(PropPara):
     check_update = pyqtSignal(str)
 
     def __init__(self, p_info):
+
+        # initialises the class parameters
         self.is_updating = True
         super(TracePara, self).__init__(p_info)
         self.is_updating = False

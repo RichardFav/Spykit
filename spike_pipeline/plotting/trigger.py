@@ -46,40 +46,35 @@ class TriggerPlot(PlotWidget):
     def __init__(self, session_info):
         super(TriggerPlot, self).__init__('trigger', b_icon=b_icon, b_type=b_type, tt_lbl=tt_lbl)
 
-        # main class fields
-        self.session_info = session_info
-        s_props = self.session_info.session_props
-
-        # experiment properties
+        # linear region objects
+        self.l_reg_x = None
+        self.l_reg_xs = None
+        self.n_reg_xs = None
         self.t_start_ofs = 0
-        self.i_run_reg = self.get_run_index()
-        self.t_dur = s_props.get_value('t_dur')
-        self.s_freq = s_props.get_value('s_freq')
-        self.n_samples = s_props.get_value('n_samples')
-        self.n_run = self.session_info.session.get_run_count()
-        self.t_lim = [0, self.t_dur]
 
-        # field retrieval
-        self.gen_props = None
-        self.trig_props = None
-        self.x_tr = np.arange(self.n_samples) / self.s_freq
-        self.y_tr = self.session_info.session.sync_ch
+        # trace fields
+        self.x_tr = None
+        self.y_tr = None
+        self.n_run = None
+        self.n_samples = None
+        self.i_run_reg = None
 
         # plot item mouse event functions
         self.trace_release_fcn = None
         self.trace_dclick_fcn = None
 
-        # linear region objects
+        # other class fields
+        self.t_dur = None
+        self.t_lim = None
+        self.s_props = None
         self.l_reg_x = None
-        self.l_reg_xs = np.empty(self.n_run, dtype=object)
-        self.n_reg_xs = np.zeros(self.n_run, dtype=int)
-
-        # class widgets
         self.i_sel_tr = None
         self.frame_img = None
-        self.ximage_item = ImageItem()
+        self.gen_props = None
+        self.trig_props = None
 
-        # trace items
+        # class widgets
+        self.ximage_item = ImageItem()
         self.trig_trace = PlotCurveItem(pen=self.l_pen_trig, skipFiniteCheck=False)
 
         # sets up the plot regions
@@ -89,10 +84,46 @@ class TriggerPlot(PlotWidget):
 
         # initialises the other class fields
         self.init_class_fields()
+        self.reset_session_fields(session_info)
 
     # ---------------------------------------------------------------------------
     # Class Widget Setup Functions
     # ---------------------------------------------------------------------------
+
+    def reset_session_fields(self, ses_info):
+
+        #
+        self.session_info = ses_info
+        self.s_props = self.session_info.session_props
+        self.t_dur = self.s_props.get_value('t_dur')
+        self.t_lim = [0, self.t_dur]
+
+        # experiment properties
+        self.i_run_reg = self.get_run_index()
+        self.n_samples = self.s_props.get_value('n_samples')
+        self.n_run = self.session_info.session.get_run_count()
+
+        # field retrieval
+        s_freq = self.s_props.get_value('s_freq')
+        self.x_tr = np.arange(self.n_samples) / s_freq
+        self.y_tr = self.session_info.session.sync_ch
+
+        # linear region objects
+        self.l_reg_xs = np.empty(self.n_run, dtype=object)
+        self.n_reg_xs = np.zeros(self.n_run, dtype=int)
+
+        # resets main trace x-axis limits
+        self.v_box[0, 0].setLimits(xMin=0, xMax=self.t_dur, yMin=0.01, yMax=0.99)
+        self.update_trigger_trace()
+
+        # creates the image transform
+        tr_x = QtGui.QTransform()
+        tr_x.scale(self.t_dur / self.n_col_img, 1.0)
+        self.ximage_item.setTransform(tr_x)
+
+        # linear region position update
+        self.l_reg_x.setPos(0, self.t_dur)
+        self.l_reg_x.setBounds([0, self.t_dur])
 
     def init_class_fields(self):
 
@@ -118,12 +149,10 @@ class TriggerPlot(PlotWidget):
             pb.clicked.connect(cb_fcn)
 
         # sets the axis limits
-        self.v_box[0, 0].setLimits(xMin=0, xMax=self.session_info.session_props.t_dur, yMin=0.01, yMax=0.99)
         self.v_box[0, 0].setMouseMode(self.v_box[0, 0].RectMode)
 
         # adds the traces to the main plot
         self.h_plot[0, 0].addItem(self.trig_trace)
-        self.update_trigger_trace()
 
         # sets the signal trace plot event functions
         self.trace_dclick_fcn = self.h_plot[0, 0].mousePressEvent
@@ -134,10 +163,6 @@ class TriggerPlot(PlotWidget):
         # X-Axis Range Finder Setup
         # ---------------------------------------------------------------------------
 
-        # creates the image transform
-        tr_x = QtGui.QTransform()
-        tr_x.scale(self.t_dur / self.n_col_img, 1.0)
-
         # sets the plot item properties
         self.xframe_item.setMouseEnabled(y=False)
         self.xframe_item.hideAxis('left')
@@ -146,13 +171,12 @@ class TriggerPlot(PlotWidget):
         self.xframe_item.setDefaultPadding(0.0)
 
         # adds the image frame
-        self.ximage_item.setTransform(tr_x)
         self.ximage_item.setColorMap(cw.setup_colour_map(self.n_lvl))
         self.ximage_item.setImage(self.setup_frame_image())
         self.h_plot[1, 0].addItem(self.ximage_item)
 
         # creates the linear region
-        self.l_reg_x = LinearRegionItem([0, self.t_dur], bounds=[0, self.t_dur], span=[0, 1],
+        self.l_reg_x = LinearRegionItem([0, 1], bounds=[0, 1], span=[0, 1],
                                         pen=self.l_pen, hoverPen=self.l_pen_hover)
         self.l_reg_x.sigRegionChangeFinished.connect(self.xframe_region_move)
         self.l_reg_x.setZValue(10)
@@ -179,9 +203,14 @@ class TriggerPlot(PlotWidget):
             self.i_run_reg = i_run
             self.reset_gen_props(False)
 
+        if self.s_props is None:
+            s_freq = self.session_info.session_props.get_value('s_freq')
+        else:
+            s_freq = self.s_props.get_value('s_freq')
+
         # sets up the scaled trigger trace
-        i_frm0 = int(self.t_start_ofs * self.s_freq)
-        i_frm1 = int((self.t_start_ofs + self.t_dur) * self.s_freq)
+        i_frm0 = int(self.t_start_ofs * s_freq)
+        i_frm1 = int((self.t_start_ofs + self.t_dur) * s_freq)
         y_tr_new = self.p_ofs + (1 - 2 * self.p_ofs) * cf.normalise_trace(self.y_tr[i_run][i_frm0:i_frm1])
 
         # resets the trigger trace data
@@ -221,15 +250,23 @@ class TriggerPlot(PlotWidget):
         # adds the region to the trigger trace
         self.h_plot[0, 0].addItem(l_reg)
 
-    def delete_region(self, i_reg):
+    def delete_region(self, i_reg, i_run=None):
+
+        if i_run is None:
+            i_run = self.get_run_index()
 
         # removes the linear item from the list/plot item
-        i_run = self.get_run_index()
         l_reg_del = self.l_reg_xs[i_run].pop(i_reg)
         self.h_plot[0, 0].removeItem(l_reg_del)
 
         # decrements the linear region count
         self.n_reg_xs[i_run] -= 1
+
+    def delete_all_regions(self):
+
+        for i_run, n_reg in enumerate(self.n_reg_xs):
+            for i_reg in range(n_reg):
+                self.delete_region(0, i_run)
 
     def update_region(self, i_reg):
 
@@ -390,6 +427,9 @@ class TriggerPlot(PlotWidget):
 
         # ensures the limits are correct
         if shift_time:
+            if self.t_lim is None:
+                self.t_lim = [0, self.t_dur]
+
             self.t_lim = cf.list_add(self.t_lim, -dt_start_ofs)
             if self.t_lim[0] < 0:
                 self.t_lim[0] = 0
@@ -424,6 +464,14 @@ class TriggerPlot(PlotWidget):
 
         self.trig_props = trig_props_new
         trig_props_new.set_trig_view(self)
+
+    # ---------------------------------------------------------------------------
+    # View Clear Functions
+    # ---------------------------------------------------------------------------
+
+    def clear_plot_view(self):
+
+        self.trig_trace.clear()
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions

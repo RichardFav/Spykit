@@ -155,6 +155,10 @@ class PropManager(QWidget):
 
         self.get_prop_tab('config').add_config_view(v_type)
 
+    def has_config_view(self, v_type):
+
+        self.get_prop_tab('config').has_config_view(v_type)
+
     def set_config_enabled(self, state):
 
         self.get_prop_tab('config').set_config_enabled(state)
@@ -179,7 +183,7 @@ class PropManager(QWidget):
             p_props = deepcopy(p_tab.p_info['ch_fld'])
 
             # retrieves the parameter values
-            if p_tab.p_props.n_run is not None:
+            if self.p_props.is_multi:
                 dict_full = [[p_tab.get(k, i) for i in range(p_tab.p_props.n_run)] for k in p_props]
                 p_dict_new = dict(zip(p_props.keys(), dict_full))
 
@@ -201,7 +205,7 @@ class PropManager(QWidget):
 
             # retrieves the parameter values
             for p, v in p_tab.p_info['ch_fld'].items():
-                if p_tab.p_props.n_run is not None:
+                if p_tab.p_props.is_multi:
                     # case is multi-element property array
                     for i_run in range(p_tab.p_props.n_run):
                         # updates the parameter field
@@ -224,9 +228,11 @@ class PropManager(QWidget):
                     # case is the general property tab
                     p_tab.check_update(False)
                     p_tab.edit_update('t_dur')
+                    p_tab.p_props.n_run = self.session_obj.session.get_run_count()
 
                 case 'trigger':
                     p_tab.reset_table_data()
+                    p_tab.p_props.n_run = self.session_obj.session.get_run_count()
 
             # resets the update flag
             p_tab.is_updating = False
@@ -239,7 +245,7 @@ class PropManager(QWidget):
         # retrieves the parameter values for each info type
         for p_tab in self.tabs:
             # retrieves the property tab object and parameter fields
-            if (p_tab.p_props is None) or (p_tab.p_props.n_run is None):
+            if (p_tab.p_props is None) or (not p_tab.p_props.is_multi):
                 continue
 
             # flag that manual changes are being made
@@ -386,14 +392,17 @@ class PropPara(QObject):
         super(PropPara, self).__init__()
 
         self.n_run = n_run
+        self.is_multi = n_run is not None
 
-        if n_run is None:
-            for pf, pv in prop_fld.items():
-                setattr(self, pf, pv['value'])
-
-        else:
+        if self.is_multi:
+            # case is multi-run dependent property
             for pf, pv in prop_fld.items():
                 setattr(self, pf, RunPropPara(pv['value'], n_run))
+
+        else:
+            # case is single-run dependent property
+            for pf, pv in prop_fld.items():
+                setattr(self, pf, pv['value'])
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -816,7 +825,7 @@ class PropWidget(QWidget):
 
     def get(self, p_fld, i_run=None):
 
-        if self.p_props.n_run is not None:
+        if self.p_props.is_multi:
             if i_run is None:
                 i_run = self.get_run_index()
 
@@ -828,7 +837,7 @@ class PropWidget(QWidget):
 
     def set(self, p_fld, p_value, i_run=None):
 
-        if self.p_props.n_run is not None:
+        if self.p_props.is_multi:
             if i_run is None:
                 i_run = self.get_run_index()
 
@@ -844,7 +853,7 @@ class PropWidget(QWidget):
         # flag that manual updating is taking place
         self.p_props.is_updating = True
 
-        if self.p_props.n_run is not None:
+        if self.p_props.is_multi:
             if i_run is None:
                 i_run = self.get_run_index()
 

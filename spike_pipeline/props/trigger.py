@@ -83,9 +83,21 @@ class TriggerPara(PropPara):
     pair_update = pyqtSignal()
 
     def __init__(self, p_info, n_run):
-        self.n_run = n_run
-        self.t_arr = [TableArray() for _ in range(n_run)]
 
+        # initialises the table arrays
+        self.t_arr = self.reset_table_array(n_run)
+
+        # initialises the class parameters
+        self.is_updating = True
+        super(TriggerPara, self).__init__(p_info, n_run)
+        self.is_updating = False
+
+    def reset_prop_para(self, p_info, n_run):
+
+        # initialises the table arrays
+        self.t_arr = self.reset_table_array(n_run)
+
+        # initialises the class parameters
         self.is_updating = True
         super(TriggerPara, self).__init__(p_info, n_run)
         self.is_updating = False
@@ -122,6 +134,14 @@ class TriggerPara(PropPara):
     def get(self, i_run, i_row, i_col):
 
         return self.t_arr[i_run].get(i_row, i_col)
+
+    # ---------------------------------------------------------------------------
+    # Table Array Functions
+    # ---------------------------------------------------------------------------
+
+    def reset_table_array(self, n_run):
+
+        return [TableArray() for _ in range(n_run)]
 
     # ---------------------------------------------------------------------------
     # Observable Property Event Callbacks

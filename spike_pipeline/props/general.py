@@ -32,8 +32,15 @@ class GeneralPara(PropPara):
     edit_update = pyqtSignal(str)
 
     def __init__(self, p_info, n_run):
-        self.n_run = n_run
 
+        # initialises the class parameters
+        self.is_updating = True
+        super(GeneralPara, self).__init__(p_info, n_run)
+        self.is_updating = False
+
+    def reset_prop_para(self, p_info, n_run):
+
+        # re-initialises the class parameters
         self.is_updating = True
         super(GeneralPara, self).__init__(p_info, n_run)
         self.is_updating = False

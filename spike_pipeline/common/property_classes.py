@@ -97,8 +97,12 @@ class SessionWorkBook(QObject):
 
     def get_selected_channels(self):
 
-        can_show = np.logical_and(self.channel_data.is_selected, self.channel_data.is_filt)
-        return np.where(can_show)[0]
+        if self.channel_data is None:
+            return []
+
+        else:
+            can_show = np.logical_and(self.channel_data.is_selected, self.channel_data.is_filt)
+            return np.where(can_show)[0]
 
     def get_min_max_values(self, t_lim, i_ch):
 
@@ -628,6 +632,10 @@ class ChannelData:
 
         # determines the channel depth ordering
         self.i_sort, self.i_sort_rev = order_channels_by_depth(probe_rec)
+
+    def clear_select_flag(self):
+
+        self.is_selected[:] = False
 
     def toggle_select_flag(self, i_channel, state):
 

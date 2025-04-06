@@ -688,8 +688,15 @@ class QRegionConfig(QWidget):
 
         # resets the configuration
         self.reset_selector_widgets(np.zeros((1, 1), dtype=int))
-        self.set_enabled(False)
         self.config_reset.emit()
+
+        # resets the combobox fiels
+        self.reset()
+
+    def reset(self):
+
+        # disables the widget
+        self.set_enabled(False)
 
         # removes the fields from the
         self.is_updating = True

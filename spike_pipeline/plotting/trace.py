@@ -899,7 +899,11 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
         return self.session_info.session.get_run_index(self.session_info.current_run)
 
+    # ---------------------------------------------------------------------------
+    # View Clear Functions
+    # ---------------------------------------------------------------------------
 
-"""
-    TracePlot:
-"""
+    def clear_plot_view(self):
+
+        # clears the selection flags
+        self.reset_trace_view()
