@@ -206,7 +206,6 @@ class PlotManager(QWidget):
     def reset_trig_views(self):
 
         plt_trig = self.plots[self.types['trigger'] - 1]
-        plt_trig.delete_all_regions()
         plt_trig.update_trigger_trace(True)
 
     def get_prop_views(self, c_id):

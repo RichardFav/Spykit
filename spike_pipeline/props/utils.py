@@ -197,6 +197,8 @@ class PropManager(QWidget):
 
     def set_prop_para(self, p_para):
 
+        n_run = self.main_obj.session_obj.session.get_run_count()
+
         # retrieves the parameter values for each info type
         for pt, pv in p_para.items():
             # retrieves the property tab object and parameter fields
@@ -207,7 +209,7 @@ class PropManager(QWidget):
             for p, v in p_tab.p_info['ch_fld'].items():
                 if p_tab.p_props.is_multi:
                     # case is multi-element property array
-                    for i_run in range(p_tab.p_props.n_run):
+                    for i_run in range(n_run):
                         # updates the parameter field
                         p_tab.set_n(p, pv[p][i_run], i_run)
 
@@ -228,11 +230,9 @@ class PropManager(QWidget):
                     # case is the general property tab
                     p_tab.check_update(False)
                     p_tab.edit_update('t_dur')
-                    p_tab.p_props.n_run = self.session_obj.session.get_run_count()
 
                 case 'trigger':
                     p_tab.reset_table_data()
-                    p_tab.p_props.n_run = self.session_obj.session.get_run_count()
 
             # resets the update flag
             p_tab.is_updating = False
@@ -259,6 +259,7 @@ class PropManager(QWidget):
             match p_tab.type:
                 case 'general':
                     # case is the general property tab
+                    p_tab.t_dur = self.main_obj.session_obj.session_props.t_dur
                     p_tab.check_update(False)
 
             # resets the update flag

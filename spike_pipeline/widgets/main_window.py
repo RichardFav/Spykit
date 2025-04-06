@@ -429,6 +429,9 @@ class MainWindow(QMainWindow):
                 case 'trigger':
                     pass
 
+            # hides the plot view
+            p_view.hide()
+
         # clears the information tabs
         self.info_manager.tab_group_table.setVisible(False)
         self.menu_bar.set_menu_enabled_blocks('init')
