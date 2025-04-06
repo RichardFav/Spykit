@@ -75,8 +75,8 @@ class MainWindow(QMainWindow):
         # sets the widget style sheets
         self.set_styles()
 
-        # REMOVE ME LATER
-        self.testing()
+        # # REMOVE ME LATER
+        # self.testing()
 
     # ---------------------------------------------------------------------------
     # Class Widget Setup Functions
@@ -375,10 +375,10 @@ class MainWindow(QMainWindow):
 
         # runs the session pre-processing
         prep_tab = self.info_manager.get_info_tab('preprocess')
-        configs = prep_tab.setup_config_dict(prep_task)
+        prep_tab.configs = prep_tab.setup_config_dict(prep_task)
 
         # runs the preprocessing
-        self.session_obj.session.run_preprocessing(configs)
+        self.session_obj.session.run_preprocessing(prep_tab.configs)
 
         # resets the preprocessing data type combobox
         pp_data_flds = self.session_obj.get_current_prep_data_names()
@@ -717,6 +717,7 @@ class MenuBar(QObject):
 
         # field retrieval
         ses_obj = self.main_obj.session_obj
+        prep_tab = self.main_obj.info_manager.get_info_tab('preprocess')
 
         # info/property parameter retrieval
         info_list = ["preprocess", "status"]
@@ -725,6 +726,7 @@ class MenuBar(QObject):
         # sets up the session save data dictionary
         session_data = {
             'state': ses_obj.state,
+            'configs': prep_tab.configs,
             'session_props': ses_obj.session.get_session_props(),
             'prop_para': self.main_obj.prop_manager.get_prop_para(prop_list),
             'info_para': self.main_obj.info_manager.get_info_para(info_list),

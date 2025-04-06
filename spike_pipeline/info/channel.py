@@ -210,6 +210,7 @@ class ChannelInfoTab(InfoWidget):
 
         # initialisations
         self.is_updating = True
+        self.set_update_flag.emit(True)
 
         for i_row, state in enumerate(is_keep):
             h_cell = self.table.item(i_row, self.i_keep_col)
@@ -217,3 +218,4 @@ class ChannelInfoTab(InfoWidget):
 
         # initialisations
         self.is_updating = False
+        self.set_update_flag.emit(False)

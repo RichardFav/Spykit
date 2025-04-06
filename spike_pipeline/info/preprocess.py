@@ -45,6 +45,9 @@ class PreprocessInfoTab(InfoWidgetPara):
     def __init__(self, t_str):
         super(PreprocessInfoTab, self).__init__(t_str, layout=QFormLayout)
 
+        # class field initialisation
+        self.configs = None
+
         # sorting group widgets
         self.frame_sort = QFrame(self)
         self.tab_group_sort = QTabWidget(self)
