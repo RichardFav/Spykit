@@ -113,8 +113,9 @@ class MainWindow(QMainWindow):
 
         # connects workbook sig\nal functions
         self.session_obj.session_change.connect(self.new_session)
-        self.session_obj.sync_channel_change.connect(self.sync_channel_change)
         self.session_obj.bad_channel_change.connect(self.bad_channel_change)
+        self.session_obj.sync_channel_change.connect(self.sync_channel_change)
+        self.session_obj.keep_channel_reset.connect(self.keep_channel_reset)
         self.session_obj.worker_job_started.connect(self.worker_job_started)
         self.session_obj.worker_job_finished.connect(self.worker_job_finished)
 
@@ -253,6 +254,12 @@ class MainWindow(QMainWindow):
 
             # adds the configuration view field
             self.prop_manager.add_config_view('Trigger')
+
+    def keep_channel_reset(self):
+
+        # retrieves the channel table object
+        is_keep = self.session_obj.channel_data.is_keep
+        self.info_manager.get_info_tab('channel').keep_channel_reset(is_keep)
 
     def bad_channel_change(self, session=None):
 
@@ -650,8 +657,7 @@ class MenuBar(QObject):
 
         # creates the session data
         self.main_obj.session_obj.reset_session(ses_data)
-        self.main_obj.session_obj.session.set_bad_channel(channel_data['bad'])
-        self.main_obj.session_obj.session.set_sync_channel(channel_data['sync'])
+        self.main_obj.session_obj.reset_channel_data(channel_data)
 
         # updates the bad/sync channel status table fields
         self.main_obj.bad_channel_change()

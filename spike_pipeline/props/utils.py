@@ -183,7 +183,7 @@ class PropManager(QWidget):
             p_props = deepcopy(p_tab.p_info['ch_fld'])
 
             # retrieves the parameter values
-            if self.p_props.is_multi:
+            if p_tab.p_props.is_multi:
                 dict_full = [[p_tab.get(k, i) for i in range(p_tab.p_props.n_run)] for k in p_props]
                 p_dict_new = dict(zip(p_props.keys(), dict_full))
 

@@ -34,6 +34,7 @@ class SessionWorkBook(QObject):
     session_change = pyqtSignal()
     sync_channel_change = pyqtSignal()
     bad_channel_change = pyqtSignal(object)
+    keep_channel_reset = pyqtSignal()
     worker_job_started = pyqtSignal(str)
     worker_job_finished = pyqtSignal(str)
 
@@ -174,6 +175,20 @@ class SessionWorkBook(QObject):
     def set_prep_type(self, new_type):
 
         self.prep_type = new_type
+
+    # ---------------------------------------------------------------------------
+    # Session wrapper functions
+    # ---------------------------------------------------------------------------
+
+    def reset_channel_data(self, ch_data):
+
+        # resets the bad/sync channels
+        self.session.bad_ch = ch_data['bad']
+        self.session.sync_ch = ch_data['sync']
+
+        #
+        self.channel_data.is_keep = ch_data['keep']
+        self.keep_channel_reset.emit()
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
@@ -491,14 +506,6 @@ class SessionObject(QObject):
             self.data_init['minmax'] = True
 
         self.channel_calc.emit('minmax', self)
-
-    def set_sync_channel(self, sync_ch_data):
-
-        self.sync_ch = sync_ch_data
-
-    def set_bad_channel(self, bad_ch_data):
-
-        self.bad_ch = bad_ch_data
 
     # ---------------------------------------------------------------------------
     # Session wrapper functions

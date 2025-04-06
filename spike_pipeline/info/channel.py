@@ -33,6 +33,7 @@ class ChannelInfoTab(InfoWidget):
     }
 
     # other parameters
+    i_keep_col = 1
     i_status_col = 2
     i_channel_col = 3
 
@@ -183,7 +184,7 @@ class ChannelInfoTab(InfoWidget):
         # determines which items meet the filter selection
         self.is_filt = np.zeros(self.table.rowCount(), dtype=bool)
         for i_row in range(self.table.rowCount()):
-            item = self.table.item(i_row, 1)
+            item = self.table.item(i_row, self.i_status_col)
             self.is_filt[i_row] = item.text() in sel_filt
 
     def check_filter_item(self):
@@ -204,3 +205,15 @@ class ChannelInfoTab(InfoWidget):
     def get_table_device_id(self, i_row_sel):
 
         return int(self.table.item(i_row_sel, self.i_channel_col).text())
+
+    def keep_channel_reset(self, is_keep):
+
+        # initialisations
+        self.is_updating = True
+
+        for i_row, state in enumerate(is_keep):
+            h_cell = self.table.item(i_row, self.i_keep_col)
+            h_cell.setCheckState(cf.chk_state[state])
+
+        # initialisations
+        self.is_updating = False
