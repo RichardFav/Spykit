@@ -4,13 +4,13 @@
 import os
 import pickle
 import numpy as np
-
 import pyqtgraph as pg
+from functools import partial as pfcn
 
 # pyqt6 module import
 from PyQt6.QtWidgets import (QMainWindow, QHBoxLayout, QFormLayout, QWidget, QGridLayout,
                              QScrollArea, QMessageBox, QDialog, QMenuBar, QToolBar, QMenu)
-from PyQt6.QtCore import Qt, QSize, QRect, pyqtSignal, QObject
+from PyQt6.QtCore import Qt, QSize, QRect, pyqtSignal, QObject, QTimer
 from PyQt6.QtGui import QFont, QColor, QIcon, QAction
 
 # custom module import
@@ -24,6 +24,7 @@ from spike_pipeline.props.trigger import TriggerPara
 from spike_pipeline.common.property_classes import SessionWorkBook
 from spike_pipeline.widgets.open_session import OpenSession
 from spike_pipeline.info.preprocess import PreprocessSetup, prep_task_map
+from spike_pipeline.threads.utils import ThreadWorker
 
 # widget dimensions
 x_gap = 15
@@ -368,14 +369,26 @@ class MainWindow(QMainWindow):
 
         a = 1
 
-    def run_preproccessing(self, prep_task):
+    # ---------------------------------------------------------------------------
+    # Preprocessing Functions
+    # ---------------------------------------------------------------------------
+
+    def run_preproccessing(self, prep_obj):
 
         # starts the job worker
         self.worker_job_started('preprocess')
 
         # runs the session pre-processing
         prep_tab = self.info_manager.get_info_tab('preprocess')
-        prep_tab.configs = prep_tab.setup_config_dict(prep_task)
+        if isinstance(prep_obj, list):
+            # case is running from the Preprocessing dialog
+            prep_task = prep_obj
+            prep_tab.configs = prep_tab.setup_config_dict(prep_task)
+
+        else:
+            # case is running from loading session
+            prep_tab.configs = prep_obj
+            prep_task = [prep_tab.pp_flds[v[0]] for v in prep_obj.values()]
 
         # runs the preprocessing
         self.session_obj.session.run_preprocessing(prep_tab.configs)
@@ -389,6 +402,30 @@ class MainWindow(QMainWindow):
 
         # updates the trace views
         self.plot_manager.reset_trace_views()
+
+    def setup_preprocessing_worker(self, prep_task, delay_start=False):
+
+        t_worker = ThreadWorker(self.run_preprocessing_worker, prep_task)
+        t_worker.work_finished.connect(self.preprocessing_complete)
+
+        if delay_start:
+            QTimer.singleShot(20, pfcn(self.start_timer, t_worker))
+
+        else:
+            t_worker.start()
+
+    @staticmethod
+    def start_timer(t_worker):
+
+        t_worker.start()
+
+    def run_preprocessing_worker(self, prep_task):
+
+        self.run_preproccessing(prep_task)
+
+    def preprocessing_complete(self):
+
+        self.worker_job_finished('preprocess')
 
     # ---------------------------------------------------------------------------
     # Session Related Functions
@@ -658,6 +695,14 @@ class MenuBar(QObject):
         # creates the session data
         self.main_obj.session_obj.reset_session(ses_data)
         self.main_obj.session_obj.reset_channel_data(channel_data)
+
+        # sets/runs the config field/routines
+        prep_info = self.main_obj.info_manager.get_info_tab('preprocess')
+        prep_info.configs = ses_data['configs']
+        if prep_info.configs is not None:
+            # runs the preprocessing (if data in config field)
+            if 'preprocessing' in prep_info.configs:
+                self.main_obj.setup_preprocessing_worker(prep_info.configs['preprocessing'], True)
 
         # updates the bad/sync channel status table fields
         self.main_obj.bad_channel_change()

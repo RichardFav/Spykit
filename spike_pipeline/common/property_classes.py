@@ -195,7 +195,7 @@ class SessionWorkBook(QObject):
         self.session.bad_ch = ch_data['bad']
         self.session.sync_ch = ch_data['sync']
 
-        #
+        # resets the channel keep field
         self.channel_data.is_keep = ch_data['keep']
         self.keep_channel_reset.emit()
 

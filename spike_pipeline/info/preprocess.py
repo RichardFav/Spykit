@@ -418,9 +418,7 @@ class PreprocessSetup(QDialog):
                 prep_task.append(self.add_list.item(i).text())
 
             # sets up the bad channel detection worker
-            t_worker = ThreadWorker(self.run_preprocessing_worker, prep_task)
-            t_worker.work_finished.connect(self.preprocessing_complete)
-            t_worker.start()
+            self.main_obj.setup_preprocessing_worker(prep_task)
 
             # runs the pre-processing
             self.close_window()
@@ -448,10 +446,4 @@ class PreprocessSetup(QDialog):
     # Thread Worker Functions
     # ---------------------------------------------------------------------------
 
-    def run_preprocessing_worker(self, prep_task):
 
-        self.main_obj.run_preproccessing(prep_task)
-
-    def preprocessing_complete(self):
-
-        self.main_obj.worker_job_finished('preprocess')
