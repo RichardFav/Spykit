@@ -131,6 +131,15 @@ class SessionWorkBook(QObject):
         probe_rec = self.get_current_recording_probe()
         return probe_rec.get_num_channels()
 
+    def get_shank_id(self, i_channel):
+
+        shank_id = self.get_channel_info()['shank_ids'][i_channel]
+        if len(shank_id):
+            return int(shank_id)
+
+        else:
+            return 1
+
     def get_frame_count(self):
 
         return self.session_props

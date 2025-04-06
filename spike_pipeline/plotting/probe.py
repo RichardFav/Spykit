@@ -353,8 +353,14 @@ class ProbePlot(PlotWidget):
 
         loc_ch = self.session_info.get_channel_location(i_channel)
         status_ch = self.session_info.get_channel_status(i_channel)
+        shank_id = self.session_info.get_shank_id(i_channel)
 
-        return "Channel #{0}\nDepth = {1}\nStatus = {2}".format(i_channel, loc_ch[1], status_ch)
+        lbl_str = "Channel #{0}".format(i_channel)
+        lbl_str += "\nDepth = {0}".format(loc_ch[1])
+        lbl_str += "\nStatus = {0}".format(status_ch)
+        lbl_str += "\nShank ID = {0}".format(shank_id)
+
+        return lbl_str
 
     def setup_init_roi_limits(self):
 
@@ -475,7 +481,7 @@ class ProbeView(GraphicsObject):
 
     # line pen widgets
     l_pen_out = mkPen(color=cf.get_colour_value('k'), width=2)
-    l_pen_highlight = mkPen(color=cf.get_colour_value('r'), width=2)
+    l_pen_highlight = mkPen(color=cf.get_colour_value('m'), width=2)
 
     # pyqtsignal functions
     update_roi = pyqtSignal(object)
