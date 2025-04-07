@@ -200,7 +200,7 @@ class TraceProps(PropWidget):
     def colour_selected(self, c_map_new):
 
         self.p_props.c_map = c_map_new
-        self.reset_trace_props()
+        self.reset_trace_props(None)
 
     # ---------------------------------------------------------------------------
     # Plot View Setter Functions

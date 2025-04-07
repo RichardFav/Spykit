@@ -68,7 +68,7 @@ class TraceLabelMixin:
                 self.hide_labels(range(self.n_show, self.n_lbl_max))
 
             # updates the locations of the labels so they overlap with the traces
-            tr_id = self.plot_ch_ids[self.i_trace]
+            tr_id = self.plot_id[self.i_trace]
             # tr_id = self.session_info.get_selected_channels()[self.i_trace]
             for i_tr in range(n_trace):
                 self.labels[i_tr].setPos(self.t_lim[0], self.y_trace[i_tr])
@@ -176,8 +176,8 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
         # axes limits
         self.y_lim = []
-        self.x_window = np.min([self.t_dur, self.t_dur_max0])
         self.y_lim_tr = self.y_ofs / 2
+        self.x_window = np.min([self.t_dur, self.t_dur_max0])
         self.t_lim = np.array([0, self.x_window])
 
         # trace label class fields

@@ -233,6 +233,7 @@ class PropManager(QWidget):
 
                 case 'trigger':
                     p_tab.reset_table_data()
+                    p_tab.reset_slot_functions()
 
             # resets the update flag
             p_tab.is_updating = False

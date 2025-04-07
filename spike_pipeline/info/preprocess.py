@@ -21,11 +21,69 @@ prep_task_map = {
     'Phase Shift': 'phase_shift',
     'Bandpass Filter': 'bandpass_filter',
     'Bad Channel Interpolation': 'interpolation',
-    'Common Average Reference': 'common_reference',
+    'Common Reference': 'common_reference',
     'Whitening': 'whitening',
     'Drift Correction': 'drift_correct',
     'Sorting': 'sorting',
 }
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+"""
+    PreprocessConfig:
+"""
+
+
+class PreprocessConfig(object):
+    def __init__(self):
+
+        self.prep_task = []
+        self.task_name = []
+        self.task_para = {}
+
+    def add_prep_task(self, p_task, t_para=None, t_name=None):
+
+        self.prep_task.append(p_task)
+
+        if t_para is not None:
+            self.task_para[p_task] = t_para
+
+        if t_name is not None:
+            self.task_name.append(t_name)
+
+    def setup_config_dicts(self):
+
+        # sets up the task list (splitting if interpolation involved)
+        p_task0 = deepcopy(self.prep_task)
+        if 'interpolation' in p_task0:
+            i_task = p_task0.index('interpolation')
+            p_task = [p_task0[:i_task], p_task0[(i_task+1):]]
+
+        else:
+            p_task = [p_task0]
+
+        # sets up the configuration dictionary list
+        pp_cfig = []
+        for it, pt in enumerate(p_task):
+            if it == 1:
+                pp_cfig.append(self.task_para['interpolation'])
+
+            # sets up the configuration for the preprocessing group
+            pp = {}
+            for i_ref, p in enumerate(pt):
+                pp[str(i_ref+1)] = [p, self.task_para[p]]
+
+            # appends the step parameters to the list
+            pp_cfig.append(pp)
+
+        # returns the configuration dictionary list
+        return pp_cfig
+
+    def clear(self):
+
+        self.prep_task = []
+        self.task_para = {}
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -39,7 +97,7 @@ class PreprocessInfoTab(InfoWidgetPara):
     pp_flds = {
         'bandpass_filter': 'Bandpass Filter',
         'phase_shift': 'Phase Shift',
-        'common_reference': 'Common Average Reference',
+        'common_reference': 'Common Reference',
         'whitening': 'Whitening',
         'drift_correct': 'Drift Correction',
         'waveforms': 'Wave Forms',
@@ -50,7 +108,8 @@ class PreprocessInfoTab(InfoWidgetPara):
         super(PreprocessInfoTab, self).__init__(t_str, layout=QFormLayout)
 
         # class field initialisation
-        self.configs = None
+        self.bad_channel_fcn = None
+        self.configs = PreprocessConfig()
 
         # sorting group widgets
         self.frame_sort = QFrame(self)
@@ -81,54 +140,57 @@ class PreprocessInfoTab(InfoWidgetPara):
                        'nonrigid_fast_and_accurate', 'rigid_fast', 'kilosort_like']
 
         # sets up the parameter fields
-        pp_str = [
+        pp_str = {
             # bandpass filter parameters
-            {
+            'bandpass_filter': {
                 'freq_min': self.create_para_field('Min Frequency', 'edit', 300),
                 'freq_max': self.create_para_field('Max Frequency', 'edit', 6000),
                 'margin_ms': self.create_para_field('Margin (ms)', 'edit', 5),
             },
 
             # common reference parameters
-            {
+            'common_reference': {
                 'operator': self.create_para_field('Operator', 'combobox', operator_list[0], p_list=operator_list),
                 'reference': self.create_para_field('Reference', 'combobox', reference_list[0], p_list=reference_list),
             },
 
             # phase shift parameters
-            {
+            'phase_shift': {
                 'margin_ms': self.create_para_field('Margin (ms)', 'edit', 40),
             },
 
             # whitening parameters
-            {
+            'whitening': {
                 'apply_mean': self.create_para_field('Subtract Mean', 'checkbox', False),
                 'mode': self.create_para_field('Mode', 'combobox', mode_list[0], p_list=mode_list),
                 'radius_um': self.create_para_field('Radius (um)', 'edit', 100),
             },
 
             # drift correction parameters
-            {
+            'drift_correct': {
                 'preset': self.create_para_field('Preset', 'combobox', preset_list[0], p_list=preset_list),
             },
 
             # # sparsity option parameters
-            # {
+            # 'sparce_opt': {
             #     'sparse': self.create_para_field('Use Sparsity?', 'checkpanel', True, ch_fld=pp_sp),
             # },
-        ]
+        }
 
         # sets up the property fields for each section
-        for pp_k, pp_s in zip(self.pp_flds.keys(), pp_str):
+        for pp_k in self.pp_flds.keys():
             # sets up the parent fields
             self.p_props[pp_k] = {}
+            if pp_k not in pp_str:
+                continue
+
             self.p_prop_flds[pp_k] = {
                 'name': self.pp_flds[pp_k],
-                'props': pp_s,
+                'props': pp_str[pp_k],
             }
 
             # sets the children properties
-            for k, p in pp_s.items():
+            for k, p in pp_str[pp_k].items():
                 self.p_props[pp_k][k] = p['value']
 
         # -----------------------------------------------------------------------
@@ -200,22 +262,27 @@ class PreprocessInfoTab(InfoWidgetPara):
 
     def setup_config_dict(self, prep_task, is_sorting=False):
 
-        # memory allocation
-        config = {"preprocessing": {}}
+        # clears the configuration array
+        self.configs.clear()
 
-        # sets up the preprocessing fields
-        config_pp = config['preprocessing']
-        for i, pp_t in enumerate(prep_task):
+        # adds the preparation tasks to the configuration field
+        for pp_t in prep_task:
             pp = prep_task_map[pp_t]
-            config_pp[str(i + 1)] = [pp, self.p_props[pp]]
+            if pp == 'interpolation':
+                # case is an interpolation step
+                bad_ch_id = self.bad_channel_fcn()
+                self.configs.add_prep_task(pp, bad_ch_id)
 
-        #
+            else:
+                # case is another step type
+                self.configs.add_prep_task(pp, self.p_props[pp], pp_t)
+
+        # sorting?
         if is_sorting:
             pass
 
-        # returns the config dictionary
-        return config
-
+        # returns the configuration dictionaries
+        return self.configs.setup_config_dicts()
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -232,7 +299,7 @@ class PreprocessSetup(QDialog):
     # array class fields
     b_icon = ['arrow_right', 'arrow_left', 'arrow_up', 'arrow_down']
     tt_str = ['Add Task', 'Remove Task', 'Move Task Up', 'Move Task Down']
-    l_task = ['Phase Shift', 'Bandpass Filter', 'Bad Channel Interpolation', 'Common Average Reference']
+    l_task = ['Phase Shift', 'Bandpass Filter', 'Bad Channel Interpolation', 'Common Reference']
 
     # widget stylesheets
     border_style = "border: 1px solid;"
@@ -277,6 +344,11 @@ class PreprocessSetup(QDialog):
 
         # initialisations
         cb_fcn = [self.button_add, self.button_remove, self.button_up, self.button_down]
+
+        # removes the interpolation field (if no bad channels detected)
+        bad_ch_id = self.main_obj.session_obj.get_bad_channels()
+        if len(bad_ch_id) == 0:
+            self.l_task.pop(self.l_task.index('Bad Channel Interpolation'))
 
         # sets up the main layout
         self.setLayout(self.main_layout)
@@ -474,7 +546,7 @@ class PreprocessSetup(QDialog):
 
         # determines if
         i_fld = np.zeros(2, dtype=int)
-        task_fld = ['Bad Channel Interpolation', 'Common Average Reference']
+        task_fld = ['Bad Channel Interpolation', 'Common Reference']
 
         # determines if the required tasks have been added
         for i, tf in enumerate(task_fld):

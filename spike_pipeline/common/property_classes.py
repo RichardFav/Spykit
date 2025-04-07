@@ -14,7 +14,7 @@ from PyQt6.QtCore import Qt, QSize, QRect, pyqtSignal, pyqtBoundSignal, QObject
 # spikewrap modules
 import spikewrap as sw
 import spikeinterface as si
-from spikeinterface.preprocessing import depth_order
+from spikeinterface.preprocessing import depth_order, interpolate_bad_channels
 from spikeinterface.core import order_channels_by_depth
 
 # custom module import
@@ -169,6 +169,16 @@ class SessionWorkBook(QObject):
         else:
             return self.session.bad_ch[i_run][0][1][i_channel]
 
+    def get_bad_channels(self):
+
+        # determines if the bad channel indices (which are being kept)
+        bad_ch = self.session.bad_ch[0]
+        i_bad_ch = np.logical_and(bad_ch[0][1] != 'good', self.channel_data.is_keep)
+
+        # returns the bad channel IDs
+        ch_id, _ = self.get_channel_ids(np.where(i_bad_ch)[0])
+        return ch_id
+
     # ---------------------------------------------------------------------------
     # Setter Functions
     # ---------------------------------------------------------------------------
@@ -239,6 +249,9 @@ class SessionWorkBook(QObject):
 
     @staticmethod
     def update_session(_self):
+
+        # resets the preprocessing data type
+        _self.prep_type = None
 
         # resets the current run/session names
         if _self.session is None:
@@ -549,10 +562,14 @@ class SessionObject(QObject):
 
     def get_prep_data_names(self, i_run, run_type):
 
-        if isinstance(i_run, str):
-            i_run = self.get_run_index(i_run)
+        if len(self._s._pp_runs):
+            if isinstance(i_run, str):
+                i_run = self.get_run_index(i_run)
 
-        return list(self._s._pp_runs[i_run]._preprocessed[run_type].keys())
+            return list(self._s._pp_runs[i_run]._preprocessed[run_type].keys())
+
+        else:
+            return []
 
     def get_run_index(self, run_name):
 
@@ -564,11 +581,35 @@ class SessionObject(QObject):
 
     def run_preprocessing(self, configs, per_shank=False, concat_runs=False):
 
-        self._s.preprocess(
-            configs=configs,
-            per_shank=per_shank,
-            concat_runs=concat_runs,
-        )
+        for cfig in configs:
+            if isinstance(cfig, dict):
+                # runs the preprocessing task grouping
+                self._s.preprocess(
+                    configs=cfig,
+                    per_shank=per_shank,
+                    concat_runs=concat_runs,
+                )
+
+            else:
+                # case is the bad channel interpolation
+                new_task = None
+                for i_run, pp_r in enumerate(self._s._pp_runs):
+                    # retrieves the run recording probe
+                    rec_group = pp_r._preprocessed['grouped']
+                    rec_name = list(rec_group.keys())[-1]
+                    rec = pp_r._preprocessed['grouped'][rec_name]
+
+                    # sets up the new task name (first run only)
+                    if new_task is None:
+                        prev_task = rec_name.split('-')
+                        prev_task[0] = str(int(prev_task[0]) + 1)
+                        prev_task.append('interpolate')
+                        new_task = '-'.join(prev_task)
+
+                    # runs the bad channel interpolation
+                    pp_r._preprocessed['grouped'][new_task] = interpolate_bad_channels(rec, cfig)
+
+            a = 1
 
     # ---------------------------------------------------------------------------
     # Protected Properties

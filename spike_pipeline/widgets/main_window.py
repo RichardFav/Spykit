@@ -382,23 +382,21 @@ class MainWindow(QMainWindow):
         prep_tab = self.info_manager.get_info_tab('preprocess')
         if isinstance(prep_obj, list):
             # case is running from the Preprocessing dialog
-            prep_task = prep_obj
-            prep_tab.configs = prep_tab.setup_config_dict(prep_task)
+            pp_config = prep_tab.setup_config_dict(prep_obj)
 
         else:
             # case is running from loading session
-            prep_tab.configs = prep_obj
-            prep_task = [prep_tab.pp_flds[v[0]] for v in prep_obj.values()]
+            pp_config = prep_obj.setup_config_dicts()
 
         # runs the preprocessing
-        self.session_obj.session.run_preprocessing(prep_tab.configs)
+        self.session_obj.session.run_preprocessing(pp_config)
 
         # resets the preprocessing data type combobox
         pp_data_flds = self.session_obj.get_current_prep_data_names()
 
         # updates the channel data types
         channel_tab = self.info_manager.get_info_tab('channel')
-        channel_tab.reset_data_types(['Raw'] + prep_task, pp_data_flds)
+        channel_tab.reset_data_types(['Raw'] + prep_tab.configs.task_name, pp_data_flds)
 
         # updates the trace views
         self.plot_manager.reset_trace_views()
@@ -511,8 +509,9 @@ class MainWindow(QMainWindow):
 
     def testing(self):
 
-        f_file = 'C:/Work/Other Projects/EPhys Project/Data/z - session_files/test_tiny.ssf'
-        # f_file = 'C:/Work/Other Projects/EPhys Project/Data/z - session_files/test_large.ssf'
+        # f_file = 'C:/Work/Other Projects/EPhys Project/Data/z - session_files/test_tiny.ssf'
+        f_file = 'C:/Work/Other Projects/EPhys Project/Data/z - session_files/test_large.ssf'
+        # f_file = 'C:/Work/Other Projects/EPhys Project/Data/z - session_files/test_large (preprocessed).ssf'
 
         self.menu_bar.load_session(f_file)
 
@@ -697,12 +696,14 @@ class MenuBar(QObject):
         self.main_obj.session_obj.reset_channel_data(channel_data)
 
         # sets/runs the config field/routines
-        prep_info = self.main_obj.info_manager.get_info_tab('preprocess')
-        prep_info.configs = ses_data['configs']
-        if prep_info.configs is not None:
+        if ses_data['configs'] is not None:
+            #
+            prep_info = self.main_obj.info_manager.get_info_tab('preprocess')
+            prep_info.configs = ses_data['configs']
+
             # runs the preprocessing (if data in config field)
-            if 'preprocessing' in prep_info.configs:
-                self.main_obj.setup_preprocessing_worker(prep_info.configs['preprocessing'], True)
+            if len(prep_info.configs.prep_task):
+                self.main_obj.setup_preprocessing_worker(prep_info.configs, True)
 
         # updates the bad/sync channel status table fields
         self.main_obj.bad_channel_change()
@@ -787,11 +788,42 @@ class MenuBar(QObject):
 
     def save_trigger(self):
 
-        # retrieves the output data
-        trigger_data = {'Finish': "Me!"}
+        # prompts the user if they want to use the default output path
+        q_str = 'Do you want to use the default trigger channel output path?'
+        u_choice = QMessageBox.question(self.main_obj, 'Use Default Path?', q_str, cf.q_yes_no_cancel, cf.q_yes)
+        if u_choice == cf.q_cancel:
+            # exit if the user cancelled
+            return
 
-        # saves the session file
-        self.save_file('trigger', trigger_data)
+        elif u_choice == cf.q_no:
+            # otherwise, prompt the user for the base file name
+            trig_file = self.save_file('trigger')
+            if trig_file is None:
+                return
+
+        # silences the required sections of the trigger channel
+        s_freq = self.main_obj.session_obj.session_props.s_freq
+        trig_props = self.main_obj.prop_manager.get_prop_tab('trigger')
+        for i_run, r_lim in enumerate(trig_props.p_props.region_index):
+            # sets up the silencing regions
+            s_lim = []
+            for i_reg in range(r_lim.shape[0]):
+                ind_s = int(np.floor(r_lim[i_reg, 1] * s_freq))
+                ind_f = int(np.ceil(r_lim[i_reg, 2] * s_freq))
+                s_lim.append((ind_s, ind_f))
+
+            # silences the trigger channel
+            self.main_obj.session_obj.session._s.silence_sync_channel(i_run, s_lim)
+
+        # outputs the trigger channel to file
+        if cf.q_yes:
+            # case is saving to the default location
+            self.main_obj.session_obj.session._s.save_sync_channel(True)
+
+        else:
+            # saves the session file
+            pass
+
 
     def save_config(self):
 
@@ -862,7 +894,7 @@ class MenuBar(QObject):
 
         return file_info
 
-    def save_file(self, f_type, output_data):
+    def save_file(self, f_type, output_data=None):
 
         # runs the save file dialog
         f_title = 'Select {0} File'.format(cw.f_name[f_type])
@@ -870,8 +902,16 @@ class MenuBar(QObject):
         if file_dlg.exec() == QDialog.DialogCode.Accepted:
             # saves the session data to file
             file_info = file_dlg.selectedFiles()
-            with open(file_info[0], 'wb') as f:
-                pickle.dump(output_data, f)
+
+            if output_data is None:
+                return file_info[0]
+
+            else:
+                with open(file_info[0], 'wb') as f:
+                    pickle.dump(output_data, f)
+
+        elif output_data is None:
+            return None
 
     def set_menu_enabled_blocks(self, m_type):
 

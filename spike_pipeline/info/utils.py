@@ -167,6 +167,9 @@ class InfoManager(QWidget):
                     tab_widget.start_recalc.connect(self.start_recalc)
                     tab_widget.cancel_recalc.connect(self.cancel_recalc)
 
+                case 'preprocess':
+                    tab_widget.bad_channel_fcn = self.session_obj.get_bad_channels
+
             # appends the tab to the tab group
             self.tab_group_table.addTab(tab_widget, t_lbl)
             self.tab_group_table.setTabEnabled(i_tab, self.tab_show[i_tab])
