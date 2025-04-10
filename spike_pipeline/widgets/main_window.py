@@ -1,17 +1,19 @@
 # module import
 # import os
 # import functools
-import os
 import pickle
+import shutil
 import numpy as np
 import pyqtgraph as pg
+from pathlib import Path
+from copy import deepcopy
 from functools import partial as pfcn
 
 # pyqt6 module import
 from PyQt6.QtWidgets import (QMainWindow, QHBoxLayout, QFormLayout, QWidget, QGridLayout,
                              QScrollArea, QMessageBox, QDialog, QMenuBar, QToolBar, QMenu)
 from PyQt6.QtCore import Qt, QSize, QRect, pyqtSignal, QObject, QTimer
-from PyQt6.QtGui import QFont, QColor, QIcon, QAction
+from PyQt6.QtGui import QFont, QIcon, QAction
 
 # custom module import
 import spike_pipeline.common.common_func as cf
@@ -19,12 +21,13 @@ import spike_pipeline.common.common_widget as cw
 from spike_pipeline.info.utils import InfoManager
 from spike_pipeline.plotting.utils import PlotManager
 from spike_pipeline.props.utils import PropManager
-from spike_pipeline.props.general import GeneralPara
-from spike_pipeline.props.trigger import TriggerPara
 from spike_pipeline.common.property_classes import SessionWorkBook
 from spike_pipeline.widgets.open_session import OpenSession
-from spike_pipeline.info.preprocess import PreprocessSetup, prep_task_map
+from spike_pipeline.info.preprocess import PreprocessSetup
 from spike_pipeline.threads.utils import ThreadWorker
+
+# spikewrap module import
+from spikewrap.configs._backend import canon
 
 # widget dimensions
 x_gap = 15
@@ -720,17 +723,6 @@ class MenuBar(QObject):
         self.main_obj.prop_manager.set_prop_para(ses_data['prop_para'])
         self.main_obj.info_manager.set_info_para(ses_data['info_para'])
 
-    def clear_session(self):
-
-        # if there is a parameter change, then prompt the user if they want to change
-        q_str = 'Are you sure you want to clear the current session?'
-        u_choice = QMessageBox.question(self.main_obj, 'Clear Session?', q_str, cf.q_yes_no, cf.q_yes)
-        if u_choice == cf.q_no:
-            # exit if they cancelled
-            return
-
-        self.main_obj.session_obj.session = None
-
     def load_trigger(self, file_info=None):
 
         # prompts the user for the file name (exit if the user cancels)
@@ -795,39 +787,51 @@ class MenuBar(QObject):
             # exit if the user cancelled
             return
 
-        elif u_choice == cf.q_no:
-            # otherwise, prompt the user for the base file name
-            trig_file = self.save_file('trigger')
-            if trig_file is None:
-                return
+        else:
+            use_def = u_choice == cf.q_yes
+            if not use_def:
+                # if using a custom path, prompt the user for said path
+                base_dir = self.save_file('trigger', dir_only=True)
+                if base_dir is None:
+                    # case is the user cancelled
+                    return
 
-        # silences the required sections of the trigger channel
+                else:
+                    # sets the output directory
+                    output_dir_base = base_dir / self.main_obj.session_obj.session._session_name
+
+        # field/object retrieval
         s_freq = self.main_obj.session_obj.session_props.s_freq
+        sync_ch = deepcopy(self.main_obj.session_obj.session.sync_ch)
         trig_props = self.main_obj.prop_manager.get_prop_tab('trigger')
         trig_view = self.main_obj.plot_manager.get_plot_view('trigger')
+        raw_runs = self.main_obj.session_obj.session._s._raw_runs
+
+        # trigger trace silencing
         for i_run, r_lim in enumerate(trig_props.p_props.region_index):
-            # sets up the silencing regions
-            for i_reg in np.flip(range(r_lim.shape[0])):
+            for i_reg in np.flip(range(trig_view.n_reg_xs[i_run])):
                 ind_s = int(np.floor(r_lim[i_reg, 1] * s_freq))
                 ind_f = int(np.ceil(r_lim[i_reg, 2] * s_freq))
-                self.main_obj.session_obj.silence_sync(i_run, ind_s, ind_f)
+                sync_ch[i_run][ind_s:ind_f] = 0
 
-                # removes the trigger property region
-                trig_props.delete_region(i_run, i_reg)
+        # trigger trace output
+        for i_run, rr in enumerate(raw_runs):
+            # sets up the file name
+            if use_def:
+                # case is using the default path
+                output_dir = rr._sync_output_path / canon.sync_folder()
 
-        # resets the trigger view
-        trig_view.reset_trace_values()
-        trig_view.update_trigger_trace()
+            else:
+                # case is using the custom path
+                output_dir = output_dir_base / rr._run_name
 
-        # # outputs the trigger channel to file
-        # if cf.q_yes:
-        #     # case is saving to the default location
-        #     self.main_obj.session_obj.session._s.save_sync_channel(True)
-        #
-        # else:
-        #     # saves the session file
-        #     pass
+            # ensures the output directory (if it exists) is empty
+            if output_dir.is_dir():
+                shutil.rmtree(output_dir)
 
+            # creates the sync channel folder and outputs the file
+            output_dir.mkdir(parents=True, exist_ok=True)
+            np.save(output_dir / canon.saved_sync_filename(), sync_ch[i_run])
 
     def save_config(self):
 
@@ -836,6 +840,17 @@ class MenuBar(QObject):
 
         # saves the session file
         self.save_file('config', config_data)
+
+    def clear_session(self):
+
+        # if there is a parameter change, then prompt the user if they want to change
+        q_str = 'Are you sure you want to clear the current session?'
+        u_choice = QMessageBox.question(self.main_obj, 'Clear Session?', q_str, cf.q_yes_no, cf.q_yes)
+        if u_choice == cf.q_no:
+            # exit if they cancelled
+            return
+
+        self.main_obj.session_obj.session = None
 
     def close_window(self):
 
@@ -898,17 +913,18 @@ class MenuBar(QObject):
 
         return file_info
 
-    def save_file(self, f_type, output_data=None):
+    def save_file(self, f_type, output_data=None, dir_only=False):
 
         # runs the save file dialog
-        f_title = 'Select {0} File'.format(cw.f_name[f_type])
-        file_dlg = cw.FileDialogModal(None, f_title, cw.f_mode[f_type], cw.data_dir, is_save=True)
+        f_mode = None if dir_only else cw.f_mode[f_type]
+        f_title = 'Set {0} Output {1}'.format(cw.f_name[f_type], 'Directory' if dir_only else 'File')
+        file_dlg = cw.FileDialogModal(None, f_title, f_mode, cw.data_dir, is_save=True, dir_only=dir_only)
         if file_dlg.exec() == QDialog.DialogCode.Accepted:
             # saves the session data to file
             file_info = file_dlg.selectedFiles()
 
             if output_data is None:
-                return file_info[0]
+                return Path(file_info[0])
 
             else:
                 with open(file_info[0], 'wb') as f:

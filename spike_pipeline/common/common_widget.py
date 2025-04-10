@@ -1365,6 +1365,8 @@ class FileDialogModal(QFileDialog):
         # sets the file mode to directory (if directory only)
         if dir_only:
             self.setFileMode(QFileDialog.FileMode.Directory)
+            self.setOption(QFileDialog.Option.ShowDirsOnly)
+            self.setOption(QFileDialog.Option.DontUseNativeDialog)
 
         # sets the multi-select flag to true (if required)
         if is_multi:

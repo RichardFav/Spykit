@@ -538,7 +538,7 @@ class SessionObject(QObject):
 
         y_min, y_max = np.min(ch_data), np.max(ch_data)
         if y_max - y_min <= self.dy_min:
-            # if the signal range is below tolerance, then set all zeros
+            # if the signal amplitude is below tolerance, then set all zeros
             ch_data[:] = 0
 
         else:
