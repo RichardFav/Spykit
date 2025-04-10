@@ -1,6 +1,7 @@
 # module import
 # import os
 # import functools
+import glob
 import pickle
 import shutil
 import numpy as np
@@ -1022,7 +1023,42 @@ class MenuBar(QObject):
             # case is using the custom path
             return output_dir_base / rr._run_name
 
-    @staticmethod
-    def check_custom_sync_dir(raw_runs, dir_base):
+    def check_custom_sync_dir(self, raw_runs, dir_base):
 
-        a = 1
+        # initialisations
+        err_str = None
+
+        for i_run, rr in enumerate(raw_runs):
+            # retrieves the sync folder name (for the current run)
+            sync_dir = self.get_sync_output_dir(rr, dir_base)
+            if not sync_dir.is_dir():
+                # case is the correct sync folder doesn't exist
+                err_str = 'The sync folder structure is invalid (run name incorrect)'
+                break
+
+            else:
+                # otherwise, determine
+                sync_file = glob.glob(str(sync_dir / '*.npy'))
+                match len(sync_file):
+                    case 0:
+                        # case is no matches were made
+                        err_str = 'Trigger channel file is missing for Run #{0}'.format(i_run + 1)
+                        break
+
+                    case 1:
+                        # case is a unique match
+                        pass
+
+                    case _:
+                        # case is multiple matches
+                        err_str = 'Multiple trigger channel files exist for Run #{0}?'.format(i_run + 1)
+                        break
+
+        if err_str is None:
+            # case is the directory is feasible
+            return True
+
+        else:
+            # case is the directory is infeasible
+            cf.show_error(err_str, 'Invalid Trigger File Directory')
+            return False
