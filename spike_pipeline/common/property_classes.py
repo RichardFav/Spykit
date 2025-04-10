@@ -14,8 +14,13 @@ from PyQt6.QtCore import Qt, QSize, QRect, pyqtSignal, pyqtBoundSignal, QObject
 # spikewrap modules
 import spikewrap as sw
 import spikeinterface as si
-from spikeinterface.preprocessing import depth_order, interpolate_bad_channels
+from spikeinterface.preprocessing import depth_order
 from spikeinterface.core import order_channels_by_depth
+from spikeinterface.full import phase_shift, bandpass_filter, common_reference
+from spikeinterface.preprocessing.motion import correct_motion
+from spikewrap.structure._preprocess_run import PreprocessedRun
+from spikewrap.structure._raw_run import (ConcatRawRun, SeparateRawRun)
+from spikewrap.process._preprocessing import remove_channels, interpolate_channels
 
 # custom module import
 import spike_pipeline.common.common_func as cf
@@ -169,13 +174,23 @@ class SessionWorkBook(QObject):
         else:
             return self.session.bad_ch[i_run][0][1][i_channel]
 
-    def get_bad_channels(self):
+    def get_bad_channels(self, s_type='all'):
+
+        # bad channel types
+        if s_type == 'all':
+            s_type = ['dead', 'noise', 'out']
+
+        elif isinstance(s_type, str):
+            s_type = [s_type]
 
         # determines if the bad channel indices (which are being kept)
         bad_ch = self.session.bad_ch[0]
-        i_bad_ch = np.logical_and(bad_ch[0][1] != 'good', self.channel_data.is_keep)
+        i_bad_filt = np.zeros(len(bad_ch[0][1]), dtype=bool)
+        for i, st in enumerate(s_type):
+            i_bad_filt = np.logical_or(i_bad_filt, bad_ch[0][1] == st)
 
         # returns the bad channel IDs
+        i_bad_ch = np.logical_and(i_bad_filt, self.channel_data.is_keep)
         ch_id, _ = self.get_channel_ids(np.where(i_bad_ch)[0])
         return ch_id
 
@@ -303,6 +318,7 @@ class SessionObject(QObject):
         # bad/sync channels
         self.bad_ch = None
         self.sync_ch = None
+        self.prep_obj = None
         self.ssf_load = ssf_load
         self.data_init = {'bad': False, 'sync': False}
 
@@ -338,6 +354,7 @@ class SessionObject(QObject):
 
         # loads the raw data and channel data
         self._s.load_raw_data()
+        self.prep_obj = RunPreProcessing(self._s)
 
         # loads the channel data (if not loading session from .ssf file)
         if not self.ssf_load:
@@ -497,6 +514,7 @@ class SessionObject(QObject):
 
     def post_get_bad_channel(self, data):
 
+        # sets the channel data
         ch_data, i_run = data
         self.bad_ch[i_run] = ch_data
 
@@ -508,8 +526,9 @@ class SessionObject(QObject):
 
     def post_get_sync_channel(self, data):
 
+        # sets the signal data
         ch_data, i_run = data
-        self.sync_ch[i_run] = ch_data
+        self.sync_ch[i_run] = cf.remove_baseline(ch_data)
 
         # if all runs have been detected, then run the signal function
         if np.all([x is not None for x in self.sync_ch]):
@@ -581,35 +600,15 @@ class SessionObject(QObject):
 
     def run_preprocessing(self, configs, per_shank=False, concat_runs=False):
 
-        for cfig in configs:
-            if isinstance(cfig, dict):
-                # runs the preprocessing task grouping
-                self._s.preprocess(
-                    configs=cfig,
-                    per_shank=per_shank,
-                    concat_runs=concat_runs,
-                )
+        self.prep_obj.preprocess(configs, per_shank, concat_runs)
 
-            else:
-                # case is the bad channel interpolation
-                new_task = None
-                for i_run, pp_r in enumerate(self._s._pp_runs):
-                    # retrieves the run recording probe
-                    rec_group = pp_r._preprocessed['grouped']
-                    rec_name = list(rec_group.keys())[-1]
-                    rec = pp_r._preprocessed['grouped'][rec_name]
+        # # REMOVE ME LATER
+        # self._s.preprocess(
+        #     configs,
+        #     per_shank,
+        #     concat_runs,
+        # )
 
-                    # sets up the new task name (first run only)
-                    if new_task is None:
-                        prev_task = rec_name.split('-')
-                        prev_task[0] = str(int(prev_task[0]) + 1)
-                        prev_task.append('interpolate')
-                        new_task = '-'.join(prev_task)
-
-                    # runs the bad channel interpolation
-                    pp_r._preprocessed['grouped'][new_task] = interpolate_bad_channels(rec, cfig)
-
-            a = 1
 
     # ---------------------------------------------------------------------------
     # Protected Properties
@@ -733,6 +732,10 @@ class ChannelData:
 
 # ----------------------------------------------------------------------------------------------------------------------
 
+"""
+    SessionProps: 
+"""
+
 
 class SessionProps:
     def __init__(self, probe_rec):
@@ -745,3 +748,110 @@ class SessionProps:
 
     def get_value(self, p_str):
         return getattr(self, p_str)
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+"""
+    RunPreProcessing: 
+"""
+
+
+class RunPreProcessing(QObject):
+    pp_funcs = {
+        "phase_shift": phase_shift,
+        "bandpass_filter": bandpass_filter,
+        "common_reference": common_reference,
+        "remove_channels": remove_channels,
+        "interpolate_channels": interpolate_channels,
+        "drift_correct": correct_motion,
+    }
+
+    def __init__(self, s):
+        super(RunPreProcessing, self).__init__()
+
+        # session object
+        self.s = s
+
+        # other fields
+        self.pp_steps = None
+        self.per_shank = None
+        self.concat_runs = None
+        self.prepro_dict = None
+
+    def preprocess(self, pp_steps, per_shank, concat_runs):
+
+        # sets the input arguments
+        self.pp_steps = pp_steps
+        self.per_shank = per_shank
+        self.concat_runs = concat_runs
+
+        # runs the preprocessing task grouping
+        runs_to_pp: list[SeparateRawRun | ConcatRawRun]
+
+        if concat_runs:
+            runs_to_pp = [self.s._get_concat_raw_run()]
+        else:
+            runs_to_pp = self.s._raw_runs  # type: ignore
+
+        #
+        self.s._pp_runs = []
+        for run in runs_to_pp:
+            # runs the preprocessing for the current run
+            preprocessed_run = self.preprocess_run(run)
+
+            # retrieves the run names
+            orig_run_names = (
+                run._orig_run_names if isinstance(run, ConcatRawRun) else None
+            )
+
+            # stores the preprocessing data
+            self.s._pp_runs.append(
+                PreprocessedRun(
+                    raw_data_path=run._parent_input_path,
+                    ses_name=self.s._ses_name,
+                    run_name=run._run_name,
+                    file_format=run._file_format,
+                    session_output_path=self.s._output_path,
+                    preprocessed_data=preprocessed_run,
+                    pp_steps=self.pp_steps,
+                    orig_run_names=orig_run_names,
+                )
+            )
+
+        # REMOVE ME!
+        a = 1
+
+    def preprocess_run(self, run):
+
+        if self.per_shank:
+            runs_to_preprocess = run._get_split_by_shank()
+        else:
+            runs_to_preprocess = run._raw
+
+        preprocessed = {}
+        for shank_id, raw_rec in runs_to_preprocess.items():
+            preprocessed[shank_id] = self.preprocess_recording({"0-raw": raw_rec})
+
+        return preprocessed
+
+    def preprocess_recording(self, pp_data):
+
+        # field retrieval
+        prev_name = list(pp_data.keys())[0]
+        pp_step_names = [item[0] for item in self.pp_steps.values()]
+
+        for step_num, pp_info in self.pp_steps.items():
+            # runs the pre-processing function
+            pp_name, pp_opt = pp_info
+            preprocessed_rec = self.pp_funcs[pp_name](pp_data[prev_name], **pp_opt)
+
+            # stores the preprocessing run object
+            new_name = f"{step_num}-" + "-".join(["raw"] + pp_step_names[: int(step_num)])
+            pp_data[new_name] = preprocessed_rec
+
+            # resets the previous run name
+            prev_name = new_name
+            print(prev_name)
+
+        return pp_data

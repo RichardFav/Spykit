@@ -20,7 +20,8 @@ prep_task_map = {
     'Raw': 'raw',
     'Phase Shift': 'phase_shift',
     'Bandpass Filter': 'bandpass_filter',
-    'Bad Channel Interpolation': 'interpolation',
+    'Channel Interpolation': 'interpolate_channels',
+    'Remove Bad Channels': 'remove_channels',
     'Common Reference': 'common_reference',
     'Whitening': 'whitening',
     'Drift Correction': 'drift_correct',
@@ -54,28 +55,11 @@ class PreprocessConfig(object):
 
     def setup_config_dicts(self):
 
-        # sets up the task list (splitting if interpolation involved)
-        p_task0 = deepcopy(self.prep_task)
-        if 'interpolation' in p_task0:
-            i_task = p_task0.index('interpolation')
-            p_task = [p_task0[:i_task], p_task0[(i_task+1):]]
-
-        else:
-            p_task = [p_task0]
-
         # sets up the configuration dictionary list
-        pp_cfig = []
-        for it, pt in enumerate(p_task):
-            if it == 1:
-                pp_cfig.append(self.task_para['interpolation'])
-
+        pp_cfig = {}
+        for i_ref, pt in enumerate(self.prep_task):
             # sets up the configuration for the preprocessing group
-            pp = {}
-            for i_ref, p in enumerate(pt):
-                pp[str(i_ref+1)] = [p, self.task_para[p]]
-
-            # appends the step parameters to the list
-            pp_cfig.append(pp)
+            pp_cfig[str(i_ref+1)] = [pt, self.task_para[pt]]
 
         # returns the configuration dictionary list
         return pp_cfig
@@ -84,6 +68,7 @@ class PreprocessConfig(object):
 
         self.prep_task = []
         self.task_para = {}
+
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -102,6 +87,7 @@ class PreprocessInfoTab(InfoWidgetPara):
         'drift_correct': 'Drift Correction',
         'waveforms': 'Wave Forms',
         'sparce_opt': 'Sparsity Options',
+        'interpolate_channels': 'Interpolation',
     }
 
     def __init__(self, t_str):
@@ -268,14 +254,29 @@ class PreprocessInfoTab(InfoWidgetPara):
         # adds the preparation tasks to the configuration field
         for pp_t in prep_task:
             pp = prep_task_map[pp_t]
-            if pp == 'interpolation':
-                # case is an interpolation step
-                bad_ch_id = self.bad_channel_fcn()
-                self.configs.add_prep_task(pp, bad_ch_id)
 
-            else:
-                # case is another step type
-                self.configs.add_prep_task(pp, self.p_props[pp], pp_t)
+            match pp:
+                case 'interpolate_channels':
+                    # case is interpolate channel step
+                    c_dict = {
+                        'channel_ids': self.bad_channel_fcn(['dead', 'noise']),
+                    }
+
+                    # adds the preprocessing task to the list
+                    self.configs.add_prep_task(pp, c_dict, pp_t)
+
+                case 'remove_channels':
+                    # case is remove channel step
+                    c_dict = {
+                        'channel_ids': self.bad_channel_fcn(['out']),
+                    }
+
+                    # adds the preprocessing task to the list
+                    self.configs.add_prep_task(pp, c_dict, pp_t)
+
+                case _:
+                    # case is another step type
+                    self.configs.add_prep_task(pp, self.p_props[pp], pp_t)
 
         # sorting?
         if is_sorting:
@@ -299,7 +300,7 @@ class PreprocessSetup(QDialog):
     # array class fields
     b_icon = ['arrow_right', 'arrow_left', 'arrow_up', 'arrow_down']
     tt_str = ['Add Task', 'Remove Task', 'Move Task Up', 'Move Task Down']
-    l_task = ['Phase Shift', 'Bandpass Filter', 'Bad Channel Interpolation', 'Common Reference']
+    l_task = ['Phase Shift', 'Bandpass Filter', 'Channel Interpolation', 'Common Reference', 'Drift Correction']
 
     # widget stylesheets
     border_style = "border: 1px solid;"
@@ -348,7 +349,7 @@ class PreprocessSetup(QDialog):
         # removes the interpolation field (if no bad channels detected)
         bad_ch_id = self.main_obj.session_obj.get_bad_channels()
         if len(bad_ch_id) == 0:
-            self.l_task.pop(self.l_task.index('Bad Channel Interpolation'))
+            self.l_task.pop(self.l_task.index('Channel Interpolation'))
 
         # sets up the main layout
         self.setLayout(self.main_layout)
@@ -546,7 +547,7 @@ class PreprocessSetup(QDialog):
 
         # determines if
         i_fld = np.zeros(2, dtype=int)
-        task_fld = ['Bad Channel Interpolation', 'Common Reference']
+        task_fld = ['Channel Interpolation', 'Common Reference']
 
         # determines if the required tasks have been added
         for i, tf in enumerate(task_fld):

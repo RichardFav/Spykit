@@ -398,3 +398,8 @@ def resize_limits(y, yscl):
     y = np.asarray(y)
     dy = np.diff(y)[0]
     return list(y + np.array([-1, 1]) * (yscl / 2) * dy)
+
+
+def remove_baseline(y):
+
+    return y - np.min(y)
