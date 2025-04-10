@@ -28,6 +28,18 @@ prep_task_map = {
     'Sorting': 'sorting',
 }
 
+# array class fields
+pp_flds = {
+    'bandpass_filter': 'Bandpass Filter',
+    'phase_shift': 'Phase Shift',
+    'common_reference': 'Common Reference',
+    'whitening': 'Whitening',
+    'drift_correct': 'Drift Correction',
+    'waveforms': 'Wave Forms',
+    'sparce_opt': 'Sparsity Options',
+    'interpolate_channels': 'Channel Interpolation',
+}
+
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -78,18 +90,6 @@ class PreprocessConfig(object):
 
 
 class PreprocessInfoTab(InfoWidgetPara):
-    # array class fields
-    pp_flds = {
-        'bandpass_filter': 'Bandpass Filter',
-        'phase_shift': 'Phase Shift',
-        'common_reference': 'Common Reference',
-        'whitening': 'Whitening',
-        'drift_correct': 'Drift Correction',
-        'waveforms': 'Wave Forms',
-        'sparce_opt': 'Sparsity Options',
-        'interpolate_channels': 'Interpolation',
-    }
-
     def __init__(self, t_str):
         super(PreprocessInfoTab, self).__init__(t_str, layout=QFormLayout)
 
@@ -164,14 +164,14 @@ class PreprocessInfoTab(InfoWidgetPara):
         }
 
         # sets up the property fields for each section
-        for pp_k in self.pp_flds.keys():
+        for pp_k in pp_flds.keys():
             # sets up the parent fields
             self.p_props[pp_k] = {}
             if pp_k not in pp_str:
                 continue
 
             self.p_prop_flds[pp_k] = {
-                'name': self.pp_flds[pp_k],
+                'name': pp_flds[pp_k],
                 'props': pp_str[pp_k],
             }
 
@@ -346,10 +346,18 @@ class PreprocessSetup(QDialog):
         # initialisations
         cb_fcn = [self.button_add, self.button_remove, self.button_up, self.button_down]
 
-        # removes the interpolation field (if no bad channels detected)
-        bad_ch_id = self.main_obj.session_obj.get_bad_channels()
-        if len(bad_ch_id) == 0:
-            self.l_task.pop(self.l_task.index('Channel Interpolation'))
+        # removes any existing
+        pp_runs = self.main_obj.session_obj.session._s._pp_runs
+        if len(pp_runs):
+            for pp_names in [pp_flds[v[0]] for v in pp_runs[0]._pp_steps.values()]:
+                self.l_task.pop(self.l_task.index(pp_names))
+
+        # channel interpolation field (if it exists) if either a) there are no bad channels or
+        # b) the common reference calculations have already taken place
+        if 'Channel Interpolation' in self.l_task:
+            bad_ch_id = self.main_obj.session_obj.get_bad_channels()
+            if (len(bad_ch_id) == 0) or ('Common Reference' not in self.l_task):
+                self.l_task.pop(self.l_task.index('Channel Interpolation'))
 
         # sets up the main layout
         self.setLayout(self.main_layout)

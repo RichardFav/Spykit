@@ -774,31 +774,58 @@ class RunPreProcessing(QObject):
         self.s = s
 
         # other fields
-        self.pp_steps = None
         self.per_shank = None
         self.concat_runs = None
         self.prepro_dict = None
+        self.pp_steps_new = None
+        self.pp_steps_tot = None
+
+        #
+        self.run_name = None
+        self.file_format = None
+        self.raw_data_path = None
 
     def preprocess(self, pp_steps, per_shank, concat_runs):
 
         # sets the input arguments
-        self.pp_steps = pp_steps
         self.per_shank = per_shank
         self.concat_runs = concat_runs
+        self.pp_steps_new = pp_steps
 
         # runs the preprocessing task grouping
         runs_to_pp: list[SeparateRawRun | ConcatRawRun]
 
-        if concat_runs:
-            runs_to_pp = [self.s._get_concat_raw_run()]
-        else:
-            runs_to_pp = self.s._raw_runs  # type: ignore
+        # sets the preprocessing runs (based on previous calculation type)
+        if len(self.s._pp_runs):
+            # case is there has already been partial preprocessing
+            is_raw = False
+            runs_to_pp = [x._preprocessed for x in self.s._pp_runs]
 
-        #
-        self.s._pp_runs = []
-        for run in runs_to_pp:
+            # appends the new preprocessing steps to the total list
+            i_ofs = len(self.pp_steps_tot)
+            for i, pp_s in pp_steps.items():
+                i_tot = int(i) + i_ofs
+                self.pp_steps_tot[(str(i_tot))] = pp_s
+
+        else:
+            # case is there is no preprocessing
+            is_raw = True
+            self.pp_steps_tot = pp_steps
+
+            # sets the raw runs to preprocess
+            if concat_runs:
+                runs_to_pp = [self.s._get_concat_raw_run()]
+            else:
+                runs_to_pp = self.s._raw_runs
+
+            # retrieves the run-specific information
+            self.run_name = [run._run_name for run in runs_to_pp]
+            self.file_format = [run._file_format for run in runs_to_pp]
+            self.raw_data_path = [run._parent_input_path for run in runs_to_pp]
+
+        for i_run, run in enumerate(runs_to_pp):
             # runs the preprocessing for the current run
-            preprocessed_run = self.preprocess_run(run)
+            preprocessed_run = self.preprocess_run(run, is_raw)
 
             # retrieves the run names
             orig_run_names = (
@@ -808,50 +835,62 @@ class RunPreProcessing(QObject):
             # stores the preprocessing data
             self.s._pp_runs.append(
                 PreprocessedRun(
-                    raw_data_path=run._parent_input_path,
+                    run_name=self.run_name[i_run],
+                    file_format=self.file_format[i_run],
+                    raw_data_path=self.raw_data_path[i_run],
                     ses_name=self.s._ses_name,
-                    run_name=run._run_name,
-                    file_format=run._file_format,
                     session_output_path=self.s._output_path,
-                    preprocessed_data=preprocessed_run,
-                    pp_steps=self.pp_steps,
+                    pp_steps=self.pp_steps_tot,
                     orig_run_names=orig_run_names,
+                    preprocessed_data=preprocessed_run,
                 )
             )
 
-        # REMOVE ME!
-        a = 1
-
-    def preprocess_run(self, run):
-
-        if self.per_shank:
-            runs_to_preprocess = run._get_split_by_shank()
-        else:
-            runs_to_preprocess = run._raw
+    def preprocess_run(self, run, is_raw):
 
         preprocessed = {}
-        for shank_id, raw_rec in runs_to_preprocess.items():
-            preprocessed[shank_id] = self.preprocess_recording({"0-raw": raw_rec})
+
+        if is_raw:
+            # case is starting preprocessing from raw
+
+            # determines the runs to process
+            if self.per_shank:
+                runs_to_preprocess = run._get_split_by_shank()
+            else:
+                runs_to_preprocess = run._raw
+
+            # runs the preprocessing over each grouping
+            for shank_id, raw_rec in runs_to_preprocess.items():
+                preprocessed[shank_id] = self.preprocess_recording({"0-raw": raw_rec})
+
+        else:
+            # case is running from previous preprocessing
+
+            # runs the preprocessing over each grouping
+            for shank_id, pp_rec in run.items():
+                preprocessed[shank_id] = pp_rec
+                self.preprocess_recording(pp_rec)
 
         return preprocessed
 
     def preprocess_recording(self, pp_data):
 
         # field retrieval
-        prev_name = list(pp_data.keys())[0]
-        pp_step_names = [item[0] for item in self.pp_steps.values()]
+        step_ofs = len(pp_data) - 1
+        prev_name = list(pp_data.keys())[-1]
+        pp_step_names = [item[0] for item in self.pp_steps_tot.values()]
 
-        for step_num, pp_info in self.pp_steps.items():
+        for step_num, pp_info in self.pp_steps_new.items():
             # runs the pre-processing function
             pp_name, pp_opt = pp_info
             preprocessed_rec = self.pp_funcs[pp_name](pp_data[prev_name], **pp_opt)
 
             # stores the preprocessing run object
-            new_name = f"{step_num}-" + "-".join(["raw"] + pp_step_names[: int(step_num)])
+            step_num_tot = int(step_num) + step_ofs
+            new_name = f"{str(step_num_tot)}-" + "-".join(["raw"] + pp_step_names[: step_num_tot])
             pp_data[new_name] = preprocessed_rec
 
             # resets the previous run name
             prev_name = new_name
-            print(prev_name)
 
         return pp_data
