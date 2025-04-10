@@ -527,6 +527,10 @@ class MainWindow(QMainWindow):
 
 
 class MenuBar(QObject):
+    # static class fields
+    sync_file_name = canon.saved_sync_filename()
+    sync_folder_name = canon.sync_folder()
+
     def __init__(self, main_obj):
         super(MenuBar, self).__init__()
 
@@ -725,17 +729,74 @@ class MenuBar(QObject):
 
     def load_trigger(self, file_info=None):
 
-        # prompts the user for the file name (exit if the user cancels)
-        file_info = self.load_file(file_info, 'trigger')
-        if file_info is None:
-            return
+        # field retrieval
+        sync_dir_base = None
+        raw_runs = self.main_obj.session_obj.session._s._raw_runs
 
-        # loads data from the file
-        with open(file_info, 'rb') as f:
-            trig_data = pickle.load(f)
+        # determines if the default sync channel trace exists
+        has_def, def_sync_dir = True, []
+        for i_run, rr in enumerate(raw_runs):
+            def_sync_dir = self.get_sync_output_dir(rr, None)
+            if not def_sync_dir.is_dir():
+                # if not, then flag that the default files do not exist
+                has_def = False
+                break
 
-        # finish me!!
-        pass
+        if has_def:
+            # if the default file exist, prompt the user if they want to use them
+            q_str = 'Do you want to use the default trigger channel files?'
+            u_choice = QMessageBox.question(self.main_obj, 'Use Default Files?', q_str, cf.q_yes_no_cancel, cf.q_yes)
+            if u_choice == cf.q_cancel:
+                # case is the user cancelled
+                return
+            else:
+                # case is user chose yes/no
+                use_def = u_choice == cf.q_yes
+
+        else:
+            # if not, then user is force to use the custom trigger trace folder
+            use_def = False
+
+        if not use_def:
+            # if using a custom path, prompt the user for said path
+            base_dir = self.save_file('trigger', dir_only=True)
+            if base_dir is None:
+                # case is the user cancelled
+                return
+
+            else:
+                # sets the output directory
+                sync_dir_base = base_dir
+                if not self.check_custom_sync_dir(raw_runs, sync_dir_base):
+                    return
+
+        # trigger file load and data storage
+        for i_run, rr in enumerate(raw_runs):
+            # sets up the file name
+            sync_dir = self.get_sync_output_dir(rr, sync_dir_base)
+            sync_run = np.load(sync_dir / self.sync_file_name)
+
+            # determines if the signal matches the run duration
+            n_sample_run = rr._raw[list(rr._raw.keys())[0]].get_num_samples()
+            if len(sync_run) == n_sample_run:
+                # if so, then update the trace
+                self.main_obj.session_obj.session.sync_ch[i_run] = sync_run
+
+            else:
+                # otherwise, output an error to screen
+                err_str = 'The trigger channel file does not match '
+                cf.show_error(err_str, 'Invalid Trigger Channel File')
+                return
+
+        # more field retrieval
+        change_made = False
+        trig_props = self.main_obj.prop_manager.get_prop_tab('trigger')
+        trig_view = self.main_obj.plot_manager.get_plot_view('trigger')
+
+        # resets the trigger view
+        if trig_props.delete_all_regions():
+            trig_view.reset_trace_values()
+            trig_view.update_trigger_trace()
 
     def load_config(self, file_info=None):
 
@@ -780,6 +841,9 @@ class MenuBar(QObject):
 
     def save_trigger(self):
 
+        # initialisations
+        output_dir_base = None
+
         # prompts the user if they want to use the default output path
         q_str = 'Do you want to use the default trigger channel output path?'
         u_choice = QMessageBox.question(self.main_obj, 'Use Default Path?', q_str, cf.q_yes_no_cancel, cf.q_yes)
@@ -817,21 +881,15 @@ class MenuBar(QObject):
         # trigger trace output
         for i_run, rr in enumerate(raw_runs):
             # sets up the file name
-            if use_def:
-                # case is using the default path
-                output_dir = rr._sync_output_path / canon.sync_folder()
-
-            else:
-                # case is using the custom path
-                output_dir = output_dir_base / rr._run_name
+            sync_dir = self.get_sync_output_dir(rr, output_dir_base)
 
             # ensures the output directory (if it exists) is empty
-            if output_dir.is_dir():
-                shutil.rmtree(output_dir)
+            if sync_dir.is_dir():
+                shutil.rmtree(sync_dir)
 
             # creates the sync channel folder and outputs the file
-            output_dir.mkdir(parents=True, exist_ok=True)
-            np.save(output_dir / canon.saved_sync_filename(), sync_ch[i_run])
+            sync_dir.mkdir(parents=True, exist_ok=True)
+            np.save(sync_dir / self.sync_file_name, sync_ch[i_run])
 
     def save_config(self):
 
@@ -897,12 +955,15 @@ class MenuBar(QObject):
 
         evnt.ignore()
 
-    def load_file(self, file_info, f_type):
+    def load_file(self, file_info, f_type, dir_only=False):
 
         # runs the save file dialog (if file path not given)
         if not isinstance(file_info, str):
-            f_title = 'Select {0} File'.format(cw.f_name[f_type])
-            file_dlg = cw.FileDialogModal(None, f_title, cw.f_mode[f_type], cw.data_dir, is_save=False)
+            f_suffix = 'Directory' if dir_only else 'File'
+            f_title = 'Select {0} {1}'.format(cw.f_name[f_type], f_suffix)
+            file_dlg = cw.FileDialogModal(
+                None, f_title, cw.f_mode[f_type], cw.data_dir, is_save=False, dir_only=dir_only,
+            )
             if file_dlg.exec() == QDialog.DialogCode.Accepted:
                 # if successful, then retrieve the file name
                 file_info = file_dlg.selectedFiles()[0]
@@ -950,3 +1011,18 @@ class MenuBar(QObject):
         # resets the menu enabled properties
         [self.set_menu_enabled(m_on, True) for m_on in menu_on]
         [self.set_menu_enabled(m_off, False) for m_off in menu_off]
+
+    def get_sync_output_dir(self, rr, output_dir_base):
+
+        if output_dir_base is None:
+            # case is using the default path
+            return rr._sync_output_path / self.sync_folder_name
+
+        else:
+            # case is using the custom path
+            return output_dir_base / rr._run_name
+
+    @staticmethod
+    def check_custom_sync_dir(raw_runs, dir_base):
+
+        a = 1

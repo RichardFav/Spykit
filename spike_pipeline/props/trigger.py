@@ -458,6 +458,21 @@ class TriggerProps(PropWidget):
         self.p_props.remove_row(i_run, i_row)
         self.trig_view.delete_region(i_row)
 
+    def delete_all_regions(self):
+
+        # initialisations
+        change_made = False
+
+        # deletes any regions (if the exist)
+        for i_run in range(self.trig_view.n_run):
+            if self.trig_view.n_reg_xs[i_run]:
+                change_made = True
+                for i_reg in np.flip(range(self.trig_view.n_reg_xs[i_run])):
+                    self.delete_region(i_run, i_reg)
+
+        # returns the change flag
+        return change_made
+
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
     # ---------------------------------------------------------------------------
