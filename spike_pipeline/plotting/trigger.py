@@ -106,7 +106,7 @@ class TriggerPlot(PlotWidget):
         # field retrieval
         s_freq = self.s_props.get_value('s_freq')
         self.x_tr = np.arange(self.n_samples) / s_freq
-        self.y_tr = self.session_info.session.sync_ch
+        self.reset_trace_values()
 
         # linear region objects
         self.l_reg_xs = np.empty(self.n_run, dtype=object)
@@ -445,6 +445,7 @@ class TriggerPlot(PlotWidget):
 
         # resets the plot view axis
         self.v_box[0, 0].setLimits(xMin=0, xMax=self.t_dur)
+        self.v_box[0, 0].setLimits(yMin=-0.1, yMax=100.1)
         self.v_box[1, 0].setLimits(xMin=0, xMax=self.t_dur)
         self.v_box[0, 0].setXRange(self.t_lim[0], self.t_lim[1], padding=0)
         self.v_box[1, 0].setXRange(0, self.t_dur, padding=0)
@@ -484,3 +485,7 @@ class TriggerPlot(PlotWidget):
     def get_region_index(self, l_reg, i_run):
 
         return next((i for i, x in enumerate(self.l_reg_xs[i_run]) if l_reg == x))
+
+    def reset_trace_values(self):
+
+        self.y_tr = self.session_info.session.sync_ch

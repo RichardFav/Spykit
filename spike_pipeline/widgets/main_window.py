@@ -804,25 +804,29 @@ class MenuBar(QObject):
         # silences the required sections of the trigger channel
         s_freq = self.main_obj.session_obj.session_props.s_freq
         trig_props = self.main_obj.prop_manager.get_prop_tab('trigger')
+        trig_view = self.main_obj.plot_manager.get_plot_view('trigger')
         for i_run, r_lim in enumerate(trig_props.p_props.region_index):
             # sets up the silencing regions
-            s_lim = []
-            for i_reg in range(r_lim.shape[0]):
+            for i_reg in np.flip(range(r_lim.shape[0])):
                 ind_s = int(np.floor(r_lim[i_reg, 1] * s_freq))
                 ind_f = int(np.ceil(r_lim[i_reg, 2] * s_freq))
-                s_lim.append((ind_s, ind_f))
+                self.main_obj.session_obj.silence_sync(i_run, ind_s, ind_f)
 
-            # silences the trigger channel
-            self.main_obj.session_obj.session._s.silence_sync_channel(i_run, s_lim)
+                # removes the trigger property region
+                trig_props.delete_region(i_run, i_reg)
 
-        # outputs the trigger channel to file
-        if cf.q_yes:
-            # case is saving to the default location
-            self.main_obj.session_obj.session._s.save_sync_channel(True)
+        # resets the trigger view
+        trig_view.reset_trace_values()
+        trig_view.update_trigger_trace()
 
-        else:
-            # saves the session file
-            pass
+        # # outputs the trigger channel to file
+        # if cf.q_yes:
+        #     # case is saving to the default location
+        #     self.main_obj.session_obj.session._s.save_sync_channel(True)
+        #
+        # else:
+        #     # saves the session file
+        #     pass
 
 
     def save_config(self):

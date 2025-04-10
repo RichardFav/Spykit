@@ -258,6 +258,10 @@ class SessionWorkBook(QObject):
             case 'bad':
                 self.bad_channel_change.emit(session)
 
+    def silence_sync(self, i_run, ind_s, ind_f):
+
+        self.session.sync_ch[i_run][ind_s:ind_f] = 0
+
     # ---------------------------------------------------------------------------
     # Static Methods
     # ---------------------------------------------------------------------------
@@ -306,6 +310,9 @@ class SessionObject(QObject):
     # pyqtsignal functions
     channel_data_setup = pyqtSignal(object)
     channel_calc = pyqtSignal(str, object)
+
+    # parameters
+    dy_min = 1.5
 
     def __init__(self, s_props, ssf_load=False, sig_fcn=None):
         super(SessionObject, self).__init__()
@@ -528,9 +535,18 @@ class SessionObject(QObject):
 
         # sets the signal data
         ch_data, i_run = data
-        self.sync_ch[i_run] = cf.remove_baseline(ch_data)
+
+        y_min, y_max = np.min(ch_data), np.max(ch_data)
+        if y_max - y_min <= self.dy_min:
+            # if the signal range is below tolerance, then set all zeros
+            ch_data[:] = 0
+
+        else:
+            # resets the signal values as being on/off
+            ch_data = 100 * (ch_data > (y_min + y_max) / 2).astype(int)
 
         # if all runs have been detected, then run the signal function
+        self.sync_ch[i_run] = ch_data
         if np.all([x is not None for x in self.sync_ch]):
             self.data_init['sync'] = True
 
