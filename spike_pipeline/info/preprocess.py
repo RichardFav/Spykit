@@ -95,6 +95,8 @@ class PreprocessInfoTab(InfoWidgetPara):
 
         # class field initialisation
         self.bad_channel_fcn = None
+        self.keep_channel_fcn = None
+        self.removed_channel_fcn = None
         self.configs = PreprocessConfig()
 
         # sorting group widgets
@@ -251,6 +253,12 @@ class PreprocessInfoTab(InfoWidgetPara):
         # clears the configuration array
         self.configs.clear()
 
+        # determines if there are any channels to remove
+        rmv_channels = self.get_remove_channels()
+        if len(rmv_channels):
+            # if so, then append the remove channels step
+            prep_task = ['Remove Bad Channels'] + prep_task
+
         # adds the preparation tasks to the configuration field
         for pp_t in prep_task:
             pp = prep_task_map[pp_t]
@@ -267,8 +275,10 @@ class PreprocessInfoTab(InfoWidgetPara):
 
                 case 'remove_channels':
                     # case is remove channel step
+
+                    # sets up the config dictionary
                     c_dict = {
-                        'channel_ids': self.bad_channel_fcn(['out']),
+                        'channel_ids': rmv_channels,
                     }
 
                     # adds the preprocessing task to the list
@@ -284,6 +294,12 @@ class PreprocessInfoTab(InfoWidgetPara):
 
         # returns the configuration dictionaries
         return self.configs.setup_config_dicts()
+
+    def get_remove_channels(self):
+
+        not_keep = np.logical_not(self.keep_channel_fcn())
+        is_feas = np.logical_not(self.removed_channel_fcn())
+        return self.bad_channel_fcn(['out'], not_keep, is_feas)
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -583,3 +599,4 @@ class PreprocessSetup(QDialog):
 
         tasks[i_swap[0]], tasks[i_swap[1]] = tasks[i_swap[1]], tasks[i_swap[0]]
         return tasks
+

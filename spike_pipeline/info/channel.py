@@ -9,7 +9,7 @@ from spike_pipeline.info.utils import InfoWidget
 from spike_pipeline.common.common_widget import QWidget, QLabelCombo, QLabelCheckCombo, font_lbl
 
 # pyqt imports
-from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtCore import Qt, pyqtSignal
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -23,16 +23,25 @@ class ChannelInfoTab(InfoWidget):
     mouse_move = pyqtSignal(object)
     mouse_enter = pyqtSignal(object)
     mouse_leave = pyqtSignal(object)
+    force_reset_flags = pyqtSignal(object)
 
     row_col = {
         'good': cf.get_colour_value('g', 128),
         'dead': cf.get_colour_value('r', 128),
-        'noise': cf.get_colour_value('dg', 128),
-        'out': cf.get_colour_value('y', 128),
-        'rejected': cf.get_colour_value('k', 128),
+        'noise': cf.get_colour_value('y', 128),
+        'out': cf.get_colour_value('b', 128),
+        'rejected': cf.get_colour_value('dg', 128),
+        'removed': cf.get_colour_value('k', 128),
+    }
+
+    # table cell item flags
+    item_flag = {
+        True: Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsSelectable,
+        False: Qt.ItemFlag.ItemIsEnabled,
     }
 
     # other parameters
+    i_sel_col = 0
     i_keep_col = 1
     i_status_col = 2
     i_channel_col = 3
@@ -44,6 +53,7 @@ class ChannelInfoTab(InfoWidget):
         self.data_flds = None
         self.table_move_fcn = None
         self.table_leave_fcn = None
+        self.get_avail_channel_fcn = None
 
         # boolean class fields
         self.is_filt = None
@@ -159,17 +169,36 @@ class ChannelInfoTab(InfoWidget):
         # initialisations
         self.is_updating = True
         self.set_update_flag.emit(True)
+        ch_avail = self.get_avail_channel_fcn()
 
         # updates the table with the new information
-        for i_row, c_stat in enumerate(ch_status):
+        ch_list, i_rmv = [], []
+        for i_row, (ch_id, c_stat) in enumerate(ch_status.items()):
             item = self.table.item(i_row, self.i_status_col)
-            self.set_table_row_colour(i_row, c_stat if is_keep[i_row] else 'rejected')
-            item.setText(c_stat)
+
+            if ch_id in ch_avail:
+                # case is the channel is available
+                self.set_table_row_colour(i_row, c_stat if is_keep[i_row] else 'rejected')
+                self.set_table_row_enabled(i_row, True)
+                item.setText(c_stat)
+
+                if c_stat not in ch_list:
+                    ch_list.append(c_stat)
+
+            else:
+                # case is the item has been removed
+                i_rmv.append(i_row)
+                self.set_table_row_colour(i_row, 'removed')
+                self.set_table_row_enabled(i_row, False)
+                item.setText('removed')
+
+        if len(i_rmv):
+            self.force_reset_flags.emit(i_rmv)
 
         # resets the status filter
         self.status_filter.clear()
         self.status_filter.setEnabled(True)
-        for s_filt in np.unique(ch_status):
+        for s_filt in ch_list:
             self.status_filter.add_item(s_filt, True)
 
         # resets the update flag
@@ -202,8 +231,23 @@ class ChannelInfoTab(InfoWidget):
         for i_col in range(self.table.columnCount()):
             self.table.item(i_row, i_col).setBackground(self.row_col[c_stat])
 
+    def set_table_row_enabled(self, i_row, state):
+
+        # item retrieval
+        item_sel = self.table.item(i_row, self.i_sel_col)
+        item_keep = self.table.item(i_row, self.i_keep_col)
+
+        # updates the item flags
+        item_sel.setFlags(self.item_flag[state])
+        item_keep.setFlags(self.item_flag[state])
+
+        if not state:
+            item_sel.setCheckState(cf.chk_state[False])
+            item_keep.setCheckState(cf.chk_state[False])
+
     def get_table_device_id(self, i_row_sel):
 
+        i_row_sel = np.min([self.table.rowCount() - 1, i_row_sel])
         return int(self.table.item(i_row_sel, self.i_channel_col).text())
 
     def keep_channel_reset(self, is_keep):

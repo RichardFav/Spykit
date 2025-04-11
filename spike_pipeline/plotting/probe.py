@@ -351,7 +351,8 @@ class ProbePlot(PlotWidget):
 
     def setup_label_text(self, i_channel):
 
-        loc_ch = self.session_info.get_channel_location(i_channel)
+        probe = self.session_info.get_raw_recording_probe()
+        loc_ch = self.session_info.get_channel_location(i_channel, probe)
         status_ch = self.session_info.get_channel_status(i_channel)
         shank_id = self.session_info.get_shank_id(i_channel)
 
@@ -402,12 +403,12 @@ class ProbePlot(PlotWidget):
     def reset_out_line(self, ch_status):
 
         # determines the "out" channels
-        is_out = ch_status == 'out'
+        is_out = np.array(list(ch_status.values())) == 'out'
 
         # calculates the out location
         if np.any(is_out):
             # retrieves the position of the out channels
-            probe = self.session_info.get_current_recording_probe()
+            probe = self.session_info.get_raw_recording_probe()
             p_loc0 = probe.get_channel_locations()
             p_loc = p_loc0[is_out, 1]
 
@@ -481,7 +482,7 @@ class ProbeView(GraphicsObject):
 
     # line pen widgets
     l_pen_out = mkPen(color=cf.get_colour_value('k'), width=2)
-    l_pen_highlight = mkPen(color=cf.get_colour_value('m'), width=2)
+    l_pen_highlight = mkPen(color=cf.get_colour_value('b'), width=2)
 
     # pyqtsignal functions
     update_roi = pyqtSignal(object)

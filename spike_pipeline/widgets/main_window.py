@@ -203,26 +203,11 @@ class MainWindow(QMainWindow):
         # Channel Info Table Setup
         # -----------------------------------------------------------------------
 
-        # field retrieval
-        c_list = ['keep', 'status', 'channel_ids', 'contact_ids',  'device_channel_indices', 'x', 'y', 'shank_ids']
-        c_hdr = ['', 'Keep?', 'Status', 'Channel ID', 'Contact ID', 'Channel Index', 'X-Coord', 'Y-Coord', 'Shank ID']
-
-        # retrieves the necessary channel information data
-        ch_info = self.session_obj.get_channel_info()
-        ch_keep = self.session_obj.get_keep_channels()
-        p_dframe = ch_info[ch_info.columns.intersection(c_list)][c_list[2:]]
-
-        # inserts the "status" column
-        n_row, n_col = p_dframe.shape
-        p_dframe.insert(0, 'status', np.array(['***'] * n_row))
-        p_dframe.insert(0, 'keep', ch_keep)
-
-        # appends the show
-        is_show = np.zeros(p_dframe.shape[0], dtype=bool)
-        p_dframe.insert(0, "Show", is_show, True)
+        # sets up the channel information dataframe
+        p_dframe = self.session_obj.get_info_data_frame()
 
         # creates the table model
-        self.info_manager.setup_info_table(p_dframe, 'Channel', c_hdr)
+        self.info_manager.setup_info_table(p_dframe, 'Channel', self.session_obj.c_hdr)
         self.info_manager.init_channel_comboboxes()
 
         # appends the channel status flags (if available)
@@ -281,7 +266,7 @@ class MainWindow(QMainWindow):
 
         # updates the channel status flags
         channel_tab = self.info_manager.get_info_tab('channel')
-        channel_tab.update_channel_status(ch_status[0][1], self.session_obj.get_keep_channels())
+        channel_tab.update_channel_status(ch_status, self.session_obj.get_keep_channels())
 
         # resets the status button toggle value (if pressed)
         status_tab = self.info_manager.get_info_tab('status')
@@ -291,7 +276,7 @@ class MainWindow(QMainWindow):
 
         # updates the probe-view
         probe_view = self.plot_manager.get_plot_view('probe')
-        probe_view.reset_out_line(ch_status[0][1])
+        probe_view.reset_out_line(ch_status)
         self.plot_manager.reset_probe_views()
 
     # ---------------------------------------------------------------------------
@@ -398,9 +383,19 @@ class MainWindow(QMainWindow):
         # resets the preprocessing data type combobox
         pp_data_flds = self.session_obj.get_current_prep_data_names()
 
+        # if removing channels, then delete this from the preprocessing fields
+        task_name = deepcopy(prep_tab.configs.task_name)
+        has_remove = [x.count('remove_channels') for x in pp_data_flds]
+        if np.any(np.asarray(has_remove) > 0):
+            # determines the instances where channels were removed
+            for i_rmv in np.flip(np.where(np.diff(has_remove) > 0)[0]):
+                pp_data_flds.pop(i_rmv + 1)
+                task_name.pop(i_rmv)
+
         # updates the channel data types
         channel_tab = self.info_manager.get_info_tab('channel')
-        channel_tab.reset_data_types(['Raw'] + prep_tab.configs.task_name, pp_data_flds)
+        channel_tab.reset_data_types(['Raw'] + task_name, pp_data_flds)
+        self.bad_channel_change()
 
         # updates the trace views
         self.plot_manager.reset_trace_views()
@@ -514,8 +509,8 @@ class MainWindow(QMainWindow):
     def testing(self):
 
         # f_file = 'C:/Work/Other Projects/EPhys Project/Data/z - session_files/test_tiny.ssf'
-        f_file = 'C:/Work/Other Projects/EPhys Project/Data/z - session_files/test_large.ssf'
-        # f_file = 'C:/Work/Other Projects/EPhys Project/Data/z - session_files/test_large (preprocessed).ssf'
+        # f_file = 'C:/Work/Other Projects/EPhys Project/Data/z - session_files/test_large.ssf'
+        f_file = 'C:/Work/Other Projects/EPhys Project/Data/z - session_files/test_large (preprocessed).ssf'
 
         self.menu_bar.load_session(f_file)
 
@@ -834,6 +829,7 @@ class MenuBar(QObject):
                 'bad': ses_obj.session.bad_ch,
                 'sync': ses_obj.session.sync_ch,
                 'keep': ses_obj.get_keep_channels(),
+                'removed': ses_obj.get_removed_channels(),
             }
         }
 

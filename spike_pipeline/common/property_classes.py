@@ -43,6 +43,9 @@ class SessionWorkBook(QObject):
     worker_job_started = pyqtSignal(str)
     worker_job_finished = pyqtSignal(str)
 
+    # array class fields
+    c_hdr = ['', 'Keep?', 'Status', 'Channel ID', 'Contact ID', 'Channel Index', 'X-Coord', 'Y-Coord', 'Shank ID']
+
     def __init__(self):
         super(SessionWorkBook, self).__init__()
 
@@ -70,6 +73,50 @@ class SessionWorkBook(QObject):
     # Getter Functions
     # ---------------------------------------------------------------------------
 
+    def get_avail_channel(self, is_raw=False):
+
+        if is_raw:
+            probe_rec = self.get_raw_recording_probe()
+
+        else:
+            probe_rec = self.get_current_recording_probe()
+
+        return probe_rec.get_channel_ids()
+
+        # if (len(self.session._s._pp_runs) == 0) or is_raw:
+        #     # case is no preprocessing has taken place
+        #     rec_runs = self.session._s._raw_runs[0]._raw
+        #     rec_run = rec_runs[list(rec_runs.keys())[0]]
+        #
+        # else:
+        #     # case is preprocessing has taken place
+        #     pp = self.session._s._pp_runs[0]._preprocessed
+        #     rec_runs = list(pp.values())[0]
+        #     rec_run = rec_runs[list(rec_runs.keys())[-1]]
+        #
+        # return rec_run.get_channel_ids()
+
+    def get_info_data_frame(self, probe=None):
+
+        # array fields
+        c_list = ['keep', 'status', 'channel_ids', 'contact_ids',  'device_channel_indices', 'x', 'y', 'shank_ids']
+
+        # retrieves the necessary channel information data
+        ch_info = self.get_channel_info(probe)
+        ch_keep = self.get_keep_channels()
+        p_dframe = ch_info[ch_info.columns.intersection(c_list)][c_list[2:]]
+
+        # inserts the "status" column
+        n_row, n_col = p_dframe.shape
+        p_dframe.insert(0, 'status', np.array(['***'] * n_row))
+        p_dframe.insert(0, 'keep', ch_keep)
+
+        # appends the "show" channel column
+        is_show = np.zeros(p_dframe.shape[0], dtype=bool)
+        p_dframe.insert(0, "Show", is_show, True)
+
+        return p_dframe
+
     def get_channel_info(self, probe=None):
 
         if probe is None:
@@ -80,6 +127,10 @@ class SessionWorkBook(QObject):
     def get_keep_channels(self):
 
         return self.channel_data.is_keep
+
+    def get_removed_channels(self):
+
+        return self.channel_data.is_removed
 
     def get_channel_ids(self, i_ch=None, is_sorted=None):
 
@@ -138,7 +189,9 @@ class SessionWorkBook(QObject):
 
     def get_shank_id(self, i_channel):
 
-        shank_id = self.get_channel_info()['shank_ids'][i_channel]
+        probe = self.get_raw_recording_probe().get_probe()
+        shank_id = self.get_channel_info(probe)['shank_ids'][i_channel]
+
         if len(shank_id):
             return int(shank_id)
 
@@ -152,6 +205,10 @@ class SessionWorkBook(QObject):
     def get_current_recording_probe(self):
 
         return self.session.get_session_runs(self.current_run, self.current_ses, self.prep_type)
+
+    def get_raw_recording_probe(self):
+
+        return self.session.get_session_runs(self.current_run, self.current_ses, None)
 
     def get_current_prep_data_names(self):
 
@@ -172,11 +229,23 @@ class SessionWorkBook(QObject):
             return 'na'
 
         else:
-            return self.session.bad_ch[i_run][0][1][i_channel]
+            ch_id = self.channel_data.channel_ids[i_channel]
+            return self.session.bad_ch[i_run][ch_id]
 
-    def get_bad_channels(self, s_type='all'):
+    def get_bad_channels(self, s_type='all', i_bad_filt=None, is_feas=None):
 
-        # bad channel types
+        # field retrieval
+        bad_ch = self.session.bad_ch[0]
+        ch_status = np.array(list(bad_ch.values()))
+
+        # memory allocation
+        if i_bad_filt is None:
+            i_bad_filt = np.zeros(len(ch_status), dtype=bool)
+
+        if is_feas is None:
+            is_feas = np.ones(len(ch_status), dtype=bool)
+
+        # ensures the type strings are set correctly
         if s_type == 'all':
             s_type = ['dead', 'noise', 'out']
 
@@ -184,13 +253,12 @@ class SessionWorkBook(QObject):
             s_type = [s_type]
 
         # determines if the bad channel indices (which are being kept)
-        bad_ch = self.session.bad_ch[0]
-        i_bad_filt = np.zeros(len(bad_ch[0][1]), dtype=bool)
         for i, st in enumerate(s_type):
-            i_bad_filt = np.logical_or(i_bad_filt, bad_ch[0][1] == st)
+            i_bad_filt = np.logical_or(i_bad_filt, ch_status == st)
 
-        # returns the bad channel IDs
+        # returns the final bad channel IDs
         i_bad_ch = np.logical_and(i_bad_filt, self.channel_data.is_keep)
+        i_bad_ch = np.logical_and(i_bad_ch, is_feas)
         ch_id, _ = self.get_channel_ids(np.where(i_bad_ch)[0])
         return ch_id
 
@@ -200,7 +268,7 @@ class SessionWorkBook(QObject):
 
     def set_all_channel_states(self, is_checked):
 
-        self.channel_data.is_selected[:] = is_checked
+        self.channel_data.is_selected[self.channel_data.is_keep] = is_checked
 
     def set_current_run(self, new_run):
 
@@ -222,6 +290,7 @@ class SessionWorkBook(QObject):
 
         # resets the channel keep field
         self.channel_data.is_keep = ch_data['keep']
+        self.channel_data.is_removed = ch_data['removed']
         self.keep_channel_reset.emit()
 
     # ---------------------------------------------------------------------------
@@ -523,7 +592,8 @@ class SessionObject(QObject):
 
         # sets the channel data
         ch_data, i_run = data
-        self.bad_ch[i_run] = ch_data
+        ch_id = self._s._raw_runs[0]._raw['grouped'].get_channel_ids()
+        self.bad_ch[i_run] = dict(zip(ch_id, ch_data[0][1]))
 
         # if all runs have been detected, then run the signal function
         if np.all([x is not None for x in self.bad_ch]):
@@ -618,14 +688,6 @@ class SessionObject(QObject):
 
         self.prep_obj.preprocess(configs, per_shank, concat_runs)
 
-        # # REMOVE ME LATER
-        # self._s.preprocess(
-        #     configs,
-        #     per_shank,
-        #     concat_runs,
-        # )
-
-
     # ---------------------------------------------------------------------------
     # Protected Properties
     # ---------------------------------------------------------------------------
@@ -701,6 +763,7 @@ class ChannelData:
         self.is_filt = np.ones(self.n_channel, dtype=bool)
         self.is_selected = np.zeros(self.n_channel, dtype=bool)
         self.is_keep = np.ones(self.n_channel, dtype=bool)
+        self.is_removed = np.zeros(self.n_channel, dtype=bool)
 
         # determines the channel depth ordering
         self.i_sort, self.i_sort_rev = order_channels_by_depth(probe_rec)

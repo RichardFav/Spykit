@@ -162,6 +162,8 @@ class InfoManager(QWidget):
                         tab_widget.set_update_flag.connect(self.update_flag_change)
                         tab_widget.mouse_move.connect(self.channel_mouse_move)
                         tab_widget.mouse_leave.connect(self.channel_mouse_leave)
+                        tab_widget.force_reset_flags.connect(self.force_reset_flags)
+                        tab_widget.get_avail_channel_fcn = self.get_avail_channel
 
                 case 'status':
                     tab_widget.start_recalc.connect(self.start_recalc)
@@ -169,6 +171,8 @@ class InfoManager(QWidget):
 
                 case 'preprocess':
                     tab_widget.bad_channel_fcn = self.session_obj.get_bad_channels
+                    tab_widget.keep_channel_fcn = self.session_obj.get_keep_channels
+                    tab_widget.removed_channel_fcn = self.session_obj.get_removed_channels
 
             # appends the tab to the tab group
             self.tab_group_table.addTab(tab_widget, t_lbl)
@@ -204,14 +208,21 @@ class InfoManager(QWidget):
             i_data = tab_obj.data_type.current_index()
             self.main_obj.session_obj.set_prep_type(tab_obj.data_flds[i_data])
 
-        # resets the trace view
         match d_type:
             case 'run':
+                # resets the trace/trigger view
                 self.main_obj.plot_manager.reset_trace_views(1)
                 self.main_obj.plot_manager.reset_trig_views()
 
             case 'data':
+                # resets the channel statuses
+                channel_tab = self.get_info_tab('channel')
+                ch_status = self.session_obj.session.bad_ch[0]
+                channel_tab.update_channel_status(ch_status, self.session_obj.get_keep_channels())
+
+                # resets the trace view
                 self.main_obj.plot_manager.reset_trace_views(2)
+                self.main_obj.plot_manager.reset_probe_views()
 
     def channel_status_update(self, tab_obj, is_filt):
 
@@ -255,6 +266,7 @@ class InfoManager(QWidget):
 
         # determines the channel index (from the hovered channel)
         ch_id = ch_tab.get_table_device_id(i_row_tot)
+
         if self.i_probe_ch == ch_id:
             # if there is no change in the highlighted channel, then exit
             return
@@ -283,6 +295,15 @@ class InfoManager(QWidget):
 
         # resets the probe channel index
         self.i_probe_ch = None
+
+    def force_reset_flags(self, i_rmv):
+
+        self.session_obj.channel_data.is_selected[i_rmv] = False
+        self.session_obj.channel_data.is_keep[i_rmv] = False
+
+    def get_avail_channel(self):
+
+        return self.session_obj.get_avail_channel()
 
     def start_recalc(self, p_props):
 

@@ -110,8 +110,8 @@ icon_path = {
 p_col_status = {
     'good': cf.get_colour_value('g', 150),
     'dead': cf.get_colour_value('r', 150),
-    'out': cf.get_colour_value('y', 150),
-    'noise': cf.get_colour_value('m', 150),
+    'noise': cf.get_colour_value('y', 150),
+    'out': cf.get_colour_value('m', 150),
     'na': cf.get_colour_value('w', 150),
 }
 
