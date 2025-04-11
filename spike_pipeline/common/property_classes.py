@@ -132,6 +132,10 @@ class SessionWorkBook(QObject):
 
         return self.channel_data.is_removed
 
+    def is_channel_removed(self):
+
+        a = 1
+
     def get_channel_ids(self, i_ch=None, is_sorted=None):
 
         # field retrieval
@@ -257,10 +261,22 @@ class SessionWorkBook(QObject):
             i_bad_filt = np.logical_or(i_bad_filt, ch_status == st)
 
         # returns the final bad channel IDs
-        i_bad_ch = np.logical_and(i_bad_filt, self.channel_data.is_keep)
-        i_bad_ch = np.logical_and(i_bad_ch, is_feas)
+        # i_bad_ch = np.logical_and(i_bad_filt, self.channel_data.is_keep)
+        i_bad_ch = np.logical_and(i_bad_filt, is_feas)
         ch_id, _ = self.get_channel_ids(np.where(i_bad_ch)[0])
         return ch_id
+
+    def is_channel_removed(self):
+
+        ch_run = self.get_avail_channel()
+        ch_full = self.channel_data.channel_ids
+        ch_intersect = np.intersect1d(ch_full, ch_run, return_indices=True)
+
+        is_rmv = np.ones(len(ch_full), dtype=bool)
+        is_rmv[ch_intersect[1]] = False
+
+        return is_rmv
+
 
     # ---------------------------------------------------------------------------
     # Setter Functions

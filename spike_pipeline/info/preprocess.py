@@ -38,6 +38,7 @@ pp_flds = {
     'waveforms': 'Wave Forms',
     'sparce_opt': 'Sparsity Options',
     'interpolate_channels': 'Channel Interpolation',
+    'remove_channels': 'Remove Bad Channels',
 }
 
 
@@ -97,6 +98,7 @@ class PreprocessInfoTab(InfoWidgetPara):
         self.bad_channel_fcn = None
         self.keep_channel_fcn = None
         self.removed_channel_fcn = None
+        self.is_channel_removed = None
         self.configs = PreprocessConfig()
 
         # sorting group widgets
@@ -267,7 +269,7 @@ class PreprocessInfoTab(InfoWidgetPara):
                 case 'interpolate_channels':
                     # case is interpolate channel step
                     c_dict = {
-                        'channel_ids': self.bad_channel_fcn(['dead', 'noise']),
+                        'channel_ids': self.get_interp_channels(),
                     }
 
                     # adds the preprocessing task to the list
@@ -297,9 +299,17 @@ class PreprocessInfoTab(InfoWidgetPara):
 
     def get_remove_channels(self):
 
+        not_rmv = np.logical_not(self.is_channel_removed())
         not_keep = np.logical_not(self.keep_channel_fcn())
-        is_feas = np.logical_not(self.removed_channel_fcn())
-        return self.bad_channel_fcn(['out'], not_keep, is_feas)
+        return self.bad_channel_fcn(['out'], not_keep, not_rmv)
+
+    def get_interp_channels(self):
+
+        is_keep = self.keep_channel_fcn()
+        not_rmv = np.logical_not(self.is_channel_removed())
+        is_feas = np.logical_or(is_keep, not_rmv)
+
+        return self.bad_channel_fcn(['dead', 'noise'], is_feas=is_feas)
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -366,7 +376,8 @@ class PreprocessSetup(QDialog):
         pp_runs = self.main_obj.session_obj.session._s._pp_runs
         if len(pp_runs):
             for pp_names in [pp_flds[v[0]] for v in pp_runs[0]._pp_steps.values()]:
-                self.l_task.pop(self.l_task.index(pp_names))
+                if pp_names in self.l_task:
+                    self.l_task.pop(self.l_task.index(pp_names))
 
         # channel interpolation field (if it exists) if either a) there are no bad channels or
         # b) the common reference calculations have already taken place

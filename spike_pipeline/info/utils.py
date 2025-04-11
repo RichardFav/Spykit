@@ -173,6 +173,7 @@ class InfoManager(QWidget):
                     tab_widget.bad_channel_fcn = self.session_obj.get_bad_channels
                     tab_widget.keep_channel_fcn = self.session_obj.get_keep_channels
                     tab_widget.removed_channel_fcn = self.session_obj.get_removed_channels
+                    tab_widget.is_channel_removed = self.session_obj.is_channel_removed
 
             # appends the tab to the tab group
             self.tab_group_table.addTab(tab_widget, t_lbl)
