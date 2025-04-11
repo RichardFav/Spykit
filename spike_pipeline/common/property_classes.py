@@ -73,9 +73,18 @@ class SessionWorkBook(QObject):
     # Getter Functions
     # ---------------------------------------------------------------------------
 
-    def get_avail_channel(self, is_raw=False):
+    def get_avail_channel(self, is_raw=False, use_last_rec=False):
 
-        if is_raw:
+        if use_last_rec:
+            if len(self.session._s._pp_runs):
+                pp = self.session._s._pp_runs[0]._preprocessed
+                rec_runs = list(pp.values())[0]
+                probe_rec = rec_runs[list(rec_runs.keys())[-1]]
+
+            else:
+                probe_rec = self.get_raw_recording_probe()
+
+        elif is_raw:
             probe_rec = self.get_raw_recording_probe()
 
         else:
@@ -268,7 +277,7 @@ class SessionWorkBook(QObject):
 
     def is_channel_removed(self):
 
-        ch_run = self.get_avail_channel()
+        ch_run = self.get_avail_channel(use_last_rec=True)
         ch_full = self.channel_data.channel_ids
         ch_intersect = np.intersect1d(ch_full, ch_run, return_indices=True)
 
