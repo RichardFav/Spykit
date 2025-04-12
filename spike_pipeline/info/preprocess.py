@@ -610,4 +610,3 @@ class PreprocessSetup(QDialog):
 
         tasks[i_swap[0]], tasks[i_swap[1]] = tasks[i_swap[1]], tasks[i_swap[0]]
         return tasks
-

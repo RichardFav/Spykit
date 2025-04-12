@@ -197,6 +197,7 @@ class PropManager(QWidget):
 
     def set_prop_para(self, p_para):
 
+        i_run_sel = self.get_run_index()
         n_run = self.main_obj.session_obj.session.get_run_count()
 
         # retrieves the parameter values for each info type
@@ -214,7 +215,7 @@ class PropManager(QWidget):
                         p_tab.set_n(p, pv[p][i_run], i_run)
 
                         # updates the parameter object (if current run)
-                        if i_run == self.get_run_index():
+                        if i_run == i_run_sel:
                             self.reset_para_field(p_tab, p, v['type'], pv[p][i_run], i_run)
 
                 elif p in pv:
@@ -224,10 +225,15 @@ class PropManager(QWidget):
                     p_tab.set_n(p, pv[p])
                     self.reset_para_field(p_tab, p, v['type'], pv[p])
 
+            # attribute specific property tab updates
+            if hasattr(p_tab, 'n_run'):
+                setattr(p_tab, 'n_run', n_run)
+
             # property tab specific updates
             match pt:
                 case 'general':
                     # case is the general property tab
+                    p_tab.t_dur = p_tab.p_props.t_dur[i_run_sel]
                     p_tab.check_update(False)
                     p_tab.edit_update('t_dur')
 
