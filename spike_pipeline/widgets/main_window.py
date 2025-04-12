@@ -400,7 +400,7 @@ class MainWindow(QMainWindow):
         # updates the channel data types
         channel_tab = self.info_manager.get_info_tab('channel')
         channel_tab.reset_data_types(task_name, pp_data_flds)
-        self.bad_channel_change()
+        # self.bad_channel_change()
 
         # updates the trace views
         self.plot_manager.reset_trace_views()
@@ -413,7 +413,7 @@ class MainWindow(QMainWindow):
         t_worker.work_finished.connect(self.preprocessing_complete)
 
         if delay_start:
-            QTimer.singleShot(100, pfcn(self.start_timer, t_worker))
+            QTimer.singleShot(20, pfcn(self.start_timer, t_worker))
 
         else:
             t_worker.start()
@@ -708,8 +708,9 @@ class MenuBar(QObject):
 
         # sets/runs the config field/routines
         if ses_data['configs'] is not None:
-            #
+            # resets the preprocessing configuration fields
             prep_info = self.main_obj.info_manager.get_info_tab('preprocess')
+            prep_info.configs.clear()
             prep_info.configs = ses_data['configs']
 
             # runs the preprocessing (if data in config field)
@@ -731,6 +732,7 @@ class MenuBar(QObject):
         # resets the property/information panel fields
         self.main_obj.prop_manager.set_prop_para(ses_data['prop_para'])
         self.main_obj.info_manager.set_info_para(ses_data['info_para'])
+        print('Session Load Complete!')
 
     def load_trigger(self, file_info=None):
 
