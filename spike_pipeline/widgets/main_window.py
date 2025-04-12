@@ -1,6 +1,7 @@
 # module import
 # import os
 # import functools
+import time
 import glob
 import pickle
 import shutil
@@ -24,7 +25,7 @@ from spike_pipeline.plotting.utils import PlotManager
 from spike_pipeline.props.utils import PropManager
 from spike_pipeline.common.property_classes import SessionWorkBook
 from spike_pipeline.widgets.open_session import OpenSession
-from spike_pipeline.info.preprocess import PreprocessSetup
+from spike_pipeline.info.preprocess import PreprocessSetup, pp_flds
 from spike_pipeline.threads.utils import ThreadWorker
 
 # spikewrap module import
@@ -53,6 +54,9 @@ font_hdr = cw.create_font_obj(size=9, is_bold=True, font_weight=QFont.Weight.Bol
 
 
 class MainWindow(QMainWindow):
+    # pyqtsignal functions
+    start_preprocess = pyqtSignal(object)
+
     def __init__(self):
         super(MainWindow, self).__init__()
 
@@ -382,31 +386,34 @@ class MainWindow(QMainWindow):
 
         # resets the preprocessing data type combobox
         pp_data_flds = self.session_obj.get_current_prep_data_names()
+        task_flds = deepcopy(pp_data_flds[-1].split('-')[1:])
 
         # if removing channels, then delete this from the preprocessing fields
-        task_name = deepcopy(prep_tab.configs.task_name)
-        has_remove = [x.count('remove_channels') for x in pp_data_flds]
-        if np.any(np.asarray(has_remove) > 0):
+        task_name = [pp_flds[x] for x in task_flds]
+        has_remove = [(x == 'remove_channels') for x in task_flds]
+        if np.any(np.asarray(has_remove)):
             # determines the instances where channels were removed
-            for i_rmv in np.flip(np.where(np.diff(has_remove) > 0)[0]):
-                pp_data_flds.pop(i_rmv + 1)
+            for i_rmv in np.flip(np.where(has_remove)[0]):
+                pp_data_flds.pop(i_rmv)
                 task_name.pop(i_rmv)
 
         # updates the channel data types
         channel_tab = self.info_manager.get_info_tab('channel')
-        channel_tab.reset_data_types(['Raw'] + task_name, pp_data_flds)
+        channel_tab.reset_data_types(task_name, pp_data_flds)
         self.bad_channel_change()
 
         # updates the trace views
         self.plot_manager.reset_trace_views()
+        self.menu_bar.set_menu_enabled_blocks('post-process')
 
     def setup_preprocessing_worker(self, prep_task, delay_start=False):
 
-        t_worker = ThreadWorker(self.run_preprocessing_worker, prep_task)
+        # pauses for things to catch up...
+        t_worker = ThreadWorker(self, self.run_preprocessing_worker, prep_task)
         t_worker.work_finished.connect(self.preprocessing_complete)
 
         if delay_start:
-            QTimer.singleShot(20, pfcn(self.start_timer, t_worker))
+            QTimer.singleShot(100, pfcn(self.start_timer, t_worker))
 
         else:
             t_worker.start()
@@ -613,9 +620,9 @@ class MenuBar(QObject):
         # ---------------------------------------------------------------------------
 
         # initialisations
-        p_str = ['run_prep', 'run_test']
-        p_lbl = ['Preprocessing Setup', 'Run Test']
-        cb_fcn = [self.run_preproccessing, self.run_test]
+        p_str = ['run_prep', 'clear_prep', None, 'run_test']
+        p_lbl = ['Preprocessing Setup', 'Clear Preprocessing', None, 'Run Test']
+        cb_fcn = [self.run_preproccessing, self.clear_preprocessing, None, self.run_test]
 
         # adds the preprocessing menu items
         self.add_menu_items(h_menu_prep, p_lbl, cb_fcn, p_str, False)
@@ -708,6 +715,7 @@ class MenuBar(QObject):
             # runs the preprocessing (if data in config field)
             if len(prep_info.configs.prep_task):
                 self.main_obj.setup_preprocessing_worker(prep_info.configs, True)
+                self.set_menu_enabled_blocks('post-process')
 
         # updates the bad/sync channel status table fields
         self.main_obj.bad_channel_change()
@@ -920,7 +928,33 @@ class MenuBar(QObject):
 
     def run_preproccessing(self):
 
-        PreprocessSetup(self.main_obj).exec()
+        PreprocessSetup(self.main_obj).show()
+
+    def clear_preprocessing(self):
+
+        # prompts the user if they want to clear
+        q_str = "Are you sure you want to clear the existing processing?"
+        u_choice = QMessageBox.question(self.main_obj, 'Clear Preprocessing?', q_str, cf.q_yes_no, cf.q_yes)
+        if u_choice == cf.q_no:
+            # exit if the user cancelled
+            return
+
+        # resets the channel data fields
+        self.main_obj.session_obj.channel_data.is_keep[:] = True
+        self.main_obj.session_obj.channel_data.is_selected[:] = False
+        self.main_obj.session_obj.clear_preprocessing()
+
+        # resets the preprocessing tab properties
+        prep_tab = self.main_obj.info_manager.get_info_tab('preprocess')
+        prep_tab.configs.clear()
+
+        # resets the combobox fields
+        channel_tab = self.main_obj.info_manager.get_info_tab('channel')
+        channel_tab.reset_combobox_fields('data', ["Raw"])
+        self.main_obj.info_manager.channel_combobox_update('data', channel_tab)
+
+        # disable menu item
+        self.set_menu_enabled('clear_prep', False)
 
     def run_test(self):
 
@@ -1000,11 +1034,15 @@ class MenuBar(QObject):
         match m_type:
             case 'init':
                 # case is initialising
-                menu_off = ['save', 'clear', 'preprocessing']
+                menu_off = ['save', 'clear', 'preprocessing', 'clear_prep']
 
             case 'session-open':
                 # case is post session opening
                 menu_on = ['save', 'clear', 'preprocessing']
+
+            case 'post-process':
+                # case is post preprocessing
+                menu_on = ['clear_prep']
 
         # resets the menu enabled properties
         [self.set_menu_enabled(m_on, True) for m_on in menu_on]

@@ -84,7 +84,7 @@ class SessionWorkBook(QObject):
             else:
                 probe_rec = self.get_raw_recording_probe()
 
-        elif is_raw:
+        elif is_raw or (not self.session.has_prep()):
             probe_rec = self.get_raw_recording_probe()
 
         else:
@@ -356,6 +356,11 @@ class SessionWorkBook(QObject):
 
         self.session.sync_ch[i_run][ind_s:ind_f] = 0
 
+    def clear_preprocessing(self):
+
+        self.prep_type = None
+        self.session._s._pp_runs = []
+
     # ---------------------------------------------------------------------------
     # Static Methods
     # ---------------------------------------------------------------------------
@@ -480,12 +485,12 @@ class SessionObject(QObject):
             ses_run = self.get_session_runs(i_run)
 
             # sets up the bad channel detection worker
-            t_worker_bad = ThreadWorker(self.get_bad_channel, (ses_run, i_run))
+            t_worker_bad = ThreadWorker(None, self.get_bad_channel, (ses_run, i_run))
             t_worker_bad.work_finished.connect(self.post_get_bad_channel)
             t_worker_bad.start()
 
             # sets up the sync channel detection worker
-            t_worker_sync = ThreadWorker(self.get_sync_channel, (self._s, i_run))
+            t_worker_sync = ThreadWorker(None, self.get_sync_channel, (self._s, i_run))
             t_worker_sync.work_finished.connect(self.post_get_sync_channel)
             t_worker_sync.start()
 
@@ -660,6 +665,14 @@ class SessionObject(QObject):
         self.channel_calc.emit('minmax', self)
 
     # ---------------------------------------------------------------------------
+    # Preprocessing Functions
+    # ---------------------------------------------------------------------------
+
+    def run_preprocessing(self, configs, per_shank=False, concat_runs=False):
+
+        self.prep_obj.preprocess(configs, per_shank, concat_runs)
+
+    # ---------------------------------------------------------------------------
     # Session wrapper functions
     # ---------------------------------------------------------------------------
 
@@ -668,14 +681,14 @@ class SessionObject(QObject):
         if isinstance(i_run, str):
             i_run = self.get_run_index(i_run)
 
-        if pp_type is not None:
-            return self._s._pp_runs[i_run]._preprocessed[run_type][pp_type]
-
-        elif run_type is not None:
-            return self._s._raw_runs[i_run]._raw[run_type]
+        if (pp_type is None) or (pp_type == '0-raw'):
+            if run_type is None:
+                return self._s._raw_runs[i_run]
+            else:
+                return self._s._raw_runs[i_run]._raw[run_type]
 
         else:
-            return self._s._raw_runs[i_run]
+            return self._s._pp_runs[i_run]._preprocessed[run_type][pp_type]
 
     def get_session_names(self, i_run):
 
@@ -709,9 +722,9 @@ class SessionObject(QObject):
 
         return len(self._s._raw_runs)
 
-    def run_preprocessing(self, configs, per_shank=False, concat_runs=False):
+    def has_prep(self):
 
-        self.prep_obj.preprocess(configs, per_shank, concat_runs)
+        return len(self._s._pp_runs) > 0
 
     # ---------------------------------------------------------------------------
     # Protected Properties

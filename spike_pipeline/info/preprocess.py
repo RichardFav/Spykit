@@ -1,4 +1,6 @@
 # custom module imports
+import time
+
 import numpy as np
 from copy import deepcopy
 
@@ -9,9 +11,9 @@ from spike_pipeline.threads.utils import ThreadWorker
 
 # pyqt imports
 from PyQt6.QtWidgets import (QWidget, QFrame, QTabWidget, QVBoxLayout, QFormLayout, QHBoxLayout,
-                             QListWidget, QGridLayout, QSpacerItem, QDialog)
+                             QListWidget, QGridLayout, QSpacerItem, QDialog, QMainWindow)
 from PyQt6.QtGui import QIcon, QFont, QColor
-from PyQt6.QtCore import QSize
+from PyQt6.QtCore import QSize, pyqtSignal
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -30,6 +32,7 @@ prep_task_map = {
 
 # array class fields
 pp_flds = {
+    'raw': 'Raw',
     'bandpass_filter': 'Bandpass Filter',
     'phase_shift': 'Phase Shift',
     'common_reference': 'Common Reference',
@@ -80,6 +83,7 @@ class PreprocessConfig(object):
     def clear(self):
 
         self.prep_task = []
+        self.task_name = []
         self.task_para = {}
 
 
@@ -326,23 +330,18 @@ class PreprocessSetup(QDialog):
     # array class fields
     b_icon = ['arrow_right', 'arrow_left', 'arrow_up', 'arrow_down']
     tt_str = ['Add Task', 'Remove Task', 'Move Task Up', 'Move Task Down']
-    l_task = ['Phase Shift', 'Bandpass Filter', 'Channel Interpolation', 'Common Reference', 'Drift Correction']
 
     # widget stylesheets
     border_style = "border: 1px solid;"
     frame_style = QFrame.Shape.WinPanel | QFrame.Shadow.Plain
 
     def __init__(self, main_obj=None):
-        super(PreprocessSetup, self).__init__()
+        super(PreprocessSetup, self).__init__(main_obj)
 
         # sets the input arguments
         self.main_obj = main_obj
         self.setWindowTitle("Preprocessing Setup")
         self.setFixedSize(self.dlg_width, self.dlg_height)
-
-        # sets the main widget/layout
-        self.main_widget = QWidget()
-        self.main_layout = QVBoxLayout()
 
         # class layouts
         self.list_layout = QGridLayout(self)
@@ -357,6 +356,9 @@ class PreprocessSetup(QDialog):
         self.task_list = QListWidget(None)
         self.spacer_top = QSpacerItem(20, 60, cf.q_min, cf.q_max)
         self.spacer_bottom = QSpacerItem(20, 60, cf.q_min, cf.q_max)
+
+        # array class fields
+        self.l_task = ['Phase Shift', 'Bandpass Filter', 'Channel Interpolation', 'Common Reference', 'Drift Correction']
 
         # initialises the class fields
         self.init_class_fields()
@@ -385,11 +387,6 @@ class PreprocessSetup(QDialog):
             bad_ch_id = self.main_obj.session_obj.get_bad_channels()
             if (len(bad_ch_id) == 0) or ('Common Reference' not in self.l_task):
                 self.l_task.pop(self.l_task.index('Channel Interpolation'))
-
-        # sets up the main layout
-        self.setLayout(self.main_layout)
-        self.main_layout.addWidget(self.main_widget)
-        self.main_widget.setLayout(self.list_layout)
 
         # main layout properties
         self.list_layout.setHorizontalSpacing(self.x_gap)
@@ -442,6 +439,9 @@ class PreprocessSetup(QDialog):
         self.list_layout.setColumnStretch(2, self.gap_sz)
         self.list_layout.setRowStretch(0, 5)
         self.list_layout.setRowStretch(1, 1)
+
+        # #
+        # self.main_obj.start_preprocess.connect()
 
     def init_control_buttons(self):
 
@@ -550,10 +550,10 @@ class PreprocessSetup(QDialog):
             for i in range(self.add_list.count()):
                 prep_task.append(self.add_list.item(i).text())
 
-            # sets up the bad channel detection worker
+            # starts running the pre-processing
             self.main_obj.setup_preprocessing_worker(prep_task)
 
-            # runs the pre-processing
+            # closes the dialog window
             self.close_window()
 
     def close_window(self):

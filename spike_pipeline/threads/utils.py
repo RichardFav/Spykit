@@ -15,8 +15,8 @@ class ThreadWorker(QThread):
     work_progress = pyqtSignal(str, float)
     work_finished = pyqtSignal(object)
 
-    def __init__(self, work_fcn, work_para=None):
-        super(ThreadWorker, self).__init__()
+    def __init__(self, parent, work_fcn, work_para=None):
+        super(ThreadWorker, self).__init__(parent)
 
         # sets the input arguments
         self.work_fcn = work_fcn
