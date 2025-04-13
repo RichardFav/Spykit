@@ -67,7 +67,7 @@ align_flag = {
 f_mode = {
     'session': "Spike Pipeline Session File (*.ssf)",
     'trigger': "Experiment Trigger File (*.npy)",
-    'config': "Spike Pipeline Config File (*.cfig)",
+    'configs': "Spike Pipeline Config File (*.cfig)",
 }
 
 f_name = {
@@ -78,9 +78,11 @@ f_name = {
 
 # parameter/resource folder paths
 data_dir = "C:\\Work\\Other Projects\\EPhys Project\\Data"
-icon_dir = os.path.join(os.getcwd(), 'resources', 'icons').replace('\\', '/')
-para_dir = os.path.join(os.getcwd(), 'resources', 'parameters').replace('\\', '/')
-figure_dir = os.path.join(os.getcwd(), 'resources', 'figures').replace('\\', '/')
+resource_dir = os.path.join(os.getcwd(), 'resources').replace('\\', '/')
+icon_dir = os.path.join(resource_dir, 'icons').replace('\\', '/')
+para_dir = os.path.join(resource_dir, 'parameters').replace('\\', '/')
+figure_dir = os.path.join(resource_dir, 'figures').replace('\\', '/')
+def_file = os.path.join(resource_dir, 'def_dir.pkl')
 
 # icon paths
 icon_path = {

@@ -340,8 +340,6 @@ class PreprocessSetup(QDialog):
 
         # sets the input arguments
         self.main_obj = main_obj
-        self.setWindowTitle("Preprocessing Setup")
-        self.setFixedSize(self.dlg_width, self.dlg_height)
 
         # class layouts
         self.list_layout = QGridLayout(self)
@@ -373,6 +371,10 @@ class PreprocessSetup(QDialog):
 
         # initialisations
         cb_fcn = [self.button_add, self.button_remove, self.button_up, self.button_down]
+
+        # sets the dialog window properties
+        self.setWindowTitle("Preprocessing Setup")
+        self.setFixedSize(self.dlg_width, self.dlg_height)
 
         # removes any existing
         pp_runs = self.main_obj.session_obj.session._s._pp_runs

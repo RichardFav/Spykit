@@ -27,6 +27,7 @@ from spike_pipeline.common.property_classes import SessionWorkBook
 from spike_pipeline.widgets.open_session import OpenSession
 from spike_pipeline.info.preprocess import PreprocessSetup, pp_flds
 from spike_pipeline.threads.utils import ThreadWorker
+from spike_pipeline.widgets.default_dir import DefaultDir
 
 # spikewrap module import
 from spikewrap.configs._backend import canon
@@ -413,15 +414,10 @@ class MainWindow(QMainWindow):
         t_worker.work_finished.connect(self.preprocessing_complete)
 
         if delay_start:
-            QTimer.singleShot(20, pfcn(self.start_timer, t_worker))
+            QTimer.singleShot(20, pfcn(self.start_preprocessing_timer, t_worker))
 
         else:
             t_worker.start()
-
-    @staticmethod
-    def start_timer(t_worker):
-
-        t_worker.start()
 
     def run_preprocessing_worker(self, prep_task):
 
@@ -430,6 +426,11 @@ class MainWindow(QMainWindow):
     def preprocessing_complete(self):
 
         self.worker_job_finished('preprocess')
+
+    @staticmethod
+    def start_preprocessing_timer(t_worker):
+
+        t_worker.start()
 
     # ---------------------------------------------------------------------------
     # Session Related Functions
@@ -582,9 +583,9 @@ class MenuBar(QObject):
         # ---------------------------------------------------------------------------
 
         # initialisations
-        p_str = ['new', 'open', 'save', None, 'clear', None, 'close']
-        p_lbl = ['New...', 'Load...', 'Save...', None, 'Clear Session', None, 'Close Window']
-        cb_fcn = [self.new_session, None, None, None, self.clear_session, None, self.close_window]
+        p_str = ['new', 'open', 'save', None, 'clear', 'default', None, 'close']
+        p_lbl = ['New...', 'Load...', 'Save...', None, 'Clear Session', 'Default Directories', None, 'Close Window']
+        cb_fcn = [self.new_session, None, None, None, self.clear_session, self.default_dir, None, self.close_window]
 
         # adds the file menu items
         self.add_menu_items(h_menu_file, p_lbl, cb_fcn, p_str, True)
@@ -917,6 +918,10 @@ class MenuBar(QObject):
             return
 
         self.main_obj.session_obj.session = None
+
+    def default_dir(self):
+
+        DefaultDir(self.main_obj).show()
 
     def close_window(self):
 

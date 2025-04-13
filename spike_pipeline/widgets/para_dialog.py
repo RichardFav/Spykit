@@ -516,15 +516,15 @@ class ParaDialog(QMainWindow):
             # case is a file selection widget
             case 'filespec':
                 # creates the file selection widget
-                obj_fspec = cw.QFileSpec(None, ps['name'], ps['value'], name=p_name, f_mode=ps['p_misc'])
-                layout.addRow(obj_fspec)
+                obj_file_spec = cw.QFileSpec(None, ps['name'], ps['value'], name=p_name, f_mode=ps['p_misc'])
+                layout.addRow(obj_file_spec)
 
                 # sets up the slot function
                 cb_fcn = functools.partial(self.button_file_spec, p_str_l)
-                obj_fspec.connect(cb_fcn)
+                obj_file_spec.connect(cb_fcn)
 
                 # appends the parameter search objects
-                self.search_dlg.append_para_obj(obj_fspec, ps['name'], p_str_l[1])
+                self.search_dlg.append_para_obj(obj_file_spec, ps['name'], p_str_l[1])
 
                 # self.button_file_spec(h_filespec, p_str_l)
 
