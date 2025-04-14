@@ -828,8 +828,8 @@ class InfoWidgetPara(InfoWidget, SearchMixin):
         tree_header = self.tree_prop.header()
         tree_header.setDefaultAlignment(cf.align_type['center'])
         tree_header.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
-        tree_header.updateSection(0)
-        tree_header.updateSection(1)
+        # tree_header.updateSection(0)
+        # tree_header.updateSection(1)
         tree_header.setSectionResizeMode(QHeaderView.ResizeMode.Fixed)
         tree_header.setStyleSheet("background: rgba(240, 240, 255, 255);")
 

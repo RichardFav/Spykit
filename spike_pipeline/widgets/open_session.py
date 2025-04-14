@@ -55,17 +55,6 @@ font_panel = cw.create_font_obj(size=9, is_bold=True, font_weight=QFont.Weight.B
 # file path/filter modes
 f_mode_ssf = "Spike Pipeline Session File (*.ssf)"
 
-# parameter/resource folder paths
-data_dir = "C:\\Work\\Other Projects\\EPhys Project\\Data"
-icon_dir = os.path.join(os.getcwd(), 'resources', 'icons')
-para_dir = os.path.join(os.getcwd(), 'resources', 'parameters').replace('\\', '/')
-
-# icon paths
-icon_path = {
-    'open': os.path.join(icon_dir, 'open_icon.png'),
-    'restart': os.path.join(icon_dir, 'restart_icon.png'),
-    'close': os.path.join(icon_dir, 'close_icon.png'),
-}
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -86,14 +75,14 @@ class OpenSession(QMainWindow):
         self.main_obj = parent
         self.session_obj = session_obj
 
-        # creates the toolbar widgets
-        self.h_toolbar = QToolBar('ToolBar', self)
-        self.setup_menubar()
-
         # other class widget setup
         self.main_layout = QGridLayout()
         self.main_widget = QWidget(self)
         self.frame_layout = QGridLayout()
+
+        # creates the toolbar widgets
+        self.h_toolbar = QToolBar('ToolBar', self)
+        self.setup_menubar()
 
         # main class widget setup
         self.file = SessionFile(self)
@@ -151,7 +140,7 @@ class OpenSession(QMainWindow):
 
             else:
                 # creates the menu item
-                h_tool = QAction(QIcon(icon_path[ps]), pl, self)
+                h_tool = QAction(QIcon(cw.icon_path[ps]), pl, self)
                 h_tool.triggered.connect(cbf)
                 h_tool.setObjectName(ps)
                 self.h_toolbar.addAction(h_tool)
@@ -731,7 +720,7 @@ class SessionFile(QWidget):
         # sets the initial search path
         f_path = cf.get_multi_dict_value(self.props, p_str)
         if f_path is None:
-            f_path = data_dir
+            f_path = cw.data_dir
 
         # runs the file dialog
         file_dlg = cw.FileDialogModal(caption=caption, dir_only=dir_only, f_filter=h_obj.f_mode, f_directory=f_path)
@@ -1436,7 +1425,9 @@ class SessionProbe(QWidget):
             p_val = self.get_dim_value(i)
             h.set_text('%g' % p_val)
 
-        # CHANNEL INFORMATION UPDATE --------------------------------------
+        # -----------------------------------------------------------------------
+        # Channel Information Update
+        # -----------------------------------------------------------------------
 
         # creates the table model
         t_model = cw.PandasModel(self.p_dframe)
@@ -1454,7 +1445,9 @@ class SessionProbe(QWidget):
         self.channel_table.resizeColumnsToContents()
         self.channel_table.resizeRowsToContents()
 
-        # INFORMATION FIELD UPDATE ----------------------------------------
+        # -----------------------------------------------------------------------
+        # Information Field Update
+        # -----------------------------------------------------------------------
 
         # retrieves the session files
         sub_name, ses_name = self.root.get_session_files()
@@ -1560,12 +1553,17 @@ class ExptFolder(QWidget):
     def __init__(self, parent=None):
         super(ExptFolder, self).__init__(parent)
 
+        # initialisations
+        s_dir0 = cw.data_dir
+
         # class fields
+        self.s_dir = None
         self.ses_type = None
         self.sub_path = None
-        self.s_dir = data_dir
         self.format_type = self.f_format[0]
-        self.obj_dir = sf.DirectoryCheck(self.s_dir, self.format_type)
+
+        # directory check class object
+        self.obj_dir = sf.DirectoryCheck(s_dir0, self.format_type)
 
         # class layout setup
         self.h_tab = []
@@ -1578,7 +1576,7 @@ class ExptFolder(QWidget):
         self.main_widget = QWidget(self)
         self.para_group = QWidget(self)
         self.tab_group = cw.create_tab_group(None)
-        self.file_spec = QFileSpec(None, 'Parent Search Folder', file_path=self.s_dir, name='data_folder')
+        self.file_spec = QFileSpec(None, 'Parent Search Folder', file_path=s_dir0, name='data_folder')
         self.f_type = QLabelCombo(None, 'Recording Format:', self.f_format, self.format_type, font_lbl)
         self.s_type = QLabelCombo(None, 'Session Name:', [], [], font_lbl)
 
@@ -1686,6 +1684,7 @@ class ExptFolder(QWidget):
 
         # determines all the feasible folders (for the current search path/file format)
         self.obj_dir.det_all_feas_folders()
+        self.s_dir = str(self.obj_dir.f_path)
 
         for i, (ht, fd) in enumerate(zip(self.h_tab, self.obj_dir.f_pd)):
             # retrieves the tree widget

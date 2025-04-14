@@ -8,6 +8,7 @@ import time
 
 import numpy as np
 from copy import deepcopy
+from pathlib import PosixPath
 from skimage.measure import label, regionprops
 
 #
@@ -77,8 +78,8 @@ f_name = {
 }
 
 # parameter/resource folder paths
-data_dir = "C:\\Work\\Other Projects\\EPhys Project\\Data"
-resource_dir = os.path.join(os.getcwd(), 'resources').replace('\\', '/')
+resource_dir = os.path.join(os.getcwd(), 'spike_pipeline', 'resources').replace('\\', '/')
+data_dir = os.path.join(resource_dir, 'data').replace('\\', '/')
 icon_dir = os.path.join(resource_dir, 'icons').replace('\\', '/')
 para_dir = os.path.join(resource_dir, 'parameters').replace('\\', '/')
 figure_dir = os.path.join(resource_dir, 'figures').replace('\\', '/')
@@ -1466,7 +1467,7 @@ class QFileSpec(QGroupBox):
         self.layout.addWidget(self.h_edit)
         self.h_edit.setReadOnly(True)
         self.h_edit.setObjectName(name)
-        self.h_edit.setToolTip(file_path)
+        self.h_edit.setToolTip(str(file_path))
 
         # creates the button widget
         self.h_but = create_push_button(None, '...', font_but)
@@ -2924,7 +2925,7 @@ def create_line_edit(parent, text, font=None, align='center', name=None):
     if text is None:
         text = " "
 
-    elif isinstance(text, int):
+    elif isinstance(text, int) or isinstance(text, PosixPath):
         text = str(text)
 
     # creates the line edit object

@@ -67,7 +67,7 @@ Cls = TypeVar('Cls')
 
 class IteratorThread:
 
-    def __init__(self, n=np.Inf):
+    def __init__(self, n=np.inf):
 
         self.i = 0
         self.n = n

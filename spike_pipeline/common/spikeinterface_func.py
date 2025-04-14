@@ -3,7 +3,7 @@ import re
 
 import numpy as np
 import pandas as pd
-from pathlib import Path
+from pathlib import Path, PosixPath
 from copy import deepcopy
 from bigtree import list_to_tree, dataframe_to_tree
 
@@ -76,6 +76,11 @@ class DirectoryCheck(object):
             case _:
                 # case is there are multiple matches
                 common_dir = os.path.commonpath(feas_dir)
+
+        #
+        path_len = len(str(self.f_path))
+        if len(common_dir) > path_len:
+            self.f_path = self.f_path / common_dir[path_len + 1:]
 
         # searches each of the feasible directories
         for f in feas_dir:

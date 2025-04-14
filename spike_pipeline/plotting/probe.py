@@ -154,11 +154,12 @@ class ProbePlot(PlotWidget):
 
     def leave_view(self, is_main, *_):
 
-        if is_main:
-            self.main_view.ch_label.setVisible(False)
+        if self.main_view.ch_label is not None:
+            if is_main:
+                self.main_view.ch_label.setVisible(False)
 
-        else:
-            self.main_view.ch_label.setVisible(False)
+            else:
+                self.main_view.ch_label.setVisible(False)
 
     def inset_mouse_release(self, rect):
 
@@ -296,13 +297,16 @@ class ProbePlot(PlotWidget):
                     self.reset_highlight.emit(True, i_contact)
 
                 # updates the label properties
-                p_view.ch_label.setVisible(True)
-                p_view.ch_label.setText(self.setup_label_text(i_contact))
-                p_view.ch_label.update()
+                if p_view.ch_label is not None:
+                    p_view.ch_label.setVisible(True)
+                    p_view.ch_label.setText(self.setup_label_text(i_contact))
+                    p_view.ch_label.update()
 
             # calculates the label x/y-offsets
             ax_rng = vb.viewRange()
             dx_pos, dy_pos = self.convert_coords(is_main_view, False)
+            if dx_pos is None:
+                return
 
             # resets the y-label offset (if near the top)
             if (m_pos.y() + self.pw_y * dy_pos) > ax_rng[1][1]:
@@ -313,13 +317,16 @@ class ProbePlot(PlotWidget):
                 dx_pos = 0
 
             # resets the label position
-            p_view.ch_label.setPos(m_pos + QPointF(-dx_pos, dy_pos))
+            if p_view.ch_label is not None:
+                p_view.ch_label.setPos(m_pos + QPointF(-dx_pos, dy_pos))
 
         elif p_view.i_sel_contact is not None:
             # if not hovering over an object, then disable the label
             p_view.i_sel_contact = None
             p_view.create_probe_plot()
-            p_view.ch_label.setVisible(False)
+
+            if p_view.ch_label is not None:
+                p_view.ch_label.setVisible(False)
 
             # disables the trace highlight
             self.reset_highlight.emit(False, None)
@@ -330,20 +337,24 @@ class ProbePlot(PlotWidget):
         vb = self.v_box[1 - int(is_main), 0]
 
         # label bounding box retrieval
-        if is_main:
-            # case is the main view outside label
-            if is_out:
-                lbl_bb = self.main_view.out_label.boundingRect()
-            else:
-                lbl_bb = self.main_view.ch_label.boundingRect()
+        try:
+            if is_main:
+                # case is the main view outside label
+                if is_out:
+                    lbl_bb = self.main_view.out_label.boundingRect()
+                else:
+                    lbl_bb = self.main_view.ch_label.boundingRect()
 
-        else:
-            if is_out:
-                # case is the sub view outside label
-                lbl_bb = self.sub_view.out_label.boundingRect()
             else:
-                # case is the sub view outside label
-                lbl_bb = self.sub_view.ch_label.boundingRect()
+                if is_out:
+                    # case is the sub view outside label
+                    lbl_bb = self.sub_view.out_label.boundingRect()
+                else:
+                    # case is the sub view outside label
+                    lbl_bb = self.sub_view.ch_label.boundingRect()
+
+        except AttributeError:
+            return None, None
 
         # retrieves the converted coordinates
         bb_rect = vb.mapSceneToView(lbl_bb).boundingRect()
