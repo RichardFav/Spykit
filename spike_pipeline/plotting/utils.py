@@ -9,7 +9,7 @@ import spike_pipeline.common.common_widget as cw
 # pyqt imports
 from PyQt6.QtWidgets import (QWidget, QLayout, QLayoutItem, QGridLayout, QVBoxLayout, QHBoxLayout,
                              QSizePolicy, QGroupBox, QFrame)
-from PyQt6.QtCore import QObject, Qt, QSize, QRect, pyqtSignal
+from PyQt6.QtCore import QObject, Qt, QSize, QRect, QPointF, pyqtSignal
 from PyQt6.QtGui import QIcon, QColor, QPixmap
 
 # pyqtgraph module imports
@@ -194,18 +194,35 @@ class PlotManager(QWidget):
         plt_probe = self.plots[self.types['probe'] - 1]
         plt_probe.reset_probe_views()
 
-    def reset_probe_axes(self):
-
-        plt_probe = self.plots[self.types['probe'] - 1]
-        plt_probe.reset_probe_axes()
-
     def reset_trace_views(self, reset_type=0):
 
+        # resets the offset time
         plt_trace = self.plots[self.types['trace'] - 1]
-
         plt_trace.t_start_ofs = plt_trace.gen_props.get('t_start')
-        plt_trace.reset_gen_props()
 
+        # resets the trace duration
+        probe = self.session_obj.get_current_recording_probe()
+        t_dur_new = probe.get_total_duration()
+
+        if plt_trace.gen_props.get('t_dur') != t_dur_new:
+            # sets the other plot trace fields
+            plt_trace.gen_props.set('t_dur', t_dur_new, 0)
+            plt_trace.v_box[1, 0].setLimits(xMax=t_dur_new)
+            plt_trace.h_plot[1, 0].setXRange(0, t_dur_new, padding=0)
+
+            # updates the linear region bounds
+            plt_trace.is_updating = True
+            plt_trace.l_reg_x.setBounds([0, t_dur_new])
+            plt_trace.is_updating = False
+
+            # ensures the linear region is within the new bounds
+            l_reg_pos = plt_trace.l_reg_x.getRegion()
+            if l_reg_pos[1] > t_dur_new:
+                new_pos = [t_dur_new - np.diff(l_reg_pos), t_dur_new]
+                plt_trace.l_reg_x.setRegion(new_pos)
+
+        # resets the general properties and the trace view
+        plt_trace.reset_gen_props()
         plt_trace.reset_trace_view(reset_type)
 
     def reset_trig_views(self):

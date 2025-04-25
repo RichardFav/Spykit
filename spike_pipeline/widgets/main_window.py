@@ -378,7 +378,6 @@ class MainWindow(QMainWindow):
             # case is running from the Preprocessing dialog
             prep_task, prep_opt = prep_obj
             per_shank, concat_runs = prep_opt
-
             pp_config = prep_tab.setup_config_dict(prep_task)
 
         else:
@@ -387,6 +386,7 @@ class MainWindow(QMainWindow):
 
         # runs the preprocessing
         self.session_obj.session.run_preprocessing(pp_config, per_shank, concat_runs)
+        self.session_obj.reset_current_session(True)
 
         # resets the preprocessing data type combobox
         pp_data_flds = self.session_obj.get_current_prep_data_names()

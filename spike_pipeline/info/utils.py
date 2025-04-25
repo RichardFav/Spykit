@@ -228,13 +228,20 @@ class InfoManager(QWidget):
                 ch_status = self.session_obj.session.bad_ch[0]
                 channel_tab.update_channel_status(ch_status, self.session_obj.get_keep_channels())
 
+                # updates the run type properties (disable if displaying concatenate run)
+                is_concat = self.session_obj.is_concat_run()
+                channel_tab.run_type.set_enabled(not is_concat)
+
+                # resets the run index (if displaying a concatenated run)
+                if is_concat:
+                    channel_tab.is_updating = True
+                    channel_tab.run_type.obj_cbox.setCurrentIndex(0)
+                    self.session_obj.set_current_run(channel_tab.run_type.obj_cbox.itemText(0))
+                    channel_tab.is_updating = False
+
                 # resets the trace view
                 self.main_obj.plot_manager.reset_trace_views(1)
                 self.main_obj.plot_manager.reset_probe_views()
-
-            case 'shank':
-                # resets the probe view
-                self.main_obj.plot_manager.reset_probe_axes()
 
     def channel_status_update(self, tab_obj, is_filt):
 
@@ -316,9 +323,9 @@ class InfoManager(QWidget):
         self.session_obj.channel_data.is_selected[i_rmv] = False
         self.session_obj.channel_data.is_keep[i_rmv] = False
 
-    def get_avail_channel(self):
+    def get_avail_channel(self, is_raw=False):
 
-        return self.session_obj.get_avail_channel()
+        return self.session_obj.get_avail_channel(is_raw=is_raw)
 
     def start_recalc(self, p_props):
 

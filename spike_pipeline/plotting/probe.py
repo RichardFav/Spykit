@@ -404,10 +404,6 @@ class ProbePlot(PlotWidget):
 
         self.main_view.roi.setVisible(True)
 
-    def reset_probe_axes(self):
-
-        a = 1
-
     def reset_out_line(self, ch_status):
 
         # determines the "out" channels

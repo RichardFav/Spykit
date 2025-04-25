@@ -362,6 +362,7 @@ class PreprocessSetup(QDialog):
         self.l_task = ['Phase Shift', 'Bandpass Filter', 'Channel Interpolation', 'Common Reference', 'Drift Correction']
 
         # boolean class fields
+        self.has_pp = False
         self.per_shank = False
         self.concat_runs = False
 
@@ -415,9 +416,23 @@ class PreprocessSetup(QDialog):
         self.setWindowTitle("Preprocessing Setup")
         self.setFixedSize(self.dlg_width, self.dlg_height)
 
-        # removes any existing
+        # determines if partial preprocessing has taken place
         pp_runs = self.main_obj.session_obj.session._s._pp_runs
         if len(pp_runs):
+            # flag that partial preprocessing has taken place
+            self.has_pp = True
+            self.per_shank = self.main_obj.session_obj.session.prep_obj.per_shank
+            self.concat_runs = self.main_obj.session_obj.session.prep_obj.concat_runs
+
+            # sets the checkbox values
+            self.checkbox_opt[0].setCheckState(cf.chk_state[self.per_shank])
+            self.checkbox_opt[1].setCheckState(cf.chk_state[self.concat_runs])
+
+            # disables the checkboxes
+            for cb_opt in self.checkbox_opt:
+                cb_opt.setEnabled(False)
+
+            # removes the tasks from the list that have been completed
             for pp_names in [pp_flds[v[0]] for v in pp_runs[0]._pp_steps.values()]:
                 if pp_names in self.l_task:
                     self.l_task.pop(self.l_task.index(pp_names))

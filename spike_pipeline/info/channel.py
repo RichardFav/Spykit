@@ -183,7 +183,7 @@ class ChannelInfoTab(InfoWidget):
         # initialisations
         self.is_updating = True
         self.set_update_flag.emit(True)
-        ch_avail = self.get_avail_channel_fcn()
+        ch_avail = self.get_avail_channel_fcn(is_raw=True)
 
         # updates the table with the new information
         ch_list, i_rmv = [], []

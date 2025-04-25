@@ -340,6 +340,23 @@ class SessionWorkBook(QObject):
         self.channel_data.is_removed = ch_data['removed']
         self.keep_channel_reset.emit()
 
+    def reset_current_session(self, is_pp=False):
+
+        if is_pp:
+            # case is using preprocessing fields
+            s_keys = list(self.session._s._pp_runs[0]._preprocessed.keys())
+
+        else:
+            # case is using raw data fields
+            s_keys = list(self.session._s._raw_runs[0]._raw.keys())
+
+        # returns the first key field
+        self.current_ses = s_keys[0]
+
+    def is_concat_run(self):
+
+        return (self.prep_type != '0-raw') and (self.session.prep_obj.concat_runs)
+
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
     # ---------------------------------------------------------------------------
@@ -381,6 +398,7 @@ class SessionWorkBook(QObject):
     def clear_preprocessing(self):
 
         self.prep_type = None
+        self.reset_current_session()
         self.session._s._pp_runs = []
 
     # ---------------------------------------------------------------------------
@@ -715,7 +733,7 @@ class SessionObject(QObject):
                     return run_shank['shank_{0}'.format(i_shank)]
 
             else:
-                return self._s._raw_runs[i_run]._raw[run_type]
+                return self._s._raw_runs[i_run]._raw['grouped']
 
         else:
             return self._s._pp_runs[i_run]._preprocessed[run_type][pp_type]
