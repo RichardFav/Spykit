@@ -62,6 +62,7 @@ class SessionWorkBook(QObject):
         # other class field
         self.current_run = None
         self.current_ses = None
+        self.current_shank = None
         self.prep_type = None
         self.n_channels = None
 
@@ -141,10 +142,6 @@ class SessionWorkBook(QObject):
 
         return self.channel_data.is_removed
 
-    def is_channel_removed(self):
-
-        a = 1
-
     def get_channel_ids(self, i_ch=None, is_sorted=None):
 
         # field retrieval
@@ -217,7 +214,7 @@ class SessionWorkBook(QObject):
 
     def get_current_recording_probe(self):
 
-        return self.session.get_session_runs(self.current_run, self.current_ses, self.prep_type)
+        return self.session.get_session_runs(self.current_run, self.current_ses, self.prep_type, self.current_shank)
 
     def get_raw_recording_probe(self):
 
@@ -275,10 +272,14 @@ class SessionWorkBook(QObject):
         ch_id, _ = self.get_channel_ids(np.where(i_bad_ch)[0])
         return ch_id
 
-    def get_shank_count(self):
+    def get_shank_ids(self):
 
         ch_info = self.get_channel_info()
-        return len(np.unique(ch_info['shank_ids']))
+        return ch_info['shank_ids']
+
+    def get_shank_count(self):
+
+        return len(np.unique(self.get_shank_ids()))
 
     def get_shank_names(self):
 
@@ -286,9 +287,9 @@ class SessionWorkBook(QObject):
         shank_list = ['All Shanks']
 
         # if there is more than one shank, then separate out the names
-        n_shank = self.get_shank_count()
-        if n_shank > 1:
-            shank_list += ['Shank #{0}'.format(i + 1) for i in range(n_shank)]
+        shank_ids = np.unique(self.get_shank_ids())
+        if len(shank_ids) > 1:
+            shank_list += ['Shank #{0}'.format(s_id) for s_id in shank_ids]
 
         # returns the shank name list
         return shank_list
@@ -304,7 +305,6 @@ class SessionWorkBook(QObject):
 
         return is_rmv
 
-
     # ---------------------------------------------------------------------------
     # Setter Functions
     # ---------------------------------------------------------------------------
@@ -316,6 +316,10 @@ class SessionWorkBook(QObject):
     def set_current_run(self, new_run):
 
         self.current_run = new_run
+
+    def set_current_shank(self, new_shank):
+
+        self.current_shank = new_shank
 
     def set_prep_type(self, new_type):
 
@@ -393,6 +397,7 @@ class SessionWorkBook(QObject):
         if _self.session is None:
             # case is there is no session set (clearing session)
             _self.current_run = None
+            _self.current_shank = None
             _self.current_ses = None
             _self.channel_data = None
             _self.session_props = None
@@ -694,14 +699,21 @@ class SessionObject(QObject):
     # Session wrapper functions
     # ---------------------------------------------------------------------------
 
-    def get_session_runs(self, i_run, run_type=None, pp_type=None):
+    def get_session_runs(self, i_run, run_type=None, pp_type=None, i_shank=None):
 
         if isinstance(i_run, str):
             i_run = self.get_run_index(i_run)
 
         if (pp_type is None) or (pp_type == '0-raw'):
             if run_type is None:
-                return self._s._raw_runs[i_run]
+                # case is the run type is not specified
+                run = self._s._raw_runs[i_run]
+                if i_shank is None:
+                    return run
+                else:
+                    run_shank = run._get_split_by_shank()
+                    return run_shank['shank_{0}'.format(i_shank)]
+
             else:
                 return self._s._raw_runs[i_run]._raw[run_type]
 

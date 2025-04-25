@@ -141,7 +141,7 @@ class InfoManager(QWidget):
             # creates the tab widget (based on type)
             t_lbl = it.info_names[t_type]
             tab_constructor = it.info_types[t_type]
-            tab_widget = tab_constructor(t_lbl)
+            tab_widget = tab_constructor(t_lbl, self.main_obj)
             self.tabs.append(tab_widget)
 
             # sets the
@@ -158,6 +158,7 @@ class InfoManager(QWidget):
                         # case is the channel tab
                         tab_widget.data_change.connect(pfcn(self.channel_combobox_update, 'data'))
                         tab_widget.run_change.connect(pfcn(self.channel_combobox_update, 'run'))
+                        tab_widget.shank_change.connect(pfcn(self.channel_combobox_update, 'shank'))
                         tab_widget.status_change.connect(self.channel_status_update)
                         tab_widget.set_update_flag.connect(self.update_flag_change)
                         tab_widget.mouse_move.connect(self.channel_mouse_move)
@@ -204,6 +205,12 @@ class InfoManager(QWidget):
                 # resets the run parameter fields
                 self.main_obj.prop_manager.reset_run_para_fields()
 
+            case 'shank':
+                # resets the current shank
+                i_sel_shank = tab_obj.shank_type.current_index()
+                new_shank = None if (i_sel_shank == 0) else (i_sel_shank - 1)
+                self.main_obj.session_obj.set_current_shank(new_shank)
+
         # updates the current preprocessing data type
         if tab_obj.data_flds is not None:
             i_data = tab_obj.data_type.current_index()
@@ -222,16 +229,23 @@ class InfoManager(QWidget):
                 channel_tab.update_channel_status(ch_status, self.session_obj.get_keep_channels())
 
                 # resets the trace view
-                self.main_obj.plot_manager.reset_trace_views(2)
+                self.main_obj.plot_manager.reset_trace_views(1)
                 self.main_obj.plot_manager.reset_probe_views()
+
+            case 'shank':
+                # resets the probe view
+                self.main_obj.plot_manager.reset_probe_axes()
 
     def channel_status_update(self, tab_obj, is_filt):
 
+        # updates the filter flags
         self.session_obj.channel_data.set_filter_flag(is_filt)
 
+        # resets the probe plot view
         probe_view = self.main_obj.plot_manager.get_plot_view('probe')
         probe_view.sub_view.create_probe_plot()
 
+        # resets the trace plot view
         trace_view = self.main_obj.plot_manager.get_plot_view('trace')
         trace_view.reset_trace_view()
 
@@ -665,12 +679,13 @@ class InfoWidget(QWidget):
         }
     """
 
-    def __init__(self, t_lbl, layout=QVBoxLayout):
+    def __init__(self, t_lbl, main_obj, layout=QVBoxLayout):
         super(InfoWidget, self).__init__()
 
         # field initialisations
         self.table = None
         self.t_lbl = t_lbl
+        self.main_obj = main_obj
 
         # field retrieval
         self.tab_layout = layout(self)
@@ -746,8 +761,8 @@ class InfoWidgetPara(InfoWidget, SearchMixin):
         }
     """
 
-    def __init__(self, t_lbl, layout=QVBoxLayout):
-        super(InfoWidgetPara, self).__init__(t_lbl, layout)
+    def __init__(self, t_lbl, main_obj, layout=QVBoxLayout):
+        super(InfoWidgetPara, self).__init__(t_lbl, main_obj, layout)
         SearchMixin.__init__(self)
 
         # initialisations

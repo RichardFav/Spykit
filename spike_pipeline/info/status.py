@@ -44,8 +44,8 @@ class StatusInfoTab(InfoWidgetPara):
         'std_map': 'Std Dev/Map Method Parameters',
     }
 
-    def __init__(self, t_str):
-        super(StatusInfoTab, self).__init__(t_str, layout=QFormLayout)
+    def __init__(self, t_str, main_obj):
+        super(StatusInfoTab, self).__init__(t_str, main_obj, layout=QFormLayout)
 
         # class widgets
         self.toggle_calc = cw.create_push_button(None, self.b_str[0], cw.font_lbl)

@@ -194,6 +194,11 @@ class PlotManager(QWidget):
         plt_probe = self.plots[self.types['probe'] - 1]
         plt_probe.reset_probe_views()
 
+    def reset_probe_axes(self):
+
+        plt_probe = self.plots[self.types['probe'] - 1]
+        plt_probe.reset_probe_axes()
+
     def reset_trace_views(self, reset_type=0):
 
         plt_trace = self.plots[self.types['trace'] - 1]

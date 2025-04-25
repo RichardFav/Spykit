@@ -95,8 +95,8 @@ class PreprocessConfig(object):
 
 
 class PreprocessInfoTab(InfoWidgetPara):
-    def __init__(self, t_str):
-        super(PreprocessInfoTab, self).__init__(t_str, layout=QFormLayout)
+    def __init__(self, t_str, main_obj):
+        super(PreprocessInfoTab, self).__init__(t_str, main_obj, layout=QFormLayout)
 
         # class field initialisation
         self.bad_channel_fcn = None

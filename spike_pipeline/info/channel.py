@@ -48,8 +48,8 @@ class ChannelInfoTab(InfoWidget):
     i_status_col = 2
     i_channel_col = 3
 
-    def __init__(self, t_str):
-        super(ChannelInfoTab, self).__init__(t_str)
+    def __init__(self, t_str, main_obj):
+        super(ChannelInfoTab, self).__init__(t_str, main_obj)
 
         # field initialisations
         self.data_flds = None
@@ -90,7 +90,7 @@ class ChannelInfoTab(InfoWidget):
         self.opt_layout.addWidget(self.status_filter.h_lbl, 3, 0, 1, 1)
         self.opt_layout.addWidget(self.status_filter.h_combo, 3, 1, 1, 1)
 
-        #
+        # sets the option combobox layout properties
         self.opt_layout.setColumnStretch(0, 1)
         self.opt_layout.setColumnStretch(1, 2)
 
@@ -147,8 +147,8 @@ class ChannelInfoTab(InfoWidget):
                 combo.connect(self.combo_data_change)
 
             case 'shank':
-                combo.connect(self.combo_shank_change)
                 combo.set_enabled(len(cb_list) > 1)
+                combo.connect(self.combo_shank_change)
 
         # resets the update flag
         self.is_updating = False
@@ -169,6 +169,7 @@ class ChannelInfoTab(InfoWidget):
 
         # if manually updating, then exit
         if not self.is_updating:
+            self.check_filter_item()
             self.shank_change.emit(self)
 
     def combo_status_change(self, h_combo):
@@ -176,22 +177,6 @@ class ChannelInfoTab(InfoWidget):
         # if manually updating, then exit
         if not self.is_updating:
             self.status_change.emit(self)
-
-    def reset_data_types(self, d_names, d_flds):
-
-        # indicate that
-        self.is_updating = True
-
-        # resets the
-        self.data_type.obj_cbox.clear()
-        self.data_type.obj_cbox.addItems(d_names)
-        self.data_type.set_enabled(len(d_names) > 1)
-
-        # updates the data field
-        self.data_flds = d_flds
-
-        # resets the update flag
-        self.is_updating = False
 
     def update_channel_status(self, ch_status, is_keep, is_init=False):
 
@@ -241,26 +226,17 @@ class ChannelInfoTab(InfoWidget):
         self.is_updating = False
         self.set_update_flag.emit(False)
 
-    def get_filtered_items(self):
-
-        # determines the selected filter items
-        sel_filt = self.status_filter.get_selected_items()
-
-        # determines which items meet the filter selection
-        self.is_filt = np.zeros(self.table.rowCount(), dtype=bool)
-        for i_row in range(self.table.rowCount()):
-            item = self.table.item(i_row, self.i_status_col)
-            self.is_filt[i_row] = item.text() in sel_filt
-
     def check_filter_item(self):
 
-        self.get_filtered_items()
-
-        for i_row in range(self.table.rowCount()):
-            self.table.setRowHidden(i_row, not self.is_filt[i_row])
+        # resets the table view
+        self.reset_table_rows()
 
         self.status_change.emit(self, self.is_filt)
         self.data_change.emit(self)
+
+    # ---------------------------------------------------------------------------
+    # Setter Functions
+    # ---------------------------------------------------------------------------
 
     def set_table_row_colour(self, i_row, c_stat):
 
@@ -281,10 +257,65 @@ class ChannelInfoTab(InfoWidget):
             item_sel.setCheckState(cf.chk_state[False])
             item_keep.setCheckState(cf.chk_state[False])
 
+    # ---------------------------------------------------------------------------
+    # Getter Functions
+    # ---------------------------------------------------------------------------
+
+    def get_filtered_items(self):
+
+        # initialisations
+        ch_info = None
+
+        # field retrieval
+        i_shank_sel = self.shank_type.current_index()
+        sel_filt = self.status_filter.get_selected_items()
+
+        # determines which items meet the filter selection
+        self.is_filt = np.zeros(self.table.rowCount(), dtype=bool)
+        for i_row in range(self.table.rowCount()):
+            # sets the status filter for the current row
+            item = self.table.item(i_row, self.i_status_col)
+            self.is_filt[i_row] = item.text() in sel_filt
+
+            # if a specific shank has been selected, then
+            if i_shank_sel > 0:
+                # field retrieval (first iteration only)
+                if i_row == 0:
+                    ch_info = np.array(self.main_obj.session_obj.get_shank_ids()).astype(int)
+
+                # updates the filter flag
+                self.is_filt[i_row] = self.is_filt[i_row] and (ch_info[i_row] == i_shank_sel)
+
     def get_table_device_id(self, i_row_sel):
 
         i_row_sel = np.min([self.table.rowCount() - 1, i_row_sel])
         return int(self.table.item(i_row_sel, self.i_channel_col).text())
+
+    # ---------------------------------------------------------------------------
+    # Miscellaneous Functions
+    # ---------------------------------------------------------------------------
+
+    def reset_data_types(self, d_names, d_flds):
+
+        # indicate that
+        self.is_updating = True
+
+        # resets the
+        self.data_type.obj_cbox.clear()
+        self.data_type.obj_cbox.addItems(d_names)
+        self.data_type.set_enabled(len(d_names) > 1)
+
+        # updates the data field
+        self.data_flds = d_flds
+
+        # resets the update flag
+        self.is_updating = False
+
+    def reset_table_rows(self):
+
+        self.get_filtered_items()
+        for i_row in range(self.table.rowCount()):
+            self.table.setRowHidden(i_row, not self.is_filt[i_row])
 
     def keep_channel_reset(self, is_keep):
 
@@ -299,3 +330,4 @@ class ChannelInfoTab(InfoWidget):
         # initialisations
         self.is_updating = False
         self.set_update_flag.emit(False)
+
