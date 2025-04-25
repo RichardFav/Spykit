@@ -6,9 +6,10 @@ import spike_pipeline.common.common_func as cf
 
 # custom module imports
 from spike_pipeline.info.utils import InfoWidget
-from spike_pipeline.common.common_widget import QWidget, QLabelCombo, QLabelCheckCombo, font_lbl
+from spike_pipeline.common.common_widget import QLabelCombo, QLabelCheckCombo, font_lbl
 
 # pyqt imports
+from PyQt6.QtWidgets import QWidget, QGridLayout
 from PyQt6.QtCore import Qt, pyqtSignal
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -18,6 +19,7 @@ class ChannelInfoTab(InfoWidget):
     # pyqtSignal signal functions
     run_change = pyqtSignal(QWidget)
     data_change = pyqtSignal(QWidget)
+    shank_change = pyqtSignal(QWidget)
     status_change = pyqtSignal(QWidget, object)
     set_update_flag = pyqtSignal(bool)
     mouse_move = pyqtSignal(object)
@@ -59,27 +61,44 @@ class ChannelInfoTab(InfoWidget):
         self.is_filt = None
         self.is_updating = False
 
-        # adds the plot data type combobox
-        self.data_type = QLabelCombo(None, 'Plot Data Type:', None, font_lbl=font_lbl)
+        # plot option widgets
+        self.opt_widget = QWidget()
+        self.opt_layout = QGridLayout()
+        self.data_type = QLabelCombo(None, 'Display Data:', None, font_lbl=font_lbl)
         self.run_type = QLabelCombo(None, 'Session Run:', None, font_lbl=font_lbl)
-        self.status_filter = QLabelCheckCombo(None, lbl="Status Filter", font=font_lbl)
+        self.shank_type = QLabelCombo(None, "Recording Shank:", None, font_lbl=font_lbl)
+        self.status_filter = QLabelCheckCombo(None, lbl="Filter Status:", font=font_lbl)
 
         # initialises the other class fields
+        self.init_option_fields()
         self.init_other_class_fields()
 
-    def init_other_class_fields(self):
+    def init_option_fields(self):
 
-        # adds the widgets to the main widget
-        self.tab_layout.addWidget(self.data_type)
-        self.tab_layout.addWidget(self.run_type)
-        self.tab_layout.addWidget(self.status_filter)
+        # adds the option widget to the tab layout
+        self.tab_layout.addWidget(self.opt_widget)
+        self.opt_widget.setLayout(self.opt_layout)
+        self.opt_widget.setContentsMargins(0, 0, 0, 0)
 
-        # sets the data type combobox properties
-        self.data_type.setContentsMargins(0, self.x_gap, 0, 0)
+        # adds the widgets to the layout widget
+        self.opt_layout.addWidget(self.data_type.obj_lbl, 0, 0, 1, 1)
+        self.opt_layout.addWidget(self.data_type.obj_cbox, 0, 1, 1, 1)
+        self.opt_layout.addWidget(self.run_type.obj_lbl, 1, 0, 1, 1)
+        self.opt_layout.addWidget(self.run_type.obj_cbox, 1, 1, 1, 1)
+        self.opt_layout.addWidget(self.shank_type.obj_lbl, 2, 0, 1, 1)
+        self.opt_layout.addWidget(self.shank_type.obj_cbox, 2, 1, 1, 1)
+        self.opt_layout.addWidget(self.status_filter.h_lbl, 3, 0, 1, 1)
+        self.opt_layout.addWidget(self.status_filter.h_combo, 3, 1, 1, 1)
+
+        #
+        self.opt_layout.setColumnStretch(0, 1)
+        self.opt_layout.setColumnStretch(1, 2)
 
         # adds status filter check combobox
         self.status_filter.item_clicked.connect(self.check_filter_item)
         self.status_filter.setEnabled(False)
+
+    def init_other_class_fields(self):
 
         # creates the table widget
         self.create_table_widget()
@@ -127,6 +146,10 @@ class ChannelInfoTab(InfoWidget):
             case 'data':
                 combo.connect(self.combo_data_change)
 
+            case 'shank':
+                combo.connect(self.combo_shank_change)
+                combo.set_enabled(len(cb_list) > 1)
+
         # resets the update flag
         self.is_updating = False
 
@@ -141,6 +164,12 @@ class ChannelInfoTab(InfoWidget):
         # if manually updating, then exit
         if not self.is_updating:
             self.run_change.emit(self)
+
+    def combo_shank_change(self, h_combo):
+
+        # if manually updating, then exit
+        if not self.is_updating:
+            self.shank_change.emit(self)
 
     def combo_status_change(self, h_combo):
 
@@ -164,7 +193,7 @@ class ChannelInfoTab(InfoWidget):
         # resets the update flag
         self.is_updating = False
 
-    def update_channel_status(self, ch_status, is_keep):
+    def update_channel_status(self, ch_status, is_keep, is_init=False):
 
         # initialisations
         self.is_updating = True
@@ -195,11 +224,18 @@ class ChannelInfoTab(InfoWidget):
         if len(i_rmv):
             self.force_reset_flags.emit(i_rmv)
 
+        # determines the selected filter items
+        if is_init:
+            sel_filt = np.unique(list(ch_status.values()))
+
+        else:
+            sel_filt = self.status_filter.get_selected_items()
+
         # resets the status filter
         self.status_filter.clear()
         self.status_filter.setEnabled(True)
         for s_filt in ch_list:
-            self.status_filter.add_item(s_filt, True)
+            self.status_filter.add_item(s_filt, s_filt in sel_filt)
 
         # resets the update flag
         self.is_updating = False

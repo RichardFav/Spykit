@@ -74,24 +74,17 @@ class ProbePlot(PlotWidget):
 
     def init_class_fields(self):
 
-        # main plot frame properties
-        main_plot_item = self.h_plot[0, 0].getPlotItem()
-        main_plot_item.hideAxis('left')
-        main_plot_item.hideAxis('bottom')
-        main_plot_item.setDefaultPadding(0.05)
-        main_plot_item.hideButtons()
+        for i in range(2):
+            # sets the plot item properties
+            plot_item = self.h_plot[i, 0].getPlotItem()
+            plot_item.setMouseEnabled(x=False, y=False)
+            plot_item.hideAxis('left')
+            plot_item.hideAxis('bottom')
+            plot_item.setDefaultPadding(0.05)
+            plot_item.hideButtons()
 
-        # plot inset frame properties
-        sub_plot_item = self.h_plot[1, 0].getPlotItem()
-        sub_plot_item.setMouseEnabled(x=False, y=False)
-        sub_plot_item.hideAxis('left')
-        sub_plot_item.hideAxis('bottom')
-        sub_plot_item.setDefaultPadding(0.05)
-        sub_plot_item.hideButtons()
-
-        # sets the view box borders
-        self.v_box[0, 0].setBorder((255, 255, 255))
-        self.v_box[1, 0].setBorder((255, 255, 255))
+            # sets the view box borders
+            self.v_box[i, 0].setBorder((255, 255, 255))
 
         # main class fields
         self.probe_rec = self.session_info.get_current_recording_probe()
@@ -121,7 +114,7 @@ class ProbePlot(PlotWidget):
             self.main_view.create_inset_roi(is_full=False)
 
         else:
-            #
+            # resets the main probe view
             self.main_view.reset_probe_fields(self.probe)
             self.main_view.reset_inset_roi(False)
 
@@ -680,7 +673,6 @@ class ProbeView(GraphicsObject):
 
         self.roi.setPos(p_0)
         self.roi.setSize(p_sz)
-
 
     def create_inset_roi(self, x_lim_s=None, y_lim_s=None, is_full=True):
 

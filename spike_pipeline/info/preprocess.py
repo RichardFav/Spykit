@@ -325,7 +325,7 @@ class PreprocessSetup(QDialog):
     gap_sz = 5
     but_height = 20
     dlg_height = 200
-    dlg_width = 400
+    dlg_width = 450
 
     # array class fields
     b_icon = ['arrow_right', 'arrow_left', 'arrow_up', 'arrow_down']
@@ -343,13 +343,16 @@ class PreprocessSetup(QDialog):
 
         # class layouts
         self.list_layout = QGridLayout(self)
+        self.checkbox_layout = QHBoxLayout()
         self.button_layout = QVBoxLayout()
         self.control_layout = QHBoxLayout()
 
         # class widgets
         self.task_order = []
+        self.checkbox_opt = []
         self.button_control = []
         self.button_frame = QWidget(self)
+        self.checkbox_frame = QWidget(self)
         self.add_list = QListWidget(None)
         self.task_list = QListWidget(None)
         self.spacer_top = QSpacerItem(20, 60, cf.q_min, cf.q_max)
@@ -358,14 +361,50 @@ class PreprocessSetup(QDialog):
         # array class fields
         self.l_task = ['Phase Shift', 'Bandpass Filter', 'Channel Interpolation', 'Common Reference', 'Drift Correction']
 
+        # boolean class fields
+        self.per_shank = False
+        self.concat_runs = False
+
         # initialises the class fields
+        self.init_checkbox_opt()
         self.init_class_fields()
         self.init_control_buttons()
-        self.set_button_props()
 
     # ---------------------------------------------------------------------------
     # Class Property Widget Setup Functions
     # ---------------------------------------------------------------------------
+
+    def init_checkbox_opt(self):
+
+        # initialisations
+        c_str = ['Split Recording By Shank', 'Concatenate Experimental Runs']
+        cb_fcn = [self.checkbox_split_shank, self.checkbox_concat_expt]
+
+        # sets the frame/layout properties
+        self.checkbox_frame.setContentsMargins(0, 0, 0, 0)
+        self.checkbox_frame.setLayout(self.checkbox_layout)
+        self.checkbox_layout.setContentsMargins(0, 0, 0, 0)
+        self.checkbox_layout.setSpacing(self.but_height + 2 * self.gap_sz)
+
+        # creates the control buttons
+        for cs, cb in zip(c_str, cb_fcn):
+            # creates the button object
+            checkbox_new = cw.create_check_box(self, cs, False, font=cw.font_lbl)
+            self.checkbox_layout.addWidget(checkbox_new)
+            self.checkbox_opt.append(checkbox_new)
+
+            # sets the button properties
+            checkbox_new.pressed.connect(cb)
+            checkbox_new.setFixedHeight(cf.but_height)
+            # checkbox_new.setStyleSheet(self.border_style)
+
+        # sets the by shank checkbox enabled properties
+        n_shank = self.main_obj.session_obj.get_shank_count()
+        self.checkbox_opt[0].setEnabled(n_shank > 1)
+
+        # sets the concatenation checkbox enabled properties
+        n_run = self.main_obj.session_obj.session.get_run_count()
+        self.checkbox_opt[1].setEnabled(n_run > 1)
 
     def init_class_fields(self):
 
@@ -433,7 +472,8 @@ class PreprocessSetup(QDialog):
         self.list_layout.addWidget(self.task_list, 0, 0, 1, 1)
         self.list_layout.addLayout(self.button_layout, 0, 1, 1, 1)
         self.list_layout.addWidget(self.add_list, 0, 2, 1, 1)
-        self.list_layout.addWidget(self.button_frame, 1, 0, 1, 3)
+        self.list_layout.addWidget(self.checkbox_frame, 1, 0, 1, 3)
+        self.list_layout.addWidget(self.button_frame, 2, 0, 1, 3)
 
         # set the grid layout column sizes
         self.list_layout.setColumnStretch(0, self.gap_sz)
@@ -441,9 +481,7 @@ class PreprocessSetup(QDialog):
         self.list_layout.setColumnStretch(2, self.gap_sz)
         self.list_layout.setRowStretch(0, 5)
         self.list_layout.setRowStretch(1, 1)
-
-        # #
-        # self.main_obj.start_preprocess.connect()
+        self.list_layout.setRowStretch(2, 1)
 
     def init_control_buttons(self):
 
@@ -469,9 +507,20 @@ class PreprocessSetup(QDialog):
             button_new.setFixedHeight(cf.but_height)
             button_new.setStyleSheet(self.border_style)
 
+        # sets the control button properties
+        self.set_button_props()
+
     # ---------------------------------------------------------------------------
     # Class Property Widget Setup Functions
     # ---------------------------------------------------------------------------
+
+    def checkbox_split_shank(self):
+
+        self.per_shank = self.checkbox_opt[0].checkState() == cf.chk_state[False]
+
+    def checkbox_concat_expt(self):
+
+        self.concat_runs = self.checkbox_opt[1].checkState() == cf.chk_state[False]
 
     def button_add(self):
 
@@ -547,13 +596,16 @@ class PreprocessSetup(QDialog):
     def start_preprocess(self):
 
         if self.main_obj is not None:
+            # sets the preprocessing options
+            prep_opt = (self.per_shank, self.concat_runs)
+
             # retrieves the selected tasks
             prep_task = []
             for i in range(self.add_list.count()):
                 prep_task.append(self.add_list.item(i).text())
 
             # starts running the pre-processing
-            self.main_obj.setup_preprocessing_worker(prep_task)
+            self.main_obj.setup_preprocessing_worker(prep_task, prep_opt)
 
             # closes the dialog window
             self.close_window()

@@ -275,6 +275,24 @@ class SessionWorkBook(QObject):
         ch_id, _ = self.get_channel_ids(np.where(i_bad_ch)[0])
         return ch_id
 
+    def get_shank_count(self):
+
+        ch_info = self.get_channel_info()
+        return len(np.unique(ch_info['shank_ids']))
+
+    def get_shank_names(self):
+
+        # initialisations
+        shank_list = ['All Shanks']
+
+        # if there is more than one shank, then separate out the names
+        n_shank = self.get_shank_count()
+        if n_shank > 1:
+            shank_list += ['Shank #{0}'.format(i + 1) for i in range(n_shank)]
+
+        # returns the shank name list
+        return shank_list
+
     def is_channel_removed(self):
 
         ch_run = self.get_avail_channel(use_last_rec=True)
@@ -998,8 +1016,22 @@ class RunPreProcessing(QObject):
         pp_step_names = [item[0] for item in self.pp_steps_tot.values()]
 
         for step_num, pp_info in self.pp_steps_new.items():
-            # runs the pre-processing function
+            # retrieves the preprocessing step parameters
             pp_name, pp_opt = pp_info
+            if self.per_shank and (pp_name == 'interpolate_channels'):
+                # if analysing by shank, and interpolating bad channels, then ensure the channels for removal exist
+                # on the current shank
+                shank_id = np.intersect1d(pp_opt['channel_ids'], pp_data[prev_name].channel_ids)
+                if len(shank_id):
+                    # if there are bad channels, then reset the field
+                    pp_opt['channel_ids'] = shank_id
+
+                else:
+                    # if there are no bad channels, then continue
+                    pp_step_names.pop(pp_step_names.index(pp_name))
+                    continue
+
+            # runs the pre-processing function
             preprocessed_rec = self.pp_funcs[pp_name](pp_data[prev_name], **pp_opt)
 
             # stores the preprocessing run object

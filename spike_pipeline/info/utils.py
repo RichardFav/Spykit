@@ -323,6 +323,7 @@ class InfoManager(QWidget):
         # combobox fields
         data_list = ['Raw']
         run_list = self.session_obj.session.get_run_names()
+        shank_list = self.session_obj.get_shank_names()
 
         # flag that manual updating is taking place
         self.is_updating = True
@@ -331,6 +332,7 @@ class InfoManager(QWidget):
         channel_tab = self.get_info_tab('channel')
         channel_tab.reset_combobox_fields('data', data_list)
         channel_tab.reset_combobox_fields('run', run_list)
+        channel_tab.reset_combobox_fields('shank', shank_list)
 
         # resets the update flag
         self.is_updating = False

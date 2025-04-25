@@ -394,10 +394,10 @@ def list_mult(y, dy):
     return list(np.asarray(y) * dy)
 
 
-def resize_limits(y, yscl):
+def resize_limits(y, y_scale):
     y = np.asarray(y)
     dy = np.diff(y)[0]
-    return list(y + np.array([-1, 1]) * (yscl / 2) * dy)
+    return list(y + np.array([-1, 1]) * (y_scale / 2) * dy)
 
 
 def remove_baseline(y):
