@@ -66,9 +66,9 @@ align_flag = {
 
 # file path/filter modes
 f_mode = {
-    'session': "Spike Pipeline Session File (*.ssf)",
+    'session': "Experiment Session File (*.ssf)",
     'trigger': "Experiment Trigger File (*.npy)",
-    'configs': "Spike Pipeline Config File (*.cfig)",
+    'config': "Spike Pipeline Config File (*.cfig)",
 }
 
 f_name = {
@@ -1361,20 +1361,30 @@ class FileDialogModal(QFileDialog):
         self.setModal(True)
         self.setWindowFlags(Qt.WindowType.WindowStaysOnTopHint)
 
+        self.setOption(self.Option.DontUseNativeDialog)
+
         # sets the file dialog to open if
         if is_save:
-            self.setAcceptMode(QFileDialog.AcceptMode.AcceptSave)
+            self.setAcceptMode(self.AcceptMode.AcceptSave)
+
+        else:
+            self.setAcceptMode(self.AcceptMode.AcceptOpen)
 
         # sets the file mode to directory (if directory only)
         if dir_only:
-            self.setFileMode(QFileDialog.FileMode.Directory)
-            self.setOption(QFileDialog.Option.ShowDirsOnly)
-            self.setOption(QFileDialog.Option.DontUseNativeDialog)
+            self.setFileMode(self.FileMode.Directory)
+            self.setOption(self.Option.ShowDirsOnly)
+            self.setOption(self.Option.DontUseNativeDialog)
+
+        else:
+            self.setFileMode(self.FileMode.AnyFile)
+
+        # else:
+        #     self.setFileMode(self.FileMode.ExistingFiles)
 
         # sets the multi-select flag to true (if required)
         if is_multi:
-            self.setFileMode(QFileDialog.FileMode.ExistingFiles)
-
+            self.setFileMode(self.FileMode.ExistingFiles)
 
 # ----------------------------------------------------------------------------------------------------------------------
 

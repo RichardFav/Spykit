@@ -1002,8 +1002,9 @@ class MenuBar(QObject):
         if not isinstance(file_info, str):
             f_suffix = 'Directory' if dir_only else 'File'
             f_title = 'Select {0} {1}'.format(cw.f_name[f_type], f_suffix)
+            f_mode = cw.f_mode[f_type]
             file_dlg = cw.FileDialogModal(
-                None, f_title, cw.f_mode[f_type], cw.data_dir, is_save=False, dir_only=dir_only,
+                None, f_title, f_mode, cw.data_dir, is_save=False, dir_only=dir_only,
             )
             if file_dlg.exec() == QDialog.DialogCode.Accepted:
                 # if successful, then retrieve the file name
@@ -1023,13 +1024,13 @@ class MenuBar(QObject):
         file_dlg = cw.FileDialogModal(None, f_title, f_mode, cw.data_dir, is_save=True, dir_only=dir_only)
         if file_dlg.exec() == QDialog.DialogCode.Accepted:
             # saves the session data to file
-            file_info = file_dlg.selectedFiles()
+            file_path = cf.get_selected_file_path(file_dlg, f_mode)
 
             if output_data is None:
-                return Path(file_info[0])
+                return Path(file_path)
 
             else:
-                with open(file_info[0], 'wb') as f:
+                with open(file_path, 'wb') as f:
                     pickle.dump(output_data, f)
 
         elif output_data is None:

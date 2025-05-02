@@ -1,6 +1,8 @@
 # module import
 import os
+import re
 import math
+import platform
 import colorsys
 import threading
 from typing import TypeVar
@@ -61,6 +63,7 @@ combo_height = 22
 # other parameters
 n_col_max = 20
 Cls = TypeVar('Cls')
+is_linux = platform.system() == 'Linux'
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -403,3 +406,17 @@ def resize_limits(y, y_scale):
 def remove_baseline(y):
 
     return y - np.min(y)
+
+
+def get_selected_file_path(file_dlg, f_mode):
+    f_path = file_dlg.selectedFiles()[0]
+
+    # if the file extension is missing, then re-add the extension
+    f_name, f_extn = os.path.splitext(f_path)
+    if len(f_extn) == 0:
+        f_extn_add = re.search(r'\(([^)]+)',f_mode)[1][1:]
+        return f_name + f_extn_add
+
+    else:
+        return f_path
+
