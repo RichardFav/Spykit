@@ -1,0 +1,17 @@
+name: spykit_env
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python=3.12
+  - pip
+  - numpy
+  - scipy
+  - pyqt=6
+  - pyqtgraph  
+  - bigtree
+  - scikit-image
+  - pandas
+  - pip:
+    - git+https://github.com/SpikeInterface/spikeinterface.git
+    - git+https://github.com/neuroinformatics-unit/spikewrap.git
