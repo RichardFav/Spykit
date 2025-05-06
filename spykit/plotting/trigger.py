@@ -7,9 +7,9 @@ import numpy as np
 from copy import deepcopy
 
 # spike pipeline imports
-import spike_pipeline.common.common_func as cf
-import spike_pipeline.common.common_widget as cw
-from spike_pipeline.plotting.utils import PlotWidget
+import spykit.common.common_func as cf
+import spykit.common.common_widget as cw
+from spykit.plotting.utils import PlotWidget
 
 # pyqtgraph modules
 from pyqtgraph import exporters, mkPen, mkBrush, ImageItem, PlotCurveItem, LinearRegionItem, ColorMap

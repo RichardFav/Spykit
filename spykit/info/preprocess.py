@@ -4,10 +4,10 @@ import time
 import numpy as np
 from copy import deepcopy
 
-import spike_pipeline.common.common_widget as cw
-import spike_pipeline.common.common_func as cf
-from spike_pipeline.info.utils import InfoWidgetPara
-from spike_pipeline.threads.utils import ThreadWorker
+import spykit.common.common_widget as cw
+import spykit.common.common_func as cf
+from spykit.info.utils import InfoWidgetPara
+from spykit.threads.utils import ThreadWorker
 
 # pyqt imports
 from PyQt6.QtWidgets import (QWidget, QFrame, QTabWidget, QVBoxLayout, QFormLayout, QHBoxLayout,

@@ -6,9 +6,9 @@ from collections import ChainMap
 from functools import partial as pfcn
 
 # custom module imports
-import spike_pipeline.common.common_func as cf
-import spike_pipeline.common.common_widget as cw
-from spike_pipeline.common.common_widget import SearchMixin, QProgressWidget
+import spykit.common.common_func as cf
+import spykit.common.common_widget as cw
+from spykit.common.common_widget import SearchMixin, QProgressWidget
 
 # pyqt imports
 from PyQt6.QtWidgets import (QWidget, QTreeWidget, QFrame, QCheckBox, QPushButton, QSizePolicy, QVBoxLayout, QGroupBox,
@@ -121,7 +121,7 @@ class InfoManager(QWidget):
     def init_table_group(self):
 
         # module import
-        import spike_pipeline.info.info_type as it
+        import spykit.info.info_type as it
 
         # sets the property tab group properties
         self.tab_group_table.setVisible(False)
@@ -460,7 +460,7 @@ class InfoManager(QWidget):
     def get_table_widget(self, t_type):
 
         # module import
-        import spike_pipeline.info.info_type as it
+        import spykit.info.info_type as it
 
         info_c = it.info_types[t_type.split()[0].lower()]
         i_tab = next(i for i, x in enumerate(self.tabs) if isinstance(x, info_c))

@@ -11,9 +11,9 @@ from pyqtgraph import (exporters, mkPen, mkColor, TextItem, ImageItem, PlotCurve
 from pyqtgraph.Qt import QtGui
 
 # spike pipeline imports
-import spike_pipeline.common.common_func as cf
-import spike_pipeline.common.common_widget as cw
-from spike_pipeline.plotting.utils import PlotWidget, PlotPara
+import spykit.common.common_func as cf
+import spykit.common.common_widget as cw
+from spykit.plotting.utils import PlotWidget, PlotPara
 from spikeinterface.preprocessing import depth_order
 
 # pyqt6 module import

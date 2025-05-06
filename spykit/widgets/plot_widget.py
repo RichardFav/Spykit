@@ -13,9 +13,9 @@ from PyQt6.QtCore import Qt, QSize, QRect, pyqtSignal
 from PyQt6.QtGui import QFont, QColor, QIcon
 
 # custom module import
-import spike_pipeline.common.common_widget as cw
-import spike_pipeline.common.common_func as cf
-from spike_pipeline.common.common_widget import (QCollapseGroup, QLabelEdit, QCheckboxHTML, QLabelCombo,
+import spykit.common.common_widget as cw
+import spykit.common.common_func as cf
+from spykit.common.common_widget import (QCollapseGroup, QLabelEdit, QCheckboxHTML, QLabelCombo,
                                                  QTraceTree, QRegionConfig, QLabelButton, QFileSpec)
 
 # label/header font objects

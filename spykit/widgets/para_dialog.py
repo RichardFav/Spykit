@@ -6,8 +6,8 @@ import functools
 from copy import deepcopy
 
 # custom module import
-import spike_pipeline.common.common_widget as cw
-import spike_pipeline.common.common_func as cf
+import spykit.common.common_widget as cw
+import spykit.common.common_func as cf
 
 # pyqt6 module import
 import numpy as np

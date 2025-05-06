@@ -23,9 +23,9 @@ from spikewrap.structure._raw_run import (ConcatRawRun, SeparateRawRun)
 from spikewrap.process._preprocessing import remove_channels, interpolate_channels
 
 # custom module import
-import spike_pipeline.common.common_func as cf
-from spike_pipeline.threads.utils import ThreadWorker
-from spike_pipeline.info.preprocess import prep_task_map as pp_map
+import spykit.common.common_func as cf
+from spykit.threads.utils import ThreadWorker
+from spykit.info.preprocess import prep_task_map as pp_map
 
 # ----------------------------------------------------------------------------------------------------------------------
 

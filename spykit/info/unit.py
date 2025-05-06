@@ -1,6 +1,6 @@
 # custom module imports
-import spike_pipeline.common.common_widget as cw
-from spike_pipeline.info.utils import InfoWidget
+import spykit.common.common_widget as cw
+from spykit.info.utils import InfoWidget
 
 # ----------------------------------------------------------------------------------------------------------------------
 

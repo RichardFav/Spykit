@@ -5,8 +5,8 @@ import numpy as np
 import functools
 
 # custom module imports
-import spike_pipeline.common.common_func as cf
-import spike_pipeline.common.common_widget as cw
+import spykit.common.common_func as cf
+import spykit.common.common_widget as cw
 
 # pyqt imports
 from PyQt6.QtWidgets import (QWidget, QLineEdit, QComboBox, QCheckBox, QPushButton, QSizePolicy, QVBoxLayout, QGroupBox,
@@ -933,4 +933,4 @@ class PropWidget(QWidget):
 # ----------------------------------------------------------------------------------------------------------------------
 
 # module imports (required here as will cause circular import error otherwise)
-import spike_pipeline.props.prop_type as pt
+import spykit.props.prop_type as pt

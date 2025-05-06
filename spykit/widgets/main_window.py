@@ -18,16 +18,16 @@ from PyQt6.QtCore import Qt, QSize, QRect, pyqtSignal, QObject, QTimer
 from PyQt6.QtGui import QFont, QIcon, QAction
 
 # custom module import
-import spike_pipeline.common.common_func as cf
-import spike_pipeline.common.common_widget as cw
-from spike_pipeline.info.utils import InfoManager
-from spike_pipeline.plotting.utils import PlotManager
-from spike_pipeline.props.utils import PropManager
-from spike_pipeline.common.property_classes import SessionWorkBook
-from spike_pipeline.widgets.open_session import OpenSession
-from spike_pipeline.info.preprocess import PreprocessSetup, pp_flds
-from spike_pipeline.threads.utils import ThreadWorker
-from spike_pipeline.widgets.default_dir import DefaultDir
+import spykit.common.common_func as cf
+import spykit.common.common_widget as cw
+from spykit.info.utils import InfoManager
+from spykit.plotting.utils import PlotManager
+from spykit.props.utils import PropManager
+from spykit.common.property_classes import SessionWorkBook
+from spykit.widgets.open_session import OpenSession
+from spykit.info.preprocess import PreprocessSetup, pp_flds
+from spykit.threads.utils import ThreadWorker
+from spykit.widgets.default_dir import DefaultDir
 
 # spikewrap module import
 from spikewrap.configs._backend import canon
@@ -519,9 +519,9 @@ class MainWindow(QMainWindow):
 
     def testing(self):
 
-        # f_file = "C:/Work/Other Projects/EPhys Project/Code/spike_pipeline/spike_pipeline/resources/session/tiny_session.ssf"
-        f_file = "C:/Work/Other Projects/EPhys Project/Code/spike_pipeline/spike_pipeline/resources\data\z - session files/tiny_example.ssf"
-        # f_file = "C:/Work/Other Projects/EPhys Project/Code/spike_pipeline/spike_pipeline/resources\data\z - session files/large_example.ssf"
+        # f_file = "C:/Work/Other Projects/EPhys Project/Code/spykit/spykit/resources/session/tiny_session.ssf"
+        f_file = "C:/Work/Other Projects/EPhys Project/Code/spykit/spykit/resources\data\z - session files/tiny_example.ssf"
+        # f_file = "C:/Work/Other Projects/EPhys Project/Code/spykit/spykit/resources\data\z - session files/large_example.ssf"
 
         self.menu_bar.load_session(f_file)
 

@@ -2,10 +2,10 @@
 import os
 
 # spikewrap/spikeinterface module imports
-import spike_pipeline.common.common_widget as cw
-from spike_pipeline.plotting.trace import TracePlot
-from spike_pipeline.plotting.probe import ProbePlot
-from spike_pipeline.plotting.trigger import TriggerPlot
+import spykit.common.common_widget as cw
+from spykit.plotting.trace import TracePlot
+from spykit.plotting.probe import ProbePlot
+from spykit.plotting.trigger import TriggerPlot
 
 # list of all plot types
 plot_types = {

@@ -5,7 +5,7 @@ import time
 
 # custom module import
 from testing.testing import Testing
-from spike_pipeline.widgets.main_window import MainWindow
+from spykit.widgets.main_window import MainWindow
 
 # pyqt6 module import
 from PyQt6.QtWidgets import QApplication, QTreeWidget, QTreeWidgetItem, QTreeView, QProxyStyle, QStyleFactory, QWidget

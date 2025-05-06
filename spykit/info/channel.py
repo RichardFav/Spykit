@@ -2,11 +2,11 @@
 import numpy as np
 
 #
-import spike_pipeline.common.common_func as cf
+import spykit.common.common_func as cf
 
 # custom module imports
-from spike_pipeline.info.utils import InfoWidget
-from spike_pipeline.common.common_widget import QLabelCombo, QLabelCheckCombo, font_lbl
+from spykit.info.utils import InfoWidget
+from spykit.common.common_widget import QLabelCombo, QLabelCheckCombo, font_lbl
 
 # pyqt imports
 from PyQt6.QtWidgets import QWidget, QGridLayout

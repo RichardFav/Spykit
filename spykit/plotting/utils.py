@@ -3,8 +3,8 @@ import functools
 import numpy as np
 
 # custom module imports
-import spike_pipeline.common.common_func as cf
-import spike_pipeline.common.common_widget as cw
+import spykit.common.common_func as cf
+import spykit.common.common_widget as cw
 
 # pyqt imports
 from PyQt6.QtWidgets import (QWidget, QLayout, QLayoutItem, QGridLayout, QVBoxLayout, QHBoxLayout,
@@ -758,4 +758,4 @@ class PlotPara(PlotParaBase):
 # ----------------------------------------------------------------------------------------------------------------------
 
 # module imports (required here as will cause circular import error otherwise)
-import spike_pipeline.plotting.view_type as vt
+import spykit.plotting.view_type as vt

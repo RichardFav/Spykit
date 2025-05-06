@@ -9,13 +9,13 @@ from PyQt6.QtWidgets import QDialog, QVBoxLayout, QMainWindow, QWidget, QHBoxLay
 from PyQt6.QtCore import Qt
 
 # other imports
-# import spike_pipeline.common.misc_func as mf
-import spike_pipeline.common.common_widget as cw
-# import spike_pipeline.common.memory_map as mm
-import spike_pipeline.common.spikeinterface_func as sf
-import spike_pipeline.threads.utils as tw
-from spike_pipeline.info.preprocess import PreprocessInfoTab, PreprocessSetup
-import spike_pipeline.info.utils as ui
+# import spykit.common.misc_func as mf
+import spykit.common.common_widget as cw
+# import spykit.common.memory_map as mm
+import spykit.common.spikeinterface_func as sf
+import spykit.threads.utils as tw
+from spykit.info.preprocess import PreprocessInfoTab, PreprocessSetup
+import spykit.info.utils as ui
 
 import spikewrap as sw
 # from spikeinterface.widgets import
@@ -139,7 +139,7 @@ class Testing(object):
         :return:
         """
 
-        from spike_pipeline.widgets.para_dialog import ParaDialog
+        from spykit.widgets.para_dialog import ParaDialog
 
         # creates the parameter panel object
         return ParaDialog()
@@ -150,7 +150,7 @@ class Testing(object):
         :return:
         """
 
-        from spike_pipeline.widgets.plot_widget import QPlotWidgetMain
+        from spykit.widgets.plot_widget import QPlotWidgetMain
 
         # creates the parameter panel object
         return QPlotWidgetMain()
@@ -162,7 +162,7 @@ class Testing(object):
 
     def run_open_session_test(self):
 
-        from spike_pipeline.widgets.open_session import OpenSession
+        from spykit.widgets.open_session import OpenSession
 
         # creates and returns the dialog window
         return OpenSession()
@@ -186,8 +186,8 @@ class Testing(object):
 
     def run_plot_dock_test(self):
 
-        from spike_pipeline.plotting.utils import PlotManager
-        from spike_pipeline.info.utils import InfoManager
+        from spykit.plotting.utils import PlotManager
+        from spykit.info.utils import InfoManager
 
         # parameters
         dlg_wid, dlg_hght = 1650, 900

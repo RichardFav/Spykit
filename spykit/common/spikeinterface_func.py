@@ -7,7 +7,7 @@ from pathlib import Path, PosixPath
 from copy import deepcopy
 from bigtree import list_to_tree, dataframe_to_tree
 
-import spike_pipeline.common.common_func as cf
+import spykit.common.common_func as cf
 
 
 class DirectoryCheck(object):

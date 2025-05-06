@@ -2,9 +2,9 @@
 from functools import partial as pfcn
 
 # spike pipeline imports
-import spike_pipeline.common.common_func as cf
-import spike_pipeline.common.common_widget as cw
-from spike_pipeline.props.utils import PropWidget, PropPara
+import spykit.common.common_func as cf
+import spykit.common.common_widget as cw
+from spykit.props.utils import PropWidget, PropPara
 
 # pyqt imports
 from PyQt6.QtCore import Qt, pyqtSignal

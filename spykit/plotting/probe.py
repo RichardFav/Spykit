@@ -8,9 +8,9 @@ from PyQt6.QtCore import QRectF, QPointF, pyqtSignal, Qt
 from PyQt6.QtGui import QPolygonF, QPicture, QPainter, QIcon
 
 # spike pipeline imports
-import spike_pipeline.common.common_func as cf
-import spike_pipeline.common.common_widget as cw
-from spike_pipeline.plotting.utils import PlotWidget, PlotPara
+import spykit.common.common_func as cf
+import spykit.common.common_widget as cw
+from spykit.plotting.utils import PlotWidget, PlotPara
 
 # pyqtgraph modules
 from pyqtgraph import PlotCurveItem, GraphicsObject, ROI, RectROI, TextItem, mkPen, mkBrush, exporters

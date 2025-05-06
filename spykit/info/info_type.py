@@ -1,9 +1,9 @@
 # spikewrap/spikeinterface module imports
-import spike_pipeline.common.common_widget as cw
-from spike_pipeline.info.unit import UnitInfoTab
-from spike_pipeline.info.channel import ChannelInfoTab
-from spike_pipeline.info.preprocess import PreprocessInfoTab
-from spike_pipeline.info.status import StatusInfoTab
+import spykit.common.common_widget as cw
+from spykit.info.unit import UnitInfoTab
+from spykit.info.channel import ChannelInfoTab
+from spykit.info.preprocess import PreprocessInfoTab
+from spykit.info.status import StatusInfoTab
 
 # list of all plot types
 info_types = {

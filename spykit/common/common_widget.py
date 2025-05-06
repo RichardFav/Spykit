@@ -15,7 +15,7 @@ from skimage.measure import label, regionprops
 from pyqtgraph import ViewBox, RectROI, InfiniteLine, ColorMap, colormap
 
 # custom module import
-import spike_pipeline.common.common_func as cf
+import spykit.common.common_func as cf
 
 # pyqt6 module import
 from PyQt6.QtWidgets import (QWidget, QHBoxLayout, QGridLayout, QVBoxLayout, QPushButton, QGroupBox, QTabWidget,
@@ -78,7 +78,7 @@ f_name = {
 }
 
 # parameter/resource folder paths
-resource_dir = os.path.join(os.getcwd(), 'spike_pipeline', 'resources').replace('\\', '/')
+resource_dir = os.path.join(os.getcwd(), 'spykit', 'resources').replace('\\', '/')
 data_dir = os.path.join(resource_dir, 'data').replace('\\', '/')
 icon_dir = os.path.join(resource_dir, 'icons').replace('\\', '/')
 para_dir = os.path.join(resource_dir, 'parameters').replace('\\', '/')
@@ -811,7 +811,7 @@ class QAxesLimits(QWidget):
     def edit_limit_para(self, h_edit):
 
         # module import
-        from spike_pipeline.widgets.plot_widget import QPlotWidgetMain
+        from spykit.widgets.plot_widget import QPlotWidgetMain
 
         # field retrieval
         nw_val = h_edit.text()
@@ -973,7 +973,7 @@ class QTraceTree(QWidget):
     def delete_tree_item(self, item):
 
         # module import
-        from spike_pipeline.widgets.plot_widget import QPlotWidgetMain
+        from spykit.widgets.plot_widget import QPlotWidgetMain
 
         # creates the tree item
         if item.parent() is None:
@@ -994,7 +994,7 @@ class QTraceTree(QWidget):
 
     def node_name_update(self, ind_mod_1, *_):
 
-        from spike_pipeline.widgets.plot_widget import QPlotPara
+        from spykit.widgets.plot_widget import QPlotPara
 
         h_plot_para = cf.get_parent_widget(self, QPlotPara)
         h_plot_para.p_props.name = ind_mod_1.data()
@@ -1006,7 +1006,7 @@ class QTraceTree(QWidget):
         """
 
         # module import
-        from spike_pipeline.widgets.plot_widget import QPlotWidgetMain
+        from spykit.widgets.plot_widget import QPlotWidgetMain
 
         # retrieves the tree item
         item_index = self.obj_tview.selectedIndexes()[0]

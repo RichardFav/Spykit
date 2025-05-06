@@ -2,10 +2,10 @@
 import os
 
 # spikewrap/spikeinterface module imports
-from spike_pipeline.props.trace import TraceProps
-from spike_pipeline.props.trigger import TriggerProps
-from spike_pipeline.props.config import ConfigProps
-from spike_pipeline.props.general import GeneralProps
+from spykit.props.trace import TraceProps
+from spykit.props.trigger import TriggerProps
+from spykit.props.config import ConfigProps
+from spykit.props.general import GeneralProps
 
 # list of all plot types
 prop_types = {

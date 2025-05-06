@@ -8,12 +8,12 @@ from pathlib import Path
 from bigtree import dataframe_to_tree, tree_to_dict
 
 # custom module import
-import spike_pipeline.common.common_func as cf
-import spike_pipeline.common.common_widget as cw
-import spike_pipeline.common.spikeinterface_func as sf
-from spike_pipeline.common.property_classes import SessionObject
-from spike_pipeline.common.common_widget import (QLabelEdit, QFileSpec, QLabelCombo, QFolderTree, QLabelCheckCombo)
-from spike_pipeline.plotting.probe import ProbeView
+import spykit.common.common_func as cf
+import spykit.common.common_widget as cw
+import spykit.common.spikeinterface_func as sf
+from spykit.common.property_classes import SessionObject
+from spykit.common.common_widget import (QLabelEdit, QFileSpec, QLabelCombo, QFolderTree, QLabelCheckCombo)
+from spykit.plotting.probe import ProbeView
 
 # pyqt6 module import
 from PyQt6.QtWidgets import (QDialog, QHBoxLayout, QVBoxLayout, QWidget, QFormLayout, QSizePolicy, QGridLayout,

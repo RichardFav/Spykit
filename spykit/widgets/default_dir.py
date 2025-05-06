@@ -6,8 +6,8 @@ from pathlib import Path
 from copy import deepcopy
 
 # spike pipeline imports
-import spike_pipeline.common.common_func as cf
-import spike_pipeline.common.common_widget as cw
+import spykit.common.common_func as cf
+import spykit.common.common_widget as cw
 
 # pyqt6 module import
 from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QWidget, QMessageBox)
