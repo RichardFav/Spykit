@@ -1,5 +1,5 @@
 # module import
-# import os
+import os
 # import functools
 import time
 import glob
@@ -86,7 +86,8 @@ class MainWindow(QMainWindow):
         self.set_styles()
 
         # REMOVE ME LATER
-        self.testing()
+        if os.environ['COMPUTERNAME'] == "DESKTOP-NLLEH0V":
+            self.testing()
 
     # ---------------------------------------------------------------------------
     # Class Widget Setup Functions
@@ -520,8 +521,8 @@ class MainWindow(QMainWindow):
     def testing(self):
 
         # f_file = "C:/Work/Other Projects/EPhys Project/Code/spykit/spykit/resources/session/tiny_session.ssf"
-        f_file = "C:/Work/Other Projects/EPhys Project/Code/spykit/spykit/resources\data\z - session files/tiny_example.ssf"
-        # f_file = "C:/Work/Other Projects/EPhys Project/Code/spykit/spykit/resources\data\z - session files/large_example.ssf"
+        f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/tiny_example.ssf"
+        # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/large_example.ssf"
 
         self.menu_bar.load_session(f_file)
 

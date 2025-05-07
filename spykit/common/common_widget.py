@@ -2120,7 +2120,8 @@ class QCheckCombo(QComboBox):
 
         # creates the checkbox object
         self.setFixedHeight(cf.combo_height)
-        self.setStyleSheet('border-radius: 2px; border: 1px solid')
+        self.setStyleSheet('border-radius: 2px; border: 1px solid;')
+
         self.setModel(self.combo_model)
 
     def item_selected(self, index):
@@ -2150,12 +2151,13 @@ class QCheckCombo(QComboBox):
     def add_item(self, t, state=False):
 
         # adds the item to the combobox
-        self.addItem(t)
+        self.addItem('     {0}'.format(t))
 
         # sets the item properties
         item = self.model().item(self.n_item, 0)
+        item.setFlags(Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsEnabled)
+        item.setData(Qt.CheckState.Checked if state else Qt.CheckState.Unchecked, Qt.ItemDataRole.CheckStateRole)
         item.setEditable(False)
-        item.setCheckState(Qt.CheckState.Checked if state else Qt.CheckState.Unchecked)
 
         # increments the item/selection counters
         self.n_item += 1
