@@ -26,11 +26,12 @@ class DefaultDir(QDialog):
     width_dlg = 600
 
     # array class fields
-    grp_str = ['session', 'trigger', 'configs']
+    grp_str = ['data', 'session', 'trigger', 'configs']
     but_str = ['Update Defaults', 'Reset Defaults', 'Close Window']
 
     # group mapping fields
     grp_map = {
+        "data": "Default Data Directory",
         "session": "Experiment Session Files",
         "trigger": "Trigger Channel Files",
         "configs": "Preprocessing Configuration Files",

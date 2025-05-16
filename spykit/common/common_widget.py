@@ -1,6 +1,7 @@
 # module import
 import os
 import re
+import pickle
 import colorsys
 import textwrap
 import functools
@@ -79,11 +80,10 @@ f_name = {
 
 # parameter/resource folder paths
 resource_dir = os.path.join(os.getcwd(), 'spykit', 'resources').replace('\\', '/')
-data_dir = os.path.join(resource_dir, 'data').replace('\\', '/')
 icon_dir = os.path.join(resource_dir, 'icons').replace('\\', '/')
 para_dir = os.path.join(resource_dir, 'parameters').replace('\\', '/')
 figure_dir = os.path.join(resource_dir, 'figures').replace('\\', '/')
-def_file = os.path.join(resource_dir, 'def_dir.pkl')
+def_file = os.path.join(resource_dir, 'def_dir.pkl').replace('\\', '/')
 
 # icon paths
 icon_path = {
@@ -1473,7 +1473,7 @@ class QFileSpec(QGroupBox):
         self.layout.setContentsMargins(x_gap, x_gap, x_gap, x_gap)
 
         # creates the editbox widget
-        self.h_edit = create_line_edit(None, file_path, align='left', name=name)
+        self.h_edit = create_line_edit(None, str(file_path), align='left', name=name)
         self.layout.addWidget(self.h_edit)
         self.h_edit.setReadOnly(True)
         self.h_edit.setObjectName(name)
@@ -3070,6 +3070,26 @@ def setup_colour_map(n_lvl):
 
     return ColorMap(pos=np.linspace(0.0, 1.0, n_lvl), color=p_rgb)
 
+
+def get_def_dir(d_type):
+    # data directory retrieval
+    if os.path.exists(def_file):
+        # if the default file does exist, then load it
+        with open(def_file, 'rb') as f:
+            def_data = pickle.load(f)
+
+        # data directory retrieval
+        if d_type in def_data:
+            # case is the data directory field does exist
+            return def_data[d_type]
+
+        else:
+            # case is the data directory field does not exist
+            return resource_dir
+
+    else:
+        # case is the default file doesn't exist
+        return resource_dir
 
 # ----------------------------------------------------------------------------------------------------------------------
 

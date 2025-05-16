@@ -720,7 +720,7 @@ class SessionFile(QWidget):
         # sets the initial search path
         f_path = cf.get_multi_dict_value(self.props, p_str)
         if f_path is None:
-            f_path = cw.data_dir
+            f_path = cw.get_def_dir("data")
 
         # runs the file dialog
         file_dlg = cw.FileDialogModal(caption=caption, dir_only=dir_only, f_filter=h_obj.f_mode, f_directory=f_path)
@@ -1566,7 +1566,7 @@ class ExptFolder(QWidget):
         super(ExptFolder, self).__init__(parent)
 
         # initialisations
-        s_dir0 = cw.data_dir
+        s_dir0 = cw.get_def_dir("data")
 
         # class fields
         self.s_dir = None

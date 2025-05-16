@@ -59,6 +59,11 @@ class PreprocessConfig(object):
         self.task_name = []
         self.task_para = {}
 
+        self.prep_opt = {
+            "per_shank": False,
+            "concat_runs": False,
+        }
+
     def add_prep_task(self, p_task, t_para=None, t_name=None):
 
         self.prep_task.append(p_task)
@@ -68,6 +73,13 @@ class PreprocessConfig(object):
 
         if t_name is not None:
             self.task_name.append(t_name)
+
+    def set_prep_opt(self, per_shank, concat_runs):
+
+        self.prep_opt = {
+            "per_shank": per_shank,
+            "concat_runs": concat_runs,
+        }
 
     def setup_config_dicts(self):
 
@@ -85,6 +97,11 @@ class PreprocessConfig(object):
         self.prep_task = []
         self.task_name = []
         self.task_para = {}
+
+        self.prep_opt = {
+            "per_shank": False,
+            "concat_runs": False,
+        }
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -612,7 +629,8 @@ class PreprocessSetup(QDialog):
 
         if self.main_obj is not None:
             # sets the preprocessing options
-            prep_opt = (self.per_shank, self.concat_runs)
+            prep_tab = self.main_obj.info_manager.get_info_tab('preprocess')
+            prep_tab.configs.set_prep_opt(self.per_shank, self.concat_runs)
 
             # retrieves the selected tasks
             prep_task = []
@@ -620,6 +638,7 @@ class PreprocessSetup(QDialog):
                 prep_task.append(self.add_list.item(i).text())
 
             # starts running the pre-processing
+            prep_opt = (self.per_shank, self.concat_runs)
             self.main_obj.setup_preprocessing_worker(prep_task, prep_opt)
 
             # closes the dialog window

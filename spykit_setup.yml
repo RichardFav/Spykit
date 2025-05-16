@@ -13,5 +13,5 @@ dependencies:
   - scikit-image
   - pandas
   - pip:
-    - git+https://github.com/SpikeInterface/spikeinterface.git
-    - git+https://github.com/neuroinformatics-unit/spikewrap.git
+    - spikeinterface
+    - spikewrap

@@ -85,9 +85,9 @@ class MainWindow(QMainWindow):
         # sets the widget style sheets
         self.set_styles()
 
-        # REMOVE ME LATER
-        if os.environ['COMPUTERNAME'] == "DESKTOP-NLLEH0V":
-            self.testing()
+        # # REMOVE ME LATER
+        # if os.environ['COMPUTERNAME'] == "DESKTOP-NLLEH0V":
+        #     self.testing()
 
     # ---------------------------------------------------------------------------
     # Class Widget Setup Functions
@@ -521,7 +521,8 @@ class MainWindow(QMainWindow):
     def testing(self):
 
         # f_file = "C:/Work/Other Projects/EPhys Project/Code/spykit/spykit/resources/session/tiny_session.ssf"
-        f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/tiny_example.ssf"
+        # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/tiny_example.ssf"
+        f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/tiny_example (preprocessed).ssf"
         # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/large_example.ssf"
 
         self.menu_bar.load_session(f_file)
@@ -691,7 +692,8 @@ class MenuBar(QObject):
     def load_session(self, file_info=None):
 
         # prompts the user for the file name (exit if the user cancels)
-        file_info = self.load_file(file_info, 'session')
+        session_dir = cw.get_def_dir("session")
+        file_info = self.load_file(file_info, 'session', def_dir=session_dir)
         if file_info is None:
             return
 
@@ -718,8 +720,10 @@ class MenuBar(QObject):
             prep_info.configs = ses_data['configs']
 
             # runs the preprocessing (if data in config field)
-            if len(prep_info.configs.prep_task):
-                self.main_obj.setup_preprocessing_worker(prep_info.configs, True)
+            prep_task = prep_info.configs.task_name
+            if len(prep_task):
+                prep_opt = tuple(prep_info.configs.prep_opt.values())
+                self.main_obj.setup_preprocessing_worker(prep_task, prep_opt)
                 self.set_menu_enabled_blocks('post-process')
 
         # updates the bad/sync channel status table fields
@@ -736,7 +740,6 @@ class MenuBar(QObject):
         # resets the property/information panel fields
         self.main_obj.prop_manager.set_prop_para(ses_data['prop_para'])
         self.main_obj.info_manager.set_info_para(ses_data['info_para'])
-        print('Session Load Complete!')
 
     def load_trigger(self, file_info=None):
 
@@ -770,7 +773,8 @@ class MenuBar(QObject):
 
         if not use_def:
             # if using a custom path, prompt the user for said path
-            base_dir = self.save_file('trigger', dir_only=True)
+            trigger_dir = cw.get_def_dir("trigger")
+            base_dir = self.load_file('trigger', dir_only=True, def_dir=trigger_dir)
             if base_dir is None:
                 # case is the user cancelled
                 return
@@ -812,7 +816,8 @@ class MenuBar(QObject):
     def load_config(self, file_info=None):
 
         # prompts the user for the file name (exit if the user cancels)
-        file_info = self.load_file(file_info, 'config')
+        config_dir = cw.get_def_dir("configs")
+        file_info = self.load_file(file_info, 'config', def_dir=config_dir)
         if file_info is None:
             return
 
@@ -849,7 +854,8 @@ class MenuBar(QObject):
         }
 
         # saves the session file
-        self.save_file('session', session_data)
+        session_dir = cw.get_def_dir("session")
+        self.save_file('session', session_data, def_dir=session_dir)
 
     def save_trigger(self):
 
@@ -867,7 +873,8 @@ class MenuBar(QObject):
             use_def = u_choice == cf.q_yes
             if not use_def:
                 # if using a custom path, prompt the user for said path
-                base_dir = self.save_file('trigger', dir_only=True)
+                trigger_dir = cw.get_def_dir("trigger")
+                base_dir = self.save_file('trigger', dir_only=True, def_dir=trigger_dir)
                 if base_dir is None:
                     # case is the user cancelled
                     return
@@ -909,7 +916,8 @@ class MenuBar(QObject):
         config_data = {'Finish': "Me!"}
 
         # saves the session file
-        self.save_file('config', config_data)
+        config_dir = cw.get_def_dir("configs")
+        self.save_file('config', config_data, def_dir=config_dir)
 
     def clear_session(self):
 
@@ -997,15 +1005,19 @@ class MenuBar(QObject):
 
         evnt.ignore()
 
-    def load_file(self, file_info, f_type, dir_only=False):
+    def load_file(self, file_info, f_type, dir_only=False, def_dir=None):
 
         # runs the save file dialog (if file path not given)
         if not isinstance(file_info, str):
+            if def_dir is None:
+                def_dir = cw.get_def_dir("data")
+
+            f_mode = cw.f_mode[f_type]
             f_suffix = 'Directory' if dir_only else 'File'
             f_title = 'Select {0} {1}'.format(cw.f_name[f_type], f_suffix)
-            f_mode = cw.f_mode[f_type]
+
             file_dlg = cw.FileDialogModal(
-                None, f_title, f_mode, cw.data_dir, is_save=False, dir_only=dir_only,
+                None, f_title, f_mode, str(def_dir), is_save=False, dir_only=dir_only,
             )
             if file_dlg.exec() == QDialog.DialogCode.Accepted:
                 # if successful, then retrieve the file name
@@ -1017,12 +1029,17 @@ class MenuBar(QObject):
 
         return file_info
 
-    def save_file(self, f_type, output_data=None, dir_only=False):
+    def save_file(self, f_type, output_data=None, dir_only=False, def_dir=None):
+
+        # sets the default directory path (if not provided)
+        if def_dir is None:
+            def_dir = cw.get_def_dir("data")
 
         # runs the save file dialog
         f_mode = None if dir_only else cw.f_mode[f_type]
         f_title = 'Set {0} Output {1}'.format(cw.f_name[f_type], 'Directory' if dir_only else 'File')
-        file_dlg = cw.FileDialogModal(None, f_title, f_mode, cw.data_dir, is_save=True, dir_only=dir_only)
+
+        file_dlg = cw.FileDialogModal(None, f_title, f_mode, str(def_dir), is_save=True, dir_only=dir_only)
         if file_dlg.exec() == QDialog.DialogCode.Accepted:
             # saves the session data to file
             file_path = cf.get_selected_file_path(file_dlg, f_mode)
