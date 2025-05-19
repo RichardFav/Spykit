@@ -25,9 +25,9 @@ from PyQt6.QtWidgets import (QWidget, QHBoxLayout, QGridLayout, QVBoxLayout, QPu
                              QStyleOptionComboBox, QStyle, QProxyStyle, QItemDelegate, QTreeWidget, QTreeWidgetItem,
                              QHeaderView, QStyleOptionButton, QTableWidgetItem, QProgressBar, QSpacerItem)
 from PyQt6.QtCore import (Qt, QRect, QRectF, QMimeData, pyqtSignal, QItemSelectionModel, QAbstractTableModel,
-                          QSizeF, QSize, QObject, QVariant, QTimeLine)
+                          QSizeF, QSize, QObject, QVariant, QTimeLine, QEvent)
 from PyQt6.QtGui import (QFont, QDrag, QCursor, QStandardItemModel, QStandardItem, QPalette, QPixmap,
-                         QTextDocument, QAbstractTextDocumentLayout, QIcon, QColor, QImage)
+                         QTextDocument, QAbstractTextDocumentLayout, QIcon, QColor, QImage, QMouseEvent)
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -2108,11 +2108,13 @@ class QCheckCombo(QComboBox):
 
     def __init__(self, parent=None):
         super(QCheckCombo, self).__init__(parent)
-        self.view().pressed.connect(self.item_selected)
+        self.view().pressed.connect(self.item_press)
+        self.view().clicked.connect(self.item_click)
 
         # field initialisation
         self.n_item = 0
         self.n_sel = 0
+        self.is_updating = False
         self._title = '0 Items Selected'
 
         # sets the widget model and event functions
@@ -2124,15 +2126,35 @@ class QCheckCombo(QComboBox):
 
         self.setModel(self.combo_model)
 
-    def item_selected(self, index):
+    def item_click(self, index):
+
+        if self.is_updating:
+            return
 
         item = self.combo_model.itemFromIndex(index)
         if item.checkState() == Qt.CheckState.Checked:
+            self.n_sel += 1
+        else:
             self.n_sel -= 1
+
+        # runs the clicked item
+        self.reset_title()
+        self.item_clicked.emit(item)
+
+    def item_press(self, index):
+
+        # flag that a manual update is taking place
+        self.is_updating = True
+
+        # updates the checkbox state
+        item = self.combo_model.itemFromIndex(index)
+        if item.checkState() == Qt.CheckState.Checked:
             item.setCheckState(Qt.CheckState.Unchecked)
         else:
-            self.n_sel += 1
             item.setCheckState(Qt.CheckState.Checked)
+
+        # resets the update flag
+        self.is_updating = False
 
         # runs the clicked item
         self.reset_title()
@@ -2231,7 +2253,7 @@ class QLabelCheckCombo(QWidget):
         self.combo_model = QStandardItemModel(self)
 
         # creates the checkbox object
-        self.h_combo = QCheckCombo(None)
+        self.h_combo = QCheckCombo(self)
         self.h_combo.item_clicked.connect(self.check_update)
 
         # adds the widgets to the layout
@@ -2242,7 +2264,7 @@ class QLabelCheckCombo(QWidget):
         self.h_combo.add_item(t, state)
 
     def get_selected_items(self):
-        return self.h_combo.get_selected_items()
+        return [x.strip() for x in self.h_combo.get_selected_items()]
 
     def check_update(self, item):
         self.item_clicked.emit(item)

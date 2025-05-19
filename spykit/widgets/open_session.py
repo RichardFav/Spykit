@@ -1433,6 +1433,10 @@ class SessionProbe(QWidget):
         t_model = cw.PandasModel(self.p_dframe)
         self.channel_table.setModel(t_model)
 
+        # clears the table (if initialising)
+        if is_init:
+            self.table_col.clear()
+
         # adds the items to the combobox
         for i, cl in enumerate(list(self.p_dframe)):
             is_show = cl in self.def_col
@@ -1533,7 +1537,7 @@ class SessionProbe(QWidget):
     def check_table_header(self, item):
 
         is_sel = item.checkState() == Qt.CheckState.Checked
-        i_col = list(self.p_dframe.columns).index(item.text())
+        i_col = list(self.p_dframe.columns).index(item.text().strip())
         self.channel_table.setColumnHidden(i_col, not is_sel)
         self.channel_table.resizeColumnToContents(i_col)
 
