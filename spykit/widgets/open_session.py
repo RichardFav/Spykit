@@ -1,10 +1,11 @@
 # module import
 import os
-import functools
 import time
+import functools
 import numpy as np
-from copy import deepcopy
 from pathlib import Path
+from copy import deepcopy
+from datetime import timedelta
 from bigtree import dataframe_to_tree, tree_to_dict
 
 # custom module import
@@ -975,10 +976,10 @@ class SessionProbe(QWidget):
     def_col = ['contact_ids', 'shank_ids', 'device_channel_indices']
     info_lbl = ['Subject Name', 'Title',
                 'Session Name', 'Manufacturer',
-                'Frame Count', 'Model',
-                'Sampling Freq', 'Shank Count',
-                'Channel Count', 'Spatial Units']
-    combo_lbl = ['Current Run', 'Current Session']
+                'Sample Count', 'Model',
+                'Sampling Freq', 'Channel Count',
+                'Duration', 'Shank Count']
+    combo_lbl = ['Current Run', 'Current Shank']
 
     # widget stylesheets
     table_style = """
@@ -1445,7 +1446,7 @@ class SessionProbe(QWidget):
             if is_init:
                 self.table_col.add_item(cl, is_show)
 
-        # resizes the table columns
+        # resizes the table columns\
         self.channel_table.resizeColumnsToContents()
         self.channel_table.resizeRowsToContents()
 
@@ -1460,14 +1461,14 @@ class SessionProbe(QWidget):
         self.info_lbl_dict = {
             'Subject Name': sub_name,
             'Session Name': ses_name,
-            'Frame Count': self.p_rec.get_num_frames(),
+            'Sample Count': self.p_rec.get_num_frames(),
             'Sampling Freq': self.p_rec.get_sampling_frequency(),
             'Channel Count': self.p.get_contact_count(),
             'Title': self.p.get_title(),
             'Manufacturer': self.p.manufacturer,
             'Model': self.p.model_name,
             'Shank Count': self.p.get_shank_count(),
-            'Spatial Units': self.p.si_units,
+            'Duration': self.calc_duration(),
         }
 
         # information label dictionary
@@ -1553,6 +1554,20 @@ class SessionProbe(QWidget):
             p_dframe = p_dframe.assign(shank_ids='1')
 
         return p_dframe
+
+    def calc_duration(self):
+
+        n_frame = self.p_rec.get_num_frames()
+        s_freq = self.p_rec.get_sampling_frequency()
+        t_dur = n_frame / s_freq
+
+        td = timedelta(seconds=t_dur)
+        t_sp = str(td).split(':')
+        t_sp_s = t_sp[2].split('.')
+        t_sp_ms = str(np.round(float(t_sp[2]) % 1, 3))[2:]
+
+        return '{0}:{1}:{2}.{3}'.format(t_sp[0], t_sp[1], t_sp_s[0], t_sp_ms)
+
 
 # ----------------------------------------------------------------------------------------------------------------------
 
