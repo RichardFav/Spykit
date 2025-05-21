@@ -2345,7 +2345,7 @@ class QProgressWidget(QWidget):
     p_max = 1000
     t_period = 1000
     lbl_width = 170
-    wait_lbl = "Waiting For Process..."
+    wait_lbl = "No Session Data Detected"
 
     prog_style = """
         QProgressBar {
@@ -2362,6 +2362,9 @@ class QProgressWidget(QWidget):
 
     def __init__(self, parent=None, font=None):
         super(QProgressWidget, self).__init__(parent)
+
+        # field retrieval
+        self.session_obj = parent.session_obj
 
         # widget setup
         self.layout = QHBoxLayout(self)
@@ -2393,6 +2396,7 @@ class QProgressWidget(QWidget):
         # sets the label properties
         self.lbl_obj.setContentsMargins(0, x_gap, 0, 0)
         self.lbl_obj.setFixedWidth(self.lbl_width)
+        self.lbl_obj.setToolTip(self.get_next_task())
 
         # sets the progressbar properties
         self.prog_bar.setStyleSheet(self.prog_style)
@@ -2462,7 +2466,8 @@ class QProgressWidget(QWidget):
             self.prog_bar.setValue(0)
 
             # resets the text label
-            self.lbl_obj.setText(self.wait_lbl)
+            self.lbl_obj.setText(self.get_status_text())
+            self.lbl_obj.setToolTip(self.get_next_task())
 
     def toggle_progbar_state(self):
 
@@ -2471,19 +2476,64 @@ class QProgressWidget(QWidget):
 
     def update_message_label(self):
 
+        # initialisations
+        desc_tt = None
+
         match self.n_jobs:
             case 0:
-                # case is only one job is running
-                self.lbl_obj.setText(self.wait_lbl)
+                # case is there are no jobs running
+                desc_txt = self.get_status_text()
+                desc_tt = self.get_next_task()
 
             case 1:
                 # case is only one job is running
-                self.lbl_obj.setText(self.job_desc[0])
+                desc_txt = self.job_desc[0]
+                desc_tt = 'Job #{0}: {1}'.format(1, desc_txt)
 
             case _:
                 # case is only multiple jobs are running
                 desc_txt = '{0} Jobs Currently Running...'.format(self.n_jobs)
-                self.lbl_obj.setText(desc_txt)
+                desc_tt = '\n'.join(['Job #{0}: {1}'.format(i + 1, job) for i, job in enumerate(self.job_desc)])
+
+
+        # updates the text/tooltip strings
+        self.lbl_obj.setText(desc_txt)
+        self.lbl_obj.setToolTip(desc_tt)
+
+
+    def get_status_text(self):
+
+        if self.session_obj.has_pp_runs():
+            # case is data has been preprocessed
+            return 'Session Data Preprocessed'
+
+        elif self.session_obj.has_init:
+            # case is data is loaded
+            return 'Session Data Loaded'
+
+        else:
+            # case is the default case
+            return self.wait_lbl
+
+    def get_next_task(self):
+
+        curr_state = self.get_status_text()
+
+        if self.session_obj.has_pp_runs():
+            # case is preprocessed has been conducted
+            next_task = 'Run Spike Sorting or further Preprocess Session'
+
+
+        elif self.session_obj.session is not None:
+            # case is data is loaded
+            next_task = 'Run Session Preprocessing'
+
+        else:
+            # case is the default case
+            next_task = 'Load Experimental Session'
+
+        # returns the task string
+        return 'Current State: {0}\nNext Task: {1}'.format(curr_state, next_task)
 
 # ----------------------------------------------------------------------------------------------------------------------
 # TABLE WIDGET CUSTOM MODEL CLASSES

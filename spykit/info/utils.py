@@ -86,7 +86,7 @@ class InfoManager(QWidget):
         self.tab_group_table = cw.create_tab_group(self)
 
         # other widget setup
-        self.prog_widget = QProgressWidget(None, cw.font_lbl)
+        self.prog_widget = QProgressWidget(self, cw.font_lbl)
 
         # initialises the class fields
         self.init_class_fields()

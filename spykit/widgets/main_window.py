@@ -136,6 +136,7 @@ class MainWindow(QMainWindow):
 
     def new_session(self):
 
+        # disables the trigger/config files
         if self.has_session:
             # if there is a session already loaded, then clear the main window
             self.clear_session()
@@ -607,6 +608,10 @@ class MenuBar(QObject):
         # adds the file menu items
         self.add_menu_items(h_file_open, p_lbl, cb_fcn, p_str, False)
 
+        # disables the trigger/config files
+        self.set_menu_enabled('load_trigger', False)
+        self.set_menu_enabled('load_config', False)
+
         # ---------------------------------------------------------------------------
         # Save Menubar Item Setup
         # ---------------------------------------------------------------------------
@@ -929,6 +934,7 @@ class MenuBar(QObject):
             return
 
         self.main_obj.session_obj.session = None
+        self.main_obj
 
     def default_dir(self):
 
@@ -1062,11 +1068,11 @@ class MenuBar(QObject):
         match m_type:
             case 'init':
                 # case is initialising
-                menu_off = ['save', 'clear', 'preprocessing', 'clear_prep']
+                menu_off = ['save', 'clear', 'preprocessing', 'clear_prep', 'load_trigger', 'load_config']
 
             case 'session-open':
                 # case is post session opening
-                menu_on = ['save', 'clear', 'preprocessing']
+                menu_on = ['save', 'clear', 'preprocessing', 'load_trigger', 'load_config']
 
             case 'post-process':
                 # case is post preprocessing

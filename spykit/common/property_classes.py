@@ -294,6 +294,23 @@ class SessionWorkBook(QObject):
         # returns the shank name list
         return shank_list
 
+    def get_pp_runs(self):
+
+        if self.session is None:
+            return None
+
+        else:
+            return self.session._s._pp_runs
+
+    def has_pp_runs(self):
+
+        pp_runs = self.get_pp_runs()
+        if pp_runs is None:
+            return 0
+
+        else:
+            return len(self.get_pp_runs()) > 0
+
     def is_channel_removed(self):
 
         ch_run = self.get_avail_channel(use_last_rec=True)
@@ -410,17 +427,10 @@ class SessionWorkBook(QObject):
 
         # resets the preprocessing data type
         _self.prep_type = None
+        has_session = _self.session is not None
 
         # resets the current run/session names
-        if _self.session is None:
-            # case is there is no session set (clearing session)
-            _self.current_run = None
-            _self.current_shank = None
-            _self.current_ses = None
-            _self.channel_data = None
-            _self.session_props = None
-
-        else:
+        if has_session:
             # case is there is a new session set (clearing session)
             _self.current_run = _self.session.get_run_names()[0]
             _self.current_ses = _self.session.get_session_names(0)[0]
@@ -429,6 +439,14 @@ class SessionWorkBook(QObject):
             _probe_current = _self.get_current_recording_probe()
             _self.channel_data = ChannelData(_probe_current)
             _self.session_props = SessionProps(_probe_current)
+
+        else:
+            # case is there is no session set (clearing session)
+            _self.current_run = None
+            _self.current_shank = None
+            _self.current_ses = None
+            _self.channel_data = None
+            _self.session_props = None
 
         # runs the session change signal function
         if _self.has_init:

@@ -434,7 +434,7 @@ class PreprocessSetup(QDialog):
         self.setFixedSize(self.dlg_width, self.dlg_height)
 
         # determines if partial preprocessing has taken place
-        pp_runs = self.main_obj.session_obj.session._s._pp_runs
+        pp_runs = self.main_obj.session_obj.get_pp_runs()
         if len(pp_runs):
             # flag that partial preprocessing has taken place
             self.has_pp = True
