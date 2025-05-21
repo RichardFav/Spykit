@@ -25,6 +25,7 @@ class ThreadWorker(QThread):
         # boolean class fields
         self.is_ok = True
         self.is_running = False
+        self.desc = None
 
     def run(self):
 

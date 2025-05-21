@@ -23,7 +23,8 @@ from PyQt6.QtWidgets import (QWidget, QHBoxLayout, QGridLayout, QVBoxLayout, QPu
                              QFormLayout, QLabel, QCheckBox, QLineEdit, QComboBox, QSizePolicy, QFileDialog,
                              QApplication, QTreeView, QFrame, QRadioButton, QAbstractItemView, QStylePainter,
                              QStyleOptionComboBox, QStyle, QProxyStyle, QItemDelegate, QTreeWidget, QTreeWidgetItem,
-                             QHeaderView, QStyleOptionButton, QTableWidgetItem, QProgressBar, QSpacerItem)
+                             QHeaderView, QStyleOptionButton, QTableWidgetItem, QProgressBar, QSpacerItem,
+                             QStyledItemDelegate)
 from PyQt6.QtCore import (Qt, QRect, QRectF, QMimeData, pyqtSignal, QItemSelectionModel, QAbstractTableModel,
                           QSizeF, QSize, QObject, QVariant, QTimeLine, QEvent)
 from PyQt6.QtGui import (QFont, QDrag, QCursor, QStandardItemModel, QStandardItem, QPalette, QPixmap,
@@ -2507,7 +2508,7 @@ class QProgressWidget(QWidget):
             # case is data has been preprocessed
             return 'Session Data Preprocessed'
 
-        elif self.session_obj.has_init:
+        elif self.session_obj.session is not None:
             # case is data is loaded
             return 'Session Data Loaded'
 
@@ -2522,7 +2523,6 @@ class QProgressWidget(QWidget):
         if self.session_obj.has_pp_runs():
             # case is preprocessed has been conducted
             next_task = 'Run Spike Sorting or further Preprocess Session'
-
 
         elif self.session_obj.session is not None:
             # case is data is loaded
@@ -2886,11 +2886,10 @@ class CheckTableHeader(QHeaderView):
             # resets the sort indicator
             self.setSortIndicator(index, cf.ascend_flag[self.is_ascend])
 
-
 # ----------------------------------------------------------------------------------------------------------------------
 
 """
-    CheckTableHeader: 
+    QTableWidgetItemSortable:
 """
 
 

@@ -258,6 +258,10 @@ class OpenSession(QMainWindow):
             self.session_obj.session = self.session
             time.sleep(0.1)
 
+        elif self.session is not None:
+            # force closes the multi-processing workers (if running)
+            self.session.force_close_workers()
+
         # sets the parent widget to be visible (if available)
         if self.parent() is not None:
             self.parent().setVisible(True)
@@ -514,14 +518,19 @@ class SessionFile(QWidget):
         self.run_table.setFixedHeight(int(self.row_height * self.n_row_table) + 2)
         self.run_table.setHorizontalHeaderLabels(self.col_hdr)
         self.run_table.verticalHeader().setVisible(False)
-        self.run_table.setStyleSheet(self.table_style)
 
         # table column resizing
         self.run_table.resizeRowsToContents()
         self.run_table.resizeColumnToContents(0)
         self.run_table.resizeColumnToContents(1)
         self.run_table.horizontalHeader().setStretchLastSection(True)
-        # self.run_table.setSizePolicy(QSizePolicy(cf.q_exp, cf.q_exp))
+        self.run_table.setSizePolicy(QSizePolicy(cf.q_exp, cf.q_exp))
+        self.run_table.setStyleSheet(self.table_style)
+        self.run_table.itemChanged.connect(self.check_run_table)
+
+        # resets the channel table style
+        table_style = cw.CheckBoxStyle(self.run_table.style())
+        self.run_table.setStyle(table_style)
 
         # updates the dialog properties
         self.is_updating = False
@@ -844,6 +853,7 @@ class SessionFile(QWidget):
 
         # memory allocation
         self.use_run = np.ones(n_run, dtype=bool)
+        chk_flag = Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsSelectable
 
         # enables the open session toolbar item
         h_root = cf.get_parent_widget(self, OpenSession)
@@ -859,13 +869,21 @@ class SessionFile(QWidget):
             self.run_table.setItem(i, 0, h_cell_num)
 
             # creates include checkbox
-            h_cell_chk = cw.create_check_box(None, '', True)
-            h_cell_chk.setStyleSheet("margin-left:50%; margin-right:50%;")
-            self.run_table.setCellWidget(i, 1, h_cell_chk)
+            h_cell_chk = QTableWidgetItem('')
+            h_cell_chk.setFlags(chk_flag)
+            h_cell_chk.setCheckState(cf.chk_state[self.use_run[i]])
+            # h_cell_chk.setTextAlignment(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter)
+            self.run_table.setItem(i, 1, h_cell_chk)
 
-            # sets the checkbox event
-            cb_fcn = functools.partial(self.check_run_table, h_cell_chk, i)
-            h_cell_chk.stateChanged.connect(cb_fcn)
+            # #
+            # h_cell_chk = cw.QCellCheckbox(None, True)
+
+            # # creates the checkbox widget
+            # h_cell_chk = cw.create_check_box(self.run_table, '', True)
+            # h_cell_chk.setStyleSheet("margin-left:50%; margin-right:50%;")
+            # self.run_table.setCellWidget(i, 1, h_cell_chk)
+            # cb_fcn = functools.partial(self.check_run_table, h_cell_chk, i)
+            # h_cell_chk.stateChanged.connect(cb_fcn)
 
             # creates the run name field
             h_cell_run = QTableWidgetItem(run_name[i])
@@ -917,9 +935,9 @@ class SessionFile(QWidget):
 
         self.channel_calc.emit(ch_type, session)
 
-    def check_run_table(self, h_chk, i_row):
+    def check_run_table(self, item):
 
-        self.use_run[i_row] = h_chk.isChecked()
+        self.use_run[item.row()] = item.checkState() == cf.chk_state[True]
         self.main_widget.set_toolbar_props('open', np.any(self.use_run))
 
     def set_styling(self):

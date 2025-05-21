@@ -484,6 +484,7 @@ class SessionObject(QObject):
         self.bad_ch = None
         self.sync_ch = None
         self.prep_obj = None
+        self.t_worker = None
         self.ssf_load = ssf_load
         self.data_init = {'bad': False, 'sync': False}
 
@@ -531,6 +532,7 @@ class SessionObject(QObject):
         time.sleep(0.1)
 
         # memory allocation
+        self.t_worker = []
         n_run = self.get_run_count()
         self.bad_ch = np.empty(n_run, dtype=object)
         self.sync_ch = np.empty(n_run, dtype=object)
@@ -546,12 +548,18 @@ class SessionObject(QObject):
             # sets up the bad channel detection worker
             t_worker_bad = ThreadWorker(None, self.get_bad_channel, (ses_run, i_run))
             t_worker_bad.work_finished.connect(self.post_get_bad_channel)
+            t_worker_bad.desc = 'bad'
             t_worker_bad.start()
 
             # sets up the sync channel detection worker
             t_worker_sync = ThreadWorker(None, self.get_sync_channel, (self._s, i_run))
             t_worker_sync.work_finished.connect(self.post_get_sync_channel)
+            t_worker_sync.desc = 'sync'
             t_worker_sync.start()
+
+            # appends the worker objects
+            self.t_worker.append(t_worker_bad)
+            self.t_worker.append(t_worker_sync)
 
             # updates the signal function
             if self.sig_fcn is not None:
@@ -791,6 +799,13 @@ class SessionObject(QObject):
     def has_prep(self):
 
         return len(self._s._pp_runs) > 0
+
+    def force_close_workers(self):
+
+        for tw in self.t_worker:
+            if tw.is_running:
+                tw.force_quit()
+                self.channel_calc.emit(tw.desc, self)
 
     # ---------------------------------------------------------------------------
     # Protected Properties
