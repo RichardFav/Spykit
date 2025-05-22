@@ -14,7 +14,7 @@ from PyQt6.QtWidgets import QApplication, QTreeWidget, QTreeWidgetItem, QTreeVie
 
 # debugging parameters
 is_testing = False
-test_type = 7
+test_type = 13
 
 data = {"Project A": ["file_a.py", "file_a.txt", "something.xls"],
         "Project B": ["file_b.csv", "photo.jpg"],

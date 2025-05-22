@@ -15,6 +15,7 @@ import spykit.common.common_widget as cw
 import spykit.common.spikeinterface_func as sf
 import spykit.threads.utils as tw
 from spykit.info.preprocess import PreprocessInfoTab, PreprocessSetup
+from spykit.widgets.spike_sorting import SpikeSorting
 import spykit.info.utils as ui
 
 import spikewrap as sw
@@ -96,6 +97,10 @@ class Testing(object):
             case 12:
                 # case is the preprocessing setup test
                 return self.run_preprocess_setup_test()
+
+            case 13:
+                # case is the spike sorting dialog test
+                return self.run_spike_sorting_test()
 
     def run_dialog_test(self, title_str="My Dialog"):
         """
@@ -324,5 +329,12 @@ class Testing(object):
         # creates the button
         h_app = PreprocessSetup()
         h_app.setFixedSize(dlg_width, dlg_height)
+
+        return h_app
+
+    def run_spike_sorting_test(self):
+
+        # creates the button
+        h_app = SpikeSorting()
 
         return h_app

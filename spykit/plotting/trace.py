@@ -874,7 +874,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
             # determines the index of the curve that corresponds to the contact ID
             i_sel_ch = self.session_info.get_selected_channels()
             if i_contact in i_sel_ch:
-                self.i_sel_tr = np.where(i_sel_ch == i_contact)[0][0]
+                self.i_sel_tr = self.session_info.channel_data.i_sort_rev[i_contact]
                 self.highlight_trace.setData(self.x_tr[0, :], self.y_tr[self.i_sel_tr, :])
 
     # ---------------------------------------------------------------------------

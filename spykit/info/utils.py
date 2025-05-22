@@ -582,17 +582,13 @@ class InfoManager(QWidget):
             h_obj = p_tab.tree_prop.findChild(QCheckBox, name=p_name)
             h_obj.setChecked(p_val)
 
-        elif isinstance(p_val, int):
-            h_obj = p_tab.tree_prop.findChild(QSpinBox, name=p_name)
-            h_obj.setValue(p_val)
-
-        elif isinstance(p_val, float):
-            h_obj = p_tab.tree_prop.findChild(QDoubleSpinBox, name=p_name)
-            h_obj.setValue(p_val)
-
         elif isinstance(p_val, str):
             h_obj = p_tab.tree_prop.findChild(QComboBox, name=p_name)
             h_obj.setCurrentText(p_val)
+
+        else:
+            h_obj = p_tab.tree_prop.findChild(QLineEdit, name=p_name)
+            h_obj.setText('%g' % p_val)
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
@@ -863,9 +859,6 @@ class InfoWidgetPara(InfoWidget, SearchMixin):
 
     def create_para_object(self, layout, p_str, p_val, p_type, p_str_p):
 
-        # retrieves the sort parameter
-        is_sort = deepcopy(self.is_sort_para)
-
         match p_type:
             case 'tab':
                 # case is a tab widget
@@ -924,7 +917,7 @@ class InfoWidgetPara(InfoWidget, SearchMixin):
                 layout.addRow(obj_edit)
 
                 # sets up the label/editbox slot function
-                cb_fcn = pfcn(self.prop_update, p_str_p, is_sort)
+                cb_fcn = pfcn(self.prop_update, p_str_p)
                 obj_edit.connect(cb_fcn)
 
             # case is a combobox
@@ -936,7 +929,7 @@ class InfoWidgetPara(InfoWidget, SearchMixin):
                 layout.addRow(obj_combo)
 
                 # sets up the slot function
-                cb_fcn = pfcn(self.prop_update, p_str_p, is_sort)
+                cb_fcn = pfcn(self.prop_update, p_str_p)
                 obj_combo.connect(cb_fcn)
                 obj_combo.obj_lbl.setStyleSheet('padding-top: 3 px;')
 
@@ -951,59 +944,57 @@ class InfoWidgetPara(InfoWidget, SearchMixin):
                 layout.addRow(obj_checkbox)
 
                 # sets up the slot function
-                cb_fcn = pfcn(self.prop_update, p_str_p, is_sort, obj_checkbox)
+                cb_fcn = pfcn(self.prop_update, p_str_p, obj_checkbox)
                 obj_checkbox.stateChanged.connect(cb_fcn)
 
-    def prop_update(self, p_str, is_sort, h_obj):
+    def prop_update(self, p_str, h_obj):
 
         # if manually updating elsewhere, then exit
         if self.is_updating:
             return
 
         if isinstance(h_obj, QCheckBox):
-            self.check_prop_update(h_obj, is_sort, p_str)
+            self.check_prop_update(h_obj, p_str)
 
         elif isinstance(h_obj, QLineEdit):
-            self.edit_prop_update(h_obj, is_sort, p_str)
+            self.edit_prop_update(h_obj, p_str)
 
         elif isinstance(h_obj, QComboBox):
-            self.combo_prop_update(h_obj, is_sort, p_str)
+            self.combo_prop_update(h_obj, p_str)
 
         elif isinstance(h_obj, QSpinBox):
-            self.spinbox_prop_update(h_obj, is_sort, p_str)
+            self.spinbox_prop_update(h_obj, p_str)
 
         elif isinstance(h_obj, QDoubleSpinBox):
-            self.doublespinbox_prop_update(h_obj, is_sort, p_str)
+            self.doublespinbox_prop_update(h_obj, p_str)
 
         # flag that the property has been updated
         self.prop_updated.emit()
 
-    def check_prop_update(self, h_obj, is_sort, p_str):
+    def check_prop_update(self, h_obj, p_str):
 
-        p = self.get_prop_field(is_sort)
-        cf.set_multi_dict_value(p, p_str, h_obj.isChecked())
+        cf.set_multi_dict_value(self.p_props, p_str, h_obj.isChecked())
 
-    def edit_prop_update(self, h_obj, is_sort, p_str):
+    def edit_prop_update(self, h_obj, p_str):
 
         # field retrieval
         str_para = []
         nw_val = h_obj.text()
-        p = self.get_prop_field(is_sort)
 
         if p_str in str_para:
             # case is a string field
-            cf.set_multi_dict_value(p, p_str, nw_val)
+            cf.set_multi_dict_value(self.p_props, p_str, nw_val)
 
         else:
             # determines if the new value is valid
             chk_val = cf.check_edit_num(nw_val, min_val=0)
             if chk_val[1] is None:
                 # case is the value is valid
-                cf.set_multi_dict_value(p, p_str, chk_val[0])
+                cf.set_multi_dict_value(self.p_props, p_str, chk_val[0])
 
             else:
                 # otherwise, reset the previous value
-                p_val_pr = p[p_str[0]][p_str[1]]
+                p_val_pr = self.p_props[p_str[0]][p_str[1]]
                 if (p_val_pr is None) or isinstance(p_val_pr, str):
                     # case is the parameter is empty
                     h_obj.setText('')
@@ -1012,27 +1003,19 @@ class InfoWidgetPara(InfoWidget, SearchMixin):
                     # otherwise, update the numeric string
                     h_obj.setText('%g' % p_val_pr)
 
-    def combo_prop_update(self, h_obj, is_sort, p_str):
+    def combo_prop_update(self, h_obj, p_str):
 
-        p = self.get_prop_field(is_sort)
-        cf.set_multi_dict_value(p, p_str, h_obj.currentText())
+        cf.set_multi_dict_value(self.p_props, p_str, h_obj.currentText())
 
-    def spinbox_prop_update(self, h_obj, is_sort, p_str):
+    def spinbox_prop_update(self, h_obj, p_str):
 
-        p = self.get_prop_field(is_sort)
         spin_val = cf.check_edit_num(h_obj.text(), is_int=True)
-        cf.set_multi_dict_value(p, p_str, spin_val[0])
+        cf.set_multi_dict_value(self.p_props, p_str, spin_val[0])
 
-    def doublespinbox_prop_update(self, h_obj, is_sort, p_str):
+    def doublespinbox_prop_update(self, h_obj, p_str):
 
-        p = self.get_prop_field(is_sort)
         spin_val = cf.check_edit_num(h_obj.text(), is_int=False)
-        cf.set_multi_dict_value(p, p_str, spin_val[0])
-
-    def sort_tab_change(self):
-
-        i_tab_nw = self.tab_group_sort.currentIndex()
-        self.s_type = list(self.s_prop_flds)[i_tab_nw]
+        cf.set_multi_dict_value(self.p_props, p_str, spin_val[0])
 
     def node_value_update(self):
 
@@ -1071,21 +1054,11 @@ class InfoWidgetPara(InfoWidget, SearchMixin):
         self.h_grp[group_str] = item
         self.grp_name.append(item.text(0))
 
-    # ---------------------------------------------------------------------------
-    # Static Methods
-    # ---------------------------------------------------------------------------
-
-    @staticmethod
-    def create_para_field(name, obj_type, value, p_fld=None, p_list=None, p_misc=None, ch_fld=None):
-
-        return {'name': name, 'type': obj_type, 'value': value, 'p_fld': p_fld,
-                'p_list': p_list, 'p_misc': p_misc, 'ch_fld': ch_fld}
-
     def create_child_tree_item(self, props, p_name):
 
         # initialisations
         lbl_str = '{0}'.format(props['name'])
-        cb_fcn_base = pfcn(self.prop_update, p_name, False)
+        cb_fcn_base = pfcn(self.prop_update, p_name)
 
         # creates the tree widget item
         item_ch = QTreeWidgetItem(None)
@@ -1096,35 +1069,13 @@ class InfoWidgetPara(InfoWidget, SearchMixin):
                 # case is a lineedit
                 p_value = props['value']
 
-                # calculates the parameter spinbox step value
-                if p_value == 0:
-                    # case is the parameter value is zero
-                    step = 1
-
-                else:
-                    # case is the parameter value is non-zero
-                    step = 10 ** np.floor(np.log10(np.abs(p_value)) - 1)
-
-                # creates the spinbox based on the parameter type
-                if isinstance(props['value'], int):
-                    # case is the parameter is an integer
-                    h_obj = QSpinBox()
-                    step = int(np.max([1, step]))
-
-                else:
-                    # case is the parameter is a float
-                    h_obj = QDoubleSpinBox()
-
-                # sets the widget properties
-                h_obj.setRange(-1000, 1000)
-                h_obj.setValue(props['value'])
+                # creates the lineedit widget
+                h_obj = cw.create_line_edit(None, str(p_value))
                 h_obj.setObjectName(p_name[-1])
-                h_obj.setSingleStep(step)
 
                 # sets the object callback functions
                 cb_fcn = pfcn(cb_fcn_base, h_obj)
                 h_obj.editingFinished.connect(cb_fcn)
-                h_obj.textChanged.connect(cb_fcn)
 
             case 'combobox':
                 # case is a comboboxW
@@ -1168,6 +1119,16 @@ class InfoWidgetPara(InfoWidget, SearchMixin):
 
         # returns the objects
         return item_ch, h_obj
+
+    # ---------------------------------------------------------------------------
+    # Static Methods
+    # ---------------------------------------------------------------------------
+
+    @staticmethod
+    def create_para_field(name, obj_type, value, p_fld=None, p_list=None, p_misc=None, ch_fld=None):
+
+        return {'name': name, 'type': obj_type, 'value': value, 'p_fld': p_fld,
+                'p_list': p_list, 'p_misc': p_misc, 'ch_fld': ch_fld}
 
 # ----------------------------------------------------------------------------------------------------------------------
 

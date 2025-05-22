@@ -1,4 +1,4 @@
-# custom module imports
+    # custom module imports
 import time
 
 import numpy as np
@@ -122,16 +122,10 @@ class PreprocessInfoTab(InfoWidgetPara):
         self.is_channel_removed = None
         self.configs = PreprocessConfig()
 
-        # sorting group widgets
-        self.frame_sort = QFrame(self)
-        self.tab_group_sort = QTabWidget(self)
-        self.layout_sort = QVBoxLayout()
-
         # initialises the major widget groups
         self.setup_prop_fields()
         self.init_filter_edit()
         self.init_property_frame()
-        self.init_sorting_frame()
 
     # ---------------------------------------------------------------------------
     # Class Property Widget Setup Functions
@@ -203,69 +197,6 @@ class PreprocessInfoTab(InfoWidgetPara):
             # sets the children properties
             for k, p in pp_str[pp_k].items():
                 self.p_props[pp_k][k] = p['value']
-
-        # -----------------------------------------------------------------------
-        # Sorting Properties
-        # -----------------------------------------------------------------------
-
-        # sets up the sorting tab parameter fields
-        pp_k2 = {'car': self.create_para_field('Use Common Avg Ref', 'checkbox', False, p_fld='kilosort2'),
-                 'freq_min': self.create_para_field('Min Frequency', 'edit', 150, p_fld='kilosort2')}
-        pp_k2_5 = {'car': self.create_para_field('Use Common Avg Ref', 'checkbox', False, p_fld='kilosort2_5'),
-                   'freq_min': self.create_para_field('Min Frequency', 'edit', 150, p_fld='kilosort2_5'), }
-        pp_k3 = {'car': self.create_para_field('Use Common Avg Ref', 'checkbox', False, p_fld='kilosort3'),
-                 'freq_min': self.create_para_field('Min Frequency', 'edit', 300, p_fld='kilosort3'), }
-        pp_m5 = {'scheme': self.create_para_field('Scheme', 'edit', 2, p_fld='mountainsort5'),
-                 'filter': self.create_para_field('Filter', 'checkbox', False, p_fld='mountainsort5'), }
-
-        # stores the sorting properties
-        self.s_prop_flds = {
-            'kilosort2': {'name': 'KiloSort 2', 'props': pp_k2},
-            'kilosort2_5': {'name': 'KiloSort 2.5', 'props': pp_k2_5},
-            'kilosort3': {'name': 'KiloSort 3', 'props': pp_k3},
-            'mountainsort5': {'name': 'MountainSort 5', 'props': pp_m5},
-        }
-
-        # initialises the fields for all properties
-        self.is_sort_para = True
-        for kp, vp in self.s_prop_flds.items():
-            # sets up the parent field
-            self.s_props[kp] = {}
-
-            # sets the children properties
-            for k, p in vp['props'].items():
-                self.s_props[kp][k] = p['value']
-
-    def init_sorting_frame(self):
-
-        # initialisations
-        self.s_type = 'mountainsort5'
-
-        # sets the frame properties
-        self.frame_sort.setLineWidth(1)
-        self.frame_sort.setFixedHeight(120)
-        self.frame_sort.setFrameStyle(QFrame.Shadow.Plain | QFrame.Shape.WinPanel)
-        # self.frame_sort.setStyleSheet("border: 1px solid;")
-
-        # adds the tab group to the layout
-        self.frame_sort.setLayout(self.layout_sort)
-        self.layout_sort.setSpacing(0)
-        self.layout_sort.setContentsMargins(0, 0, 0, 0)
-        self.layout_sort.addWidget(self.tab_group_sort)
-
-        # creates the tab group object
-        for k, v in self.s_prop_flds.items():
-            tab_layout = QVBoxLayout()
-            obj_tab = self.create_para_object(tab_layout, k, v['props'], 'tab', [k])
-            self.tab_group_sort.addTab(obj_tab, v['name'])
-
-        # tab-group change callback function
-        i_tab0 = list(self.s_props.keys()).index(self.s_type)
-        self.tab_group_sort.setCurrentIndex(i_tab0)
-        self.tab_group_sort.currentChanged.connect(self.sort_tab_change)
-
-        # adds the frame to the parent widget
-        self.tab_layout.addRow(self.frame_sort)
 
     # ---------------------------------------------------------------------------
     # Preprocessing Config Functions

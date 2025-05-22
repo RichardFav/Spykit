@@ -137,6 +137,24 @@ class ProbePlot(PlotWidget):
         self.sub_view.reset_axes_limits(False, i_shank=0)
         self.probe_dframe = self.probe.to_dataframe(complete=True)
 
+    def setup_label_text(self, i_channel):
+
+        probe = self.session_info.get_raw_recording_probe()
+        loc_ch = self.session_info.get_channel_location(i_channel, probe)
+        status_ch = self.session_info.get_channel_status(i_channel)
+        shank_id = self.session_info.get_shank_id(i_channel)
+
+        lbl_str = "Channel #{0}".format(i_channel)
+        lbl_str += "\nDepth = {0}".format(loc_ch[1])
+        lbl_str += "\nStatus = {0}".format(status_ch)
+        lbl_str += "\nShank ID = {0}".format(shank_id)
+
+        return lbl_str
+
+    def setup_init_roi_limits(self):
+
+        a = 1
+
     # ---------------------------------------------------------------------------
     # Inset View Mouse Event Functions
     # ---------------------------------------------------------------------------
@@ -229,19 +247,6 @@ class ProbePlot(PlotWidget):
     # Widget Event Functions
     # ---------------------------------------------------------------------------
 
-    def main_roi_moved(self, p_pos):
-
-        # updates the x-axis limits
-        self.sub_view.x_lim[0] = p_pos[0]
-        self.sub_view.x_lim[1] = self.sub_view.x_lim[0] + p_pos[2].x()
-
-        # updates the y-axis limits
-        self.sub_view.y_lim[0] = p_pos[1]
-        self.sub_view.y_lim[1] = self.sub_view.y_lim[0] + p_pos[2].y()
-
-        # resets the axis limits
-        self.sub_view.reset_axes_limits(False)
-
     def view_mouse_move(self, is_main_view, p_pos, map_coord=True):
 
         # view-dependent field retrieval
@@ -324,52 +329,18 @@ class ProbePlot(PlotWidget):
             # disables the trace highlight
             self.reset_highlight.emit(False, None)
 
-    def convert_coords(self, is_main, is_out=False):
+    def main_roi_moved(self, p_pos):
 
-        # initialisations
-        vb = self.v_box[1 - int(is_main), 0]
+        # updates the x-axis limits
+        self.sub_view.x_lim[0] = p_pos[0]
+        self.sub_view.x_lim[1] = self.sub_view.x_lim[0] + p_pos[2].x()
 
-        # label bounding box retrieval
-        try:
-            if is_main:
-                # case is the main view outside label
-                if is_out:
-                    lbl_bb = self.main_view.out_label.boundingRect()
-                else:
-                    lbl_bb = self.main_view.ch_label.boundingRect()
+        # updates the y-axis limits
+        self.sub_view.y_lim[0] = p_pos[1]
+        self.sub_view.y_lim[1] = self.sub_view.y_lim[0] + p_pos[2].y()
 
-            else:
-                if is_out:
-                    # case is the sub view outside label
-                    lbl_bb = self.sub_view.out_label.boundingRect()
-                else:
-                    # case is the sub view outside label
-                    lbl_bb = self.sub_view.ch_label.boundingRect()
-
-        except AttributeError:
-            return None, None
-
-        # retrieves the converted coordinates
-        bb_rect = vb.mapSceneToView(lbl_bb).boundingRect()
-        return bb_rect.width(), bb_rect.height()
-
-    def setup_label_text(self, i_channel):
-
-        probe = self.session_info.get_raw_recording_probe()
-        loc_ch = self.session_info.get_channel_location(i_channel, probe)
-        status_ch = self.session_info.get_channel_status(i_channel)
-        shank_id = self.session_info.get_shank_id(i_channel)
-
-        lbl_str = "Channel #{0}".format(i_channel)
-        lbl_str += "\nDepth = {0}".format(loc_ch[1])
-        lbl_str += "\nStatus = {0}".format(status_ch)
-        lbl_str += "\nShank ID = {0}".format(shank_id)
-
-        return lbl_str
-
-    def setup_init_roi_limits(self):
-
-        a = 1
+        # resets the axis limits
+        self.sub_view.reset_axes_limits(False)
 
     # ---------------------------------------------------------------------------
     # Channel Highlight Functions
@@ -445,6 +416,35 @@ class ProbePlot(PlotWidget):
         # clears the main/inset probe plot views
         self.main_view.clear_probe_plot()
         self.sub_view.clear_probe_plot()
+
+    def convert_coords(self, is_main, is_out=False):
+
+        # initialisations
+        vb = self.v_box[1 - int(is_main), 0]
+
+        # label bounding box retrieval
+        try:
+            if is_main:
+                # case is the main view outside label
+                if is_out:
+                    lbl_bb = self.main_view.out_label.boundingRect()
+                else:
+                    lbl_bb = self.main_view.ch_label.boundingRect()
+
+            else:
+                if is_out:
+                    # case is the sub view outside label
+                    lbl_bb = self.sub_view.out_label.boundingRect()
+                else:
+                    # case is the sub view outside label
+                    lbl_bb = self.sub_view.ch_label.boundingRect()
+
+        except AttributeError:
+            return None, None
+
+        # retrieves the converted coordinates
+        bb_rect = vb.mapSceneToView(lbl_bb).boundingRect()
+        return bb_rect.width(), bb_rect.height()
 
     # ---------------------------------------------------------------------------
     # Static Methods
@@ -650,6 +650,23 @@ class ProbeView(GraphicsObject):
         self.p.end()
         self.update()
 
+    # ---------------------------------------------------------------------------
+    # Channel Highlight Functions
+    # ---------------------------------------------------------------------------
+
+    def reset_highlight_pos(self, p_pos):
+
+        self.ch_highlight.setPos(p_pos)
+
+    # ---------------------------------------------------------------------------
+    # ROI Functions
+    # ---------------------------------------------------------------------------
+
+    def roi_moved(self, h_roi):
+
+        x0, y0, p_sz = h_roi.x(), h_roi.y(), h_roi.size()
+        self.update_roi.emit([x0, y0, p_sz])
+
     def get_inset_roi_prop(self, is_full, x_lim_s=None, y_lim_s=None):
 
         if x_lim_s is None:
@@ -691,62 +708,8 @@ class ProbeView(GraphicsObject):
         self.parent().addItem(self.roi)
 
     # ---------------------------------------------------------------------------
-    # Channel Highlight Functions
+    # Axes Limit Functions
     # ---------------------------------------------------------------------------
-
-    def reset_highlight_pos(self, p_pos):
-
-        self.ch_highlight.setPos(p_pos)
-
-    # ---------------------------------------------------------------------------
-    # ROI Movement Functions
-    # ---------------------------------------------------------------------------
-
-    def roi_moved(self, h_roi):
-
-        x0, y0, p_sz = h_roi.x(), h_roi.y(), h_roi.size()
-        self.update_roi.emit([x0, y0, p_sz])
-
-    # ---------------------------------------------------------------------------
-    # Miscellaneous Functions
-    # ---------------------------------------------------------------------------
-
-    def set_out_line_visible(self, is_show):
-
-        self.show_out = is_show
-        self.out_line.setVisible(self.show_out)
-
-    def reset_out_line(self, y_out_new):
-
-        # updates the out location
-        self.y_out = y_out_new
-
-        # creates the outside line (if not created)
-        if self.out_line is None:
-            # creates the outside line object
-            self.out_line = PlotCurveItem(pen=self.l_pen_out)
-            self.main_obj.addItem(self.out_line)
-
-            # sets the label properties
-            self.out_label = TextItem(color=(0, 0, 0, 255), fill=(255, 255, 255, 255), ensureInBounds=True)
-            self.out_label.setVisible(False)
-            self.main_obj.addItem(self.out_label)
-
-            # sets the label properties
-            self.ch_label = TextItem(color=(0, 0, 0, 255), fill=(255, 255, 255, 255), ensureInBounds=True)
-            self.ch_label.setVisible(False)
-            self.main_obj.addItem(self.ch_label)
-
-        # updates the line location
-        self.out_line.clear()
-        if self.y_out is not None:
-            # updates the output label text
-            self.out_label.setText('Out Location = {0}'.format(self.y_out))
-            self.out_line.setVisible(self.show_out)
-            self.out_label.update()
-
-            # updates the line data
-            self.out_line.setData(self.x_lim_full, [self.y_out, self.y_out])
 
     def reset_axes_limits(self, is_full=True, i_shank=None):
 
@@ -815,6 +778,47 @@ class ProbeView(GraphicsObject):
             _x_lim, _y_lim = cf.list_add([0, dx_lim], x_lim0[0]), y_lim0
 
         return _x_lim, _y_lim
+
+    # ---------------------------------------------------------------------------
+    # Miscellaneous Functions
+    # ---------------------------------------------------------------------------
+
+    def set_out_line_visible(self, is_show):
+
+        self.show_out = is_show
+        self.out_line.setVisible(self.show_out)
+
+    def reset_out_line(self, y_out_new):
+
+        # updates the out location
+        self.y_out = y_out_new
+
+        # creates the outside line (if not created)
+        if self.out_line is None:
+            # creates the outside line object
+            self.out_line = PlotCurveItem(pen=self.l_pen_out)
+            self.main_obj.addItem(self.out_line)
+
+            # sets the label properties
+            self.out_label = TextItem(color=(0, 0, 0, 255), fill=(255, 255, 255, 255), ensureInBounds=True)
+            self.out_label.setVisible(False)
+            self.main_obj.addItem(self.out_label)
+
+            # sets the label properties
+            self.ch_label = TextItem(color=(0, 0, 0, 255), fill=(255, 255, 255, 255), ensureInBounds=True)
+            self.ch_label.setVisible(False)
+            self.main_obj.addItem(self.ch_label)
+
+        # updates the line location
+        self.out_line.clear()
+        if self.y_out is not None:
+            # updates the output label text
+            self.out_label.setText('Out Location = {0}'.format(self.y_out))
+            self.out_line.setVisible(self.show_out)
+            self.out_label.update()
+
+            # updates the line data
+            self.out_line.setData(self.x_lim_full, [self.y_out, self.y_out])
 
     def get_init_roi_limits(self):
 

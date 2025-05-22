@@ -60,9 +60,9 @@ class StatusInfoTab(InfoWidgetPara):
         self.t_worker = None
         self.p_props0 = deepcopy(self.p_props)
 
-        # special property fields
-        self.spin_neighbor_count = self.findChild(QSpinBox, name='n_neighbors')
-        self.spin_neighbor_count.setSingleStep(2)
+        # # special property fields
+        # self.spin_neighbor_count = self.findChild(QSpinBox, name='n_neighbors')
+        # self.spin_neighbor_count.setSingleStep(2)
 
         #
         self.prop_updated.connect(self.status_prop_updated)
