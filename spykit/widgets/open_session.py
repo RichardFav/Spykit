@@ -190,6 +190,9 @@ class OpenSession(QMainWindow):
         # loads the current session
         self.file.load_session()
 
+        # disables the recording data/table run objects
+        self.file.set_panel_props(False)
+
         # field retrieval
         run_names = self.session.get_run_names()
         ses_names = self.session.get_session_names(run_names[0])
@@ -214,6 +217,9 @@ class OpenSession(QMainWindow):
         self.is_changed = True
         self.set_toolbar_props('restart', False)
         self.file.expt_folder.button_reset_click()
+
+        # disables the recording data/table run objects
+        self.file.set_panel_props(True)
 
         # clears the probe fields (if set)
         if self.probe.has_probe:
@@ -373,6 +379,7 @@ class SessionFile(QWidget):
 
     table_font = cw.create_font_obj(size=8)
     table_hdr_font = cw.create_font_obj(size=8, is_bold=True, font_weight=QFont.Weight.Bold)
+    chk_flag = Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsSelectable
 
     def __init__(self, parent=None):
         super(SessionFile, self).__init__(parent)
@@ -843,6 +850,9 @@ class SessionFile(QWidget):
 
     def reset_session_run_table(self, get_run_names):
 
+        # resets the update flag
+        self.is_updating = True
+
         # clears the table
         self.run_table.clear()
         run_name = self.get_session_run_names() if get_run_names else []
@@ -853,11 +863,16 @@ class SessionFile(QWidget):
 
         # memory allocation
         self.use_run = np.ones(n_run, dtype=bool)
-        chk_flag = Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsSelectable
 
         # enables the open session toolbar item
         h_root = cf.get_parent_widget(self, OpenSession)
         h_root.set_toolbar_props('open', True)
+
+        # resets the header font
+        self.run_table.setHorizontalHeaderLabels(self.col_hdr)
+        for i_col in range(self.run_table.columnCount()):
+            item_hdr = self.run_table.horizontalHeaderItem(i_col)
+            item_hdr.setFont(self.table_hdr_font)
 
         # creates the new table widgets
         for i in range(n_run):
@@ -870,20 +885,9 @@ class SessionFile(QWidget):
 
             # creates include checkbox
             h_cell_chk = QTableWidgetItem('')
-            h_cell_chk.setFlags(chk_flag)
+            h_cell_chk.setFlags(self.chk_flag)
             h_cell_chk.setCheckState(cf.chk_state[self.use_run[i]])
-            # h_cell_chk.setTextAlignment(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter)
             self.run_table.setItem(i, 1, h_cell_chk)
-
-            # #
-            # h_cell_chk = cw.QCellCheckbox(None, True)
-
-            # # creates the checkbox widget
-            # h_cell_chk = cw.create_check_box(self.run_table, '', True)
-            # h_cell_chk.setStyleSheet("margin-left:50%; margin-right:50%;")
-            # self.run_table.setCellWidget(i, 1, h_cell_chk)
-            # cb_fcn = functools.partial(self.check_run_table, h_cell_chk, i)
-            # h_cell_chk.stateChanged.connect(cb_fcn)
 
             # creates the run name field
             h_cell_run = QTableWidgetItem(run_name[i])
@@ -892,15 +896,8 @@ class SessionFile(QWidget):
             self.run_table.setItem(i, 2, h_cell_run)
             self.run_table.setRowHeight(i, self.row_height)
 
-        # resets the header font
-        self.run_table.setHorizontalHeaderLabels(self.col_hdr)
-        for i_col in range(self.run_table.columnCount()):
-            item_hdr = self.run_table.horizontalHeaderItem(i_col)
-            item_hdr.setFont(self.table_hdr_font)
-
-        # resizes the table row/columns
-        self.run_table.resizeRowsToContents()
-        self.run_table.resizeColumnsToContents()
+        # resets the update flag
+        self.is_updating = False
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
@@ -937,8 +934,9 @@ class SessionFile(QWidget):
 
     def check_run_table(self, item):
 
-        self.use_run[item.row()] = item.checkState() == cf.chk_state[True]
-        self.main_widget.set_toolbar_props('open', np.any(self.use_run))
+        if not self.is_updating:
+            self.use_run[item.row()] = item.checkState() == cf.chk_state[True]
+            self.main_widget.set_toolbar_props('open', np.any(self.use_run))
 
     def set_styling(self):
 
@@ -960,6 +958,11 @@ class SessionFile(QWidget):
         #         border: 1px solid;
         #     }
         # """)
+
+    def set_panel_props(self, state):
+
+        self.run_table.setEnabled(state)
+        self.group_panel.setEnabled(state)
 
     # ---------------------------------------------------------------------------
     # Static Methods

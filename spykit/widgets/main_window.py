@@ -590,10 +590,12 @@ class MenuBar(QObject):
         # initialisations
         p_str = ['new', 'open', 'save', None, 'clear', 'default', None, 'close']
         p_lbl = ['New...', 'Load...', 'Save...', None, 'Clear Session', 'Default Directories', None, 'Close Window']
-        cb_fcn = [self.new_session, None, None, None, self.clear_session, self.default_dir, None, self.close_window]
+        has_ch = [False, True, True, False, False, False, False, False]
+        cb_fcn = [self.new_session, self.load_session, self.save_session, None,
+                  self.clear_session, self.default_dir, None, self.close_window]
 
         # adds the file menu items
-        self.add_menu_items(h_menu_file, p_lbl, cb_fcn, p_str, True)
+        self.add_menu_items(h_menu_file, p_lbl, cb_fcn, p_str, True, has_ch=has_ch)
 
         # ---------------------------------------------------------------------------
         # Save Menubar Item Setup
@@ -651,10 +653,13 @@ class MenuBar(QObject):
 
         return h_menu
 
-    def add_menu_items(self, h_menu_parent, p_lbl, cb_fcn, p_str, add_tool):
+    def add_menu_items(self, h_menu_parent, p_lbl, cb_fcn, p_str, add_tool, has_ch=None):
+
+        if has_ch is None:
+            has_ch = np.zeros(len(p_lbl), dtype=bool)
 
         # menu/toolbar item creation
-        for pl, ps, cbf in zip(p_lbl, p_str, cb_fcn):
+        for pl, ps, cbf, hc in zip(p_lbl, p_str, cb_fcn, has_ch):
             if ps is None:
                 # adds separators
                 h_menu_parent.addSeparator()
@@ -667,19 +672,22 @@ class MenuBar(QObject):
                 # creates the menu item
                 if add_tool and (cbf is not None):
                     if ps in cw.icon_path:
-                        h_tool = QAction(QIcon(cw.icon_path[ps]), pl, self)
-                        h_tool.triggered.connect(cbf)
-                        h_tool.setObjectName(ps)
+                        h_icon = QIcon(cw.icon_path[ps])
+                        h_tool = QAction(h_icon, pl, self)
                         self.tool_bar.addAction(h_tool)
 
-                if cbf is not None:
+                        h_tool.setParent(self.tool_bar)
+                        h_tool.triggered.connect(cbf)
+                        h_tool.setObjectName(ps)
+
+                if hc:
+                    h_menu = QMenu(pl, h_menu_parent)
+                    h_menu_parent.addMenu(h_menu)
+
+                else:
                     h_menu = QAction(pl, h_menu_parent)
                     h_menu_parent.addAction(h_menu)
                     h_menu.triggered.connect(cbf)
-
-                else:
-                    h_menu = QMenu(pl, h_menu_parent)
-                    h_menu_parent.addMenu(h_menu)
 
                 # creates the menu item
                 h_menu.setParent(h_menu_parent)
@@ -1003,9 +1011,17 @@ class MenuBar(QObject):
 
         self.get_menu_item(menu_name).setEnabled(state)
 
+    def set_tool_enabled(self, tool_name, state):
+
+        self.get_tool_item(tool_name).setEnabled(state)
+
     def get_menu_item(self, menu_name):
 
         return self.menu_bar.findChild((QWidget, QAction, QMenu), name=menu_name)
+
+    def get_tool_item(self, tool_name):
+
+        return self.tool_bar.findChild(QAction, name=tool_name)
 
     def context_menu_event(self, evnt):
 
@@ -1064,14 +1080,17 @@ class MenuBar(QObject):
 
         # initialisations
         menu_on, menu_off = [], []
+        tool_on, tool_off = [], []
 
         match m_type:
             case 'init':
                 # case is initialising
+                tool_off = ['save']
                 menu_off = ['save', 'clear', 'preprocessing', 'clear_prep', 'load_trigger', 'load_config']
 
             case 'session-open':
                 # case is post session opening
+                tool_on = ['save']
                 menu_on = ['save', 'clear', 'preprocessing', 'load_trigger', 'load_config']
 
             case 'post-process':
@@ -1081,6 +1100,8 @@ class MenuBar(QObject):
         # resets the menu enabled properties
         [self.set_menu_enabled(m_on, True) for m_on in menu_on]
         [self.set_menu_enabled(m_off, False) for m_off in menu_off]
+        [self.set_tool_enabled(t_on, True) for t_on in tool_on]
+        [self.set_tool_enabled(t_off, False) for t_off in tool_off]
 
     def get_sync_output_dir(self, rr, output_dir_base):
 
