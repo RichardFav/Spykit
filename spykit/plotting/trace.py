@@ -123,6 +123,7 @@ class TraceLabelMixin:
 class TracePlot(TraceLabelMixin, PlotWidget):
     # pyqtsignal functions
     hide_plot = pyqtSignal()
+    reset_highlight = pyqtSignal(object)
 
     # parameters
     pw_y = 1.05
@@ -215,6 +216,10 @@ class TracePlot(TraceLabelMixin, PlotWidget):
             rotatable=False,
             resizable=False,)
 
+        # removes the ROI handles
+        for h in self.hm_roi.getHandles():
+            self.hm_roi.removeHandle(h)
+
         # trace items
         self.main_trace = PlotCurveItem(pen=self.l_pen_trace, skipFiniteCheck=False)
         self.highlight_trace = PlotCurveItem(pen=self.l_pen_high, skipFiniteCheck=False)
@@ -275,7 +280,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.h_plot[0, 0].addItem(self.hm_label)
         self.h_plot[0, 0].addItem(self.hm_roi)
 
-        # hides the
+        # hides the heatmap ROI objects
         self.hm_roi.hide()
         self.hm_label.hide()
         self.hm_roi.setZValue(9)
@@ -564,9 +569,9 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         if reset_type == 0:
             self.reset_yaxis_limits()
 
-        # updates the plot labels
-        if self.is_show and (not is_map):
-            self.update_labels()
+        # # updates the plot labels
+        # if self.is_show and (not is_map):
+        #     self.update_labels()
 
     def reset_frame_image(self):
 
@@ -585,7 +590,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
     def heatmap_mouse_move(self, p_pos):
 
-        if self.session_info.session is None:
+        if (self.session_info.session is None) or (not self.is_show):
             return
 
         # determines the selected channels
@@ -593,7 +598,8 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         n_channel = len(i_channel)
 
         # if not in heatmap mode, or no channels are selected, then exit
-        if (not self.get_plot_mode(n_channel)) or (n_channel == 0):
+        # if (not self.get_plot_mode(n_channel)) or (n_channel == 0):
+        if n_channel == 0:
             return
 
         # calculates the mapped coordinates
@@ -617,6 +623,9 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         # updates the label text
         self.hm_label.setText(self.setup_label_text(i_channel))
         self.hm_label.update()
+
+        # resets the probe view highlight
+        self.reset_highlight.emit(i_channel)
 
         # calculates the label x/y-offsets
         dx_pos, dy_pos = self.convert_coords()
@@ -657,6 +666,9 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.hm_roi.hide()
         self.hm_label.hide()
 
+        # resets the probe view highlight
+        self.reset_highlight.emit(-1)
+
     def heatmap_enter(self, evnt):
 
         if self.session_info.session is None:
@@ -666,7 +678,8 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
         # if not in heatmap mode, or no channels are selected, then exit
         n_channel = self.get_channel_count()
-        if (not self.get_plot_mode(n_channel)) or (n_channel == 0) or (not self.is_show):
+        # if (not self.get_plot_mode(n_channel)) or (n_channel == 0) or (not self.is_show):
+        if (n_channel == 0) or (not self.is_show):
             return
 
         self.hm_roi.show()
@@ -823,12 +836,12 @@ class TracePlot(TraceLabelMixin, PlotWidget):
                 self.is_show = obj_but.isChecked()
                 obj_but.setToolTip(self.lbl_tt_str[int(self.is_show)])
 
-                # updates the plot labels (depending on toggle value)
-                if self.is_show and (not is_map):
-                    self.update_labels()
-
-                else:
-                    self.hide_labels()
+                # # updates the plot labels (depending on toggle value)
+                # if self.is_show and (not is_map):
+                #     self.update_labels()
+                #
+                # else:
+                #     self.hide_labels()
 
             case 'save':
                 # case is the figure save button

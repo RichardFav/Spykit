@@ -131,6 +131,7 @@ class PlotManager(QWidget):
 
             case 'trace':
                 # case is the trace view
+                plot_new.reset_highlight.connect(self.probe_highlight)
                 plot_new.set_gen_props(self.main_obj.prop_manager.get_prop_tab('general'))
                 plot_new.set_trace_props(self.main_obj.prop_manager.get_prop_tab('trace'))
 
@@ -186,8 +187,19 @@ class PlotManager(QWidget):
 
     def trace_highlight(self, is_on, i_contact=None):
 
-        plt_probe = self.plots[self.types['trace'] - 1]
-        plt_probe.reset_trace_highlight(is_on, i_contact)
+        plt_trace = self.plots[self.types['trace'] - 1]
+        plt_trace.reset_trace_highlight(is_on, i_contact)
+
+    def probe_highlight(self, i_contact):
+
+        plt_probe = self.plots[self.types['probe'] - 1]
+
+        if i_contact < 0:
+            plt_probe.hide_channel_highlights()
+
+        else:
+            plt_probe.show_channel_highlights()
+            plt_probe.reset_channel_highlights(i_contact)
 
     def reset_probe_views(self):
 
