@@ -698,7 +698,7 @@ class ProbeView(GraphicsObject):
         # creates the roi object
         self.roi = ROI(p_0, p_sz, pen=self.pen, hoverPen=self.pen_h,
                        handlePen=self.pen, handleHoverPen=self.pen_h, maxBounds=p_lim)
-        self.roi.addTranslateHandle([0, 0])
+        self.roi.addScaleHandle([0, 0], [0, 0])
         self.roi.addScaleHandle([1, 1], [0, 0])
         self.roi.addScaleHandle([0, 1], [1, 0])
         self.roi.addScaleHandle([1, 0], [0, 1])

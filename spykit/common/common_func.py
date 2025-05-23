@@ -55,6 +55,12 @@ ascend_flag = {
     False: Qt.SortOrder.DescendingOrder,
 }
 
+key_flag = {
+    'Alt': Qt.KeyboardModifier.AltModifier,
+    'Shift': Qt.KeyboardModifier.ShiftModifier,
+    'Control': Qt.KeyboardModifier.ControlModifier,
+}
+
 # widget dimensions
 but_height = 24
 edit_height = 20

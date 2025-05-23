@@ -139,6 +139,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
     n_plt_max = 64
     c_lim_hi = 200
     c_lim_lo = -200
+    p_zoom0 = 0.1
 
     # list class fields
     lbl_tt_str = ['Show Channel Labels', 'Hide Channel Labels']
@@ -180,6 +181,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.y_lim_tr = self.y_ofs / 2
         self.x_window = np.min([self.t_dur, self.t_dur_max0])
         self.t_lim = np.array([0, self.x_window])
+        self.p_zoom = [1 - self.p_zoom0, 1 + self.p_zoom0]
 
         # trace label class fields
         self.n_plt = 0
@@ -268,6 +270,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.v_box[0, 0].setXRange(self.t_lim[0], self.t_lim[1], padding=0)
         self.v_box[0, 0].setLimits(xMin=0, xMax=self.session_info.session_props.t_dur, yMin=0, yMax=self.y_lim_tr)
         self.v_box[0, 0].setMouseMode(self.v_box[0, 0].RectMode)
+        self.v_box[0, 0].wheelEvent = self.mouse_wheel_move
 
         # sets the plot button callback functions
         for pb in self.plot_but:
@@ -585,8 +588,119 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.main_trace.hide() if is_map else self.main_trace.show()
 
     # ---------------------------------------------------------------------------
-    # Signal Trace Plot Event Functions
+    # Mouse Movement Functions
     # ---------------------------------------------------------------------------
+
+    def mouse_wheel_move(self, evnt):
+
+        # field retrieval
+        is_zoom_out = np.sign(evnt.delta()) > 0
+        is_shift = evnt.modifiers() & cf.key_flag['Shift']
+
+        # resets the
+        if is_shift:
+            # case is vertical zooming
+            s_scale = [None, self.p_zoom[is_zoom_out]]
+
+        else:
+            # case is horizontal zooming
+            s_scale = [self.p_zoom[is_zoom_out], None]
+
+        # resets the axis limits
+        self.v_box[0, 0].scaleBy(s_scale)
+        self.is_updating = True
+
+        # retrieves the new viewbox range
+        x_range, y_range = self.v_box[0, 0].viewRange()
+        if is_shift:
+            # resets the y-axis linear regions
+            y_range_scl = 100 * np.array(y_range) / self.y_lim_tr
+            self.l_reg_y.setRegion(y_range_scl)
+
+        else:
+            # resets the x-axis linear regions
+            reset_range = False
+
+            # ensures the lower limit is within the time range
+            if x_range[0] < self.t_lim[0]:
+                reset_range, x_range[0] = True, self.t_lim[0]
+
+            # ensures the upper limit is within the time range
+            if x_range[1] > self.t_lim[1]:
+                reset_range, x_range[1] = True, self.t_lim[1]
+
+            # resets the x-region (if required)
+            self.l_reg_x.setRegion(x_range)
+            if reset_range:
+                self.v_box[0, 0].setXRange(x_range[0], x_range[1], padding=0)
+
+        # updates the heatmap marker
+        self.heatmap_mouse_move(evnt.pos())
+
+        # continues running the event function
+        evnt.accept()
+
+        # resets the update flag
+        self.is_updating = False
+
+    def trace_double_click(self, evnt=None) -> None:
+
+        # flag that updating is taking place
+        self.is_updating = True
+
+        # runs the original mouse event function
+        if evnt is not None:
+            self.double_click_fcn(evnt)
+
+            # resets the y-axis range
+            self.reset_yaxis_limits()
+
+            # determines if the time axis needs resetting
+            if np.diff(self.t_lim)[0] < self.x_window:
+                if (self.t_dur - self.t_lim[0]) < self.x_window:
+                    self.t_lim = [self.t_dur - self.x_window, self.t_dur]
+                else:
+                    self.t_lim[1] = self.t_lim[0] = self.x_window
+
+                # resets the trace view
+                self.reset_xaxis_limits()
+                self.reset_trace_view(True)
+
+            # updates the heatmap marker
+            self.heatmap_mouse_move(evnt.position())
+
+        # # updates the labels (if currently displaying)
+        # if self.is_show:
+        #     self.update_labels()
+
+        # resets the update flag
+        self.is_updating = False
+
+    def trace_mouse_release(self, evnt) -> None:
+
+        # flag that updating is taking place
+        self.is_updating = True
+
+        # runs the original mouse event function
+        self.release_fcn(evnt)
+
+        # retrieves the new axis limit
+        self.y_lim = self.v_box[0, 0].viewRange()[1]
+        self.h_plot[0, 0].setXRange(self.t_lim[0], self.t_lim[1], padding=0)
+
+        # resets the x/y-axis linear regions
+        self.l_reg_x.setRegion(self.t_lim)
+        self.l_reg_y.setRegion(100 * np.array(self.y_lim) / self.y_lim_tr)
+
+        # if self.hm_roi is not None:
+        #     self.hm_roi.setPos([0, self.t_lim[0]])
+
+        # # updates the labels (if currently displaying)
+        # if self.is_show:
+        #     self.update_labels()
+
+        # resets the update flag
+        self.is_updating = False
 
     def heatmap_mouse_move(self, p_pos):
 
@@ -617,6 +731,10 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         # resets the ROI position
         self.hm_roi.setPos(self.t_lim[0], i_row / y_mlt)
         self.hm_roi.setSize(QPointF(self.x_window, self.y_lim_tr / self.n_plt))
+
+    # ---------------------------------------------------------------------------
+    # Signal Trace Plot Event Functions
+    # ---------------------------------------------------------------------------
 
     def reset_heatmap_label(self, m_pos, i_channel):
 
@@ -685,62 +803,6 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.hm_roi.show()
         self.hm_label.show()
 
-    def trace_double_click(self, evnt=None) -> None:
-
-        # flag that updating is taking place
-        self.is_updating = True
-
-        # runs the original mouse event function
-        if evnt is not None:
-            self.double_click_fcn(evnt)
-
-            # resets the y-axis range
-            self.reset_yaxis_limits()
-
-            # determines if the time axis needs resetting
-            if np.diff(self.t_lim)[0] < self.x_window:
-                if (self.t_dur - self.t_lim[0]) < self.x_window:
-                    self.t_lim = [self.t_dur - self.x_window, self.t_dur]
-                else:
-                    self.t_lim[1] = self.t_lim[0] = self.x_window
-
-                # resets the trace view
-                self.reset_xaxis_limits()
-                self.reset_trace_view(True)
-
-        # updates the labels (if currently displaying)
-        if self.is_show:
-            self.update_labels()
-
-        # resets the update flag
-        self.is_updating = False
-
-    def trace_mouse_release(self, evnt) -> None:
-
-        # flag that updating is taking place
-        self.is_updating = True
-
-        # runs the original mouse event function
-        self.release_fcn(evnt)
-
-        # retrieves the new axis limit
-        self.y_lim = self.v_box[0, 0].viewRange()[1]
-        self.h_plot[0, 0].setXRange(self.t_lim[0], self.t_lim[1], padding=0)
-
-        # resets the x/y-axis linear regions
-        self.l_reg_x.setRegion(self.t_lim)
-        self.l_reg_y.setRegion(100 * np.array(self.y_lim) / self.y_lim_tr)
-
-        if self.hm_roi is not None:
-            self.hm_roi.setPos([0, self.t_lim[0]])
-
-        # updates the labels (if currently displaying)
-        if self.is_show:
-            self.update_labels()
-
-        # resets the update flag
-        self.is_updating = False
-
     # ---------------------------------------------------------------------------
     # Axis Limit Reset Functions
     # ---------------------------------------------------------------------------
@@ -803,9 +865,9 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         if self.hm_roi is not None:
             self.hm_roi.setPos([0, self.t_lim[0]])
 
-        # updates the labels (if currently displaying)
-        if self.is_show:
-            self.update_labels()
+        # # updates the labels (if currently displaying)
+        # if self.is_show:
+        #     self.update_labels()
 
     def yframe_region_move(self):
 
@@ -816,9 +878,9 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         y_pad_nw = self.p_gap * np.diff(y_lim_nw)[0]
         self.v_box[0, 0].setYRange(y_lim_nw[0], y_lim_nw[1] + y_pad_nw, padding=0)
 
-        # updates the labels (if currently displaying)
-        if self.is_show:
-            self.update_labels()
+        # # updates the labels (if currently displaying)
+        # if self.is_show:
+        #     self.update_labels()
 
     # ---------------------------------------------------------------------------
     # Plot Button Event Functions
@@ -874,7 +936,8 @@ class TracePlot(TraceLabelMixin, PlotWidget):
             # determines the index of the curve that corresponds to the contact ID
             i_sel_ch = self.session_info.get_selected_channels()
             if i_contact in i_sel_ch:
-                self.i_sel_tr = self.session_info.channel_data.i_sort_rev[i_contact]
+                i_sort_plt = np.argsort(np.argsort(self.session_info.channel_data.i_sort_rev[i_sel_ch]))
+                self.i_sel_tr = i_sort_plt[i_sel_ch == i_contact][0]
                 self.highlight_trace.setData(self.x_tr[0, :], self.y_tr[self.i_sel_tr, :])
 
     # ---------------------------------------------------------------------------

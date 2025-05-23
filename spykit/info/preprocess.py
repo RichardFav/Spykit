@@ -164,12 +164,12 @@ class PreprocessInfoTab(InfoWidgetPara):
                 'margin_ms': self.create_para_field('Margin (ms)', 'edit', 40),
             },
 
-            # whitening parameters
-            'whitening': {
-                'apply_mean': self.create_para_field('Subtract Mean', 'checkbox', False),
-                'mode': self.create_para_field('Mode', 'combobox', mode_list[0], p_list=mode_list),
-                'radius_um': self.create_para_field('Radius (um)', 'edit', 100),
-            },
+            # # whitening parameters
+            # 'whitening': {
+            #     'apply_mean': self.create_para_field('Subtract Mean', 'checkbox', False),
+            #     'mode': self.create_para_field('Mode', 'combobox', mode_list[0], p_list=mode_list),
+            #     'radius_um': self.create_para_field('Radius (um)', 'edit', 100),
+            # },
 
             # drift correction parameters
             'drift_correct': {
