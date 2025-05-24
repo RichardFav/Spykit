@@ -3,6 +3,8 @@ import os
 import time
 import colorsys
 import functools
+from copy import deepcopy
+
 import numpy as np
 
 # pyqtgraph modules
@@ -181,6 +183,10 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.y_lim_tr = self.y_ofs / 2
         self.x_window = np.min([self.t_dur, self.t_dur_max0])
         self.t_lim = np.array([0, self.x_window])
+
+        # axes zoom class fields
+        self.iz_lvl = 0
+        self.z_lvl = None
         self.p_zoom = [1 - self.p_zoom0, 1 + self.p_zoom0]
 
         # trace label class fields
@@ -309,8 +315,8 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.h_plot[0, 0].mouseDoubleClickEvent = self.trace_double_click
         self.h_plot[0, 0].scene().sigMouseMoved.connect(self.heatmap_mouse_move)
 
-        # sets up the trace label widgets
-        self.setup_trace_labels()
+        # # sets up the trace label widgets
+        # self.setup_trace_labels()
 
         # ---------------------------------------------------------------------------
         # X-Axis Range Finder Setup
@@ -337,6 +343,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.l_reg_x = LinearRegionItem([0, self.x_window], bounds=[0, self.t_dur], span=[0, 1],
                                         pen=self.l_pen, hoverPen=self.l_pen_hover)
         self.l_reg_x.sigRegionChanged.connect(self.xframe_region_move)
+        self.l_reg_x.sigRegionChangeFinished.connect(self.xframe_region_finished)
         self.l_reg_x.setZValue(10)
         self.h_plot[1, 0].addItem(self.l_reg_x)
 
@@ -373,6 +380,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.l_reg_y = LinearRegionItem([0, self.n_row_yscl], bounds=[0, self.n_row_yscl], span=[0, 1],
                                         pen=self.l_pen, hoverPen=self.l_pen_hover, orientation='horizontal')
         self.l_reg_y.sigRegionChanged.connect(self.yframe_region_move)
+        self.l_reg_y.sigRegionChangeFinished.connect(self.yframe_region_finished)
         self.l_reg_y.setZValue(10)
         self.h_plot[0, 1].addItem(self.l_reg_y)
 
@@ -568,6 +576,9 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.plot_item.setDownsampling(auto=True)
         self.plot_item.setClipToView(True)
 
+        # sets up the trace label widgets
+        self.reset_zoom_limits()
+
         # resets the y-axis range
         if reset_type == 0:
             self.reset_yaxis_limits()
@@ -650,10 +661,11 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
         # runs the original mouse event function
         if evnt is not None:
-            self.double_click_fcn(evnt)
+            # self.double_click_fcn(evnt)
 
             # resets the y-axis range
-            self.reset_yaxis_limits()
+            self.restore_zoom_limits()
+            # self.reset_yaxis_limits()
 
             # determines if the time axis needs resetting
             if np.diff(self.t_lim)[0] < self.x_window:
@@ -685,12 +697,15 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.release_fcn(evnt)
 
         # retrieves the new axis limit
-        self.y_lim = self.v_box[0, 0].viewRange()[1]
-        self.h_plot[0, 0].setXRange(self.t_lim[0], self.t_lim[1], padding=0)
+        x_lim_zoom, self.y_lim = self.v_box[0, 0].viewRange()
+        self.h_plot[0, 0].setXRange(x_lim_zoom[0], x_lim_zoom[1], padding=0)
 
         # resets the x/y-axis linear regions
-        self.l_reg_x.setRegion(self.t_lim)
+        self.l_reg_x.setRegion(x_lim_zoom)
         self.l_reg_y.setRegion(100 * np.array(self.y_lim) / self.y_lim_tr)
+
+        # resets the zoomed limits
+        self.store_zoom_limits()
 
         # if self.hm_roi is not None:
         #     self.hm_roi.setPos([0, self.t_lim[0]])
@@ -731,6 +746,83 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         # resets the ROI position
         self.hm_roi.setPos(self.t_lim[0], i_row / y_mlt)
         self.hm_roi.setSize(QPointF(self.x_window, self.y_lim_tr / self.n_plt))
+
+    # ---------------------------------------------------------------------------
+    # Axes Zoom Functions
+    # ---------------------------------------------------------------------------
+
+    def reset_zoom_limits(self):
+
+        # resets the zoom label fields
+        self.iz_lvl = 0
+        self.z_lvl = np.empty((3, 2), dtype=object)
+
+        # stores the zoom limits
+        self.z_lvl[0, 0], self.z_lvl[0, 1] = self.t_lim, [0, self.y_lim_tr]
+
+    def store_zoom_limits(self):
+
+        # retrieves the current viewbox range
+        v_range = [x for x in deepcopy(self.v_box[0, 0].viewRange())]
+
+        # increments the zoom level count (if not full zoom)
+        match self.iz_lvl:
+            case 0:
+                # case is the first zoom level
+                self.iz_lvl = 1
+
+            case 1:
+                # case is the second zoom level
+
+                # calculates the change in view range
+                if self.is_view_change(self.z_lvl[1, :], v_range):
+                    # if there is a change, then store the new limits
+                    self.iz_lvl = 2
+
+                else:
+                    # otherwise, exit the function
+                    return
+
+            case 2:
+                # case is the third zoom level
+
+                # calculates the change in view range
+                if self.is_view_change(self.z_lvl[2, :], v_range):
+                    # if there is a change, then store the new limits
+                    self.z_lvl[1, :] = deepcopy(self.z_lvl[2, :])
+
+                else:
+                    # otherwise, exit the function
+                    return
+
+        # resets the main zoom range
+        self.z_lvl[self.iz_lvl, 0], self.z_lvl[self.iz_lvl, 1] = v_range[0], v_range[1]
+
+    def restore_zoom_limits(self):
+
+        if self.iz_lvl == 0:
+            return
+
+        # field retrieval
+        z_lvl_r = self.z_lvl[self.iz_lvl - 1, :]
+
+        # flag that manual updating is taking place
+        self.is_updating = True
+
+        # resets the plot x-range/linear region
+        self.h_plot[0, 0].setYRange(z_lvl_r[1][0], z_lvl_r[1][1], padding=0)
+        self.h_plot[0, 0].setXRange(z_lvl_r[0][0], z_lvl_r[0][1], padding=0)
+
+        # resets the plot y-range/linear region
+        self.l_reg_y.setRegion(z_lvl_r[1])
+        self.l_reg_x.setRegion(z_lvl_r[0])
+
+        # resets the manual update flag
+        self.is_updating = False
+
+        # resets the zoom level field
+        self.z_lvl[self.iz_lvl, :] = np.empty(2, dtype=object)
+        self.iz_lvl -= 1
 
     # ---------------------------------------------------------------------------
     # Signal Trace Plot Event Functions
@@ -812,6 +904,9 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.h_plot[0, 0].setYRange(0, (1 + self.p_gap) * self.y_lim_tr, padding=0)
         self.l_reg_y.setRegion((0, 100))
 
+        # resets the zoom-limits
+        self.reset_zoom_limits()
+
     def reset_xaxis_limits(self):
 
         # updates the time limits
@@ -869,6 +964,12 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         # if self.is_show:
         #     self.update_labels()
 
+    def xframe_region_finished(self):
+
+        # stores the zoomed limits
+        if not self.is_updating:
+            self.reset_zoom_limits()
+
     def yframe_region_move(self):
 
         if self.is_updating:
@@ -877,6 +978,12 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         y_lim_nw = np.array(self.l_reg_y.getRegion()) * (self.y_lim_tr / 100)
         y_pad_nw = self.p_gap * np.diff(y_lim_nw)[0]
         self.v_box[0, 0].setYRange(y_lim_nw[0], y_lim_nw[1] + y_pad_nw, padding=0)
+
+    def yframe_region_finished(self):
+
+        # stores the zoomed limits
+        if not self.is_updating:
+            self.store_zoom_limits()
 
         # # updates the labels (if currently displaying)
         # if self.is_show:
@@ -983,3 +1090,8 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
         # clears the selection flags
         self.reset_trace_view()
+
+    @staticmethod
+    def is_view_change(X, Y):
+
+        return np.any([np.sum(np.abs(np.array(x) - np.array(y))) > 0 for x, y in zip(X, Y)])
