@@ -125,7 +125,7 @@ class TraceProps(PropWidget):
             'plot_type': self.create_para_field('Plot Type', 'combobox', self.plot_list[0], p_list=self.plot_list),
             't_start': self.create_para_field('Start Time (s)', 'edit', 0),
             't_finish': self.create_para_field('Finish Time (s)', 'edit', self.t_span0),
-            't_span': self.create_para_field('Duration (s)', 'edit', self.t_span0),
+            't_span': self.create_para_field('Maximum Time-Span (s)', 'edit', self.t_span0),
             'c_lim_lo': self.create_para_field('Lower Colour Limit', 'edit', -200),
             'c_lim_hi': self.create_para_field('Upper Colour Limit', 'edit', 200),
             'sort_by': self.create_para_field('Sort Signals By', 'combobox', self.sort_list[0], p_list=self.sort_list),

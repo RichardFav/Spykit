@@ -142,6 +142,8 @@ class TracePlot(TraceLabelMixin, PlotWidget):
     c_lim_hi = 200
     c_lim_lo = -200
     p_zoom0 = 0.1
+    eps = 1e-6
+    dt_min = 0.01
 
     # list class fields
     lbl_tt_str = ['Show Channel Labels', 'Hide Channel Labels']
@@ -183,6 +185,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.y_lim_tr = self.y_ofs / 2
         self.x_window = np.min([self.t_dur, self.t_dur_max0])
         self.t_lim = np.array([0, self.x_window])
+        self.t_lim_prev = deepcopy(self.t_lim)
 
         # axes zoom class fields
         self.iz_lvl = 0
@@ -344,6 +347,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
                                         pen=self.l_pen, hoverPen=self.l_pen_hover)
         self.l_reg_x.sigRegionChanged.connect(self.xframe_region_move)
         self.l_reg_x.sigRegionChangeFinished.connect(self.xframe_region_finished)
+        self.l_reg_x.mouseDoubleClickEvent = self.xframe_region_double_click
         self.l_reg_x.setZValue(10)
         self.h_plot[1, 0].addItem(self.l_reg_x)
 
@@ -381,6 +385,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
                                         pen=self.l_pen, hoverPen=self.l_pen_hover, orientation='horizontal')
         self.l_reg_y.sigRegionChanged.connect(self.yframe_region_move)
         self.l_reg_y.sigRegionChangeFinished.connect(self.yframe_region_finished)
+        self.l_reg_y.mouseDoubleClickEvent = self.yframe_region_double_click
         self.l_reg_y.setZValue(10)
         self.h_plot[0, 1].addItem(self.l_reg_y)
 
@@ -579,9 +584,9 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         # sets up the trace label widgets
         self.reset_zoom_limits()
 
-        # resets the y-axis range
-        if reset_type == 0:
-            self.reset_yaxis_limits()
+        # # resets the y-axis range
+        # if reset_type == 0:
+        #     self.reset_yaxis_limits()
 
         # # updates the plot labels
         # if self.is_show and (not is_map):
@@ -667,16 +672,16 @@ class TracePlot(TraceLabelMixin, PlotWidget):
             self.restore_zoom_limits()
             # self.reset_yaxis_limits()
 
-            # determines if the time axis needs resetting
-            if np.diff(self.t_lim)[0] < self.x_window:
-                if (self.t_dur - self.t_lim[0]) < self.x_window:
-                    self.t_lim = [self.t_dur - self.x_window, self.t_dur]
-                else:
-                    self.t_lim[1] = self.t_lim[0] = self.x_window
-
-                # resets the trace view
-                self.reset_xaxis_limits()
-                self.reset_trace_view(True)
+            # # determines if the time axis needs resetting
+            # if (self.x_window - np.diff(self.t_lim)[0]) > self.eps:
+            #     if (self.t_dur - self.t_lim[0]) < self.x_window:
+            #         self.t_lim = [self.t_dur - self.x_window, self.t_dur]
+            #     else:
+            #         self.t_lim[1] = self.t_lim[0] = self.x_window
+            #
+            #     # resets the trace view
+            #     self.reset_xaxis_limits()
+            #     self.reset_trace_view(True)
 
             # updates the heatmap marker
             self.heatmap_mouse_move(evnt.position())
@@ -924,51 +929,58 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
         # retrieves the current region limits
         t_lim_nw = np.array(self.l_reg_x.getRegion())
-        dt_lim = np.sign(t_lim_nw - self.t_lim)
+        dt_lim_nw = np.diff(t_lim_nw)[0]
 
-        if np.any(dt_lim != 0):
-            if dt_lim[0] != 0:
-                # case is the left side has moved
-                if t_lim_nw[0] > (self.t_dur - self.x_window):
-                    t_lim_nw = [self.t_dur - self.x_window, self.t_dur]
-
-                else:
-                    # otherwise, recalculate the lower limit
-                    t_lim_nw[1] = t_lim_nw[0] + self.x_window
+        # determines if the limits are feasible
+        if dt_lim_nw > self.x_window:
+            # case is the x-linear region is too large
+            if (t_lim_nw[0] - self.t_lim_prev[0]) > 0:
+                # case is the left side is being moved
+                t_lim_nw[0] = t_lim_nw[1] - self.x_window
 
             else:
-                # case is the right side has moved
-                if t_lim_nw[1] < self.x_window:
-                    # case is the region is too close to the edge
-                    t_lim_nw = [0, self.x_window]
+                # case is the right side is being moved
+                t_lim_nw[1] = t_lim_nw[0] + self.x_window
 
-                else:
-                    # otherwise, recalculate the lower limit
-                    t_lim_nw[0] = t_lim_nw[1] - self.x_window
+        elif dt_lim_nw < self.dt_min:
+            # case is the x-linear region is too small
+            if (t_lim_nw[0] - self.t_lim_prev[0]) > 0:
+                # case is the left side is being moved
+                t_lim_nw[0] = t_lim_nw[1] - self.dt_min
+
+            else:
+                # case is the right side is being moved
+                t_lim_nw[1] = t_lim_nw[0] + self.dt_min
 
         # resets the x-linear region view size
         self.is_updating = True
         self.l_reg_x.setRegion((t_lim_nw[0], t_lim_nw[1]))
+        self.v_box[0, 0].setXRange(t_lim_nw[0], t_lim_nw[1], padding=0)
         self.is_updating = False
 
         # updates the view range
         self.t_lim = t_lim_nw
-        self.v_box[0, 0].setXRange(self.t_lim[0], self.t_lim[1], padding=0)
         self.update_trace_props()
         self.reset_trace_view(False)
 
         if self.hm_roi is not None:
             self.hm_roi.setPos([0, self.t_lim[0]])
 
-        # # updates the labels (if currently displaying)
-        # if self.is_show:
-        #     self.update_labels()
-
     def xframe_region_finished(self):
 
         # stores the zoomed limits
         if not self.is_updating:
             self.reset_zoom_limits()
+
+    def xframe_region_double_click(self, evnt=None) -> None:
+
+        # resets the y-linear region
+        self.t_lim = self.z_lvl[0, 0]
+        self.l_reg_x.setRegion((self.t_lim[0], self.t_lim[1]))
+
+        # resets the zoom limits
+        self.iz_lvl = 0
+        self.z_lvl[1:, :] = None
 
     def yframe_region_move(self):
 
@@ -988,6 +1000,16 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         # # updates the labels (if currently displaying)
         # if self.is_show:
         #     self.update_labels()
+
+    def yframe_region_double_click(self, evnt=None) -> None:
+
+        # resets the y-linear region
+        self.y_lim = self.z_lvl[0, 1]
+        self.l_reg_y.setRegion(100 * np.array(self.y_lim) / self.y_lim_tr)
+
+        # resets the zoom limits
+        self.iz_lvl = 0
+        self.z_lvl[1:, :] = None
 
     # ---------------------------------------------------------------------------
     # Plot Button Event Functions
