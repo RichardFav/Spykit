@@ -616,6 +616,11 @@ class TracePlot(TraceLabelMixin, PlotWidget):
                 self.main_trace.setData(self.x_tr.flatten(), self.y_tr.flatten(), connect=c.flatten())
 
         else:
+            # resets the zoom limits
+            self.reset_xaxis_limits()
+            self.reset_yaxis_limits()
+            self.reset_zoom_limits()
+
             # removes the heatmap image (if mapping)
             if is_map:
                 self.image_item.hide()
@@ -748,29 +753,34 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
     def trace_mouse_release(self, evnt) -> None:
 
-        # flag that updating is taking place
-        self.is_updating = True
-
         # runs the original mouse event function
         self.release_fcn(evnt)
 
+        # flag that updating is taking place
+        self.is_updating = True
+
         # retrieves the new axis limit
-        x_lim_zoom0, self.y_lim = self.v_box[0, 0].viewRange()
+        if self.n_plt == 0:
+            #
+            x_lim_zoom, self.y_lim = self.zx_full, self.zy_full
 
-        # ensures the x-limits are feasible
-        x_lim_zoom = [np.max([x_lim_zoom0[0], self.t_lim[0]]),
-                      np.min([x_lim_zoom0[1], self.t_lim[1]])]
-        dx_lim_zoom = np.diff(x_lim_zoom)[0]
-        if dx_lim_zoom < cw.t_span_min:
-            # if the time span is too small then expand it
-            if (x_lim_zoom[0] < cw.t_span_min / 2.):
-                x_lim_zoom = np.array([0, cw.t_span_min], dtype=float)
+        else:
+            x_lim_zoom0, self.y_lim = self.v_box[0, 0].viewRange()
 
-            elif x_lim_zoom[1] > (self.t_dur - cw.t_span_min / 2.):
-                x_lim_zoom = self.t_dur - np.array([cw.t_span_min, 0], dtype=float)
+            # ensures the x-limits are feasible
+            x_lim_zoom = [np.max([x_lim_zoom0[0], self.t_lim[0]]),
+                          np.min([x_lim_zoom0[1], self.t_lim[1]])]
+            dx_lim_zoom = np.diff(x_lim_zoom)[0]
+            if dx_lim_zoom < cw.t_span_min:
+                # if the time span is too small then expand it
+                if (x_lim_zoom[0] < cw.t_span_min / 2.):
+                    x_lim_zoom = np.array([0, cw.t_span_min], dtype=float)
 
-            else:
-                x_lim_zoom = np.mean(x_lim_zoom) + np.array([-1, 1], dtype=float) * (cw.t_span_min / 2.)
+                elif x_lim_zoom[1] > (self.t_dur - cw.t_span_min / 2.):
+                    x_lim_zoom = self.t_dur - np.array([cw.t_span_min, 0], dtype=float)
+
+                else:
+                    x_lim_zoom = np.mean(x_lim_zoom) + np.array([-1, 1], dtype=float) * (cw.t_span_min / 2.)
 
         # resets the x-axis linear regions and plot axis limits
         self.l_reg_x.setRegion(x_lim_zoom)
