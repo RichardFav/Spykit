@@ -20,6 +20,8 @@ x_gap = 5
 x_gap2 = 2 * x_gap
 x_gap_h = 2
 
+n_dp = 4
+
 # ----------------------------------------------------------------------------------------------------------------------
 
 """
@@ -522,7 +524,7 @@ class PropWidget(QWidget):
 
             else:
                 # otherwise, reset the previous value
-                h_edit.setText('%g' % self.get(p_str))
+                h_edit.setText('%g' % np.round(self.get(p_str), n_dp))
 
     def combobox_para_update(self, h_cbox):
 
@@ -890,7 +892,8 @@ class PropWidget(QWidget):
             case 't_start':
                 # case is the start time
                 if hasattr(self.p_props, 't_span'):
-                    p_min, p_max = 0, self.t_dur - self.get('t_span')
+                    p_min = 0
+                    p_max = np.round(self.get('t_finish') - cw.t_span_min, n_dp)
 
                 else:
                     p_min, p_max = 0, self.get('t_finish')
@@ -898,18 +901,20 @@ class PropWidget(QWidget):
             case 't_finish':
                 # case is the start time
                 if hasattr(self.p_props, 't_span'):
-                    p_min, p_max = self.get('t_span'), self.t_dur
+                    p_max = self.t_dur
+                    p_min = np.round(self.get('t_start') + cw.t_span_min, n_dp)
 
                 else:
                     p_min, p_max = self.get('t_start'), self.t_dur
 
             case 't_span':
                 # case is the trace window span
-                p_min, p_max = 0.01, 0.5
+                p_min, p_max = cw.t_span_min, cw.t_span_max
 
             case 't_dur':
                 # case is the experiment duration
-                p_min, p_max = 0.1, self.t_dur - self.get('t_start')
+                p_min = 0.1
+                p_max = np.round(self.t_dur - self.get('t_start'), n_dp)
 
         # returns the limits and integer flag
         return p_min, p_max, is_int

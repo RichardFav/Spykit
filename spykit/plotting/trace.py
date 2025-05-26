@@ -143,7 +143,6 @@ class TracePlot(TraceLabelMixin, PlotWidget):
     c_lim_lo = -200
     p_zoom0 = 0.1
     eps = 1e-6
-    dt_min = 0.01
 
     # list class fields
     lbl_tt_str = ['Show Channel Labels', 'Hide Channel Labels']
@@ -347,7 +346,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
         # creates the linear region
         self.l_reg_x = LinearRegionItem([0, self.x_window], bounds=[0, self.t_dur], span=[0, 1],
-                                        pen=self.l_pen, hoverPen=self.l_pen_hover)
+                                        pen=self.l_pen, hoverPen=self.l_pen_hover, swapMode='block')
         self.l_reg_x.sigRegionChanged.connect(self.xframe_region_move)
         self.l_reg_x.sigRegionChangeFinished.connect(self.xframe_region_finished)
         self.l_reg_x.mouseDoubleClickEvent = self.xframe_region_double_click
@@ -385,7 +384,8 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
         # creates the linear region
         self.l_reg_y = LinearRegionItem([0, self.n_row_yscl], bounds=[0, self.n_row_yscl], span=[0, 1],
-                                        pen=self.l_pen, hoverPen=self.l_pen_hover, orientation='horizontal')
+                                        pen=self.l_pen, hoverPen=self.l_pen_hover, orientation='horizontal',
+                                        swapMode='block')
         self.l_reg_y.sigRegionChanged.connect(self.yframe_region_move)
         self.l_reg_y.sigRegionChangeFinished.connect(self.yframe_region_finished)
         self.l_reg_y.mouseDoubleClickEvent = self.yframe_region_double_click
@@ -394,6 +394,9 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
         # makes the bottom right plot invisible
         self.h_plot[1, 1].setVisible(False)
+
+        # resets the zoom limits
+        self.reset_zoom_limits()
 
     def setup_frame_image(self, axis):
 
@@ -414,9 +417,13 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.c_lim_lo = self.trace_props.get('c_lim_lo')
         self.c_lim_hi = self.trace_props.get('c_lim_hi')
         self.t_lim = [self.trace_props.get('t_start'), self.trace_props.get('t_finish')]
+        self.zx_full = deepcopy(self.t_lim)
+
+        # resets the zoom/previous limit fields
+        t_lim_p = self.get_prop_xlimits()
+        self.t_lim_prev = deepcopy(t_lim_p)
 
         # resets the plot view axis
-        t_lim_p = self.get_prop_xlimits()
         self.v_box[0, 0].setXRange(t_lim_p[0], t_lim_p[1], padding=0)
         self.reset_trace_view(True)
 
@@ -430,7 +437,6 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
         # resets the linear region
         self.is_updating = True
-        t_lim_p = self.get_prop_xlimits()
         self.l_reg_x.setRegion((t_lim_p[0], t_lim_p[1]))
         self.is_updating = False
 
@@ -472,6 +478,9 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
     def update_trace_props(self):
 
+        if self.trace_props is None:
+            return
+
         # indicate that manual updating is taking place
         t_lim_p = self.get_prop_xlimits()
         self.trace_props.is_updating = True
@@ -486,6 +495,8 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.trace_props.set_n('t_finish', t_finish)
         self.trace_props.edit_finish.setText('{0:.4f}'.format(t_finish))
 
+        # print('Start/Finish = {0}/{1}'.format(t_start, t_finish))
+
         # resets the update flag
         self.trace_props.is_updating = False
 
@@ -499,7 +510,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
     # Other Reset Functions
     # ---------------------------------------------------------------------------
 
-    def reset_trace_view(self, reset_zoom=False):
+    def reset_trace_view(self, reset_type=0):
 
         # retrieves the currently selected channels
         depth_sort = self.trace_props.get('sort_by') == 'Depth'
@@ -507,6 +518,39 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         is_map = self.get_plot_mode(len(i_channel))
         self.n_plt = len(i_channel)
         self.reset_plot_items()
+
+        # case is there are no plots (collapse y-axis range)
+        self.y_lim_tr = (2 + (self.n_plt - 1) * self.y_gap) if self.n_plt else (self.y_ofs / 2.)
+
+        # flag that manual updating is taking place
+        self.is_updating = True
+
+        # runs the axis reset type
+        match reset_type:
+            case 1:
+                # case is resetting x-axis only
+                self.reset_xaxis_limits()
+                self.reset_zoom_limits()
+
+            case 2:
+                # case is resetting the x-axis only
+                self.reset_yaxis_limits()
+
+            case 3:
+                # case is resetting the both axis
+
+                # resets the time limit markers
+                self.t_lim = [0, self.x_window]
+                self.zx_full = self.t_lim
+                self.t_lim_prev = self.t_lim
+
+                # resets the axes and zoom limits
+                self.reset_xaxis_limits()
+                self.reset_yaxis_limits()
+                self.reset_zoom_limits()
+
+        # resets the update flag
+        self.is_updating = False
 
         if self.n_plt:
             # field retrieval
@@ -528,9 +572,6 @@ class TracePlot(TraceLabelMixin, PlotWidget):
                 channel_ids=channel_id,
                 return_scaled=self.trace_props.get('scale_signal'),
             )
-
-            # sets the maximum y-axis trace range
-            self.y_lim_tr = 2 + (self.n_plt - 1) * self.y_gap
 
             # sets up the heatmap/trace items
             if is_map:
@@ -575,9 +616,6 @@ class TracePlot(TraceLabelMixin, PlotWidget):
                 self.main_trace.setData(self.x_tr.flatten(), self.y_tr.flatten(), connect=c.flatten())
 
         else:
-            # case is there are no plots (collapse y-axis range)
-            self.y_lim_tr = self.y_ofs / 2.
-
             # removes the heatmap image (if mapping)
             if is_map:
                 self.image_item.hide()
@@ -588,10 +626,6 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         # resets the other plot properties
         self.plot_item.setDownsampling(auto=True)
         self.plot_item.setClipToView(True)
-
-        # sets up the trace label widgets
-        if reset_zoom:
-            self.reset_zoom_limits()
 
         # # resets the y-axis range
         # if reset_type == 0:
@@ -646,18 +680,28 @@ class TracePlot(TraceLabelMixin, PlotWidget):
             # resets the x-axis linear regions
             reset_range = False
 
-            # ensures the lower limit is within the time range
-            if x_range[0] < self.t_lim[0]:
-                reset_range, x_range[0] = True, self.t_lim[0]
+            dx_range = np.diff(x_range)
+            if dx_range < cw.t_span_min:
+                reset_range = True
+                x_range = np.mean(x_range) + np.array([-1, 1]) * (cw.t_span_min / 2.)
 
-            # ensures the upper limit is within the time range
-            if x_range[1] > self.t_lim[1]:
-                reset_range, x_range[1] = True, self.t_lim[1]
+            else:
+                # ensures the lower limit is within the time range
+                if x_range[0] < self.t_lim[0]:
+                    reset_range, x_range[0] = True, self.t_lim[0]
+
+                # ensures the upper limit is within the time range
+                if x_range[1] > self.t_lim[1]:
+                    reset_range, x_range[1] = True, self.t_lim[1]
 
             # resets the x-region (if required)
+            self.t_lim_prev = x_range
             self.l_reg_x.setRegion(x_range)
             if reset_range:
                 self.v_box[0, 0].setXRange(x_range[0], x_range[1], padding=0)
+
+        # stores the current zoom limits
+        self.store_zoom_limits()
 
         # updates the heatmap marker
         self.heatmap_mouse_move(evnt.pos())
@@ -711,11 +755,28 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.release_fcn(evnt)
 
         # retrieves the new axis limit
-        x_lim_zoom, self.y_lim = self.v_box[0, 0].viewRange()
+        x_lim_zoom0, self.y_lim = self.v_box[0, 0].viewRange()
+
+        # ensures the x-limits are feasible
+        x_lim_zoom = [np.max([x_lim_zoom0[0], self.t_lim[0]]),
+                      np.min([x_lim_zoom0[1], self.t_lim[1]])]
+        dx_lim_zoom = np.diff(x_lim_zoom)[0]
+        if dx_lim_zoom < cw.t_span_min:
+            # if the time span is too small then expand it
+            if (x_lim_zoom[0] < cw.t_span_min / 2.):
+                x_lim_zoom = np.array([0, cw.t_span_min], dtype=float)
+
+            elif x_lim_zoom[1] > (self.t_dur - cw.t_span_min / 2.):
+                x_lim_zoom = self.t_dur - np.array([cw.t_span_min, 0], dtype=float)
+
+            else:
+                x_lim_zoom = np.mean(x_lim_zoom) + np.array([-1, 1], dtype=float) * (cw.t_span_min / 2.)
+
+        # resets the x-axis linear regions and plot axis limits
+        self.l_reg_x.setRegion(x_lim_zoom)
         self.h_plot[0, 0].setXRange(x_lim_zoom[0], x_lim_zoom[1], padding=0)
 
-        # resets the x/y-axis linear regions
-        self.l_reg_x.setRegion(x_lim_zoom)
+        # resets the y-axis linear region
         self.l_reg_y.setRegion(100 * np.array(self.y_lim) / self.y_lim_tr)
 
         # resets the zoomed limits
@@ -774,11 +835,13 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
         # stores the zoom limits
         self.zx_full, self.zy_full = self.t_lim, [0, self.y_lim_tr]
+        self.update_trace_props()
 
     def store_zoom_limits(self):
 
         # retrieves the current viewbox range
         px_range, py_range = self.calc_prop_time_limits()
+        # print(py_range)
 
         # increments the zoom level count (if not full zoom)
         match self.iz_lvl:
@@ -812,6 +875,9 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
         # resets the main zoom range
         self.pz_lvl[self.iz_lvl, 0], self.pz_lvl[self.iz_lvl, 1] = px_range, py_range
+        self.update_trace_props()
+
+        # print(self.pz_lvl)
 
     def restore_zoom_limits(self):
 
@@ -828,6 +894,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         px_range = self.get_prop_xlimits()
         self.h_plot[0, 0].setXRange(px_range[0], px_range[1], padding=0)
         self.l_reg_x.setRegion(px_range)
+        self.t_lim_prev = px_range
 
         # resets the plot y-range/linear region
         py_range = self.get_prop_ylimits()
@@ -838,10 +905,11 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.is_updating = False
 
         # resets the trace view
+        self.update_trace_props()
         self.reset_trace_view()
 
         # resets the zoom level field
-        self.pz_lvl[self.iz_lvl, :] = None
+        self.pz_lvl[self.iz_lvl + 1, :] = None
 
     # ---------------------------------------------------------------------------
     # Signal Trace Plot Event Functions
@@ -920,17 +988,27 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
     def reset_yaxis_limits(self):
 
+        # resets the y-axis limits and region position
         self.h_plot[0, 0].setYRange(0, (1 + self.p_gap) * self.y_lim_tr, padding=0)
         self.l_reg_y.setRegion((0, 100))
 
-        # resets the zoom-limits
-        self.reset_zoom_limits()
+        # resets the y-axis zoom-limits
+        self.zy_full = [0, self.y_lim_tr]
+        if self.iz_lvl >= 0:
+            self.pz_lvl[self.iz_lvl, 0] = np.array([0, 1], dtype=float)
 
     def reset_xaxis_limits(self):
 
         # updates the time limits
         self.h_plot[0, 0].setXRange(self.t_lim[0], self.t_lim[1], padding=0)
         self.l_reg_x.setRegion(self.t_lim)
+
+        # resets the y-axis zoom-limits
+        if self.iz_lvl >= 0:
+            self.pz_lvl[self.iz_lvl, 1] = np.array([0, 1], dtype=float)
+
+        #
+        self.update_trace_props()
 
     # ---------------------------------------------------------------------------
     # Frame Region Event Functions
@@ -944,32 +1022,66 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         # retrieves the current region limits
         t_lim_reg = np.array(self.l_reg_x.getRegion())
         dt_lim_reg = np.diff(t_lim_reg)[0]
-        p_lim = self.get_xlimit_prop()
+        dt_lim_prev = np.diff(self.t_lim_prev)[0]
 
-        # determines if the limits are feasible
-        if dt_lim_reg > self.x_window:
-            # case is the x-linear region is too large
-            if (t_lim_reg[0] - self.t_lim_prev[0]) > 0:
-                # case is the left side is being moved
-                t_lim_reg[0] = t_lim_reg[1] - self.x_window
+        # determines if the region has resized
+        reg_resized = False
+        has_resized = np.abs(dt_lim_reg - dt_lim_prev) > self.eps
+        if has_resized:
+            if t_lim_reg[0] <= 0:
+                # case is the region is translated past the start point
+                t_lim_reg = np.array([0, dt_lim_prev])
 
-            else:
-                # case is the right side is being moved
-                t_lim_reg[1] = t_lim_reg[0] + self.x_window
-
-        elif dt_lim_reg < self.dt_min:
-            # case is the x-linear region is too small
-            if (t_lim_reg[0] - self.t_lim_prev[0]) > 0:
-                # case is the left side is being moved
-                t_lim_reg[0] = t_lim_reg[1] - self.dt_min
+            elif t_lim_reg[1] >= self.t_dur:
+                # case is the region is translated past the duration point
+                t_lim_reg = self.t_dur - np.array([dt_lim_prev, 0])
 
             else:
-                # case is the right side is being moved
-                t_lim_reg[1] = t_lim_reg[0] + self.dt_min
+                # otherwise, flag a proper resize
+                reg_resized = True
 
-        # calculates the full limits
-        t_lim0 = t_lim_reg[0] - self.x_window * p_lim[0]
-        t_lim_new = t_lim0 + np.array([0, self.x_window])
+        if reg_resized:
+            # determines the side that was moved
+            i_side = self.det_moved_side(t_lim_reg[1])
+
+            # case is the region has been resized
+            if dt_lim_reg < cw.t_span_min:
+                # case is the region is too small
+                if i_side:
+                    # case is resetting the right side
+                    t_lim_reg[1] = t_lim_reg[0] + cw.t_span_min
+
+                else:
+                    # case is resetting the left side
+                    t_lim_reg[0] = t_lim_reg[1] - cw.t_span_min
+
+            elif dt_lim_reg > self.x_window:
+                # case is the region is too large
+                if i_side:
+                    # case is resetting the right side
+                    t_lim_reg[1] = t_lim_reg[0] + self.x_window
+
+                else:
+                    # case is resetting the left side
+                    t_lim_reg[0] = t_lim_reg[1] - self.x_window
+
+        else:
+            # case is the region has been translated
+
+            # determines the direction of movement
+            dt_move = t_lim_reg[0] - self.t_lim_prev[0]
+            self.t_lim += dt_move
+
+            # determines if the limits are still feasible
+            if self.t_lim[0] < 0:
+                self.t_lim -= self.t_lim[0]
+
+            elif self.t_lim[1] > self.t_dur:
+                dt_lim_feas = (self.t_lim[1] - self.t_dur)
+                self.t_lim -= dt_lim_feas
+
+            # resets the full x-limit field
+            self.zx_full = self.t_lim
 
         # resets the x-linear region view size
         self.is_updating = True
@@ -977,8 +1089,10 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.v_box[0, 0].setXRange(t_lim_reg[0], t_lim_reg[1], padding=0)
         self.is_updating = False
 
+        # updates the previous region limit field
+        self.t_lim_prev = t_lim_reg
+
         # updates the view range
-        self.t_lim = t_lim_new
         self.update_trace_props()
         self.reset_trace_view()
 
@@ -990,6 +1104,9 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         # stores the zoomed limits
         if not self.is_updating:
             self.zx_full = self.t_lim
+
+            self.store_zoom_limits()
+            self.update_trace_props()
 
     def xframe_region_double_click(self, evnt=None) -> None:
 
@@ -1163,7 +1280,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         else:
             return self.pz_lvl[self.iz_lvl, 0]
 
-    def calc_prop_time_limits(self):
+    def calc_prop_time_limits(self, x_only=False):
 
         x_range, y_range = self.v_box[0, 0].viewRange()
 
@@ -1171,6 +1288,14 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         py_range = (np.array(y_range) - self.zy_full[0])/np.diff(self.zy_full)
 
         return px_range, py_range
+
+    def det_moved_side(self, t_lim_reg):
+
+        return np.abs(t_lim_reg - self.t_lim_prev[1]) > self.eps
+
+    def det_moved_direction(self, t_lim_reg):
+
+        return np.sign(t_lim_reg - self.t_lim_prev[1])
 
     @staticmethod
     def is_view_change(pXY, pX, pY):

@@ -183,6 +183,10 @@ x_gap = 5
 row_height = 16.5
 cell_height = 25
 
+# trace span min/max sizes
+t_span_min = 0.01
+t_span_max = 0.5
+
 def create_font_obj(size=9, is_bold=False, font_weight=QFont.Weight.Normal):
     # creates the font object
     font = QFont()

@@ -209,7 +209,7 @@ class PlotManager(QWidget):
         plt_probe = self.plots[self.types['probe'] - 1]
         plt_probe.reset_probe_views()
 
-    def reset_trace_views(self, reset_zoom=False):
+    def reset_trace_views(self, reset_type=0):
 
         # resets the offset time
         plt_trace = self.plots[self.types['trace'] - 1]
@@ -238,7 +238,7 @@ class PlotManager(QWidget):
 
         # resets the general properties and the trace view
         plt_trace.reset_gen_props()
-        plt_trace.reset_trace_view(reset_zoom)
+        plt_trace.reset_trace_view(reset_type)
 
     def reset_trig_views(self):
 

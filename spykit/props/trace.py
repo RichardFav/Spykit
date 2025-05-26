@@ -1,4 +1,5 @@
 # module import
+import numpy as np
 from functools import partial as pfcn
 
 # spike pipeline imports
@@ -78,6 +79,7 @@ class TraceProps(PropWidget):
     type = 'trace'
 
     # parameters
+    n_dp = 4
     t_span0 = 0.1
     sort_list = ['Depth', 'Channel ID']
     plot_list = ['Trace', 'Heatmap', 'Auto']
@@ -88,7 +90,7 @@ class TraceProps(PropWidget):
 
         # field initialisation
         self.trace_view = None
-        self.t_dur = self.main_obj.session_obj.session_props.t_dur
+        self.t_dur = np.round(self.main_obj.session_obj.session_props.t_dur, self.n_dp)
 
         # initialises the property widget
         self.setup_prop_fields()
@@ -150,22 +152,26 @@ class TraceProps(PropWidget):
         match p_str:
             case 't_start':
                 fld_update = ['t_finish']
-                self.set_n('t_finish', self.get('t_start') + self.get('t_span'))
+                t_finish = np.round(self.get('t_start') + self.get('t_span'), self.n_dp)
+                self.set_n('t_finish', t_finish)
 
             case 't_finish':
-                fld_update = ['t_start']
-                self.set_n('t_start', self.get('t_finish') - self.get('t_span'))
+                fld_update = ['t_span']
+                t_span = np.round(self.get('t_finish') - self.get('t_start'), self.n_dp)
+                self.set_n('t_span', t_span)
 
             case 't_span':
                 if (self.t_dur - self.get('t_start')) < self.get('t_span'):
                     # case is the span can't fit within the signal
+                    t_start = np.round(self.t_dur - self.get('t_span'), self.n_dp)
                     self.set_n('t_finish', self.t_dur)
-                    self.set_n('t_start', self.t_dur - self.get('t_span'))
+                    self.set_n('t_start', t_start)
                     fld_update = ['t_start', 't_finish']
 
                 else:
                     fld_update = ['t_finish']
-                    self.set_n('t_finish', self.get('t_start') + self.get('t_span'))
+                    t_finish = np.round(self.get('t_start') + self.get('t_span'), self.n_dp)
+                    self.set_n('t_finish', t_finish)
 
         # resets the parameter fields
         for pf in fld_update:
