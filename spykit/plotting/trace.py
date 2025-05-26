@@ -141,7 +141,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
     n_plt_max = 64
     c_lim_hi = 200
     c_lim_lo = -200
-    p_zoom0 = 0.1
+    p_zoom0 = 0.2
     eps = 1e-6
 
     # list class fields

@@ -37,6 +37,7 @@ class ProbePlot(PlotWidget):
     # parameters
     pw_y = 1.05
     pw_x = 1.05
+    p_zoom0 = 0.2
     y_out_dist = 20
 
     # list class fields
@@ -65,6 +66,7 @@ class ProbePlot(PlotWidget):
         # other class fields
         self.i_status = 1
         self.show_out = False
+        self.p_zoom = [1 - self.p_zoom0, 1 + self.p_zoom0]
 
         # sets up the plot regions
         self.setup_subplots(n_r=2, n_c=1, vb=[None, cw.ROIViewBox()])
@@ -127,6 +129,7 @@ class ProbePlot(PlotWidget):
             self.h_plot[1, 0].scene().sigMouseMoved.connect(pfcn(self.view_mouse_move, False))
             self.h_plot[1, 0].enterEvent = pfcn(self.enter_view, False)
             self.h_plot[1, 0].leaveEvent = pfcn(self.leave_view, False)
+            self.v_box[1, 0].wheelEvent = self.mouse_wheel_move
 
         else:
             #
@@ -342,6 +345,49 @@ class ProbePlot(PlotWidget):
         # resets the axis limits
         self.sub_view.reset_axes_limits(False)
 
+    def mouse_wheel_move(self, evnt):
+
+        # field retrieval
+        reset_xview, reset_yview = False, False
+        is_zoom_out = np.sign(evnt.delta()) > 0
+        s_scale = self.p_zoom[is_zoom_out] * np.array([1, 1], dtype=float)
+
+        # resets the axis limits
+        self.v_box[1, 0].scaleBy(s_scale)
+
+        # retrieves the new viewbox range
+        x_range, y_range = self.v_box[1, 0].viewRange()
+
+        # ensures the left side is feasible
+        if x_range[0] < self.main_view.x_lim[0]:
+            x_range[0], reset_xview = self.main_view.x_lim[0], True
+
+        # ensures the right side is feasible
+        if x_range[1] > self.main_view.x_lim[1]:
+            x_range[1], reset_xview = self.main_view.x_lim[1], True
+
+        # resets the view x-range (if necessary)
+        if reset_xview:
+            self.v_box[1, 0].setXRange(x_range[0], x_range[1], padding=0)
+
+        # ensures the bottom side is feasible
+        if y_range[0] < self.main_view.y_lim[0]:
+            y_range[0], reset_yview = self.main_view.y_lim[0], True
+
+        # ensures the top side is feasible
+        if y_range[1] > self.main_view.y_lim[1]:
+            y_range[1], reset_yview = self.main_view.y_lim[1], True
+
+        # resets the view y-range (if necessary)
+        if reset_yview:
+            self.v_box[1, 0].setYRange(y_range[0], y_range[1], padding=0)
+
+        # resets the main view ROI position
+        self.main_view.is_updating = True
+        self.main_view.roi.setPos(x_range[0], y_range[0])
+        self.main_view.roi.setSize([np.diff(x_range), np.diff(y_range)])
+        self.main_view.is_updating = False
+
     # ---------------------------------------------------------------------------
     # Channel Highlight Functions
     # ---------------------------------------------------------------------------
@@ -505,8 +551,8 @@ class ProbeView(GraphicsObject):
         self.height = None
         self.x_lim = None
         self.y_lim = None
-        self.x_lim_full = None
         self.y_lim_full = None
+        self.x_lim_full = None
         self.i_sel_contact = None
         self.i_sel_trace = None
         self.x_lim_shank = None
@@ -523,6 +569,7 @@ class ProbeView(GraphicsObject):
         self.ch_label = None
         self.ch_highlight = None
         self.show_out = False
+        self.is_updating = False
 
         # sets the probe field
         self.reset_probe_fields(probe)
@@ -663,6 +710,9 @@ class ProbeView(GraphicsObject):
     # ---------------------------------------------------------------------------
 
     def roi_moved(self, h_roi):
+
+        if self.is_updating:
+            return
 
         x0, y0, p_sz = h_roi.x(), h_roi.y(), h_roi.size()
         self.update_roi.emit([x0, y0, p_sz])
