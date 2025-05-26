@@ -341,7 +341,7 @@ class MainWindow(QMainWindow):
 
         self.session_obj.toggle_channel_flag(i_row, is_keep=False)
         self.plot_manager.reset_probe_views()
-        self.plot_manager.reset_trace_views()
+        self.plot_manager.reset_trace_views(True)
 
         t_type = self.info_manager.table_tab_lbl[0]
         self.info_manager.update_header_checkbox_state(t_type)
@@ -355,7 +355,7 @@ class MainWindow(QMainWindow):
         self.info_manager.reset_table_selections(t_type, is_sel)
 
         self.plot_manager.reset_probe_views()
-        self.plot_manager.reset_trace_views()
+        self.plot_manager.reset_trace_views(True)
 
     def update_unit(self, i_row):
 

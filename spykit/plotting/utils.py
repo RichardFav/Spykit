@@ -40,6 +40,9 @@ class PlotManager(QWidget):
     # array class fields
     prop_views = ['trace', 'trigger']
 
+    # parameters
+    eps = 1e-6
+
     def __init__(self, main_obj, plot_width, session_obj=None):
         super(PlotManager, self).__init__()
 
@@ -206,7 +209,7 @@ class PlotManager(QWidget):
         plt_probe = self.plots[self.types['probe'] - 1]
         plt_probe.reset_probe_views()
 
-    def reset_trace_views(self, reset_type=0):
+    def reset_trace_views(self, reset_zoom=False):
 
         # resets the offset time
         plt_trace = self.plots[self.types['trace'] - 1]
@@ -216,7 +219,7 @@ class PlotManager(QWidget):
         probe = self.session_obj.get_current_recording_probe()
         t_dur_new = probe.get_total_duration()
 
-        if plt_trace.gen_props.get('t_dur') != t_dur_new:
+        if np.abs(plt_trace.gen_props.get('t_dur') - t_dur_new) > self.eps:
             # sets the other plot trace fields
             plt_trace.gen_props.set('t_dur', t_dur_new, 0)
             plt_trace.v_box[1, 0].setLimits(xMax=t_dur_new)
@@ -235,7 +238,7 @@ class PlotManager(QWidget):
 
         # resets the general properties and the trace view
         plt_trace.reset_gen_props()
-        plt_trace.reset_trace_view(reset_type)
+        plt_trace.reset_trace_view(reset_zoom)
 
     def reset_trig_views(self):
 
