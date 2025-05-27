@@ -8,7 +8,7 @@ import spykit.common.common_func as cf
 import spykit.common.common_widget as cw
 
 # pyqt6 module import
-from PyQt6.QtWidgets import (QDialog, QWidget, QFrame, QFormLayout, QVBoxLayout, QLineEdit, QCheckBox,
+from PyQt6.QtWidgets import (QDialog, QWidget, QFrame, QFormLayout, QVBoxLayout, QHBoxLayout, QLineEdit, QCheckBox,
                              QTabWidget, QSizePolicy)
 from PyQt6.QtCore import pyqtSignal
 
@@ -25,25 +25,39 @@ class SpikeSorting(QDialog):
 
     # widget dimensions
     x_gap = 5
-    min_width = 300
-    min_height = 300
+    min_width = 350
+
+    # widget stylesheets
+    frame_style = """
+        QWidget#frame {
+            border: 1px solid;
+        }
+    """
 
     def __init__(self, parent=None):
         super(SpikeSorting, self).__init__(parent)
 
         # initialisations
         self.s_props = {}
-        self.s_type = 'mountainsort5'
+        self.s_type = 'kilosort2'
 
-        # sorting group widgets
-        self.main_layout = QVBoxLayout()
-        self.frame_sort = QFrame(self)
+        # class widgets
+        self.frame_sort = QWidget(self)
+        self.frame_cont = QWidget(self)
         self.tab_group_sort = QTabWidget(self)
+
+        # widget layouts
+        self.main_layout = QVBoxLayout()
         self.layout_sort = QVBoxLayout()
+        self.layout_cont = QHBoxLayout()
+
+        # other class widget
+        self.button_cont = []
 
         # initialises the major widget groups
         self.setup_dialog()
         self.setup_prop_fields()
+        self.init_class_fields()
         self.init_sorting_frame()
 
     # ---------------------------------------------------------------------------
@@ -89,22 +103,55 @@ class SpikeSorting(QDialog):
             for k, p in vp['props'].items():
                 self.s_props[kp][k] = p['value']
 
-    def init_sorting_frame(self):
+    def init_class_fields(self):
 
-        # field retrieval
-        # self.main_layout.setContentsMargins(0, 0, 0, 0)
+        # main widget properties
         self.setLayout(self.main_layout)
 
-        # sets the frame properties
-        self.frame_sort.setLineWidth(1)
-        self.frame_sort.setFixedHeight(120)
-        self.frame_sort.setFrameStyle(QFrame.Shadow.Plain | QFrame.Shape.WinPanel)
-        # self.frame_sort.setStyleSheet("border: 1px solid;")
+        # initialises the sorting parameter and control button frames
+        self.init_sorting_frame()
+        self.init_button_frame()
+
+        # adds the frame to the parent widget
+        self.main_layout.addWidget(self.frame_sort)
+        self.main_layout.addWidget(self.frame_cont)
+
+    def init_button_frame(self):
+
+        # initialisations
+        b_str = ['Start Spike Sorting', 'Close Window']
+        cb_fcn = [self.start_spike_sort, self.close_window]
+
+        # sets the control button frame properties
+        self.frame_cont.setLayout(self.layout_cont)
+        self.frame_cont.setStyleSheet('border: 1px solid')
+
+        # sets the frame layout properties
+        self.layout_cont.setSpacing(cw.x_gap)
+        self.layout_cont.setContentsMargins(cw.x_gap, cw.x_gap, cw.x_gap, cw.x_gap)
+
+        # creates the control buttons
+        for bs, cb in zip(b_str, cb_fcn):
+            # creates the button object
+            button_new = cw.create_push_button(self, bs, font=cw.font_lbl)
+            self.layout_cont.addWidget(button_new)
+            self.button_cont.append(button_new)
+
+            # sets the button properties
+            button_new.pressed.connect(cb)
+            button_new.setFixedHeight(cf.but_height)
+
+
+    def init_sorting_frame(self):
+
+        # sets the sorting parameter panel properties
+        self.frame_sort.setLayout(self.layout_sort)
+        self.frame_sort.setObjectName('frame')
+        self.frame_sort.setStyleSheet(self.frame_style)
 
         # adds the tab group to the layout
-        self.frame_sort.setLayout(self.layout_sort)
         self.layout_sort.setSpacing(0)
-        self.layout_sort.setContentsMargins(0, 0, 0, 0)
+        self.layout_sort.setContentsMargins(cw.x_gap, cw.x_gap, cw.x_gap, cw.x_gap)
         self.layout_sort.addWidget(self.tab_group_sort)
 
         # # creates the tab group object
@@ -117,9 +164,6 @@ class SpikeSorting(QDialog):
         i_tab0 = list(self.s_props.keys()).index(self.s_type)
         self.tab_group_sort.setCurrentIndex(i_tab0)
         self.tab_group_sort.currentChanged.connect(self.sort_tab_change)
-
-        # adds the frame to the parent widget
-        self.main_layout.addWidget(self.frame_sort)
 
     # ---------------------------------------------------------------------------
     # Property Field Functions
@@ -257,6 +301,15 @@ class SpikeSorting(QDialog):
                 else:
                     # otherwise, update the numeric string
                     h_obj.setText('%g' % p_val_pr)
+
+    def start_spike_sort(self):
+
+        # finish me!s
+        a = 1
+
+    def close_window(self):
+
+        self.close()
 
     # ---------------------------------------------------------------------------
     # Static Methods

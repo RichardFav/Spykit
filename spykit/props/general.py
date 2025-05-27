@@ -34,7 +34,7 @@ class GeneralPara(PropPara):
     def __init__(self, p_info, n_run):
 
         # initialises the class parameters
-        self.is_updating = True
+        self.is_updating = False
         super(GeneralPara, self).__init__(p_info, n_run)
         self.is_updating = False
 
@@ -42,7 +42,22 @@ class GeneralPara(PropPara):
 
         # re-initialises the class parameters
         self.is_updating = True
+
+        # # loops through each of the class parameters
+        # for k in p_info.keys():
+        #     # retrieves the class parameter field
+        #     pv = np.empty(n_run, dtype=object)
+        #
+        #     # updates the parameter fields
+        #     for i_run in range(n_run):
+        #         pv[i_run] = p_info[k]['value']
+        #
+        #     # updates the class parameter field
+        #     setattr(self, k, pv)
+
         super(GeneralPara, self).__init__(p_info, n_run)
+
+        # resets the update flag
         self.is_updating = False
 
     # ---------------------------------------------------------------------------
@@ -86,7 +101,7 @@ class GeneralProps(PropWidget):
         # field initialisation
         self.trig_view = None
         self.trace_view = None
-        self.t_dur = self.main_obj.session_obj.session_props.t_dur
+        self.t_dur = np.round(self.main_obj.session_obj.session_props.t_dur, cf.n_dp)
         self.n_run = self.main_obj.session_obj.session.get_run_count()
 
         # initialises the property widget
@@ -108,8 +123,7 @@ class GeneralProps(PropWidget):
     def init_other_class_fields(self):
 
         # connects the slot functions
-        self.p_props.edit_update.connect(self.edit_update)
-        self.p_props.check_update.connect(self.check_update)
+        self.reset_slot_functions()
 
         # updates the editbox values
         self.check_update()
@@ -156,7 +170,8 @@ class GeneralProps(PropWidget):
                 self.set_n('t_finish', float(self.edit_finish.text()), i_run)
 
             # updates the duration flag
-            self.set_n('t_dur', self.get('t_finish', i_run) - self.get('t_start', i_run), i_run)
+            t_dur = np.round(self.get('t_finish', i_run) - self.get('t_start', i_run), cf.n_dp)
+            self.set_n('t_dur', t_dur, i_run)
             self.p_props.is_updating = False
 
             # resets the plot views
@@ -174,11 +189,13 @@ class GeneralProps(PropWidget):
         match p_str:
             case p_str if p_str in ['t_start', 't_finish']:
                 fld_update = ['t_dur']
-                self.set_n('t_dur', self.get('t_finish', i_run) - self.get('t_start', i_run), i_run)
+                t_dur = np.round(self.get('t_finish', i_run) - self.get('t_start', i_run), cf.n_dp)
+                self.set_n('t_dur', t_dur, i_run)
 
             case 't_dur':
                 fld_update = ['t_finish']
-                self.set_n('t_finish', self.get('t_start', i_run) + self.get('t_dur', i_run), i_run)
+                t_finish = np.round(self.get('t_start', i_run) + self.get('t_dur', i_run), cf.n_dp)
+                self.set_n('t_finish', t_finish, i_run)
 
         # resets the parameter fields
         for pf in fld_update:
@@ -216,3 +233,12 @@ class GeneralProps(PropWidget):
 
         if self.trig_view is not None:
             self.trig_view.reset_gen_props()
+
+    # ---------------------------------------------------------------------------
+    # Miscellaneous Functions
+    # ---------------------------------------------------------------------------
+
+    def reset_slot_functions(self):
+
+        self.p_props.edit_update.connect(self.edit_update)
+        self.p_props.check_update.connect(self.check_update)

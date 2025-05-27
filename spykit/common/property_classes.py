@@ -941,7 +941,7 @@ class SessionProps:
         self.n_samples = probe_rec.get_num_frames()
         self.n_channels = probe_rec.get_num_channels()
         self.n_segment = probe_rec.get_num_segments()
-        self.t_dur = probe_rec.get_duration()
+        self.t_dur = np.round(probe_rec.get_duration(), cf.n_dp)
         self.s_freq = probe_rec.get_sampling_frequency()
 
     def get_value(self, p_str):

@@ -20,8 +20,6 @@ x_gap = 5
 x_gap2 = 2 * x_gap
 x_gap_h = 2
 
-n_dp = 4
-
 # ----------------------------------------------------------------------------------------------------------------------
 
 """
@@ -238,6 +236,7 @@ class PropManager(QWidget):
                     p_tab.t_dur = p_tab.p_props.t_dur[i_run_sel]
                     p_tab.check_update(False)
                     p_tab.edit_update('t_dur')
+                    p_tab.reset_slot_functions()
 
                 case 'trigger':
                     p_tab.reset_table_data()
@@ -270,6 +269,7 @@ class PropManager(QWidget):
                     # case is the general property tab
                     p_tab.t_dur = self.main_obj.session_obj.session_props.t_dur
                     p_tab.check_update(False)
+                    p_tab.reset_slot_functions()
 
             # resets the update flag
             p_tab.is_updating = False
@@ -524,7 +524,7 @@ class PropWidget(QWidget):
 
             else:
                 # otherwise, reset the previous value
-                h_edit.setText('%g' % np.round(self.get(p_str), n_dp))
+                h_edit.setText('%g' % np.round(self.get(p_str), cf.n_dp))
 
     def combobox_para_update(self, h_cbox):
 
@@ -893,28 +893,29 @@ class PropWidget(QWidget):
                 # case is the start time
                 if hasattr(self.p_props, 't_span'):
                     p_min = 0
-                    p_max = np.round(self.get('t_finish') - cw.t_span_min, n_dp)
+                    p_max = np.round(self.get('t_finish') - cw.t_span_min, cf.n_dp)
 
                 else:
-                    p_min, p_max = 0, self.get('t_finish')
+                    p_min, p_max = 0, np.round(self.get('t_finish'), cf.n_dp)
 
             case 't_finish':
                 # case is the start time
+                p_max = np.round(self.t_dur, cf.n_dp)
                 if hasattr(self.p_props, 't_span'):
-                    p_max = self.t_dur
-                    p_min = np.round(self.get('t_start') + cw.t_span_min, n_dp)
+                    p_min = np.round(self.get('t_start') + cw.t_span_min, cf.n_dp)
 
                 else:
-                    p_min, p_max = self.get('t_start'), self.t_dur
+                    p_min = np.round(self.get('t_start'), cf.n_dp)
 
             case 't_span':
                 # case is the trace window span
-                p_min, p_max = cw.t_span_min, cw.t_span_max
+                p_min = np.round(cw.t_span_min, cf.n_dp)
+                p_max = np.round(cw.t_span_max, cf.n_dp)
 
             case 't_dur':
                 # case is the experiment duration
                 p_min = 0.1
-                p_max = np.round(self.t_dur - self.get('t_start'), n_dp)
+                p_max = np.round(self.t_dur - self.get('t_start'), cf.n_dp)
 
         # returns the limits and integer flag
         return p_min, p_max, is_int

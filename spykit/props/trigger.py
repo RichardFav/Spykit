@@ -208,10 +208,6 @@ class TriggerProps(PropWidget):
         # initialises the other class fields
         self.init_other_class_fields()
 
-    def reset_slot_functions(self):
-
-        self.p_props.pair_update.connect(self.pair_update)
-
     def init_other_class_fields(self):
 
         # connects the slot functions
@@ -476,6 +472,10 @@ class TriggerProps(PropWidget):
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
     # ---------------------------------------------------------------------------
+
+    def reset_slot_functions(self):
+
+        self.p_props.pair_update.connect(self.pair_update)
 
     def reset_region_timing(self, t_dur, dt):
 
