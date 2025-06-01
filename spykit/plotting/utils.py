@@ -1,6 +1,7 @@
 # module imports
 import functools
 import numpy as np
+from copy import deepcopy
 
 # custom module imports
 import spykit.common.common_func as cf
@@ -100,8 +101,6 @@ class PlotManager(QWidget):
 
         # increments the plot count
         self.n_plot += 1
-        if expand_grid:
-            self.expand_grid_indices()
 
         # removes any currently highlighted plot
         self.remove_plot_highlight()
@@ -118,6 +117,9 @@ class PlotManager(QWidget):
         self.types[p_type] = self.n_plot
         self.plots.append(plot_new)
 
+        if expand_grid:
+            self.expand_grid_indices()
+
         # hides the plot (if not showing)
         if not show_plot:
             plot_new.hide()
@@ -131,6 +133,8 @@ class PlotManager(QWidget):
                 # case is the probe view
                 plot_new.probe_clicked.connect(self.clicked_probe)
                 plot_new.reset_highlight.connect(self.trace_highlight)
+                plot_new.probe_roi_moved.connect(self.probe_roi_moved)
+                plot_new.show_view()
 
             case 'trace':
                 # case is the trace view
@@ -186,30 +190,44 @@ class PlotManager(QWidget):
 
         value = self.session_obj.channel_data.is_selected[i_row]
         self.main_obj.info_manager.update_table_value("Channel Info", i_row, value)
-        self.reset_trace_views()
+        self.reset_trace_views(2)
 
     def trace_highlight(self, is_on, i_contact=None):
 
-        plt_trace = self.plots[self.types['trace'] - 1]
-        plt_trace.reset_trace_highlight(is_on, i_contact)
+        if 'trace' in self.types:
+            plt_trace = self.plots[self.types['trace'] - 1]
+            plt_trace.reset_trace_highlight(is_on, i_contact)
+
+    def probe_roi_moved(self, ch_id):
+
+        if 'trace' in self.types:
+            plt_trace = self.plots[self.types['trace'] - 1]
+            plt_trace.reset_inset_highlight(ch_id)
 
     def probe_highlight(self, i_contact):
 
-        plt_probe = self.plots[self.types['probe'] - 1]
+        if 'probe' in self.types:
+            # retrieves the plot probe
+            plt_probe = self.plots[self.types['probe'] - 1]
 
-        if i_contact < 0:
-            plt_probe.hide_channel_highlights()
+            # updates the highlighted channel properties
+            if i_contact < 0:
+                plt_probe.hide_channel_highlights()
 
-        else:
-            plt_probe.show_channel_highlights()
-            plt_probe.reset_channel_highlights(i_contact)
+            else:
+                plt_probe.show_channel_highlights()
+                plt_probe.reset_channel_highlights(i_contact)
 
     def reset_probe_views(self):
 
-        plt_probe = self.plots[self.types['probe'] - 1]
-        plt_probe.reset_probe_views()
+        if 'probe' in self.types:
+            plt_probe = self.plots[self.types['probe'] - 1]
+            plt_probe.reset_probe_views()
 
     def reset_trace_views(self, reset_type=0):
+
+        if 'trace' not in self.types:
+            return
 
         # resets the offset time
         plt_trace = self.plots[self.types['trace'] - 1]
@@ -242,8 +260,9 @@ class PlotManager(QWidget):
 
     def reset_trig_views(self):
 
-        plt_trig = self.plots[self.types['trigger'] - 1]
-        plt_trig.update_trigger_trace(True)
+        if 'trigger' in self.types:
+            plt_trig = self.plots[self.types['trigger'] - 1]
+            plt_trig.update_trigger_trace(True)
 
     def get_prop_views(self, c_id):
 
@@ -276,8 +295,13 @@ class PlotManager(QWidget):
 
     def update_plot_config(self, c_id):
 
-        self.grid_id = c_id
-        self.main_layout.updateID(c_id)
+        if not np.array_equal(self.grid_id, c_id):
+            # determines the view changes
+            self.det_view_changes(self.grid_id, c_id)
+
+            # updates the grid ID field and layout
+            self.grid_id = c_id
+            self.main_layout.updateID(c_id)
 
     def hide_all_plots(self):
 
@@ -309,6 +333,9 @@ class PlotManager(QWidget):
 
     def expand_grid_indices(self):
 
+        # retrieves the original grid ID values
+        grid_id0 = deepcopy(self.grid_id)
+
         # expands the grid ID array to account for the new plot
         if self.grid_id is None:
             # case is the array needs to be initialised
@@ -325,6 +352,40 @@ class PlotManager(QWidget):
             self.grid_id = np.hstack((self.grid_id, grid_new))
             self.grid_id[0, -1] = self.n_plot
 
+        # resets the view changes
+        self.det_view_changes(grid_id0, self.grid_id)
+
+    def det_view_changes(self, c_id_orig, c_id_new):
+
+        # determines the plot view id differences
+        i_plot, is_add = self.det_diff_plot_ids(c_id_orig, c_id_new)
+
+        if i_plot is not None:
+            # if there is a change, then run the hide/show
+            p_types = [k for k, v in self.types.items() if (v in i_plot)]
+            for pt, i_ad in zip(p_types, is_add):
+                plt_view = self.plots[self.types[pt] - 1]
+                plt_view.show_view() if is_add else plt_view.hide_view()
+
+    @staticmethod
+    def det_diff_plot_ids(g_id, c_id):
+
+        if g_id is None:
+            return c_id, np.ones(len(c_id), dtype=bool)
+
+        elif c_id is None:
+            return g_id, np.zeros(len(g_id), dtype=bool)
+
+        # determines the uniquq current/new ID values
+        g_id_uniq, c_id_uniq = np.unique(g_id), np.unique(c_id)
+        if np.array_equal(g_id_uniq, c_id_uniq):
+            # case is there is no change in plot configuration
+            return None, None
+
+        else:
+            # otherwise, determine the missing indices
+            id_diff = np.setdiff1d(c_id_uniq, g_id_uniq)
+            return id_diff, np.array([(id in c_id_uniq) for id in id_diff])
 
 # ----------------------------------------------------------------------------------------------------------------------
 

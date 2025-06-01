@@ -31,6 +31,7 @@ tt_lbl = ['Show Outside Line', 'Toggle Selection', 'Save Figure', 'Close ProbeVi
 class ProbePlot(PlotWidget):
     # pyqtsignal functions
     hide_plot = pyqtSignal()
+    probe_roi_moved = pyqtSignal(list)
     probe_clicked = pyqtSignal(object)
     reset_highlight = pyqtSignal(bool, object)
 
@@ -60,6 +61,7 @@ class ProbePlot(PlotWidget):
         self.sub_view = None
         self.vb_sub = None
         self.sub_xhair = None
+        self.inset_id = None
         # self.sub_label = None
         # self.out_label = None
 
@@ -244,6 +246,7 @@ class ProbePlot(PlotWidget):
 
             case 'close':
                 # case is the close button
+                self.probe_roi_moved.emit(None)
                 self.hide_plot.emit()
 
     # ---------------------------------------------------------------------------
@@ -342,6 +345,9 @@ class ProbePlot(PlotWidget):
         self.sub_view.y_lim[0] = p_pos[1]
         self.sub_view.y_lim[1] = self.sub_view.y_lim[0] + p_pos[2].y()
 
+        # updates the overlapping
+        self.get_new_inset_id(p_pos)
+
         # resets the axis limits
         self.sub_view.reset_axes_limits(False)
 
@@ -414,6 +420,13 @@ class ProbePlot(PlotWidget):
     # Miscellaneous Functions
     # ---------------------------------------------------------------------------
 
+    def get_new_inset_id(self, p_pos):
+
+        p_poly = self.main_view.pos_to_polygonf(p_pos)
+        self.inset_id = [i for i, c in enumerate(self.main_view.c_poly) if c.intersects(p_poly)]
+
+        self.probe_roi_moved.emit(self.inset_id)
+
     def reset_probe_views(self):
 
         self.main_view.create_probe_plot()
@@ -451,7 +464,7 @@ class ProbePlot(PlotWidget):
         self.sub_view.reset_out_line(y_out)
 
     # ---------------------------------------------------------------------------
-    # View Clear Functions
+    # Other Plot View Functions
     # ---------------------------------------------------------------------------
 
     def clear_plot_view(self):
@@ -462,6 +475,20 @@ class ProbePlot(PlotWidget):
         # clears the main/inset probe plot views
         self.main_view.clear_probe_plot()
         self.sub_view.clear_probe_plot()
+
+    def show_view(self):
+
+        # resets the inset id flags
+        self.main_view.roi_moved(self.main_view.roi)
+
+    def hide_view(self):
+
+        # clears the inset id flags
+        self.probe_roi_moved.emit(None)
+
+    # ---------------------------------------------------------------------------
+    # Miscellaneous Functions
+    # ---------------------------------------------------------------------------
 
     def convert_coords(self, is_main, is_out=False):
 
@@ -928,6 +955,16 @@ class ProbeView(GraphicsObject):
     def vert_to_pointf(v):
 
         return [QPointF(x[0], x[1]) for x in v]
+
+    @staticmethod
+    def pos_to_polygonf(p):
+
+        x_lim, y_lim = np.array([0, p[2][0]]), np.array([0, p[2][1]])
+        x = x_lim[np.array([0, 0, 1, 1])] + p[0]
+        y = y_lim[np.array([0, 1, 1, 0])] + p[1]
+
+        return QPolygonF([QPointF(X, Y) for X, Y in zip(x, y)])
+
 
     @staticmethod
     def has_point(cp, m_pos):

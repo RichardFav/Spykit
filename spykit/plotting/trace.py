@@ -151,6 +151,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
     l_pen = mkPen(width=3, color='y')
     l_pen_hover = mkPen(width=3, color='g')
     l_pen_trace = mkPen(color=cf.get_colour_value('g'), width=1)
+    l_pen_inset = mkPen(color=cf.get_colour_value('r'), width=1)
     l_pen_high = mkPen(color=cf.get_colour_value('y'), width=1)
 
     def __init__(self, session_info):
@@ -176,8 +177,11 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         # trace fields
         self.x_tr = None
         self.y_tr = None
+        self.c_tr = None
         self.gen_props = None
         self.trace_props = None
+        self.inset_id = None
+        self.inset_tr = []
 
         # axes limits
         self.y_lim = []
@@ -235,6 +239,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
         # trace items
         self.main_trace = PlotCurveItem(pen=self.l_pen_trace, skipFiniteCheck=False)
+        self.inset_trace = PlotCurveItem(pen=self.l_pen_inset, skipFiniteCheck=False)
         self.highlight_trace = PlotCurveItem(pen=self.l_pen_high, skipFiniteCheck=False)
 
         # sets up the plot regions
@@ -290,6 +295,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
         # adds the traces to the main plot
         self.h_plot[0, 0].addItem(self.main_trace)
+        self.h_plot[0, 0].addItem(self.inset_trace)
         self.h_plot[0, 0].addItem(self.highlight_trace)
         self.h_plot[0, 0].addItem(self.hm_label)
         self.h_plot[0, 0].addItem(self.hm_roi)
@@ -533,7 +539,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
                 self.reset_zoom_limits()
 
             case 2:
-                # case is resetting the x-axis only
+                # case is resetting the y-axis only
                 self.reset_yaxis_limits()
 
             case 3:
@@ -554,6 +560,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
         if self.n_plt:
             # field retrieval
+            plot_id_orig = deepcopy(self.plot_id)
             s_freq = self.session_info.session_props.s_freq
 
             # sets the frame range indices
@@ -564,8 +571,13 @@ class TracePlot(TraceLabelMixin, PlotWidget):
             if n_frm == 0:
                 return
 
-            # sets up the y-data array
+            # retrieves the plot indices
             channel_id, self.plot_id = self.session_info.get_channel_ids(i_channel, depth_sort)
+            if not np.array_equal(self.plot_id, plot_id_orig):
+                # if there is a change, then update the inset trace indices
+                self.reset_inset_traces_indices()
+
+            # sets up the y-data array
             y0 = self.session_info.get_traces(
                 start_frame=i_frm0,
                 end_frame=i_frm1,
@@ -608,18 +620,25 @@ class TracePlot(TraceLabelMixin, PlotWidget):
                     self.y_tr[i, :] = (i * self.y_gap + self.y_ofs) + (1 - self.y_ofs) * y_scl
 
                 # sets up the connection array
-                c = np.ones((self.n_plt, n_frm), dtype=np.ubyte)
-                c[:, -1] = False
+                self.c_tr = np.ones((self.n_plt, n_frm), dtype=np.ubyte)
+                self.c_tr[:, -1] = False
 
                 # resets the curve data
-                self.main_trace.clear()
-                self.main_trace.setData(self.x_tr.flatten(), self.y_tr.flatten(), connect=c.flatten())
+                if self.inset_id is None:
+                    self.update_trace(self.main_trace)
+
+                else:
+                    self.update_trace(self.main_trace, ~self.inset_tr)
+                    self.update_trace(self.inset_trace, self.inset_tr)
 
         else:
             # resets the zoom limits
             self.reset_xaxis_limits()
             self.reset_yaxis_limits()
             self.reset_zoom_limits()
+
+            # resets the plot id fields
+            self.plot_id = None
 
             # removes the heatmap image (if mapping)
             if is_map:
@@ -650,6 +669,26 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
         self.image_item.show() if is_map else self.image_item.hide()
         self.main_trace.hide() if is_map else self.main_trace.show()
+        self.inset_trace.hide() if is_map else self.inset_trace.show()
+
+    def update_trace(self, h_trace, is_tr=None):
+
+        # clears the trace
+        h_trace.clear()
+
+        if is_tr is None:
+            h_trace.setData(
+                self.x_tr.flatten(),
+                self.y_tr.flatten(),
+                connect=c.flatten()
+            )
+
+        elif np.any(is_tr):
+            h_trace.setData(
+                self.x_tr[is_tr, :].flatten(),
+                self.y_tr[is_tr, :].flatten(),
+                connect=self.c_tr[is_tr, :].flatten(),
+            )
 
     # ---------------------------------------------------------------------------
     # Mouse Movement Functions
@@ -761,10 +800,11 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
         # retrieves the new axis limit
         if self.n_plt == 0:
-            #
+            # uses the default x/y axis limits
             x_lim_zoom, self.y_lim = self.zx_full, self.zy_full
 
         else:
+            # retrieves the x/y axis limits
             x_lim_zoom0, self.y_lim = self.v_box[0, 0].viewRange()
 
             # ensures the x-limits are feasible
@@ -886,8 +926,6 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         # resets the main zoom range
         self.pz_lvl[self.iz_lvl, 0], self.pz_lvl[self.iz_lvl, 1] = px_range, py_range
         self.update_trace_props()
-
-        # print(self.pz_lvl)
 
     def restore_zoom_limits(self):
 
@@ -1017,7 +1055,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         if self.iz_lvl >= 0:
             self.pz_lvl[self.iz_lvl, 1] = np.array([0, 1], dtype=float)
 
-        #
+        # updates the trace properties
         self.update_trace_props()
 
     # ---------------------------------------------------------------------------
@@ -1214,6 +1252,28 @@ class TracePlot(TraceLabelMixin, PlotWidget):
                 self.i_sel_tr = i_sort_plt[i_sel_ch == i_contact][0]
                 self.highlight_trace.setData(self.x_tr[0, :], self.y_tr[self.i_sel_tr, :])
 
+    def reset_inset_highlight(self, inset_id=None):
+
+        # if there is no change in inset ids, then exit
+        if np.array_equal(self.inset_id, inset_id):
+            return
+
+        # resets the contact inset id
+        self.inset_id = inset_id
+        self.reset_inset_traces_indices()
+
+        # updates the trace plot (if
+        if self.n_plt:
+            self.reset_trace_view()
+
+    def reset_inset_traces_indices(self):
+
+        if self.plot_id is None:
+            self.inset_tr = None
+
+        else:
+            self.inset_tr = np.array([x in self.inset_id for x in self.plot_id])
+
     # ---------------------------------------------------------------------------
     # Parameter Object Setter Functions
     # ---------------------------------------------------------------------------
@@ -1250,13 +1310,25 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         return self.session_info.session.get_run_index(self.session_info.current_run)
 
     # ---------------------------------------------------------------------------
-    # View Clear Functions
+    # Other Plot View Functions
     # ---------------------------------------------------------------------------
 
     def clear_plot_view(self):
 
         # clears the selection flags
         self.reset_trace_view()
+
+    def show_view(self):
+
+        pass
+
+    def hide_view(self):
+
+        pass
+
+    # ---------------------------------------------------------------------------
+    # Plot Property Functions
+    # ---------------------------------------------------------------------------
 
     def get_prop_xlimits(self):
 
@@ -1299,6 +1371,10 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
         return px_range, py_range
 
+    # ---------------------------------------------------------------------------
+    # Miscellaneous Functions
+    # ---------------------------------------------------------------------------
+
     def det_moved_side(self, t_lim_reg):
 
         return np.abs(t_lim_reg - self.t_lim_prev[1]) > self.eps
@@ -1306,6 +1382,10 @@ class TracePlot(TraceLabelMixin, PlotWidget):
     def det_moved_direction(self, t_lim_reg):
 
         return np.sign(t_lim_reg - self.t_lim_prev[1])
+
+    # ---------------------------------------------------------------------------
+    # Static Methods
+    # ---------------------------------------------------------------------------
 
     @staticmethod
     def is_view_change(pXY, pX, pY):

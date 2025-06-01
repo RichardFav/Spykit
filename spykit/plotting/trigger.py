@@ -467,12 +467,20 @@ class TriggerPlot(PlotWidget):
         trig_props_new.set_trig_view(self)
 
     # ---------------------------------------------------------------------------
-    # View Clear Functions
+    # Other Plot View Functions
     # ---------------------------------------------------------------------------
 
     def clear_plot_view(self):
 
         self.trig_trace.clear()
+
+    def show_view(self):
+
+        pass
+
+    def hide_view(self):
+
+        pass
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
