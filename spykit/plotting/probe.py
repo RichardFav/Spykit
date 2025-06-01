@@ -31,7 +31,7 @@ tt_lbl = ['Show Outside Line', 'Toggle Selection', 'Save Figure', 'Close ProbeVi
 class ProbePlot(PlotWidget):
     # pyqtsignal functions
     hide_plot = pyqtSignal()
-    probe_roi_moved = pyqtSignal(list)
+    probe_roi_moved = pyqtSignal(object)
     probe_clicked = pyqtSignal(object)
     reset_highlight = pyqtSignal(bool, object)
 

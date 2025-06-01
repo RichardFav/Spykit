@@ -300,7 +300,7 @@ class PlotManager(QWidget):
             self.det_view_changes(self.grid_id, c_id)
 
             # updates the grid ID field and layout
-            self.grid_id = c_id
+            self.grid_id = deepcopy(c_id)
             self.main_layout.updateID(c_id)
 
     def hide_all_plots(self):
@@ -377,14 +377,14 @@ class PlotManager(QWidget):
             return g_id, np.zeros(len(g_id), dtype=bool)
 
         # determines the uniquq current/new ID values
-        g_id_uniq, c_id_uniq = np.unique(g_id), np.unique(c_id)
+        g_id_uniq, c_id_uniq = np.unique(g_id[g_id > 0]), np.unique(c_id[c_id > 0])
         if np.array_equal(g_id_uniq, c_id_uniq):
             # case is there is no change in plot configuration
             return None, None
 
         else:
             # otherwise, determine the missing indices
-            id_diff = np.setdiff1d(c_id_uniq, g_id_uniq)
+            id_diff = np.setxor1d(c_id_uniq, g_id_uniq)
             return id_diff, np.array([(id in c_id_uniq) for id in id_diff])
 
 # ----------------------------------------------------------------------------------------------------------------------

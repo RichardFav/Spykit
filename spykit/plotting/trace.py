@@ -625,6 +625,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
                 # resets the curve data
                 if self.inset_id is None:
+                    self.inset_trace.clear()
                     self.update_trace(self.main_trace)
 
                 else:
@@ -680,7 +681,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
             h_trace.setData(
                 self.x_tr.flatten(),
                 self.y_tr.flatten(),
-                connect=c.flatten()
+                connect=self.c_tr.flatten()
             )
 
         elif np.any(is_tr):
@@ -821,6 +822,9 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
                 else:
                     x_lim_zoom = np.mean(x_lim_zoom) + np.array([-1, 1], dtype=float) * (cw.t_span_min / 2.)
+
+            # updates the heatmap marker
+            self.heatmap_mouse_move(QPointF(evnt.pos()))
 
         # resets the x-axis linear regions and plot axis limits
         self.l_reg_x.setRegion(x_lim_zoom)
@@ -980,11 +984,13 @@ class TracePlot(TraceLabelMixin, PlotWidget):
             dy_pos = 0
 
         # resets the x-label offset (if near the right-side)
-        if (m_pos.x() + self.pw_x * dx_pos) < self.t_lim[1]:
+        x_lim_m = self.get_xlimit_prop()
+        if (m_pos.x() - self.pw_x * dx_pos) < x_lim_m[0]:
             dx_pos = 0
 
         # resets the label position
-        self.hm_label.setPos(m_pos + QPointF(-dx_pos, dy_pos-1))
+        y_ofs = float(self.get_plot_mode())
+        self.hm_label.setPos(m_pos + QPointF(-dx_pos, dy_pos-y_ofs))
 
     def convert_coords(self):
 
@@ -1268,7 +1274,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
     def reset_inset_traces_indices(self):
 
-        if self.plot_id is None:
+        if (self.plot_id is None) or (self.inset_id is None):
             self.inset_tr = None
 
         else:
