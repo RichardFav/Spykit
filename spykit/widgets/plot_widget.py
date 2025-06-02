@@ -91,7 +91,9 @@ class QPlotWidgetMain(QDialog):
         self.tr_obj = [QTraceObject(self, main_name)]
         self.i_trace = 0
 
-    # CLASS INITIALISATION FUNCTIONS -----------------------------------
+    # ---------------------------------------------------------------------------
+    # Class Initialisation Functions
+    # ---------------------------------------------------------------------------
 
     def setup_dialog(self):
 
@@ -107,7 +109,9 @@ class QPlotWidgetMain(QDialog):
             self.x = np.arange(0, 4 * np.pi, 1e-6)
             self.y = 1e-2 * np.sin(1e3 * self.x) + np.sin(self.x) + 1e-3 * np.sin(1e10 * self.x)
 
-    # OBSERVER PARAMETER EVENT FUNCTIONS -------------------------------
+    # ---------------------------------------------------------------------------
+    # Observer Parameter Event Functions
+    # ---------------------------------------------------------------------------
 
     def update_trace(self, p_str):
 
@@ -282,7 +286,9 @@ class QPlotWidgetMain(QDialog):
         obj_tr_sel = self.tr_obj[self.i_trace]
         setattr(obj_tr_sel.plot_para, p_str, getattr(self.obj_para.p_props, p_str))
 
-    # MISCELLANEOUS FUNCTIONS ------------------------------------------
+    # ---------------------------------------------------------------------------
+    # Miscellaneous Functions
+    # ---------------------------------------------------------------------------
 
     def change_selected_plot(self, tr_obj_p):
 
@@ -319,6 +325,10 @@ class QPlotWidgetMain(QDialog):
 
         return next((i for i, x in enumerate(self.tr_obj) if (x == tr_obj)))
 
+    # ---------------------------------------------------------------------------
+    # Static Methods
+    # ---------------------------------------------------------------------------
+
     @staticmethod
     def get_trace_name(_obj_tr):
 
@@ -346,7 +356,7 @@ class QPlotWidgetMain(QDialog):
 
 
 class QPlotPara(QWidget):
-    # signal functions
+    # pyqtsignal functions
     axes_reset = pyqtSignal(QWidget)
 
     def __init__(self, parent=None):
@@ -395,7 +405,9 @@ class QPlotPara(QWidget):
         self.update_button_props()
         self.set_styles()
 
-    # CLASS INITIALISATION FUNCTIONS ------------------------------------------
+    # ---------------------------------------------------------------------------
+    # Class Initialisation Functions
+    # ---------------------------------------------------------------------------
 
     def init_class_fields(self):
 
@@ -430,7 +442,9 @@ class QPlotPara(QWidget):
         self.scroll_layout.setSpacing(0)
         self.scroll_layout.setContentsMargins(0, 0, 0, 0)
 
-    # PARAMETER WIDGET SETUP --------------------------------------------------
+    # ---------------------------------------------------------------------------
+    # Parameter Widget Setup
+    # ---------------------------------------------------------------------------
 
     def setup_para_info_fields(self):
 
@@ -536,7 +550,9 @@ class QPlotPara(QWidget):
         cb_fcn = self.setup_widget_callback()
 
         match ps['type']:
-            # REGULAR WIDGETS -------------------------------------------------
+            # -----------------------------------------------------------------------
+            # Regular Widgets
+            # -----------------------------------------------------------------------
 
             # case is a text label
             case 'text':
@@ -635,7 +651,9 @@ class QPlotPara(QWidget):
                     # case is another layout type
                     layout.addRow(obj_button)
 
-            # SPECIAL WIDGETS -------------------------------------------------
+            # -----------------------------------------------------------------------
+            # Special Widgets
+            # -----------------------------------------------------------------------
 
             # case is a tree widget
             case 'tree':
@@ -801,7 +819,9 @@ class QPlotPara(QWidget):
         # resets the update flag
         self.is_updating = is_updating0
 
-    # COLLAPSIBLE PANEL EVENT FUNCTIONS ---------------------------------------
+    # ---------------------------------------------------------------------------
+    # Collapsible Panel Event Functions
+    # ---------------------------------------------------------------------------
 
     def expand(self, h_panel_c):
 
@@ -814,7 +834,9 @@ class QPlotPara(QWidget):
             h_panel_c.is_expanded = h_panel_c.is_expanded ^ True
             h_panel_c.update_button_text()
 
-    #  PROPERTY WIDGET EVENT FUNCTIONS ----------------------------------------
+    # ---------------------------------------------------------------------------
+    # Property Widget Event Functions
+    # ---------------------------------------------------------------------------
 
     def widget_para_update(self, h_widget, *_):
 
@@ -914,7 +936,9 @@ class QPlotPara(QWidget):
         # updates the parameter field
         setattr(self.p_props, p_str, nw_val)
 
-    # WIDGET EVENT FUNCTIONS --------------------------------------------------
+    # ---------------------------------------------------------------------------
+    # Widget Event Functions
+    # ---------------------------------------------------------------------------
 
     def config_reset(self):
 
@@ -940,7 +964,9 @@ class QPlotPara(QWidget):
             # updates the parameter field
             setattr(self.p_props, p_str, p_col)
 
-    # MISCELLANEOUS FUNCTIONS -------------------------------------------------
+    # ---------------------------------------------------------------------------
+    # Miscellaneous Functions
+    # ---------------------------------------------------------------------------
 
     def update_button_props(self, tr_obj=None):
 
@@ -992,6 +1018,7 @@ class QPlotPara(QWidget):
 
 
 class QPlotWindow(QWidget):
+    # pyqtSignal functions
     update_id = pyqtSignal()
 
     def __init__(self, parent=None):
@@ -1010,7 +1037,9 @@ class QPlotWindow(QWidget):
         # initialises the class fields
         self.init_class_fields()
 
-    # CLASS INITIALISATION FUNCTIONS -----------------------------------
+    # ---------------------------------------------------------------------------
+    # Class Initialisation Functions
+    # ---------------------------------------------------------------------------
 
     def init_class_fields(self):
 
@@ -1029,7 +1058,9 @@ class QPlotWindow(QWidget):
         # creates the background widget
         self.bg_widget.setStyleSheet("background-color: black;")
 
-    # CLASS INITIALISATION FUNCTIONS -----------------------------------
+    # ---------------------------------------------------------------------------
+    # Widget Event Functions
+    # ---------------------------------------------------------------------------
 
     def config_reset(self, obj_rcfig):
 
@@ -1102,13 +1133,17 @@ class QTraceObject(object):
         self.parent.obj_para.reset_para_props(self)
         self.parent.trace_added(self.plot_obj, tr_name)
 
-    # EVENT FUNCTIONS --------------------------------------------------
+    # ---------------------------------------------------------------------------
+    # Event Functions
+    # ---------------------------------------------------------------------------
 
     def region_moved(self):
 
         self.parent.obj_para.reset_axis_limit_fields(self)
 
-    # MISCELLANEOUS FUNCTIONS ------------------------------------------
+    # ---------------------------------------------------------------------------
+    # Miscellaneous Functions
+    # ---------------------------------------------------------------------------
 
     def delete(self):
 
@@ -1233,7 +1268,9 @@ class QPlotWidget(QWidget):
         self.setup_plot_buttons()
         self.setup_plot_region()
 
-    # CLASS WIDGET SETUP -----------------------------------------------
+    # ---------------------------------------------------------------------------
+    # Class Initialisation Functions
+    # ---------------------------------------------------------------------------
 
     def setup_plot_widget(self):
 
@@ -1412,7 +1449,9 @@ class QPlotWidget(QWidget):
         pen_style = cf.pen_style[self.p_props.p_style]
         return pg.mkPen(color=self.p_props.p_col, width=self.p_props.p_width, style=pen_style)
 
-    # REGION MOVEMENT FUNCTIONS ----------------------------------------
+    # ---------------------------------------------------------------------------
+    # Region Movement Functions
+    # ---------------------------------------------------------------------------
 
     def region_current_move(self):
 
@@ -1459,7 +1498,9 @@ class QPlotWidget(QWidget):
                 self.l_reg_p.setRegion(x_lim_p)
                 self.is_updating = False
 
-    # WIDGET EVENT FUNCTIONS -------------------------------------------
+    # ---------------------------------------------------------------------------
+    # Widget Event Functions
+    # ---------------------------------------------------------------------------
 
     def click_plot_region(self, *_):
 
@@ -1548,7 +1589,9 @@ class QPlotWidget(QWidget):
                 # resets the grid values
                 self.h_plot_item.showGrid(x=y_on, y=x_on, alpha=0.5)
 
-    # MISCELLANEOUS FUNCTIONS ------------------------------------------
+    # ---------------------------------------------------------------------------
+    # Miscellaneous Functions
+    # ---------------------------------------------------------------------------
 
     def reset_plot_data(self):
 
@@ -1754,6 +1797,10 @@ class QParaClass(QParaTrace):
 
     def __init__(self, tr_name):
         super(QParaClass, self).__init__(tr_name)
+
+    # ---------------------------------------------------------------------------
+    # Static Methods
+    # ---------------------------------------------------------------------------
 
     @staticmethod
     def para_change(p_str, _self):
