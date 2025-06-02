@@ -36,7 +36,7 @@ min_height = 450
 
 class PlotManager(QWidget):
     # signal functions
-    update_id = pyqtSignal()
+    probe_inset_button = pyqtSignal(object)
 
     # array class fields
     prop_views = ['trace', 'trigger']
@@ -133,6 +133,7 @@ class PlotManager(QWidget):
                 # case is the probe view
                 plot_new.probe_clicked.connect(self.clicked_probe)
                 plot_new.reset_highlight.connect(self.trace_highlight)
+                plot_new.reset_inset_traces.connect(self.inset_highlight)
                 plot_new.probe_roi_moved.connect(self.probe_roi_moved)
                 plot_new.show_view()
 
@@ -197,6 +198,10 @@ class PlotManager(QWidget):
         if 'trace' in self.types:
             plt_trace = self.plots[self.types['trace'] - 1]
             plt_trace.reset_trace_highlight(is_on, i_contact)
+
+    def inset_highlight(self, inset_id):
+
+        self.probe_inset_button.emit(inset_id)
 
     def probe_roi_moved(self, ch_id):
 

@@ -330,6 +330,11 @@ class SessionWorkBook(QObject):
 
         self.channel_data.is_selected[self.channel_data.is_keep] = is_checked
 
+    def set_channel_indices(self, ch_id):
+
+        self.channel_data.is_selected[:] = False
+        self.channel_data.is_selected[ch_id] = True
+
     def set_current_run(self, new_run):
 
         self.current_run = new_run

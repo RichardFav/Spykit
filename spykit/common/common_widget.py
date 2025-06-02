@@ -108,6 +108,8 @@ icon_path = {
     'tick': os.path.join(icon_dir, 'tick_icon.png'),
     'trace_on': os.path.join(icon_dir, 'trace_on_icon.png'),
     'trace_off': os.path.join(icon_dir, 'trace_off_icon.png'),
+    'star_on': os.path.join(icon_dir, 'star_on_icon.png'),
+    'star_off': os.path.join(icon_dir, 'star_off_icon.png'),
 }
 
 # channel status colour values

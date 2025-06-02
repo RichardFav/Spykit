@@ -120,6 +120,7 @@ class MainWindow(QMainWindow):
         self.info_manager.unit_header_check.connect(self.update_unit_header)
         self.info_manager.channel_check.connect(self.update_channel)
         self.info_manager.channel_header_check.connect(self.update_channel_header)
+        self.plot_manager.probe_inset_button.connect(self.update_inset_channel)
         self.prop_manager.config_update.connect(self.update_config)
 
         # connects workbook sig\nal functions
@@ -349,6 +350,17 @@ class MainWindow(QMainWindow):
     def update_channel_header(self, is_checked):
 
         self.session_obj.set_all_channel_states(is_checked)
+
+        t_type = self.info_manager.table_tab_lbl[0]
+        is_sel = self.session_obj.channel_data.is_selected
+        self.info_manager.reset_table_selections(t_type, is_sel)
+
+        self.plot_manager.reset_probe_views()
+        self.plot_manager.reset_trace_views(2)
+
+    def update_inset_channel(self, inset_id):
+
+        self.session_obj.set_channel_indices(inset_id)
 
         t_type = self.info_manager.table_tab_lbl[0]
         is_sel = self.session_obj.channel_data.is_selected

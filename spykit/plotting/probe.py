@@ -16,9 +16,9 @@ from spykit.plotting.utils import PlotWidget, PlotPara
 from pyqtgraph import PlotCurveItem, GraphicsObject, ROI, RectROI, TextItem, mkPen, mkBrush, exporters
 
 # plot button fields
-b_icon = ['trace', 'toggle', 'save', 'close']
-b_type = ['toggle', 'button', 'button', 'button']
-tt_lbl = ['Show Outside Line', 'Toggle Selection', 'Save Figure', 'Close ProbeView']
+b_icon = ['tick', 'star', 'toggle', 'save', 'close']
+b_type = ['button', 'toggle', 'button', 'button', 'button']
+tt_lbl = ['Display Inset Traces', 'Highlight Inset Traces', 'Toggle Selection', 'Save Figure', 'Close ProbeView']
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -34,6 +34,7 @@ class ProbePlot(PlotWidget):
     probe_roi_moved = pyqtSignal(object)
     probe_clicked = pyqtSignal(object)
     reset_highlight = pyqtSignal(bool, object)
+    reset_inset_traces = pyqtSignal(object)
 
     # parameters
     pw_y = 1.05
@@ -43,8 +44,10 @@ class ProbePlot(PlotWidget):
 
     # list class fields
     add_lbl = ['remove', 'toggle', 'add']
-    add_tt_str = ['Remove Selection', 'Toggle Selection', 'Add Selection']
-    lbl_tt_str = ['Show Outside Line', 'Hide Outside Line']
+    lbl_tt_str = {
+        'star': ['Enable Inset Trace Highlight', 'Disable Inset Trace Highlight'],
+        'toggle': ['Remove Selection', 'Toggle Selection', 'Add Selection']
+    }
 
     def __init__(self, session_info):
         super(ProbePlot, self).__init__('probe', b_icon=b_icon, b_type=b_type, tt_lbl=tt_lbl)
@@ -68,6 +71,8 @@ class ProbePlot(PlotWidget):
         # other class fields
         self.i_status = 1
         self.show_out = False
+        self.reset_inset_id = False
+        self.highlight_inset = False
         self.p_zoom = [1 - self.p_zoom0, 1 + self.p_zoom0]
 
         # sets up the plot regions
@@ -116,6 +121,7 @@ class ProbePlot(PlotWidget):
 
             # create the main view ROI
             self.main_view.create_inset_roi(is_full=False)
+            self.get_new_inset_id()
 
         else:
             # resets the main probe view
@@ -201,17 +207,27 @@ class ProbePlot(PlotWidget):
     def plot_button_clicked(self, b_str):
 
         match b_str:
-            case 'trace':
+            case 'tick':
+                # case displaying only the inset traces
+
+                # updates the highlight toggle tooltip string
+                obj_but = self.findChild(cw.QPushButton, name='star')
+                obj_but.setChecked(True)
+                self.plot_button_clicked('star')
+
+                # resets the inset traces
+                self.reset_inset_traces.emit(self.inset_id)
+
+            case 'star':
                 # case is the trace toggle button
-                obj_but = self.findChild(cw.QPushButton, name=b_str)
 
                 # updates the tooltip string
-                self.show_out = obj_but.isChecked()
-                obj_but.setToolTip(self.lbl_tt_str[int(self.show_out)])
+                obj_but = self.findChild(cw.QPushButton, name=b_str)
+                self.highlight_inset = obj_but.isChecked()
+                obj_but.setToolTip(self.lbl_tt_str[b_str][int(self.highlight_inset)])
 
-                # resets the trace visibility
-                self.main_view.set_out_line_visible(self.show_out)
-                self.sub_view.set_out_line_visible(self.show_out)
+                # updates the trace plot
+                self.show_view() if self.highlight_inset else self.hide_view()
 
             case 'toggle':
                 # case is the toggle button
@@ -223,7 +239,7 @@ class ProbePlot(PlotWidget):
                 icon_name = self.add_lbl[self.i_status]
                 obj_but = self.findChild(cw.QPushButton, name=b_str)
                 obj_but.setIcon(QIcon(cw.icon_path[icon_name]))
-                obj_but.setToolTip(self.add_tt_str[self.i_status])
+                obj_but.setToolTip(self.lbl_tt_str[b_str][self.i_status])
 
             case 'save':
                 # case is the save button
@@ -266,29 +282,7 @@ class ProbePlot(PlotWidget):
         else:
             m_pos = p_pos
 
-        if (p_view.y_out is not None) and self.show_out:
-            dy_out = np.abs(m_pos.y() - p_view.y_out)
-            if dy_out < self.y_out_dist:
-                # calculates the label x/y-offsets
-                ax_rng = vb.viewRange()
-                dx_pos, dy_pos = self.convert_coords(is_main_view, True)
-
-                # resets the y-label offset (if near the top)
-                if (m_pos.y() + self.pw_y * dy_pos) > ax_rng[1][1]:
-                    dy_pos = 0
-
-                # resets the x-label offset (if near the right-side)
-                if (m_pos.x() + self.pw_x * dx_pos) < ax_rng[0][1]:
-                    dx_pos = 0
-
-                # resets the label visibility/position
-                p_view.out_label.setVisible(True)
-                p_view.out_label.setPos(m_pos + QPointF(-dx_pos, dy_pos))
-                return
-
-            else:
-                # resets the label visibility
-                p_view.out_label.setVisible(False)
+        self.display_out_line(p_view, vb, m_pos)
 
         i_contact = p_view.inside_polygon_single(m_pos)
         if i_contact is not None:
@@ -347,6 +341,7 @@ class ProbePlot(PlotWidget):
 
         # updates the overlapping
         self.get_new_inset_id(p_pos)
+        self.probe_roi_moved.emit(self.inset_id)
 
         # resets the axis limits
         self.sub_view.reset_axes_limits(False)
@@ -420,12 +415,14 @@ class ProbePlot(PlotWidget):
     # Miscellaneous Functions
     # ---------------------------------------------------------------------------
 
-    def get_new_inset_id(self, p_pos):
+    def get_new_inset_id(self, p_pos=None):
+
+        if p_pos is None:
+            h_roi = self.main_view.roi
+            p_pos = [h_roi.x(), h_roi.y(), h_roi.size()]
 
         p_poly = self.main_view.pos_to_polygonf(p_pos)
         self.inset_id = [i for i, c in enumerate(self.main_view.c_poly) if c.intersects(p_poly)]
-
-        self.probe_roi_moved.emit(self.inset_id)
 
     def reset_probe_views(self):
 
@@ -479,7 +476,9 @@ class ProbePlot(PlotWidget):
     def show_view(self):
 
         # resets the inset id flags
-        self.main_view.roi_moved(self.main_view.roi)
+        if self.highlight_inset:
+            self.get_new_inset_id()
+            self.probe_roi_moved.emit(self.inset_id)
 
     def hide_view(self):
 
@@ -518,6 +517,32 @@ class ProbePlot(PlotWidget):
         # retrieves the converted coordinates
         bb_rect = vb.mapSceneToView(lbl_bb).boundingRect()
         return bb_rect.width(), bb_rect.height()
+
+    def display_out_line(self, p_view, vb, m_pos):
+
+        if (p_view.y_out is not None) and self.show_out:
+            dy_out = np.abs(m_pos.y() - p_view.y_out)
+            if dy_out < self.y_out_dist:
+                # calculates the label x/y-offsets
+                ax_rng = vb.viewRange()
+                dx_pos, dy_pos = self.convert_coords(is_main_view, True)
+
+                # resets the y-label offset (if near the top)
+                if (m_pos.y() + self.pw_y * dy_pos) > ax_rng[1][1]:
+                    dy_pos = 0
+
+                # resets the x-label offset (if near the right-side)
+                if (m_pos.x() + self.pw_x * dx_pos) < ax_rng[0][1]:
+                    dx_pos = 0
+
+                # resets the label visibility/position
+                p_view.out_label.setVisible(True)
+                p_view.out_label.setPos(m_pos + QPointF(-dx_pos, dy_pos))
+                return
+
+            else:
+                # resets the label visibility
+                p_view.out_label.setVisible(False)
 
     # ---------------------------------------------------------------------------
     # Static Methods
