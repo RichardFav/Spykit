@@ -352,7 +352,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
         # creates the linear region
         self.l_reg_x = LinearRegionItem([0, self.x_window], bounds=[0, self.t_dur], span=[0, 1],
-                                        pen=self.l_pen, hoverPen=self.l_pen_hover, swapMode='sort')
+                                        pen=self.l_pen, hoverPen=self.l_pen_hover, swapMode='None')
         self.l_reg_x.sigRegionChanged.connect(self.xframe_region_move)
         self.l_reg_x.sigRegionChangeFinished.connect(self.xframe_region_finished)
         self.l_reg_x.mouseDoubleClickEvent = self.xframe_region_double_click
@@ -440,7 +440,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
                 else:
                     # otherwise, update the limits as per normal
-                    self.t_lim = self.t_lim + dt_span * np.array([-1., 1.])
+                    self.t_lim += + dt_span * np.array([-1., 1.])
 
                 # rounds the values to reasonable values
                 self.t_lim = np.round(self.t_lim, cf.n_dp)
@@ -495,12 +495,12 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.t_start_ofs = t_start_ofs_new
 
         # ensures the limits are correct
-        self.t_lim = cf.list_add(self.t_lim, -dt_start_ofs)
+        self.t_lim -= dt_start_ofs
         if self.t_lim[0] < 0:
-            self.t_lim = [0, self.x_window]
+            self.t_lim = np.array([0, self.x_window])
 
         elif self.t_lim[1] > self.t_dur:
-            self.t_lim = list(self.t_dur - np.asarray([self.x_window, 0]))
+            self.t_lim = self.t_dur - np.asarray([self.x_window, 0])
 
         # resets the plot view axis
         t_lim_p = self.get_prop_xlimits()
@@ -584,7 +584,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
                 # case is resetting the both axis
 
                 # resets the time limit markers
-                self.t_lim = [0, self.x_window]
+                self.t_lim = np.array([0, self.x_window])
                 self.zx_full = self.t_lim
                 self.t_lim_prev = self.t_lim
 
@@ -1118,76 +1118,25 @@ class TracePlot(TraceLabelMixin, PlotWidget):
             return
 
         # retrieves the current region limits
-        t_lim_reg = np.array(self.l_reg_x.getRegion())
-        dt_lim_reg = np.diff(t_lim_reg)[0]
-        dt_lim_prev = np.diff(self.t_lim_prev)[0]
+        t_lim_p0 = self.get_prop_xlimits()
+        t_lim_reg0 = np.array(self.l_reg_x.getRegion())
+        dt_reg_p = t_lim_reg0 - t_lim_p0
 
         # determines if the region has resized
-        reg_resized = False
-        has_resized = np.abs(dt_lim_reg - dt_lim_prev) > self.eps
-        if has_resized:
-            if t_lim_reg[0] < 0:
-                # case is the region is translated past the start point
-                t_lim_reg = np.array([0, dt_lim_prev])
+        i_side = np.argmax(np.abs(dt_reg_p))
+        self.t_lim += dt_reg_p[i_side]
 
-            elif t_lim_reg[1] > self.t_dur:
-                # case is the region is translated past the duration point
-                t_lim_reg = self.t_dur - np.array([dt_lim_prev, 0])
+        if self.t_lim[0] < 0:
+            # case is the left side is before the expt start
+            self.t_lim -= self.t_lim[0]
 
-            elif dt_lim_reg > self.x_window:
-                # case is the window size exceeds the maximum
-                if np.argmax(np.abs(self.t_lim - t_lim_reg)):
-                    t_lim_reg[0] = t_lim_reg[1] - self.x_window
+        elif self.t_lim[1] > self.t_dur:
+            # case is the right side is after the expt finish
+            self.t_lim -= (self.t_lim[1] - self.t_dur)
 
-                else:
-                    t_lim_reg[1] = t_lim_reg[0] + self.x_window
-
-            else:
-                # otherwise, flag a proper resize
-                reg_resized = True
-
-        if reg_resized:
-            # determines the side that was moved
-            i_side = self.det_moved_side(t_lim_reg[1])
-
-            # case is the region has been resized
-            if dt_lim_reg < cw.t_span_min:
-                # case is the region is too small
-                if i_side:
-                    # case is resetting the right side
-                    t_lim_reg[1] = t_lim_reg[0] + cw.t_span_min
-
-                else:
-                    # case is resetting the left side
-                    t_lim_reg[0] = t_lim_reg[1] - cw.t_span_min
-
-            elif dt_lim_reg > self.x_window:
-                # case is the region is too large
-                if i_side:
-                    # case is resetting the right side
-                    t_lim_reg[1] = t_lim_reg[0] + self.x_window
-
-                else:
-                    # case is resetting the left side
-                    t_lim_reg[0] = t_lim_reg[1] - self.x_window
-
-        else:
-            # case is the region has been translated
-
-            # determines the direction of movement
-            dt_move = t_lim_reg[0] - self.t_lim_prev[0]
-            self.t_lim += dt_move
-
-            # determines if the limits are still feasible
-            if self.t_lim[0] < 0:
-                self.t_lim -= self.t_lim[0]
-
-            elif self.t_lim[1] > self.t_dur:
-                dt_lim_feas = (self.t_lim[1] - self.t_dur)
-                self.t_lim -= dt_lim_feas
-
-            # resets the full x-limit field
-            self.zx_full = self.t_lim
+        # resets the full x-limit field
+        self.zx_full = self.t_lim
+        t_lim_reg = self.get_prop_xlimits()
 
         # resets the x-linear region view size
         self.is_updating = True
@@ -1431,7 +1380,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         px_range = (np.array(x_range) - self.zx_full[0])/np.diff(self.zx_full)
         py_range = (np.array(y_range) - self.zy_full[0])/np.diff(self.zy_full)
 
-        return px_range, py_range
+        return np.maximum(0., px_range), np.maximum(0., py_range)
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
