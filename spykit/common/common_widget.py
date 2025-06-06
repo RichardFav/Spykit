@@ -1634,7 +1634,6 @@ class QColorMapChooser(QFrame):
         self.select_layout.addWidget(self.select_lbl)
         self.select_layout.addWidget(self.select_name)
         self.select_layout.addWidget(self.select_colour)
-
         self.select_lbl.setSizePolicy(QSizePolicy(cf.q_min, cf.q_exp))
 
         # sets the selection widget properties

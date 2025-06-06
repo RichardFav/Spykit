@@ -818,7 +818,7 @@ class PropWidget(QWidget):
 
                 # creates the file selection widget
                 obj_cmap = cw.QColorMapChooser(None, ps['value'], name=p_name)
-                obj_cmap.tree_prop.setFixedHeight(130)
+                obj_cmap.tree_prop.setFixedHeight(95)
                 layout.addRow(obj_cmap)
 
     def setup_widget_callback(self, h_widget=None):

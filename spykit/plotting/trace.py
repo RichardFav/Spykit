@@ -418,20 +418,36 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
     def reset_trace_props(self, p_str):
 
-        # class field updates
-        self.x_window = self.trace_props.get('t_span')
-        self.c_lim_lo = self.trace_props.get('c_lim_lo')
-        self.c_lim_hi = self.trace_props.get('c_lim_hi')
-        self.t_lim = [self.trace_props.get('t_start'), self.trace_props.get('t_finish')]
-        self.zx_full = deepcopy(self.t_lim)
+        # field retrieval
+        reset_type = 0
+        t_lim_p = self.get_prop_xlimits()
+
+        # parameter specific updates
+        match p_str:
+            case 't_span':
+                # case is the window time-span
+                reset_type = 1
+                self.x_window = self.trace_props.get('t_span')
+                self.zx_full = deepcopy(self.t_lim)
+
+                # class field updates
+                self.t_lim = [self.trace_props.get('t_start'), self.trace_props.get('t_finish')]
+
+            case p_str if p_str in ['t_start', 't_finish']:
+                # case is the start/finish time
+                p_val0 = getattr(self, p_str)
+                setattr(self, p_str, self.trace_props.get(p_str))
+
+            case p_str if p_str in ['c_lim_lo', 'c_lim_hi']:
+                # case is lower/upper colour limits
+                setattr(self, p_str, self.trace_props.get(p_str))
 
         # resets the zoom/previous limit fields
-        t_lim_p = self.get_prop_xlimits()
         self.t_lim_prev = deepcopy(t_lim_p)
 
         # resets the plot view axis
         self.v_box[0, 0].setXRange(t_lim_p[0], t_lim_p[1], padding=0)
-        self.reset_trace_view(True)
+        self.reset_trace_view(reset_type)
 
         if self.hm_roi is not None:
             self.hm_roi.setPos(t_lim_p)
@@ -560,6 +576,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
         if self.n_plt:
             # field retrieval
+            use_diff = self.use_diff_signal()
             plot_id_orig = deepcopy(self.plot_id)
             s_freq = self.session_info.session_props.s_freq
 
@@ -567,7 +584,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
             t_lim_p = self.get_prop_xlimits()
             i_frm0 = int((self.t_lim[0] + self.t_start_ofs) * s_freq)
             i_frm1 = int((self.t_lim[1] + self.t_start_ofs) * s_freq)
-            n_frm = i_frm1 - i_frm0
+            n_frm = (i_frm1 - i_frm0) - int(use_diff)
             if n_frm == 0:
                 return
 
@@ -584,6 +601,10 @@ class TracePlot(TraceLabelMixin, PlotWidget):
                 channel_ids=channel_id,
                 return_scaled=self.trace_props.get('scale_signal'),
             )
+
+            # calculates the signal difference (if using difference calc)
+            if use_diff:
+                y0 = np.diff(y0, axis=0)
 
             # sets up the heatmap/trace items
             if is_map:
@@ -862,7 +883,8 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
         # calculates the mapped coordinates
         m_pos = self.v_box[0, 0].mapSceneToView(p_pos)
-        if (m_pos.x() < 0) or (m_pos.x() > self.x_window) or (m_pos.y() < 0) or (m_pos.y() > self.y_lim_tr):
+        if ((m_pos.x() < self.t_lim[0]) or (m_pos.x() > self.t_lim[1]) or
+            (m_pos.y() < 0) or (m_pos.y() > self.y_lim_tr)):
             return
 
         # updates the crosshair position
@@ -1306,6 +1328,10 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
         p_type = self.trace_props.get('plot_type')
         return (p_type == 'Heatmap') or ((p_type == 'Auto') and (n_channel >= self.n_plt_max))
+
+    def use_diff_signal(self):
+
+        return self.trace_props.get('sig_type') == 'Difference'
 
     def get_channel_count(self):
 

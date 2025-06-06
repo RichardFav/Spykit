@@ -59,6 +59,7 @@ class TracePara(PropPara):
 
     # trace property observer properties
     plot_type = cf.ObservableProperty(pfcn(_combo_update, 'plot_type'))
+    sig_type = cf.ObservableProperty(pfcn(_combo_update, 'sig_type'))
     t_start = cf.ObservableProperty(pfcn(_edit_update, 't_start'))
     t_finish = cf.ObservableProperty(pfcn(_edit_update, 't_finish'))
     t_span = cf.ObservableProperty(pfcn(_edit_update, 't_span'))
@@ -81,6 +82,7 @@ class TraceProps(PropWidget):
     # parameters
     t_span0 = 0.1
     sort_list = ['Depth', 'Channel ID']
+    sig_list = ['Absolute', 'Difference']
     plot_list = ['Trace', 'Heatmap', 'Auto']
 
     def __init__(self, main_obj):
@@ -124,6 +126,7 @@ class TraceProps(PropWidget):
         # sets up the subgroup fields
         p_tmp = {
             'plot_type': self.create_para_field('Plot Type', 'combobox', self.plot_list[0], p_list=self.plot_list),
+            'sig_type': self.create_para_field('Signal Type', 'combobox', self.sig_list[0], p_list=self.sig_list),
             't_start': self.create_para_field('Start Time (s)', 'edit', 0),
             't_finish': self.create_para_field('Finish Time (s)', 'edit', self.t_span0),
             't_span': self.create_para_field('Maximum Time-Span (s)', 'edit', self.t_span0),
