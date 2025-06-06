@@ -123,6 +123,13 @@ p_col_status = {
 
 # matplotlib colourmap strings
 cmap = {
+    # diverging colour maps
+    'Diverging': [
+        'PiYG', 'PRGn', 'BrBG', 'PuOr', 'RdGy', 'RdBu', 'RdYlBu',
+        'RdYlGn', 'Spectral', 'coolwarm', 'bwr', 'seismic',
+        'berlin', 'managua', 'vanimo'
+    ],
+
     # uniform sequential
     'UniformSequential': [
         'viridis', 'plasma', 'inferno', 'magma', 'cividis'
@@ -140,13 +147,6 @@ cmap = {
         'binary', 'gist_yarg', 'gist_gray', 'gray', 'bone',
         'pink', 'spring', 'summer', 'autumn', 'winter', 'cool',
         'Wistia', 'hot', 'afmhot', 'gist_heat', 'copper'
-    ],
-
-    # diverging colour maps
-    'Diverging': [
-        'PiYG', 'PRGn', 'BrBG', 'PuOr', 'RdGy', 'RdBu', 'RdYlBu',
-        'RdYlGn', 'Spectral', 'coolwarm', 'bwr', 'seismic',
-        'berlin', 'managua', 'vanimo'
     ],
 
     # cyclic colour maps
@@ -1578,6 +1578,7 @@ class QColorMapChooser(QFrame):
     gray_col = QColor(160, 160, 160, 255)
     item_font = create_font_obj(9, True, QFont.Weight.Bold)
     item_child_font = create_font_obj(8)
+    cmap_type = ['Diverging', 'UniformSequential', 'Sequential', 'Sequential2']
 
     def __init__(self, parent=None, c_map='viridis', name=None):
         super(QColorMapChooser, self).__init__(parent)
@@ -1603,7 +1604,7 @@ class QColorMapChooser(QFrame):
         self.tree_prop = QTreeWidget(self)
         self.select_lbl = create_text_label(None, 'Colour Map:', font_lbl, align='right')
         self.select_name = create_text_label(None, c_map, align='right')
-        self.select_colour = QColorLabel(None, c_map, n_pts=self.col_wid)
+        self.select_colour = QColorLabel(None, c_map_name=c_map, n_pts=self.col_wid)
 
         # initialises the class fields
         self.init_class_fields()
@@ -1659,8 +1660,9 @@ class QColorMapChooser(QFrame):
 
     def init_tree_fields(self):
 
-        for cm_type, cm_grp in cmap.items():
+        for cm_type in self.cmap_type:
             # creates the parent item
+            cm_grp = cmap[cm_type]
             item = QTreeWidgetItem(self.tree_prop)
 
             # sets the item properties
@@ -1693,7 +1695,7 @@ class QColorMapChooser(QFrame):
         item_ch.setText(0, props)
 
         # creates the colourmap label
-        h_obj = QColorLabel(None, props)
+        h_obj = QColorLabel(None, c_map_name=props)
         h_obj.setFixedHeight(self.item_row_size)
 
         # returns the objects

@@ -426,17 +426,39 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         match p_str:
             case 't_span':
                 # case is the window time-span
-                reset_type = 1
-                self.x_window = self.trace_props.get('t_span')
+
+                # updates the signal limits
+                t_span0, t_span1 = deepcopy(self.x_window), self.trace_props.get('t_span')
+                dt_span = (t_span1 - t_span0) / 2.
+                if self.t_lim[0] < dt_span:
+                    # limits exceed the experiment start
+                    self.t_lim = np.array([0, t_span1])
+
+                elif self.t_lim[1] > (self.t_dur - dt_span):
+                    # limits exceed the experiment finish
+                    self.t_lim = np.array([(self.t_dur - t_span1), self.t_dur])
+
+                else:
+                    # otherwise, update the limits as per normal
+                    self.t_lim = self.t_lim + dt_span * np.array([-1., 1.])
+
+                # rounds the values to reasonable values
+                self.t_lim = np.round(self.t_lim, cf.n_dp)
+
+                # resets the trace properties
+                reset_type = 0
+                self.x_window = t_span1
                 self.zx_full = deepcopy(self.t_lim)
 
-                # class field updates
-                self.t_lim = [self.trace_props.get('t_start'), self.trace_props.get('t_finish')]
+                # updates the start/finish parameters
+                t_lim_p = np.round(self.get_prop_xlimits(), cf.n_dp)
+                self.trace_props.reset_para_field('t_start', t_lim_p[0])
+                self.trace_props.reset_para_field('t_finish', t_lim_p[1])
 
-            case p_str if p_str in ['t_start', 't_finish']:
-                # case is the start/finish time
-                p_val0 = getattr(self, p_str)
-                setattr(self, p_str, self.trace_props.get(p_str))
+            # case p_str if p_str in ['t_start', 't_finish']:
+            #     # case is the start/finish time
+            #     p_val0 = getattr(self, p_str)
+            #     setattr(self, p_str, self.trace_props.get(p_str))
 
             case p_str if p_str in ['c_lim_lo', 'c_lim_hi']:
                 # case is lower/upper colour limits
@@ -447,7 +469,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
         # resets the plot view axis
         self.v_box[0, 0].setXRange(t_lim_p[0], t_lim_p[1], padding=0)
-        self.reset_trace_view(reset_type)
+        self.reset_trace_view(0)
 
         if self.hm_roi is not None:
             self.hm_roi.setPos(t_lim_p)

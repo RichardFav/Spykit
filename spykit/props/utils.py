@@ -817,7 +817,7 @@ class PropWidget(QWidget):
                 # case is a colourmap selection widget
 
                 # creates the file selection widget
-                obj_cmap = cw.QColorMapChooser(None, ps['value'], name=p_name)
+                obj_cmap = cw.QColorMapChooser(None, c_map=ps['value'], name=p_name)
                 obj_cmap.tree_prop.setFixedHeight(95)
                 layout.addRow(obj_cmap)
 
@@ -875,6 +875,28 @@ class PropWidget(QWidget):
 
         # resets the update flag
         self.p_props.is_updating = False
+
+    def reset_para_field(self, p_str, p_val):
+
+        # resets the parameter value
+        self.set_n(p_str, p_val)
+
+        # retrieves the corresponding widget
+        h_widget = self.findChild(QWidget, name=p_str)
+
+        # flag that manual update is taking place
+        self.is_updating = True
+
+        # case is a widget type is not provided
+        if isinstance(h_widget, QLineEdit):
+            if isinstance(p_val, str):
+                h_widget.setText(p_val)
+
+            else:
+                h_widget.setText('%g' % p_val)
+
+        # flag that manual update is taking place
+        self.is_updating = False
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Methods

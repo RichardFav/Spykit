@@ -82,7 +82,7 @@ class TraceProps(PropWidget):
     # parameters
     t_span0 = 0.1
     sort_list = ['Depth', 'Channel ID']
-    sig_list = ['Absolute', 'Difference']
+    sig_list = ['Difference', 'Absolute']
     plot_list = ['Trace', 'Heatmap', 'Auto']
 
     def __init__(self, main_obj):
@@ -134,7 +134,7 @@ class TraceProps(PropWidget):
             'c_lim_hi': self.create_para_field('Upper Colour Limit', 'edit', 200),
             'sort_by': self.create_para_field('Sort Signals By', 'combobox', self.sort_list[0], p_list=self.sort_list),
             'scale_signal': self.create_para_field('Scale Signals', 'checkbox', True),
-            'c_map': self.create_para_field('Colormap', 'colormapchooser', 'viridis'),
+            'c_map': self.create_para_field('Colormap', 'colormapchooser', 'RdBu'),
         }
 
         # updates the class field
