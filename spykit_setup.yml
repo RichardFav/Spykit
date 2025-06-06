@@ -12,6 +12,7 @@ dependencies:
   - bigtree
   - scikit-image
   - pandas
+  - torch
   - pip:
     - spikeinterface
     - spikewrap

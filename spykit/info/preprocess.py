@@ -265,6 +265,10 @@ class PreprocessInfoTab(InfoWidgetPara):
 
 # ----------------------------------------------------------------------------------------------------------------------
 
+"""
+    PreprocessSetup:
+"""
+
 
 class PreprocessSetup(QDialog):
     # parameters
@@ -578,6 +582,10 @@ class PreprocessSetup(QDialog):
     def close_window(self):
 
         self.close()
+
+    # ---------------------------------------------------------------------------
+    # Miscellaneous Functions
+    # ---------------------------------------------------------------------------
 
     def set_button_props(self):
 

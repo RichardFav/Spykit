@@ -352,7 +352,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
         # creates the linear region
         self.l_reg_x = LinearRegionItem([0, self.x_window], bounds=[0, self.t_dur], span=[0, 1],
-                                        pen=self.l_pen, hoverPen=self.l_pen_hover, swapMode='block')
+                                        pen=self.l_pen, hoverPen=self.l_pen_hover, swapMode='sort')
         self.l_reg_x.sigRegionChanged.connect(self.xframe_region_move)
         self.l_reg_x.sigRegionChangeFinished.connect(self.xframe_region_finished)
         self.l_reg_x.mouseDoubleClickEvent = self.xframe_region_double_click
@@ -1126,13 +1126,21 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         reg_resized = False
         has_resized = np.abs(dt_lim_reg - dt_lim_prev) > self.eps
         if has_resized:
-            if t_lim_reg[0] <= 0:
+            if t_lim_reg[0] < 0:
                 # case is the region is translated past the start point
                 t_lim_reg = np.array([0, dt_lim_prev])
 
-            elif t_lim_reg[1] >= self.t_dur:
+            elif t_lim_reg[1] > self.t_dur:
                 # case is the region is translated past the duration point
                 t_lim_reg = self.t_dur - np.array([dt_lim_prev, 0])
+
+            elif dt_lim_reg > self.x_window:
+                # case is the window size exceeds the maximum
+                if np.argmax(np.abs(self.t_lim - t_lim_reg)):
+                    t_lim_reg[0] = t_lim_reg[1] - self.x_window
+
+                else:
+                    t_lim_reg[1] = t_lim_reg[0] + self.x_window
 
             else:
                 # otherwise, flag a proper resize
