@@ -490,8 +490,9 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         t_start_ofs_new = self.gen_props.get('t_start')
         dt_start_ofs = t_start_ofs_new - self.t_start_ofs
 
-        # class field updates
+        # retrieves the new duration value
         self.t_dur = self.gen_props.get('t_dur')
+        self.l_reg_x.setBounds([0., self.t_dur])
         self.t_start_ofs = t_start_ofs_new
 
         # ensures the limits are correct

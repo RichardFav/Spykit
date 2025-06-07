@@ -25,6 +25,7 @@ from spikewrap.process._preprocessing import remove_channels, interpolate_channe
 # custom module import
 import spykit.common.common_func as cf
 from spykit.threads.utils import ThreadWorker
+from spykit.info.preprocess import pp_flds
 from spykit.info.preprocess import prep_task_map as pp_map
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -42,6 +43,7 @@ class SessionWorkBook(QObject):
     keep_channel_reset = pyqtSignal()
     worker_job_started = pyqtSignal(str)
     worker_job_finished = pyqtSignal(str)
+    prep_progress_update = pyqtSignal(str, float)
 
     # array class fields
     c_hdr = ['', 'Keep?', 'Status', 'Channel ID', 'Contact ID', 'Channel Index', 'X-Coord', 'Y-Coord', 'Shank ID']
@@ -396,6 +398,7 @@ class SessionWorkBook(QObject):
         # resets the session object
         self.session = SessionObject(ses_data['session_props'], True, self.worker_job_started)
         self.session.channel_calc.connect(self.channel_calc)
+        self.session.prep_prop_update.connect(self.prep_prop_update)
 
         # resets the other class fields
         self.state = ses_data['state']
@@ -412,6 +415,10 @@ class SessionWorkBook(QObject):
 
             case 'bad':
                 self.bad_channel_change.emit(session)
+
+    def prep_prop_update(self, m_str, pr_val):
+
+        self.prep_progress_update.emit(m_str, pr_val)
 
     def silence_sync(self, i_run, ind_s, ind_f):
 
@@ -473,6 +480,7 @@ class SessionObject(QObject):
     # pyqtsignal functions
     channel_data_setup = pyqtSignal(object)
     channel_calc = pyqtSignal(str, object)
+    prep_prop_update = pyqtSignal(str, float)
 
     # parameters
     dy_min = 1.5
@@ -526,6 +534,7 @@ class SessionObject(QObject):
         # loads the raw data and channel data
         self._s.load_raw_data()
         self.prep_obj = RunPreProcessing(self._s)
+        self.prep_obj.update_prog.connect(self.update_prog)
 
         # loads the channel data (if not loading session from .ssf file)
         if not self.ssf_load:
@@ -613,6 +622,10 @@ class SessionObject(QObject):
                     self.sig_fcn('bad')
 
         return t_worker
+
+    def update_prog(self, m_str, pr_val):
+
+        self.prep_prop_update.emit(m_str, pr_val)
 
     # ---------------------------------------------------------------------------
     # Thread worker functions
@@ -961,6 +974,10 @@ class SessionProps:
 
 
 class RunPreProcessing(QObject):
+    # pyqtSignal functions
+    update_prog = pyqtSignal(str, float)
+
+    # preprocessing function dictionary
     pp_funcs = {
         "phase_shift": phase_shift,
         "bandpass_filter": bandpass_filter,
@@ -976,14 +993,22 @@ class RunPreProcessing(QObject):
         # session object
         self.s = s
 
-        # other fields
+        # index/scalar class fields
+        self.i_run = None
+        self.n_run = None
+        self.p_run = None
+        self.i_shank = None
+        self.n_shank = None
+        self.p_shank = None
+        self.i_step = None
+        self.n_step = None
+
+        # other class field initialisations
         self.per_shank = None
         self.concat_runs = None
         self.prepro_dict = None
         self.pp_steps_new = None
         self.pp_steps_tot = None
-
-        #
         self.run_name = None
         self.file_format = None
         self.raw_data_path = None
@@ -994,6 +1019,9 @@ class RunPreProcessing(QObject):
         self.per_shank = per_shank
         self.concat_runs = concat_runs
         self.pp_steps_new = pp_steps
+
+        # initialises the progressbar
+        self.update_prep_prog(0)
 
         # runs the preprocessing task grouping
         runs_to_pp: list[SeparateRawRun | ConcatRawRun]
@@ -1026,7 +1054,12 @@ class RunPreProcessing(QObject):
             self.file_format = [run._file_format for run in runs_to_pp]
             self.raw_data_path = [run._parent_input_path for run in runs_to_pp]
 
-        for i_run, run in enumerate(runs_to_pp):
+        # runs the preprocessing for each run (for all tasks)
+        self.n_run = len(runs_to_pp)
+        for i_run_pp, run in enumerate(runs_to_pp):
+            # update the progressbar for the current run
+            self.update_prep_prog(1, i_run_pp)
+
             # runs the preprocessing for the current run
             preprocessed_run = self.preprocess_run(run, is_raw)
 
@@ -1038,9 +1071,9 @@ class RunPreProcessing(QObject):
             # stores the preprocessing data
             self.s._pp_runs.append(
                 PreprocessedRun(
-                    run_name=self.run_name[i_run],
-                    file_format=self.file_format[i_run],
-                    raw_data_path=self.raw_data_path[i_run],
+                    run_name=self.run_name[self.i_run],
+                    file_format=self.file_format[self.i_run],
+                    raw_data_path=self.raw_data_path[self.i_run],
                     ses_name=self.s._ses_name,
                     session_output_path=self.s._output_path,
                     pp_steps=self.pp_steps_tot,
@@ -1048,6 +1081,9 @@ class RunPreProcessing(QObject):
                     preprocessed_data=preprocessed_run,
                 )
             )
+
+        # flag that preprocessing is complete
+        self.update_prep_prog(4)
 
     def preprocess_run(self, run, is_raw):
 
@@ -1063,14 +1099,18 @@ class RunPreProcessing(QObject):
                 runs_to_preprocess = run._raw
 
             # runs the preprocessing over each grouping
-            for shank_id, raw_rec in runs_to_preprocess.items():
+            self.n_shank = len(runs_to_preprocess.items())
+            for i_shank_pp, (shank_id, raw_rec) in enumerate(runs_to_preprocess.items()):
+                self.update_prep_prog(2, i_shank_pp)
                 preprocessed[shank_id] = self.preprocess_recording({"0-raw": raw_rec})
 
         else:
             # case is running from previous preprocessing
 
             # runs the preprocessing over each grouping
-            for shank_id, pp_rec in run.items():
+            self.n_shank = len(run.items())
+            for i_shank, (shank_id, pp_rec) in enumerate(run.items()):
+                self.update_prep_prog(2, i_shank_pp)
                 preprocessed[shank_id] = pp_rec
                 self.preprocess_recording(pp_rec)
 
@@ -1080,12 +1120,16 @@ class RunPreProcessing(QObject):
 
         # field retrieval
         step_ofs = len(pp_data) - 1
+        self.n_task = len(self.pp_steps_new)
         prev_name = list(pp_data.keys())[-1]
         pp_step_names = [item[0] for item in self.pp_steps_tot.values()]
 
-        for step_num, pp_info in self.pp_steps_new.items():
-            # retrieves the preprocessing step parameters
+        for i_step, (step_num, pp_info) in enumerate(self.pp_steps_new.items()):
+            # updates the progressbar
             pp_name, pp_opt = pp_info
+            self.update_prep_prog(3, i_step, pp_name)
+
+            # retrieves the preprocessing step parameters
             if self.per_shank and (pp_name == 'interpolate_channels'):
                 # if analysing by shank, and interpolating bad channels, then ensure the channels for removal exist
                 # on the current shank
@@ -1099,8 +1143,14 @@ class RunPreProcessing(QObject):
                     pp_step_names.pop(pp_step_names.index(pp_name))
                     continue
 
-            # runs the pre-processing function
-            preprocessed_rec = self.pp_funcs[pp_name](pp_data[prev_name], **pp_opt)
+            if (pp_name == 'drift_correct') and (pp_data[prev_name]._dtype.kind == 'i'):
+                # special case - the motion correction code only works on float32 data types
+                #                if the data is uint16, then covert before running
+                preprocessed_rec = self.pp_funcs[pp_name](pp_data[prev_name].astype('float32'), **pp_opt)
+
+            else:
+                # otherwise, run the spikewrap function as per normal
+                preprocessed_rec = self.pp_funcs[pp_name](pp_data[prev_name], **pp_opt)
 
             # stores the preprocessing run object
             step_num_tot = int(step_num) + step_ofs
@@ -1111,3 +1161,83 @@ class RunPreProcessing(QObject):
             prev_name = new_name
 
         return pp_data
+
+    def update_prep_prog(self, pr_type, i_val=None, pp_str=None):
+
+        # initialisations
+        m_str = None
+        pr_val = None
+
+        match pr_type:
+            case 0:
+                # case is preprocessing initialising
+                m_str = 'Initialising Preprocessing'
+
+                self.i_run = 0
+                self.i_shank = 0
+                self.i_task = 0
+
+                pr_val = 0.
+                self.n_task = 1
+                self.n_shank = 1
+
+            case 1:
+                # case is new preprocessing run
+                m_str = 'Initialising Run...'
+
+                self.i_run = i_val
+                self.i_shank = 0
+                self.i_task = 0
+
+                self.p_run = 1. / self.n_run
+                self.p_shank = 0.
+
+            case 2:
+                # case is new preprocessing shank
+                m_str = 'Initialising Shank...'
+
+                self.i_shank = i_val
+                self.i_task = 0
+
+                self.p_shank = self.p_run / self.n_shank
+
+            case 3:
+                # case is new preprocessing task
+                self.i_task = i_val
+
+                # sets up the message string
+                m_type = 2 * int(self.n_run > 1) + int(self.n_shank > 1)
+                match m_type:
+                    case 0:
+                        # case is single run/shank expt
+                        m_suff = ''
+
+                    case 1:
+                        # case is a multi-shank session
+                        m_suff = ' (S{0}/{1})'.format(self.i_shank + 1, self.n_shank)
+
+                    case 2:
+                        # case is a multi-run session
+                        m_suff = ' (R{0}/{1})'.format(self.i_run + 1, self.n_run)
+
+                    case 3:
+                        # case is multi run/shank expt
+                        m_suff = '(R{1}/{2}, S{3}/{4})'.format(self.i_run + 1, self.n_run,
+                                                               self.i_shank + 1, self.n_shank)
+
+                # sets the task string
+                m_str = 'Task: {0}{1}'.format(pp_str, m_suff)
+
+            case 4:
+                # case is preprocessing completion
+                pr_val = 1.
+                m_str = 'Preprocessing Complete!'
+
+        if pr_val is None:
+            pr_val_run = self.i_run * self.p_run
+            pr_val_shank = self.i_shank * self.p_shank
+            pr_task = self.p_shank * (self.i_task + 1) / (self.n_task + 1)
+            pr_val = pr_val_run + pr_val_shank + pr_task
+
+        # updates the progressbar
+        self.update_prog.emit(m_str, pr_val)

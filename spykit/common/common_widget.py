@@ -2353,7 +2353,7 @@ class QProgressWidget(QWidget):
     p_max = 1000
     t_period = 1000
     lbl_width = 170
-    wait_lbl = "No Session Data Detected"
+    wait_lbl = "No Session Data Loaded"
 
     prog_style = """
         QProgressBar {
@@ -2382,6 +2382,7 @@ class QProgressWidget(QWidget):
 
         # other class fields
         self.n_jobs = 0
+        self.pr_max = 1.0
         self.job_name = []
         self.job_desc = []
         self.is_running = False
@@ -2412,12 +2413,13 @@ class QProgressWidget(QWidget):
         # sets the timeline properties
         self.time_line.setLoopCount(int(1e6))
         self.time_line.setFrameRange(0, self.p_max)
+        self.time_line.setUpdateInterval(50)
         self.time_line.frameChanged.connect(self.prog_update)
-        self.time_line.setUpdateInterval(20)
 
     def prog_update(self):
 
-        p_val = int(self.p_max_r * self.time_line.currentValue()) - self.dp_max
+        pr_scl = self.p_max_r * self.pr_max
+        p_val = int(pr_scl * self.time_line.currentValue()) - self.dp_max
         p_val = np.min([self.p_max, np.max([0, p_val])])
         self.prog_bar.setValue(p_val)
 
@@ -2453,6 +2455,15 @@ class QProgressWidget(QWidget):
         if self.n_jobs == 0:
             self.set_progbar_state(False)
 
+    def update_prog_message(self, desc_txt, pr_val):
+
+        # updates the progressbar value
+        self.pr_max = pr_val
+
+        # updates the text/tooltip strings
+        self.lbl_obj.setText(desc_txt)
+        self.lbl_obj.setToolTip(desc_txt)
+
     def set_progbar_state(self, state=None):
 
         if state is None:
@@ -2460,13 +2471,11 @@ class QProgressWidget(QWidget):
 
         if state:
             # starts the timeline widget
-            self.time_line.start()
-            self.is_running = True
+            self.start_timer()
 
         else:
             # stops the timeline widget
-            self.time_line.stop()
-            self.is_running = False
+            self.stop_timer()
 
             # resets the progressbar
             self.prog_bar.setValue(self.p_max)
@@ -2541,6 +2550,16 @@ class QProgressWidget(QWidget):
 
         # returns the task string
         return 'Current State: {0}\nNext Task: {1}'.format(curr_state, next_task)
+
+    def start_timer(self):
+
+        self.is_running = True
+        self.time_line.start()
+
+    def stop_timer(self):
+
+        self.time_line.stop()
+        self.is_running = False
 
 # ----------------------------------------------------------------------------------------------------------------------
 # TABLE WIDGET CUSTOM MODEL CLASSES
@@ -2829,9 +2848,13 @@ class CheckTableHeader(QHeaderView):
 
     def paintSection(self, painter, rect, index):
 
-        painter.save()
-        QHeaderView.paintSection(self, painter, rect, index)
-        painter.restore()
+        try:
+            painter.save()
+            QHeaderView.paintSection(self, painter, rect, index)
+            painter.restore()
+
+        except:
+            return
 
         if index in self.i_col_chk:
             i_col = self.i_col_chk.index(index)

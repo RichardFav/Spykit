@@ -276,7 +276,7 @@ class PreprocessSetup(QDialog):
     x_gap = 5
     gap_sz = 5
     but_height = 20
-    dlg_height = 200
+    dlg_height = 250
     dlg_width = 450
 
     # array class fields
@@ -285,6 +285,11 @@ class PreprocessSetup(QDialog):
 
     # widget stylesheets
     border_style = "border: 1px solid;"
+    frame_border_style = """
+        QFrame {
+            border: 1px solid;
+        }
+    """
     frame_style = QFrame.Shape.WinPanel | QFrame.Shadow.Plain
 
     def __init__(self, main_obj=None):
@@ -297,18 +302,24 @@ class PreprocessSetup(QDialog):
         self.list_layout = QGridLayout(self)
         self.checkbox_layout = QHBoxLayout()
         self.button_layout = QVBoxLayout()
+        self.task_layout = QGridLayout()
+        self.progress_layout = QGridLayout()
         self.control_layout = QHBoxLayout()
 
         # class widgets
-        self.task_order = []
-        self.checkbox_opt = []
-        self.button_control = []
-        self.button_frame = QWidget(self)
+        self.button_frame = QFrame(self)
+        self.task_frame = QFrame(self)
+        self.progress_frame = QFrame(self)
         self.checkbox_frame = QWidget(self)
         self.add_list = QListWidget(None)
         self.task_list = QListWidget(None)
         self.spacer_top = QSpacerItem(20, 60, cf.q_min, cf.q_max)
         self.spacer_bottom = QSpacerItem(20, 60, cf.q_min, cf.q_max)
+
+        # other class field initialisations
+        self.task_order = []
+        self.checkbox_opt = []
+        self.button_control = []
 
         # array class fields
         self.l_task = ['Phase Shift', 'Bandpass Filter', 'Channel Interpolation', 'Common Reference', 'Drift Correction']
@@ -319,13 +330,50 @@ class PreprocessSetup(QDialog):
         self.concat_runs = False
 
         # initialises the class fields
-        self.init_checkbox_opt()
         self.init_class_fields()
+        self.init_task_para_frame()
+        self.init_progress_frame()
         self.init_control_buttons()
+        self.set_widget_config()
+
+        # self.setModal(True)
 
     # ---------------------------------------------------------------------------
     # Class Property Widget Setup Functions
     # ---------------------------------------------------------------------------
+
+    def init_class_fields(self):
+
+        # sets the dialog window properties
+        self.setWindowTitle("Preprocessing Setup")
+        self.setFixedSize(self.dlg_width, self.dlg_height)
+
+    def init_task_para_frame(self):
+
+        # sets the frame/layout properties
+        self.task_frame.setContentsMargins(self.x_gap, self.x_gap, self.x_gap, self.x_gap)
+        self.task_frame.setLayout(self.task_layout)
+        self.task_frame.setStyleSheet(self.frame_border_style)
+        self.task_layout.setContentsMargins(0, 0, 0, 0)
+        self.task_layout.setHorizontalSpacing(self.x_gap)
+
+        # initialises the checkbox options
+        self.init_checkbox_opt()
+        self.init_task_listboxes()
+        self.init_order_buttons()
+
+        # adds the items to the task layout
+        self.task_layout.addWidget(self.task_list, 0, 0, 1, 1)
+        self.task_layout.addLayout(self.button_layout, 0, 1, 1, 1)
+        self.task_layout.addWidget(self.add_list, 0, 2, 1, 1)
+        self.task_layout.addWidget(self.checkbox_frame, 1, 0, 1, 3)
+
+        # sets the task layout row/column stretches
+        self.task_layout.setColumnStretch(0, self.gap_sz)
+        self.task_layout.setColumnStretch(1, 1)
+        self.task_layout.setColumnStretch(2, self.gap_sz)
+        self.task_layout.setRowStretch(0, 5)
+        self.task_layout.setRowStretch(1, 1)
 
     def init_checkbox_opt(self):
 
@@ -359,15 +407,6 @@ class PreprocessSetup(QDialog):
         n_run = self.main_obj.session_obj.session.get_run_count()
         self.checkbox_opt[1].setEnabled(n_run > 1)
 
-    def init_class_fields(self):
-
-        # initialisations
-        cb_fcn = [self.button_add, self.button_remove, self.button_up, self.button_down]
-
-        # sets the dialog window properties
-        self.setWindowTitle("Preprocessing Setup")
-        self.setFixedSize(self.dlg_width, self.dlg_height)
-
         # determines if partial preprocessing has taken place
         pp_runs = self.main_obj.session_obj.get_pp_runs()
         if len(pp_runs):
@@ -396,11 +435,7 @@ class PreprocessSetup(QDialog):
             if (len(bad_ch_id) == 0) or ('Common Reference' not in self.l_task):
                 self.l_task.pop(self.l_task.index('Channel Interpolation'))
 
-        # main layout properties
-        self.list_layout.setHorizontalSpacing(self.x_gap)
-        self.list_layout.setVerticalSpacing(0)
-        self.list_layout.setContentsMargins(self.x_gap, 0, self.x_gap, 0)
-        self.setLayout(self.list_layout)
+    def init_task_listboxes(self):
 
         # added list widget properties
         self.add_list.setStyleSheet(self.border_style)
@@ -411,11 +446,16 @@ class PreprocessSetup(QDialog):
         self.task_list.setStyleSheet(self.border_style)
         self.task_list.itemClicked.connect(self.set_button_props)
 
+    def init_order_buttons(self):
+
+        # initialisations
+        cb_fcn = [self.button_add, self.button_remove, self.button_up, self.button_down]
+
         # button layout properties
         self.button_layout.setSpacing(self.x_gap)
+        self.button_layout.addItem(self.spacer_top)
 
         # adds the spacers/buttons to the button layout
-        self.button_layout.addItem(self.spacer_top)
         for bi, cb, tt in zip(self.b_icon, cb_fcn, self.tt_str):
             # creates the button object
             button_new = cw.create_push_button(self, "")
@@ -433,22 +473,16 @@ class PreprocessSetup(QDialog):
             self.button_layout.addWidget(button_new)
             self.button_control.append(button_new)
 
+        # adds the button spacer object
         self.button_layout.addItem(self.spacer_bottom)
 
-        # adds the main widgets to the main layout
-        self.list_layout.addWidget(self.task_list, 0, 0, 1, 1)
-        self.list_layout.addLayout(self.button_layout, 0, 1, 1, 1)
-        self.list_layout.addWidget(self.add_list, 0, 2, 1, 1)
-        self.list_layout.addWidget(self.checkbox_frame, 1, 0, 1, 3)
-        self.list_layout.addWidget(self.button_frame, 2, 0, 1, 3)
+    def init_progress_frame(self):
 
-        # set the grid layout column sizes
-        self.list_layout.setColumnStretch(0, self.gap_sz)
-        self.list_layout.setColumnStretch(1, 1)
-        self.list_layout.setColumnStretch(2, self.gap_sz)
-        self.list_layout.setRowStretch(0, 5)
-        self.list_layout.setRowStretch(1, 1)
-        self.list_layout.setRowStretch(2, 1)
+        # sets the frame/layout properties
+        self.progress_frame.setContentsMargins(self.x_gap, self.x_gap, self.x_gap, self.x_gap)
+        self.progress_frame.setLayout(self.progress_layout)
+        self.progress_frame.setStyleSheet(self.frame_border_style)
+
 
     def init_control_buttons(self):
 
@@ -457,10 +491,11 @@ class PreprocessSetup(QDialog):
         cb_fcn = [self.start_preprocess, self.close_window]
 
         # sets the frame/layout properties
-        self.button_frame.setContentsMargins(0, 0, 0, 0)
+        self.button_frame.setContentsMargins(self.x_gap, self.x_gap, self.x_gap, self.x_gap)
         self.button_frame.setLayout(self.control_layout)
+        self.button_frame.setStyleSheet(self.frame_border_style)
         self.control_layout.setContentsMargins(0, 0, 0, 0)
-        self.control_layout.setSpacing(self.but_height + 2 * self.gap_sz)
+        self.control_layout.setSpacing(2 * self.gap_sz)
 
         # creates the control buttons
         for bs, cb in zip(b_str, cb_fcn):
@@ -476,6 +511,24 @@ class PreprocessSetup(QDialog):
 
         # sets the control button properties
         self.set_button_props()
+
+    def set_widget_config(self):
+
+        # main layout properties
+        self.list_layout.setHorizontalSpacing(self.x_gap)
+        self.list_layout.setVerticalSpacing(self.x_gap)
+        self.list_layout.setContentsMargins(2 * self.x_gap, self.x_gap, 2 * self.x_gap, 2 * self.x_gap)
+        self.setLayout(self.list_layout)
+
+        # adds the main widgets to the main layout
+        self.list_layout.addWidget(self.task_frame, 0, 0, 1, 1)
+        self.list_layout.addWidget(self.progress_frame, 1, 0, 1, 1)
+        self.list_layout.addWidget(self.button_frame, 2, 0, 1, 1)
+
+        # set the grid layout column sizes
+        self.list_layout.setRowStretch(0, 6)
+        self.list_layout.setRowStretch(1, 2)
+        self.list_layout.setRowStretch(2, 1)
 
     # ---------------------------------------------------------------------------
     # Class Property Widget Setup Functions

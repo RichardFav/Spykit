@@ -130,6 +130,7 @@ class MainWindow(QMainWindow):
         self.session_obj.keep_channel_reset.connect(self.keep_channel_reset)
         self.session_obj.worker_job_started.connect(self.worker_job_started)
         self.session_obj.worker_job_finished.connect(self.worker_job_finished)
+        self.session_obj.prep_progress_update.connect(self.prep_progress_update)
 
     # ---------------------------------------------------------------------------
     # Calculation Signal Slot Functions
@@ -318,6 +319,11 @@ class MainWindow(QMainWindow):
     def worker_job_finished(self, job_name):
 
         self.info_manager.delete_job(job_name)
+
+    def prep_progress_update(self, m_str, pr_val):
+
+        # stops the timeline widget
+        self.info_manager.prog_widget.update_prog_message(m_str, pr_val)
 
     # ---------------------------------------------------------------------------
     # Signal Slot Functions
@@ -534,9 +540,9 @@ class MainWindow(QMainWindow):
     def testing(self):
 
         # f_file = "C:/Work/Other Projects/EPhys Project/Code/spykit/spykit/resources/session/tiny_session.ssf"
-        # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/tiny_example.ssf"
+        f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/tiny_example.ssf"
         # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/tiny_example (preprocessed).ssf"
-        f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/large_example.ssf"
+        # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/large_example.ssf"
 
         self.menu_bar.load_session(f_file)
 
