@@ -280,7 +280,7 @@ class PreprocessInfoTab(InfoWidgetPara):
 """
 
 
-class PreprocessSetup(QDialog):
+class PreprocessSetup(QMainWindow):
     # parameters
     n_but = 4
     gap_sz = 5
@@ -308,8 +308,11 @@ class PreprocessSetup(QDialog):
         self.main_obj = main_obj
 
         # creates the preprocessing run class object
-        session = self.main_obj.session_obj.session
-        self.prep_obj = RunPreProcessing(session._s)
+        self.session = self.main_obj.session_obj.session
+        self.prep_obj = RunPreProcessing(self.session._s)
+
+        # sets the central widget
+        self.main_widget = QWidget(self)
 
         # class layouts
         self.list_layout = QGridLayout(self)
@@ -362,6 +365,10 @@ class PreprocessSetup(QDialog):
         self.setWindowTitle("Preprocessing Setup")
         self.setFixedSize(self.dlg_width, self.dlg_height)
 
+        #
+        self.main_widget.setLayout(self.list_layout)
+        self.setCentralWidget(self.main_widget)
+
         for qf in self.findChildren(QFrame):
             qf.setObjectName('prepFrame')
 
@@ -378,6 +385,9 @@ class PreprocessSetup(QDialog):
         self.init_checkbox_opt()
         self.init_task_listboxes()
         self.init_order_buttons()
+
+        # connects the preprocessing signal function
+        self.prep_obj.update_prog.connect(self.worker_progress)
 
         # adds the items to the task layout
         self.task_layout.addWidget(self.task_list, 0, 0, 1, 1)
@@ -421,7 +431,7 @@ class PreprocessSetup(QDialog):
         self.checkbox_opt[0].setEnabled(n_shank > 1)
 
         # sets the concatenation checkbox enabled properties
-        n_run = self.main_obj.session_obj.session.get_run_count()
+        n_run = self.session.get_run_count()
         self.checkbox_opt[1].setEnabled(n_run > 1)
 
         # determines if partial preprocessing has taken place
@@ -429,8 +439,8 @@ class PreprocessSetup(QDialog):
         if len(pp_runs):
             # flag that partial preprocessing has taken place
             self.has_pp = True
-            self.per_shank = self.main_obj.session_obj.session.prep_obj.per_shank
-            self.concat_runs = self.main_obj.session_obj.session.prep_obj.concat_runs
+            self.per_shank = self.prep_obj.per_shank
+            self.concat_runs = self.prep_obj.concat_runs
 
             # sets the checkbox values
             self.checkbox_opt[0].setCheckState(cf.chk_state[self.per_shank])
@@ -654,14 +664,50 @@ class PreprocessSetup(QDialog):
 
             # starts running the pre-processing
             prep_opt = (self.per_shank, self.concat_runs)
-            self.main_obj.setup_preprocessing_worker(prep_task, prep_opt)
+            self.setup_preprocessing_worker(prep_task, prep_opt)
 
             # # closes the dialog window
             # self.close_window()
 
+
     def close_window(self):
 
         self.close()
+
+    # ---------------------------------------------------------------------------
+    # Preprocessing Worker Functions
+    # ---------------------------------------------------------------------------
+
+    def setup_preprocessing_worker(self, prep_task, prep_opt):
+
+        # creates the threadworker object
+        t_worker = ThreadWorker(self, self.run_preprocessing_worker, (prep_task, prep_opt))
+        t_worker.work_finished.connect(self.preprocessing_complete)
+
+        # starts the worker object
+        t_worker.start()
+
+    def run_preprocessing_worker(self, prep_obj):
+
+        # runs the session pre-processing
+        prep_tab = self.main_obj.info_manager.get_info_tab('preprocess')
+
+        # case is running from the Preprocessing dialog
+        prep_task, prep_opt = prep_obj
+        per_shank, concat_runs = prep_opt
+        pp_config = prep_tab.setup_config_dict(prep_task)
+
+        # runs the preprocessing
+        self.prep_obj.preprocess(pp_config, per_shank, concat_runs)
+        self.main_obj.session_obj.reset_current_session(True)
+
+    def worker_progress(self, m_str, pr_val):
+
+        a = 1
+
+    def preprocessing_complete(self):
+
+        a = 1
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
@@ -993,6 +1039,7 @@ class RunPreProcessing(QObject):
 
         # updates the progressbar
         self.update_prog.emit(m_str, pr_val)
+        time.sleep(0.1)
 
 
 # ----------------------------------------------------------------------------------------------------------------------
