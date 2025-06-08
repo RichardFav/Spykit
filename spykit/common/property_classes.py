@@ -18,7 +18,7 @@ from spikeinterface.core import order_channels_by_depth
 # spykit module imports
 import spykit.common.common_func as cf
 from spykit.threads.utils import ThreadWorker
-from spykit.info.preprocess import pp_flds
+from spykit.info.preprocess import pp_flds, RunPreProcessing
 from spykit.info.preprocess import prep_task_map as pp_map
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -526,7 +526,7 @@ class SessionObject(QObject):
 
         # loads the raw data and channel data
         self._s.load_raw_data()
-        # self.prep_obj = RunPreProcessing(self._s)
+        self.prep_obj = RunPreProcessing(self._s)
         # self.prep_obj.update_prog.connect(self.update_prog)
 
         # loads the channel data (if not loading session from .ssf file)

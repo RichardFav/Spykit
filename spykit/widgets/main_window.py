@@ -387,6 +387,33 @@ class MainWindow(QMainWindow):
     # Preprocessing Functions
     # ---------------------------------------------------------------------------
 
+    def on_preprocessing_close(self, has_pp):
+
+        # runs the preprocessing specifc updates
+        if has_pp:
+            # resets the preprocessing data type combobox
+            self.session_obj.reset_current_session(True)
+            pp_data_flds = self.session_obj.get_current_prep_data_names()
+            task_flds = deepcopy(pp_data_flds[-1].split('-')[1:])
+
+            # if removing channels, then delete this from the preprocessing fields
+            task_name = [pp_flds[x] for x in task_flds]
+            has_remove = [(x == 'remove_channels') for x in task_flds]
+            if np.any(np.asarray(has_remove)):
+                # determines the instances where channels were removed
+                for i_rmv in np.flip(np.where(has_remove)[0]):
+                    pp_data_flds.pop(i_rmv)
+                    task_name.pop(i_rmv)
+
+            # updates the channel data types
+            channel_tab = self.info_manager.get_info_tab('channel')
+            channel_tab.reset_data_types(task_name, pp_data_flds)
+            # self.bad_channel_change()
+
+        # updates the trace views
+        self.plot_manager.reset_trace_views()
+        self.menu_bar.set_menu_enabled_blocks('post-process')
+
     def run_preproccessing(self, prep_obj):
 
         # starts the job worker
@@ -978,7 +1005,9 @@ class MenuBar(QObject):
 
     def run_preproccessing(self):
 
-        PreprocessSetup(self.main_obj).show()
+        h_app = PreprocessSetup(self.main_obj)
+        h_app.close_preprocessing.connect(self.main_obj.on_preprocessing_close)
+        h_app.show()
 
     def clear_preprocessing(self):
 

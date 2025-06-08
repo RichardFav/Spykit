@@ -281,6 +281,9 @@ class PreprocessInfoTab(InfoWidgetPara):
 
 
 class PreprocessSetup(QMainWindow):
+    # pyqtSignal functions
+    close_preprocessing = pyqtSignal(bool)
+
     # parameters
     n_but = 4
     gap_sz = 5
@@ -309,7 +312,7 @@ class PreprocessSetup(QMainWindow):
 
         # creates the preprocessing run class object
         self.session = self.main_obj.session_obj.session
-        self.prep_obj = RunPreProcessing(self.session._s)
+        # self.prep_obj = RunPreProcessing(self.session._s)
 
         # sets the central widget
         self.main_widget = QWidget(self)
@@ -355,6 +358,7 @@ class PreprocessSetup(QMainWindow):
         self.n_run = None
         self.n_shank = None
         self.n_step = None
+        self.n_task = None
         self.p_run = None
         self.p_shank = None
         self.pr_task = None
@@ -401,7 +405,7 @@ class PreprocessSetup(QMainWindow):
         self.init_order_buttons()
 
         # connects the preprocessing signal function
-        self.prep_obj.update_prog.connect(self.worker_progress)
+        self.session.prep_obj.update_prog.connect(self.worker_progress)
 
         # adds the items to the task layout
         self.task_layout.addWidget(self.task_list, 0, 0, 1, 1)
@@ -453,8 +457,8 @@ class PreprocessSetup(QMainWindow):
         if len(pp_runs):
             # flag that partial preprocessing has taken place
             self.has_pp = True
-            self.per_shank = self.prep_obj.per_shank
-            self.concat_runs = self.prep_obj.concat_runs
+            self.per_shank = self.session.prep_obj.per_shank
+            self.concat_runs = self.session.prep_obj.concat_runs
 
             # sets the checkbox values
             self.checkbox_opt[0].setCheckState(cf.chk_state[self.per_shank])
@@ -693,18 +697,20 @@ class PreprocessSetup(QMainWindow):
         else:
             # case is starting the calculations
 
+            # retrieves the task count
+            self.n_task = self.add_list.count()
+
             # sets the preprocessing options
             prep_tab = self.main_obj.info_manager.get_info_tab('preprocess')
             prep_tab.configs.set_prep_opt(self.per_shank, self.concat_runs)
 
             # retrieves the selected tasks
             prep_task = []
-            for i in range(self.add_list.count()):
+            for i in range(self.n_task):
                 prep_task.append(self.add_list.item(i).text())
 
             # other field initialisations
             self.is_running = True
-            self.n_task = len(prep_task)
             self.button_control[4].setText('Cancel Preprocessing')
 
             # starts running the pre-processing
@@ -720,6 +726,9 @@ class PreprocessSetup(QMainWindow):
             if u_choice == cf.q_no:
                 # case is the user chose not to close
                 return
+
+        # runs the post window close functions
+        self.close_preprocessing.emit(self.has_pp)
 
         # closes the window
         self.close()
@@ -737,18 +746,18 @@ class PreprocessSetup(QMainWindow):
         # starts the worker object
         self.t_worker.start()
 
-    def run_preprocessing_worker(self, prep_obj):
+    def run_preprocessing_worker(self, _prep_obj):
 
         # runs the session pre-processing
         prep_tab = self.main_obj.info_manager.get_info_tab('preprocess')
 
         # case is running from the Preprocessing dialog
-        prep_task, prep_opt = prep_obj
+        prep_task, prep_opt = _prep_obj
         per_shank, concat_runs = prep_opt
         pp_config = prep_tab.setup_config_dict(prep_task)
 
         # runs the preprocessing
-        self.prep_obj.preprocess(pp_config, per_shank, concat_runs)
+        self.session.prep_obj.preprocess(pp_config, per_shank, concat_runs)
 
     def worker_progress(self, pr_type, pr_dict):
 
@@ -864,16 +873,12 @@ class PreprocessSetup(QMainWindow):
             self.add_list.clear()
             self.is_updating = False
 
-            # udpates the current session data
-            self.main_obj.session_obj.reset_current_session(True)
-
             # resets the completion flag
             self.is_running = False
 
-        # re-enables the required dialog widgets
-        self.set_preprocess_props(True)
-
         # resets the other fields
+        self.has_pp = True
+        self.set_preprocess_props(True)
         for cb in self.checkbox_opt:
             cb.setEnabled(False)
 
@@ -895,7 +900,7 @@ class PreprocessSetup(QMainWindow):
         match p_type:
             case 0:
                 # case is a single run/shank session
-                m_str11 = '(All Runs/Shanks)'
+                m_str1 = '(All Runs/Shanks)'
 
             case 1:
                 # case is a multi run/single shank session
