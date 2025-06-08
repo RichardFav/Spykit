@@ -19,7 +19,7 @@ from spykit.threads.utils import ThreadWorker
 
 # pyqt imports
 from PyQt6.QtWidgets import (QWidget, QFrame, QTabWidget, QVBoxLayout, QFormLayout, QHBoxLayout,
-                             QListWidget, QGridLayout, QSpacerItem, QDialog, QMainWindow, QProgressBar)
+                             QListWidget, QGridLayout, QSpacerItem, QDialog, QMainWindow, QProgressBar, QMessageBox)
 from PyQt6.QtCore import QSize, pyqtSignal, QObject, QTimeLine
 from PyQt6.QtGui import QIcon, QFont, QColor
 
@@ -345,6 +345,20 @@ class PreprocessSetup(QMainWindow):
         self.has_pp = False
         self.per_shank = False
         self.concat_runs = False
+        self.is_running = False
+        self.is_updating = False
+
+        # index/scalar class fields
+        self.i_run = None
+        self.i_shank = None
+        self.i_step = None
+        self.n_run = None
+        self.n_shank = None
+        self.n_step = None
+        self.p_run = None
+        self.p_shank = None
+        self.pr_task = None
+        self.t_worker = None
 
         # initialises the class fields
         self.init_class_fields()
@@ -547,6 +561,7 @@ class PreprocessSetup(QMainWindow):
             button_new.setStyleSheet(self.border_style)
 
         # sets the control button properties
+        self.button_control[4].setCheckable(True)
         self.set_button_props()
 
     def set_widget_config(self):
@@ -652,7 +667,32 @@ class PreprocessSetup(QMainWindow):
 
     def start_preprocess(self):
 
-        if self.main_obj is not None:
+        # if manually updating, then exit
+        if self.is_updating:
+            return
+
+        # resets the button state
+        state = self.button_control[4].isChecked()
+
+        if state:
+            # case is cancelling the calculations
+            self.is_running = False
+
+            # stops the worker
+            self.t_worker.force_quit()
+            time.sleep(0.01)
+
+            # disables the progressbar fields
+            for pb in self.prog_bar:
+                pb.set_progbar_state(False)
+
+            # resets the other properties
+            self.set_preprocess_props(True)
+            self.button_control[4].setText('Start Preprocessing')
+
+        else:
+            # case is starting the calculations
+
             # sets the preprocessing options
             prep_tab = self.main_obj.info_manager.get_info_tab('preprocess')
             prep_tab.configs.set_prep_opt(self.per_shank, self.concat_runs)
@@ -662,16 +702,26 @@ class PreprocessSetup(QMainWindow):
             for i in range(self.add_list.count()):
                 prep_task.append(self.add_list.item(i).text())
 
+            # other field initialisations
+            self.is_running = True
+            self.n_task = len(prep_task)
+            self.button_control[4].setText('Cancel Preprocessing')
+
             # starts running the pre-processing
             prep_opt = (self.per_shank, self.concat_runs)
             self.setup_preprocessing_worker(prep_task, prep_opt)
 
-            # # closes the dialog window
-            # self.close_window()
-
-
     def close_window(self):
 
+        # if there are outstanding tasks, then promopt the user
+        if self.add_list.count() > 0:
+            q_str = 'There are still outstanding tasks to process. Do you still want to continue?'
+            u_choice = QMessageBox.question(self.main_obj, 'Close Window?', q_str, cf.q_yes_no, cf.q_yes)
+            if u_choice == cf.q_no:
+                # case is the user chose not to close
+                return
+
+        # closes the window
         self.close()
 
     # ---------------------------------------------------------------------------
@@ -681,11 +731,11 @@ class PreprocessSetup(QMainWindow):
     def setup_preprocessing_worker(self, prep_task, prep_opt):
 
         # creates the threadworker object
-        t_worker = ThreadWorker(self, self.run_preprocessing_worker, (prep_task, prep_opt))
-        t_worker.work_finished.connect(self.preprocessing_complete)
+        self.t_worker = ThreadWorker(self, self.run_preprocessing_worker, (prep_task, prep_opt))
+        self.t_worker.work_finished.connect(self.preprocessing_complete)
 
         # starts the worker object
-        t_worker.start()
+        self.t_worker.start()
 
     def run_preprocessing_worker(self, prep_obj):
 
@@ -699,21 +749,201 @@ class PreprocessSetup(QMainWindow):
 
         # runs the preprocessing
         self.prep_obj.preprocess(pp_config, per_shank, concat_runs)
-        self.main_obj.session_obj.reset_current_session(True)
 
-    def worker_progress(self, m_str, pr_val):
+    def worker_progress(self, pr_type, pr_dict):
 
-        a = 1
+        # initialisations
+        pr_val = None
+        m_str = [None, None]
+
+        # updates the values from the dictionary
+        for pd, pv in pr_dict.items():
+            setattr(self, pd, pv)
+
+        match pr_type:
+            case 0:
+                # case is intialising preprocessing
+
+                # resets the index values
+                self.i_run = 0
+                self.i_shank = 0
+                self.i_task = 0
+
+                # resets the index sizes
+                self.n_run = 1
+                self.n_shank = 1
+
+                # sets the run/shank proportional multipliers
+                self.p_run = 1.
+                self.p_shank = 1.
+
+                # sets the progress values
+                pr_val = np.zeros(2, dtype=float)
+                m_str = ['Initialising Preprocessing', 'Initialising Task Data']
+
+                # enables the progressbar
+                for pb in self.prog_bar:
+                    pb.set_progbar_state(True)
+
+                # disables the required dialog widgets
+                self.set_preprocess_props(False)
+
+            case 1:
+                # case is new preprocessing run
+
+                # sets up the message labels
+                m_str[0] = self.setup_overall_progress_msg()
+                m_str[1] = 'Initialising Run Data...'
+
+                # resets the index values
+                self.i_shank = 0
+                self.i_task = 0
+
+            case 2:
+                # case is new preprocessing shank
+
+                # resets the index values
+                self.i_task = 0
+
+                # sets up the message labels
+                m_str[0] = self.setup_overall_progress_msg()
+                m_str[1] = 'Initialising Shank Data...'
+
+            case 3:
+                # case is performing a preprocessing task
+
+                # updates the list selection
+                self.reset_list_selection(self.i_task)
+
+                # sets up the message labels
+                m_str[1] = 'Task: {0}'.format(pp_flds[self.pr_task])
+
+            case 4:
+                # case is the run count
+                self.p_run = 1 / self.n_run
+
+            case 5:
+                # case is the shank count
+                self.p_shank = 1 / self.n_shank
+
+            case 6:
+                # case is preprocessing completion
+
+                # sets the progress values
+                pr_val = np.ones(2, dtype=float)
+                m_str = ['Preprocessing Complete', 'All Tasks Complete']
+
+        # calculates the
+        if pr_val is None:
+            # calculates the run/shank proportional components
+            pr_val_run = self.i_run * self.p_run
+            pr_val_shank = self.i_shank * self.p_shank
+
+            # calculates and sets the task/overall proportions
+            pr_task = self.i_task / self.n_task
+            pr_overall = pr_val_run + pr_val_shank + self.p_run * self.p_shank * pr_task
+            pr_val = np.array([pr_overall, pr_task])
+
+        # updates the progressbar fields
+        for pb, ms, pv in zip(self.prog_bar, m_str, pr_val):
+            pb.update_prog_fields(ms, pv)
 
     def preprocessing_complete(self):
 
-        a = 1
+        # pauses for a little bit...
+        time.sleep(0.25)
+
+        # stops the timer
+        for pb in self.prog_bar:
+            pb.set_progbar_state(False)
+
+        # resets the current session (if run to completion)
+        if self.is_running:
+            # clears the added list
+            self.is_updating = True
+            self.add_list.clear()
+            self.is_updating = False
+
+            # udpates the current session data
+            self.main_obj.session_obj.reset_current_session(True)
+
+            # resets the completion flag
+            self.is_running = False
+
+        # re-enables the required dialog widgets
+        self.set_preprocess_props(True)
+
+        # resets the other fields
+        for cb in self.checkbox_opt:
+            cb.setEnabled(False)
+
+        # resets the toggle button
+        self.is_updating = True
+        self.button_control[4].setChecked(False)
+        self.button_control[4].setText('Start Preprocessing')
+        self.is_updating = False
+
+        # deletes the worker object
+        self.t_worker.deleteLater()
+
+    def setup_overall_progress_msg(self):
+
+        # initialisations
+        m_str0 = 'Progress'
+        p_type = 2 * int(self.n_shank > 1) + int(self.n_run > 1)
+
+        match p_type:
+            case 0:
+                # case is a single run/shank session
+                m_str11 = '(All Runs/Shanks)'
+
+            case 1:
+                # case is a multi run/single shank session
+                m_str1 = '(Run {0}/{1}, All Shanks)'.format(self.i_run + 1, self.n_run)
+
+            case 2:
+                # case is a single run/multi shank session
+                m_str1 = '(All Runs, Shank {0}/{1})'.format(self.i_shank + 1, self.n_shank)
+
+            case 3:
+                # case is a multi run/shank session
+                m_str1 = '(Run {0}/{1}, Shank {2}/{3})'.format(self.i_run + 1, self.n_run,
+                                                             self.i_shank + 1, self.n_shank)
+
+        # returns the final string
+        return '{0}: {1}'.format(m_str0, m_str1)
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
     # ---------------------------------------------------------------------------
 
+    def reset_list_selection(self, i_sel):
+
+        self.is_updating = True
+        self.add_list.setCurrentRow(i_sel)
+        self.is_updating = False
+
+    def set_preprocess_props(self, state):
+
+        # sets the task frame widget properties
+        for hc in self.task_frame.findChildren(QWidget):
+            hc.setEnabled(state)
+
+        # resets the button properties (if reenabling)
+        if state:
+            self.set_button_props()
+
+        # sets the close button properties
+        self.button_control[5].setEnabled(state)
+
+        # pause for update...
+        time.sleep(0.01)
+
     def set_button_props(self):
+
+        # if manually updating, then exit
+        if self.is_updating:
+            return
 
         # field retrieval
         n_added = self.add_list.count() - 1
@@ -773,7 +1003,7 @@ class PreprocessSetup(QMainWindow):
 
 class RunPreProcessing(QObject):
     # pyqtSignal functions
-    update_prog = pyqtSignal(str, float)
+    update_prog = pyqtSignal(int, dict)
 
     # preprocessing function dictionary
     pp_funcs = {
@@ -790,16 +1020,6 @@ class RunPreProcessing(QObject):
 
         # session object
         self.s = s
-
-        # index/scalar class fields
-        self.i_run = None
-        self.n_run = None
-        self.p_run = None
-        self.i_shank = None
-        self.n_shank = None
-        self.p_shank = None
-        self.i_step = None
-        self.n_step = None
 
         # other class field initialisations
         self.per_shank = None
@@ -825,7 +1045,8 @@ class RunPreProcessing(QObject):
         runs_to_pp: list[SeparateRawRun | ConcatRawRun]
 
         # sets the preprocessing runs (based on previous calculation type)
-        if len(self.s._pp_runs):
+        n_run_pp = len(self.s._pp_runs)
+        if n_run_pp:
             # case is there has already been partial preprocessing
             is_raw = False
             runs_to_pp = [x._preprocessed for x in self.s._pp_runs]
@@ -835,6 +1056,9 @@ class RunPreProcessing(QObject):
             for i, pp_s in pp_steps.items():
                 i_tot = int(i) + i_ofs
                 self.pp_steps_tot[(str(i_tot))] = pp_s
+
+            # sets the run count
+            self.update_prep_prog(4, n_run_pp)
 
         else:
             # case is there is no preprocessing
@@ -852,11 +1076,17 @@ class RunPreProcessing(QObject):
             self.file_format = [run._file_format for run in runs_to_pp]
             self.raw_data_path = [run._parent_input_path for run in runs_to_pp]
 
+            # sets the run count
+            self.update_prep_prog(4, len(runs_to_pp))
+
         # runs the preprocessing for each run (for all tasks)
-        self.n_run = len(runs_to_pp)
-        for i_run_pp, run in enumerate(runs_to_pp):
+        for i_run, run in enumerate(runs_to_pp):
+            # sets the shank count (first run only)
+            if i_run == 0:
+                self.update_prep_prog(5, self.get_shank_count(run, is_raw))
+
             # update the progressbar for the current run
-            self.update_prep_prog(1, i_run_pp)
+            self.update_prep_prog(1, i_run)
 
             # runs the preprocessing for the current run
             preprocessed_run = self.preprocess_run(run, is_raw)
@@ -867,21 +1097,22 @@ class RunPreProcessing(QObject):
             )
 
             # stores the preprocessing data
-            self.s._pp_runs.append(
-                PreprocessedRun(
-                    run_name=self.run_name[self.i_run],
-                    file_format=self.file_format[self.i_run],
-                    raw_data_path=self.raw_data_path[self.i_run],
-                    ses_name=self.s._ses_name,
-                    session_output_path=self.s._output_path,
-                    pp_steps=self.pp_steps_tot,
-                    orig_run_names=orig_run_names,
-                    preprocessed_data=preprocessed_run,
+            if n_run_pp == 0:
+                self.s._pp_runs.append(
+                    PreprocessedRun(
+                        run_name=self.run_name[i_run],
+                        file_format=self.file_format[i_run],
+                        raw_data_path=self.raw_data_path[i_run],
+                        ses_name=self.s._ses_name,
+                        session_output_path=self.s._output_path,
+                        pp_steps=self.pp_steps_tot,
+                        orig_run_names=orig_run_names,
+                        preprocessed_data=preprocessed_run,
+                    )
                 )
-            )
 
         # flag that preprocessing is complete
-        self.update_prep_prog(4)
+        self.update_prep_prog(6)
 
     def preprocess_run(self, run, is_raw):
 
@@ -897,18 +1128,17 @@ class RunPreProcessing(QObject):
                 runs_to_preprocess = run._raw
 
             # runs the preprocessing over each grouping
-            self.n_shank = len(runs_to_preprocess.items())
-            for i_shank_pp, (shank_id, raw_rec) in enumerate(runs_to_preprocess.items()):
-                self.update_prep_prog(2, i_shank_pp)
+            for i_shank, (shank_id, raw_rec) in enumerate(runs_to_preprocess.items()):
+                self.update_prep_prog(2, i_shank)
                 preprocessed[shank_id] = self.preprocess_recording({"0-raw": raw_rec})
 
         else:
             # case is running from previous preprocessing
 
             # runs the preprocessing over each grouping
-            self.n_shank = len(run.items())
+            self.update_prep_prog(5, len(run.items()))
             for i_shank, (shank_id, pp_rec) in enumerate(run.items()):
-                self.update_prep_prog(2, i_shank_pp)
+                self.update_prep_prog(2, i_shank)
                 preprocessed[shank_id] = pp_rec
                 self.preprocess_recording(pp_rec)
 
@@ -918,7 +1148,6 @@ class RunPreProcessing(QObject):
 
         # field retrieval
         step_ofs = len(pp_data) - 1
-        self.n_task = len(self.pp_steps_new)
         prev_name = list(pp_data.keys())[-1]
         pp_step_names = [item[0] for item in self.pp_steps_tot.values()]
 
@@ -927,7 +1156,7 @@ class RunPreProcessing(QObject):
             pp_name, pp_opt = pp_info
             self.update_prep_prog(3, i_step, pp_name)
 
-            # retrieves the preprocessing step parameters
+            # retrieves t\he preprocessing step parameters
             if self.per_shank and (pp_name == 'interpolate_channels'):
                 # if analysing by shank, and interpolating bad channels, then ensure the channels for removal exist
                 # on the current shank
@@ -963,84 +1192,43 @@ class RunPreProcessing(QObject):
     def update_prep_prog(self, pr_type, i_val=None, pp_str=None):
 
         # initialisations
-        m_str = None
-        pr_val = None
+        pr_dict = {}
 
         match pr_type:
-            case 0:
-                # case is preprocessing initialising
-                m_str = 'Initialising Preprocessing'
-
-                self.i_run = 0
-                self.i_shank = 0
-                self.i_task = 0
-
-                pr_val = 0.
-                self.n_task = 1
-                self.n_shank = 1
-
             case 1:
                 # case is new preprocessing run
-                m_str = 'Initialising Run...'
-
-                self.i_run = i_val
-                self.i_shank = 0
-                self.i_task = 0
-
-                self.p_run = 1. / self.n_run
-                self.p_shank = 0.
+                pr_dict = {'i_run': i_val}
 
             case 2:
                 # case is new preprocessing shank
-                m_str = 'Initialising Shank...'
-
-                self.i_shank = i_val
-                self.i_task = 0
-
-                self.p_shank = self.p_run / self.n_shank
+                pr_dict = {'i_shank': i_val}
 
             case 3:
                 # case is new preprocessing task
-                self.i_task = i_val
-
-                # sets up the message string
-                m_type = 2 * int(self.n_run > 1) + int(self.n_shank > 1)
-                match m_type:
-                    case 0:
-                        # case is single run/shank expt
-                        m_suff = ''
-
-                    case 1:
-                        # case is a multi-shank session
-                        m_suff = ' (S{0}/{1})'.format(self.i_shank + 1, self.n_shank)
-
-                    case 2:
-                        # case is a multi-run session
-                        m_suff = ' (R{0}/{1})'.format(self.i_run + 1, self.n_run)
-
-                    case 3:
-                        # case is multi run/shank expt
-                        m_suff = '(R{1}/{2}, S{3}/{4})'.format(self.i_run + 1, self.n_run,
-                                                               self.i_shank + 1, self.n_shank)
-
-                # sets the task string
-                m_str = 'Task: {0}{1}'.format(pp_str, m_suff)
+                pr_dict = {'i_task': i_val, 'pr_task': pp_str}
 
             case 4:
-                # case is preprocessing completion
-                pr_val = 1.
-                m_str = 'Preprocessing Complete!'
+                # case is the run count
+                pr_dict = {'n_run': i_val}
 
-        if pr_val is None:
-            pr_val_run = self.i_run * self.p_run
-            pr_val_shank = self.i_shank * self.p_shank
-            pr_task = self.p_shank * (self.i_task + 1) / (self.n_task + 1)
-            pr_val = pr_val_run + pr_val_shank + pr_task
+            case 5:
+                # case is the shank count
+                pr_dict = {'n_shank': i_val}
 
         # updates the progressbar
-        self.update_prog.emit(m_str, pr_val)
-        time.sleep(0.1)
+        self.update_prog.emit(pr_type, pr_dict)
+        time.sleep(0.05)
 
+    def get_shank_count(self, run, is_raw):
+
+        if is_raw:
+            if self.per_shank:
+                return len(run._get_split_by_shank())
+            else:
+                return len(run._raw)
+
+        else:
+            return len(run.items())
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -1116,33 +1304,16 @@ class QPreprocessProgWidget(QWidget):
             self.time_line.setUpdateInterval(50)
             self.time_line.frameChanged.connect(self.prog_timer)
 
+    # ---------------------------------------------------------------------------
+    # Timer Functions
+    # ---------------------------------------------------------------------------
+
     def prog_timer(self):
 
         pr_scl = self.p_max_r * self.pr_max
         p_val = int(pr_scl * self.time_line.currentValue()) - self.dp_max
         p_val = np.min([self.p_max, np.max([0, p_val])])
         self.prog_bar.setValue(p_val)
-
-    def set_progbar_state(self, state=None):
-
-        if state is None:
-            state = self.is_running
-
-        if state:
-            # starts the timeline widget
-            self.start_timer()
-
-        else:
-            # stops the timeline widget
-            self.stop_timer()
-
-            # resets the progressbar
-            self.prog_bar.setValue(self.p_max)
-            time.sleep(0.25)
-            self.prog_bar.setValue(0)
-
-            # resets the text label
-            self.lbl_obj.setText(self.wait_lbl)
 
     def start_timer(self):
 
@@ -1155,6 +1326,44 @@ class QPreprocessProgWidget(QWidget):
         if self.time_line is not None:
             self.time_line.stop()
             self.is_running = False
+
+    # ---------------------------------------------------------------------------
+    # Miscellaneous Functions
+    # ---------------------------------------------------------------------------
+
+    def update_prog_fields(self, m_str, pr_val):
+
+        if not self.is_task:
+            # case is the overall progress
+            p_val = int(pr_val * self.p_max) - self.dp_max
+            self.prog_bar.setValue(p_val)
+
+        # updates the message label
+        if m_str is not None:
+            self.lbl_obj.setText(m_str)
+
+        # pauses for a little bit
+        time.sleep(0.005)
+
+    def set_progbar_state(self, state):
+
+        if state:
+            # starts the timeline widget
+            self.start_timer()
+            self.set_enabled(True)
+
+        else:
+            # stops the timeline widget
+            self.stop_timer()
+
+            # resets the progressbar
+            self.prog_bar.setValue(self.p_max)
+            time.sleep(0.25)
+            self.prog_bar.setValue(0)
+
+            # resets the text label
+            self.lbl_obj.setText(self.wait_lbl)
+            self.set_enabled(False)
 
     def set_enabled(self, state):
 
