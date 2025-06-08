@@ -574,8 +574,9 @@ class MainWindow(QMainWindow):
     def testing(self):
 
         # f_file = "C:/Work/Other Projects/EPhys Project/Code/spykit/spykit/resources/session/tiny_session.ssf"
-        # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/tiny_example.ssf"
-        f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/tiny_example (preprocessed).ssf"
+        f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/tiny_example.ssf"
+        # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/tiny_example (preprocessed).ssf"
+        # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/tiny_example (preprocessed2).ssf"
         # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/large_example.ssf"
 
         self.menu_bar.load_session(f_file)
@@ -803,6 +804,14 @@ class MenuBar(QObject):
             # runs the preprocessing (if data in config field)
             prep_task = prep_info.configs.task_name
             if len(prep_task):
+                # if there is preprocessed data, prompt the user if they would like to re-run the calculations
+                t_str = 'Re-run Preprocessing?'
+                q_str = 'The loaded session has preprocessed tasks. Would you like to re-run these tasks?'
+                u_choice = QMessageBox.question(self.main_obj, 'Use Default Files?', q_str, cf.q_yes_no, cf.q_yes)
+                if u_choice == cf.q_no:
+                    # if not, then exit
+                    return
+
                 # sets the menu enabled properties
                 self.set_menu_enabled_blocks('post-process')
 

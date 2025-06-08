@@ -1047,7 +1047,6 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
         loc_ch = self.session_info.get_channel_location(i_channel)
         status_ch = self.session_info.get_channel_status(i_channel)
-
         self.hm_roi.setPen(self.l_pen_status[status_ch])
 
         return "Channel #{0}\nDepth = {1}\nStatus = {2}".format(i_channel, loc_ch[1], status_ch)

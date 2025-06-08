@@ -286,6 +286,7 @@ class PreprocessSetup(QMainWindow):
     # parameters
     n_but = 4
     gap_sz = 5
+    n_prog = 2
     but_height = 20
     dlg_height_orig = 300
     dlg_height_auto = 130
@@ -293,12 +294,12 @@ class PreprocessSetup(QMainWindow):
     p_row = np.array([7, 2, 1])
 
     # array class fields
+    prep_str = ['Start Preprocessing', 'Cancel Preprocessing']
     b_icon = ['arrow_right', 'arrow_left', 'arrow_up', 'arrow_down']
     tt_str = ['Add Task', 'Remove Task', 'Move Task Up', 'Move Task Down']
 
     # widget stylesheets
     border_style = "border: 1px solid;"
-    frame_style = QFrame.Shape.WinPanel | QFrame.Shadow.Plain
     frame_border_style = """
         QFrame#prepFrame {
             border: 1px solid;
@@ -390,6 +391,7 @@ class PreprocessSetup(QMainWindow):
         self.main_widget.setLayout(self.list_layout)
         self.setCentralWidget(self.main_widget)
 
+        # resets the frame object names
         for qf in self.findChildren(QFrame):
             qf.setObjectName('prepFrame')
 
@@ -534,8 +536,8 @@ class PreprocessSetup(QMainWindow):
         self.progress_layout.setSpacing(0)
 
         # creates the progressbar widgets
-        for i in range(2):
-            prog_bar_new = QPreprocessProgWidget(font=cw.font_lbl, is_task=bool(i))
+        for i in range(self.n_prog):
+            prog_bar_new = cw.QDialogProgress(font=cw.font_lbl, is_task=bool(i))
             prog_bar_new.set_enabled(False)
             prog_bar_new.setContentsMargins(x_gap, x_gap, x_gap, i * x_gap)
 
@@ -545,7 +547,7 @@ class PreprocessSetup(QMainWindow):
     def init_control_buttons(self):
 
         # initialisations
-        b_str = ['Start Preprocessing', 'Close Window']
+        b_str = [self.prep_str[0], 'Close Window']
         cb_fcn = [self.start_preprocess, self.close_window]
 
         # sets the frame/layout properties
@@ -689,31 +691,13 @@ class PreprocessSetup(QMainWindow):
             return
 
         # resets the button state
-        state = self.button_control[4].isChecked()
+        self.is_running = not self.button_control[4].isChecked()
+        self.button_control[4].setText(self.prep_str[self.is_running])
 
-        if state:
-            # case is cancelling the calculations
-            self.is_running = False
-
-            # stops the worker
-            self.t_worker.force_quit()
-            self.t_worker.deleteLater()
-            time.sleep(0.01)
-
-            # disables the progressbar fields
-            for pb in self.prog_bar:
-                pb.set_progbar_state(False)
-
-            # resets the other properties
-            self.set_preprocess_props(True)
-            self.button_control[4].setText('Start Preprocessing')
-
-        else:
+        if self.is_running:
             # case is starting the calculations
 
             # other field initialisations
-            self.is_running = True
-            self.button_control[4].setText('Cancel Preprocessing')
 
             #
             if self.is_auto:
@@ -737,6 +721,23 @@ class PreprocessSetup(QMainWindow):
                 # starts running the pre-processing
                 prep_opt = (self.per_shank, self.concat_runs)
                 self.setup_preprocessing_worker((prep_task, prep_opt))
+
+        else:
+            # case is cancelling the calculations
+            self.is_running = False
+
+            # stops the worker
+            self.t_worker.force_quit()
+            self.t_worker.deleteLater()
+            time.sleep(0.01)
+
+            # disables the progressbar fields
+            for pb in self.prog_bar:
+                pb.set_progbar_state(False)
+
+            # resets the other properties
+            self.set_preprocess_props(True)
+            self.button_control[4].setText(self.prep_str[0])
 
     def close_window(self):
 
@@ -926,7 +927,7 @@ class PreprocessSetup(QMainWindow):
             # resets the toggle button
             self.is_updating = True
             self.button_control[4].setChecked(False)
-            self.button_control[4].setText('Start Preprocessing')
+            self.button_control[4].setText(self.prep_str[0])
             self.is_updating = False
 
         # deletes the worker object
@@ -1275,143 +1276,3 @@ class RunPreProcessing(QObject):
 
         else:
             return len(run.items())
-
-# ----------------------------------------------------------------------------------------------------------------------
-
-"""
-    QPreprocessProgWidget:
-"""
-
-
-class QPreprocessProgWidget(QWidget):
-    # static string fields
-    dp_max = 10
-    p_max = 1000
-    t_period = 1000
-    lbl_width = 200
-    wait_lbl = 'Waiting For User Input...'
-
-    prog_style = """
-        QProgressBar {
-            border: 2px solid black;
-            border-radius: 5px;
-            background-color: #E0E0E0;
-        }
-        QProgressBar::chunk {
-            background-color: #19e326;
-            width: 10px; 
-            margin: 0.25px;
-        }
-    """
-
-    def __init__(self, parent=None, font=None, is_task=True):
-        super(QPreprocessProgWidget, self).__init__(parent)
-
-        # input arguments
-        self.is_task = is_task
-
-        # widget setup
-        self.layout = QHBoxLayout(self)
-        self.lbl_obj = cw.create_text_label(self, self.wait_lbl, font, align='right')
-        self.prog_bar = QProgressBar(self, minimum=0, maximum=self.p_max, textVisible=False)
-        self.time_line = QTimeLine(self.t_period) if is_task else None
-
-        # other class fields
-        self.n_jobs = 0
-        self.pr_max = 1.0
-        self.is_running = False
-        self.p_max_r = self.p_max + 2 * self.dp_max
-
-        # initialises the class fields
-        self.init_class_fields()
-
-    def init_class_fields(self):
-
-        # sets up the layout properties
-        self.layout.setSpacing(x_gap)
-        self.layout.setContentsMargins(0, 0, 0, 0)
-        self.setLayout(self.layout)
-
-        # adds the widgets to the layout
-        self.layout.addWidget(self.lbl_obj)
-        self.layout.addWidget(self.prog_bar)
-
-        # sets the label properties
-        self.lbl_obj.setContentsMargins(0, x_gap, 0, 0)
-        self.lbl_obj.setFixedWidth(self.lbl_width)
-
-        # sets the progressbar properties
-        self.prog_bar.setStyleSheet(self.prog_style)
-
-        # sets the timeline properties
-        if self.is_task:
-            self.time_line.setLoopCount(int(1e6))
-            self.time_line.setFrameRange(0, self.p_max)
-            self.time_line.setUpdateInterval(50)
-            self.time_line.frameChanged.connect(self.prog_timer)
-
-    # ---------------------------------------------------------------------------
-    # Timer Functions
-    # ---------------------------------------------------------------------------
-
-    def prog_timer(self):
-
-        pr_scl = self.p_max_r * self.pr_max
-        p_val = int(pr_scl * self.time_line.currentValue()) - self.dp_max
-        p_val = np.min([self.p_max, np.max([0, p_val])])
-        self.prog_bar.setValue(p_val)
-
-    def start_timer(self):
-
-        if self.time_line is not None:
-            self.is_running = True
-            self.time_line.start()
-
-    def stop_timer(self):
-
-        if self.time_line is not None:
-            self.time_line.stop()
-            self.is_running = False
-
-    # ---------------------------------------------------------------------------
-    # Miscellaneous Functions
-    # ---------------------------------------------------------------------------
-
-    def update_prog_fields(self, m_str, pr_val):
-
-        if not self.is_task:
-            # case is the overall progress
-            p_val = int(pr_val * self.p_max) - self.dp_max
-            self.prog_bar.setValue(p_val)
-
-        # updates the message label
-        if m_str is not None:
-            self.lbl_obj.setText(m_str)
-
-        # pauses for a little bit
-        time.sleep(0.005)
-
-    def set_progbar_state(self, state):
-
-        if state:
-            # starts the timeline widget
-            self.start_timer()
-            self.set_enabled(True)
-
-        else:
-            # stops the timeline widget
-            self.stop_timer()
-
-            # resets the progressbar
-            self.prog_bar.setValue(self.p_max)
-            time.sleep(0.25)
-            self.prog_bar.setValue(0)
-
-            # resets the text label
-            self.lbl_obj.setText(self.wait_lbl)
-            self.set_enabled(False)
-
-    def set_enabled(self, state):
-
-        self.lbl_obj.setEnabled(state)
-        self.prog_bar.setEnabled(state)

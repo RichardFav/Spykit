@@ -1911,7 +1911,7 @@ class QLabelEdit(QWidget):
 
         # sets up the label properties
         self.obj_lbl.adjustSize()
-        self.obj_lbl.setStyleSheet('padding-top: 3px;')
+        self.obj_lbl.setStyleSheet('padding-top: 4px;')
 
         # sets up the editbox properties
         self.obj_edit.setFixedHeight(cf.edit_height)
@@ -2564,6 +2564,147 @@ class QProgressWidget(QWidget):
 # ----------------------------------------------------------------------------------------------------------------------
 # TABLE WIDGET CUSTOM MODEL CLASSES
 # ----------------------------------------------------------------------------------------------------------------------
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+"""
+    QDialogProgress:
+"""
+
+
+class QDialogProgress(QWidget):
+    # static string fields
+    dp_max = 10
+    p_max = 1000
+    t_period = 1000
+    lbl_width = 200
+    wait_lbl = 'Waiting For User Input...'
+
+    prog_style = """
+        QProgressBar {
+            border: 2px solid black;
+            border-radius: 5px;
+            background-color: #E0E0E0;
+        }
+        QProgressBar::chunk {
+            background-color: #19e326;
+            width: 10px; 
+            margin: 0.25px;
+        }
+    """
+
+    def __init__(self, parent=None, font=None, is_task=True):
+        super(QDialogProgress, self).__init__(parent)
+
+        # input arguments
+        self.is_task = is_task
+
+        # widget setup
+        self.layout = QHBoxLayout(self)
+        self.lbl_obj = create_text_label(self, self.wait_lbl, font, align='right')
+        self.prog_bar = QProgressBar(self, minimum=0, maximum=self.p_max, textVisible=False)
+        self.time_line = QTimeLine(self.t_period) if is_task else None
+
+        # other class fields
+        self.n_jobs = 0
+        self.pr_max = 1.0
+        self.is_running = False
+        self.p_max_r = self.p_max + 2 * self.dp_max
+
+        # initialises the class fields
+        self.init_class_fields()
+
+    def init_class_fields(self):
+
+        # sets up the layout properties
+        self.layout.setSpacing(x_gap)
+        self.layout.setContentsMargins(0, 0, 0, 0)
+        self.setLayout(self.layout)
+
+        # adds the widgets to the layout
+        self.layout.addWidget(self.lbl_obj)
+        self.layout.addWidget(self.prog_bar)
+
+        # sets the label properties
+        self.lbl_obj.setContentsMargins(0, x_gap, 0, 0)
+        self.lbl_obj.setFixedWidth(self.lbl_width)
+
+        # sets the progressbar properties
+        self.prog_bar.setStyleSheet(self.prog_style)
+
+        # sets the timeline properties
+        if self.is_task:
+            self.time_line.setLoopCount(int(1e6))
+            self.time_line.setFrameRange(0, self.p_max)
+            self.time_line.setUpdateInterval(50)
+            self.time_line.frameChanged.connect(self.prog_timer)
+
+    # ---------------------------------------------------------------------------
+    # Timer Functions
+    # ---------------------------------------------------------------------------
+
+    def prog_timer(self):
+
+        pr_scl = self.p_max_r * self.pr_max
+        p_val = int(pr_scl * self.time_line.currentValue()) - self.dp_max
+        p_val = np.min([self.p_max, np.max([0, p_val])])
+        self.prog_bar.setValue(p_val)
+
+    def start_timer(self):
+
+        if self.time_line is not None:
+            self.is_running = True
+            self.time_line.start()
+
+    def stop_timer(self):
+
+        if self.time_line is not None:
+            self.time_line.stop()
+            self.is_running = False
+
+    # ---------------------------------------------------------------------------
+    # Miscellaneous Functions
+    # ---------------------------------------------------------------------------
+
+    def update_prog_fields(self, m_str, pr_val):
+
+        if not self.is_task:
+            # case is the overall progress
+            p_val = int(pr_val * self.p_max) - self.dp_max
+            self.prog_bar.setValue(p_val)
+
+        # updates the message label
+        if m_str is not None:
+            self.lbl_obj.setText(m_str)
+
+        # pauses for a little bit
+        time.sleep(0.005)
+
+    def set_progbar_state(self, state):
+
+        if state:
+            # starts the timeline widget
+            self.start_timer()
+            self.set_enabled(True)
+
+        else:
+            # stops the timeline widget
+            self.stop_timer()
+
+            # resets the progressbar
+            self.prog_bar.setValue(self.p_max)
+            time.sleep(0.25)
+            self.prog_bar.setValue(0)
+
+            # resets the text label
+            self.lbl_obj.setText(self.wait_lbl)
+            self.set_enabled(False)
+
+    def set_enabled(self, state):
+
+        self.lbl_obj.setEnabled(state)
+        self.prog_bar.setEnabled(state)
+
 
 
 """
