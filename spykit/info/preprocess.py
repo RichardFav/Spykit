@@ -113,7 +113,6 @@ class PreprocessConfig(object):
             "concat_runs": False,
         }
 
-
 # ----------------------------------------------------------------------------------------------------------------------
 
 """
@@ -288,8 +287,10 @@ class PreprocessSetup(QMainWindow):
     n_but = 4
     gap_sz = 5
     but_height = 20
-    dlg_height = 300
+    dlg_height_orig = 300
+    dlg_height_auto = 130
     dlg_width = 450
+    p_row = np.array([7, 2, 1])
 
     # array class fields
     b_icon = ['arrow_right', 'arrow_left', 'arrow_up', 'arrow_down']
@@ -304,15 +305,16 @@ class PreprocessSetup(QMainWindow):
         }
     """
 
-    def __init__(self, main_obj=None):
+    def __init__(self, main_obj, prep_obj_auto):
         super(PreprocessSetup, self).__init__(main_obj)
 
         # sets the input arguments
         self.main_obj = main_obj
+        self.prep_obj_auto = prep_obj_auto
+        self.is_auto = prep_obj_auto is not None
 
         # creates the preprocessing run class object
         self.session = self.main_obj.session_obj.session
-        # self.prep_obj = RunPreProcessing(self.session._s)
 
         # sets the central widget
         self.main_widget = QWidget(self)
@@ -327,9 +329,9 @@ class PreprocessSetup(QMainWindow):
 
         # class widgets
         self.button_frame = QFrame(self)
-        self.task_frame = QFrame(self)
+        self.task_frame = QFrame(None if self.is_auto else self)
         self.progress_frame = QFrame(self)
-        self.checkbox_frame = QWidget(self)
+        self.checkbox_frame = QWidget()
         self.add_list = QListWidget(None)
         self.task_list = QListWidget(None)
         self.spacer_top = QSpacerItem(20, 60, cf.q_min, cf.q_max)
@@ -363,6 +365,7 @@ class PreprocessSetup(QMainWindow):
         self.p_shank = None
         self.pr_task = None
         self.t_worker = None
+        self.dlg_height = self.dlg_height_auto if self.is_auto else self.dlg_height_orig
 
         # initialises the class fields
         self.init_class_fields()
@@ -383,7 +386,7 @@ class PreprocessSetup(QMainWindow):
         self.setWindowTitle("Preprocessing Setup")
         self.setFixedSize(self.dlg_width, self.dlg_height)
 
-        #
+        # sets the main widget properties
         self.main_widget.setLayout(self.list_layout)
         self.setCentralWidget(self.main_widget)
 
@@ -576,15 +579,25 @@ class PreprocessSetup(QMainWindow):
         self.list_layout.setContentsMargins(2 * x_gap, x_gap, 2 * x_gap, 2 * x_gap)
         self.setLayout(self.list_layout)
 
-        # adds the main widgets to the main layout
-        self.list_layout.addWidget(self.task_frame, 0, 0, 1, 1)
-        self.list_layout.addWidget(self.progress_frame, 1, 0, 1, 1)
-        self.list_layout.addWidget(self.button_frame, 2, 0, 1, 1)
+        if self.is_auto:
+            # adds the main widgets to the main layout
+            self.list_layout.addWidget(self.progress_frame, 0, 0, 1, 1)
+            self.list_layout.addWidget(self.button_frame, 1, 0, 1, 1)
 
-        # set the grid layout column sizes
-        self.list_layout.setRowStretch(0, 6)
-        self.list_layout.setRowStretch(1, 2)
-        self.list_layout.setRowStretch(2, 1)
+            # set the grid layout column sizes
+            self.list_layout.setRowStretch(0, self.p_row[1])
+            self.list_layout.setRowStretch(1, self.p_row[2])
+
+        else:
+            # adds the main widgets to the main layout
+            self.list_layout.addWidget(self.task_frame, 0, 0, 1, 1)
+            self.list_layout.addWidget(self.progress_frame, 1, 0, 1, 1)
+            self.list_layout.addWidget(self.button_frame, 2, 0, 1, 1)
+
+            # set the grid layout column sizes
+            self.list_layout.setRowStretch(0, self.p_row[0])
+            self.list_layout.setRowStretch(1, self.p_row[1])
+            self.list_layout.setRowStretch(2, self.p_row[2])
 
     # ---------------------------------------------------------------------------
     # Class Property Widget Setup Functions
@@ -684,6 +697,7 @@ class PreprocessSetup(QMainWindow):
 
             # stops the worker
             self.t_worker.force_quit()
+            self.t_worker.deleteLater()
             time.sleep(0.01)
 
             # disables the progressbar fields
@@ -697,35 +711,50 @@ class PreprocessSetup(QMainWindow):
         else:
             # case is starting the calculations
 
-            # retrieves the task count
-            self.n_task = self.add_list.count()
-
-            # sets the preprocessing options
-            prep_tab = self.main_obj.info_manager.get_info_tab('preprocess')
-            prep_tab.configs.set_prep_opt(self.per_shank, self.concat_runs)
-
-            # retrieves the selected tasks
-            prep_task = []
-            for i in range(self.n_task):
-                prep_task.append(self.add_list.item(i).text())
-
             # other field initialisations
             self.is_running = True
             self.button_control[4].setText('Cancel Preprocessing')
 
-            # starts running the pre-processing
-            prep_opt = (self.per_shank, self.concat_runs)
-            self.setup_preprocessing_worker(prep_task, prep_opt)
+            #
+            if self.is_auto:
+                # case is loading from file
+                self.n_task = len(self.prep_obj_auto[0])
+                self.setup_preprocessing_worker(self.prep_obj_auto)
+
+            else:
+                # retrieves the task count
+                self.n_task = self.add_list.count()
+
+                # sets the preprocessing options
+                prep_tab = self.main_obj.info_manager.get_info_tab('preprocess')
+                prep_tab.configs.set_prep_opt(self.per_shank, self.concat_runs)
+
+                # retrieves the selected tasks
+                prep_task = []
+                for i in range(self.n_task):
+                    prep_task.append(self.add_list.item(i).text())
+
+                # starts running the pre-processing
+                prep_opt = (self.per_shank, self.concat_runs)
+                self.setup_preprocessing_worker((prep_task, prep_opt))
 
     def close_window(self):
 
         # if there are outstanding tasks, then promopt the user
-        if self.add_list.count() > 0:
+        if (self.add_list.count() > 0) or ((not self.has_pp) and self.is_auto):
             q_str = 'There are still outstanding tasks to process. Do you still want to continue?'
             u_choice = QMessageBox.question(self.main_obj, 'Close Window?', q_str, cf.q_yes_no, cf.q_yes)
             if u_choice == cf.q_no:
                 # case is the user chose not to close
                 return
+
+        if self.has_pp:
+            # updates the pre-processing information
+            pr_val = self.session.prep_obj.pp_steps_tot.values()
+            prep_tab = self.main_obj.info_manager.get_info_tab('preprocess')
+            prep_tab.configs.prep_task = [x[0] for x in pr_val]
+            prep_tab.configs.task_name = [pp_flds[x] for x in prep_tab.configs.prep_task]
+            prep_tab.configs.task_para = dict(pr_val)
 
         # runs the post window close functions
         self.close_preprocessing.emit(self.has_pp)
@@ -737,24 +766,29 @@ class PreprocessSetup(QMainWindow):
     # Preprocessing Worker Functions
     # ---------------------------------------------------------------------------
 
-    def setup_preprocessing_worker(self, prep_task, prep_opt):
+    def setup_preprocessing_worker(self, prep_obj):
 
         # creates the threadworker object
-        self.t_worker = ThreadWorker(self, self.run_preprocessing_worker, (prep_task, prep_opt))
+        self.t_worker = ThreadWorker(self, self.run_preprocessing_worker, prep_obj)
         self.t_worker.work_finished.connect(self.preprocessing_complete)
 
         # starts the worker object
         self.t_worker.start()
 
-    def run_preprocessing_worker(self, _prep_obj):
+    def run_preprocessing_worker(self, prep_obj):
 
         # runs the session pre-processing
         prep_tab = self.main_obj.info_manager.get_info_tab('preprocess')
 
         # case is running from the Preprocessing dialog
-        prep_task, prep_opt = _prep_obj
-        per_shank, concat_runs = prep_opt
-        pp_config = prep_tab.setup_config_dict(prep_task)
+        if isinstance(prep_obj, tuple):
+            prep_task, prep_opt = prep_obj
+            per_shank, concat_runs = prep_opt
+            pp_config = prep_tab.setup_config_dict(prep_task)
+
+        else:
+            # case is running from loading session
+            pp_config = prep_obj.setup_config_dicts()
 
         # runs the preprocessing
         self.session.prep_obj.preprocess(pp_config, per_shank, concat_runs)
@@ -862,31 +896,38 @@ class PreprocessSetup(QMainWindow):
         # pauses for a little bit...
         time.sleep(0.25)
 
-        # stops the timer
-        for pb in self.prog_bar:
-            pb.set_progbar_state(False)
-
-        # resets the current session (if run to completion)
-        if self.is_running:
-            # clears the added list
-            self.is_updating = True
-            self.add_list.clear()
-            self.is_updating = False
-
-            # resets the completion flag
-            self.is_running = False
-
-        # resets the other fields
+        # updates the boolean flags
         self.has_pp = True
-        self.set_preprocess_props(True)
-        for cb in self.checkbox_opt:
-            cb.setEnabled(False)
 
-        # resets the toggle button
-        self.is_updating = True
-        self.button_control[4].setChecked(False)
-        self.button_control[4].setText('Start Preprocessing')
-        self.is_updating = False
+        if self.is_auto:
+            # case is automatically opening
+            self.close_window()
+
+        else:
+            # stops the timer
+            for pb in self.prog_bar:
+                pb.set_progbar_state(False)
+
+            # resets the current session (if run to completion)
+            if self.is_running:
+                # clears the added list
+                self.is_updating = True
+                self.add_list.clear()
+                self.is_updating = False
+
+                # resets the completion flag
+                self.is_running = False
+
+            # resets the other fields
+            self.set_preprocess_props(True)
+            for cb in self.checkbox_opt:
+                cb.setEnabled(False)
+
+            # resets the toggle button
+            self.is_updating = True
+            self.button_control[4].setChecked(False)
+            self.button_control[4].setText('Start Preprocessing')
+            self.is_updating = False
 
         # deletes the worker object
         self.t_worker.deleteLater()
@@ -961,7 +1002,7 @@ class PreprocessSetup(QMainWindow):
         self.button_control[1].setEnabled(i_row_add >= 0)
         self.button_control[2].setEnabled(is_added_sel and (i_row_add > 0))
         self.button_control[3].setEnabled(is_added_sel and (i_row_add < n_added))
-        self.button_control[4].setEnabled(n_added >= 0)
+        self.button_control[4].setEnabled((n_added >= 0) or self.is_auto)
 
     def check_task_order(self, task_new):
 

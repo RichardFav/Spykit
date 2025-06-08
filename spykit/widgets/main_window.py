@@ -408,16 +408,23 @@ class MainWindow(QMainWindow):
             # updates the channel data types
             channel_tab = self.info_manager.get_info_tab('channel')
             channel_tab.reset_data_types(task_name, pp_data_flds)
-            # self.bad_channel_change()
 
         # updates the trace views
         self.plot_manager.reset_trace_views()
         self.menu_bar.set_menu_enabled_blocks('post-process')
 
-    def run_preproccessing(self, prep_obj):
+    def run_preprocessing_dialog(self, pp_config=None):
 
-        # starts the job worker
-        self.worker_job_started('preprocess')
+        # opens the preprocessing setup
+        h_app = PreprocessSetup(self, pp_config)
+        h_app.close_preprocessing.connect(self.on_preprocessing_close)
+        h_app.show()
+
+    # ---------------------------------------------------------------------------
+    # Obsolete Preprocessing Functions
+    # ---------------------------------------------------------------------------
+
+    def run_preproccessing(self, prep_obj):
 
         # runs the session pre-processing
         prep_tab = self.info_manager.get_info_tab('preprocess')
@@ -567,8 +574,8 @@ class MainWindow(QMainWindow):
     def testing(self):
 
         # f_file = "C:/Work/Other Projects/EPhys Project/Code/spykit/spykit/resources/session/tiny_session.ssf"
-        f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/tiny_example.ssf"
-        # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/tiny_example (preprocessed).ssf"
+        # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/tiny_example.ssf"
+        f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/tiny_example (preprocessed).ssf"
         # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/large_example.ssf"
 
         self.menu_bar.load_session(f_file)
@@ -770,20 +777,6 @@ class MenuBar(QObject):
         self.main_obj.session_obj.reset_session(ses_data)
         self.main_obj.session_obj.reset_channel_data(channel_data)
 
-        # sets/runs the config field/routines
-        if ses_data['configs'] is not None:
-            # resets the preprocessing configuration fields
-            prep_info = self.main_obj.info_manager.get_info_tab('preprocess')
-            prep_info.configs.clear()
-            prep_info.configs = ses_data['configs']
-
-            # runs the preprocessing (if data in config field)
-            prep_task = prep_info.configs.task_name
-            if len(prep_task):
-                prep_opt = tuple(prep_info.configs.prep_opt.values())
-                self.main_obj.setup_preprocessing_worker(prep_task, prep_opt)
-                self.set_menu_enabled_blocks('post-process')
-
         # updates the bad/sync channel status table fields
         self.main_obj.bad_channel_change()
         self.main_obj.sync_channel_change()
@@ -798,6 +791,24 @@ class MenuBar(QObject):
         # resets the property/information panel fields
         self.main_obj.prop_manager.set_prop_para(ses_data['prop_para'])
         self.main_obj.info_manager.set_info_para(ses_data['info_para'])
+
+        # sets/runs the config field/routines
+        time.sleep(0.1)
+        if ses_data['configs'] is not None:
+            # resets the preprocessing configuration fields
+            prep_info = self.main_obj.info_manager.get_info_tab('preprocess')
+            prep_info.configs.clear()
+            prep_info.configs = ses_data['configs']
+
+            # runs the preprocessing (if data in config field)
+            prep_task = prep_info.configs.task_name
+            if len(prep_task):
+                # sets the menu enabled properties
+                self.set_menu_enabled_blocks('post-process')
+
+                # runs the preprocessing dialog window
+                prep_opt = tuple(prep_info.configs.prep_opt.values())
+                self.main_obj.run_preprocessing_dialog((prep_task, prep_opt))
 
     def load_trigger(self, file_info=None):
 
@@ -1005,9 +1016,7 @@ class MenuBar(QObject):
 
     def run_preproccessing(self):
 
-        h_app = PreprocessSetup(self.main_obj)
-        h_app.close_preprocessing.connect(self.main_obj.on_preprocessing_close)
-        h_app.show()
+        self.main_obj.run_preprocessing_dialog()
 
     def clear_preprocessing(self):
 
