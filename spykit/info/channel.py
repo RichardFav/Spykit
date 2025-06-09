@@ -1,4 +1,5 @@
 # module import
+import time
 import numpy as np
 
 #
@@ -129,12 +130,11 @@ class ChannelInfoTab(InfoWidget):
         self.is_updating = True
 
         # retrieves the combo box
-        combo = getattr(self, '{0}_type'.format(cb_type))
+        c_type = '{0}_type'.format(cb_type)
+        combo = getattr(self, c_type)
 
         # clears and resets the combobox fields
-        combo.clear()
-        for cb in cb_list:
-            combo.addItem(cb)
+        combo.addItems(cb_list, True)
 
         # resets the combobox fields
         combo.set_enabled(len(cb_list) > 1)
@@ -149,6 +149,9 @@ class ChannelInfoTab(InfoWidget):
             case 'shank':
                 combo.set_enabled(len(cb_list) > 1)
                 combo.connect(self.combo_shank_change)
+
+        # updates the combo box field
+        setattr(self, c_type, combo)
 
         # resets the update flag
         self.is_updating = False
@@ -169,7 +172,7 @@ class ChannelInfoTab(InfoWidget):
 
         # if manually updating, then exit
         if not self.is_updating:
-            self.check_filter_item()
+            nw_text = h_combo.currentText()
             self.shank_change.emit(self)
 
     def combo_status_change(self, h_combo):
@@ -184,7 +187,6 @@ class ChannelInfoTab(InfoWidget):
         self.is_updating = True
         self.set_update_flag.emit(True)
         ch_avail = self.get_avail_channel_fcn(is_raw=True)
-        # ch_avail = self.get_avail_channel_fcn()
 
         # updates the table with the new information
         ch_list, i_rmv = [], []
@@ -230,8 +232,6 @@ class ChannelInfoTab(InfoWidget):
     def check_filter_item(self):
 
         # resets the table view
-        self.reset_table_rows()
-
         self.status_change.emit(self, self.is_filt)
         self.data_change.emit(self)
 

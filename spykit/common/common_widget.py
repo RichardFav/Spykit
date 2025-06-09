@@ -2026,6 +2026,9 @@ class QLabelCombo(QWidget):
         if name is not None:
             self.setObjectName(name)
 
+        # boolean class fields
+        self.is_connected = False
+
         # creates the layout widget
         self.layout = QHBoxLayout()
         self.layout.setSpacing(1)
@@ -2078,16 +2081,25 @@ class QLabelCombo(QWidget):
         self.obj_lbl.setEnabled(state)
         self.obj_cbox.setEnabled(state)
 
+    def count(self):
+
+        return self.obj_cbox.count()
+
     def clear(self):
 
-        self.obj_cbox.clear()
-        self.obj_cbox.setEnabled(False)
+        if self.count() > 0:
+            self.obj_cbox.clear()
+            self.obj_cbox.setEnabled(False)
 
     def connect(self, cb_fcn, add_widget=True):
 
-        if add_widget:
+        if self.is_connected:
+            return
+
+        elif add_widget:
             cb_fcn = functools.partial(cb_fcn, self.obj_cbox)
 
+        self.is_connected = True
         self.obj_cbox.currentIndexChanged.connect(cb_fcn)
 
     def addItem(self, item):

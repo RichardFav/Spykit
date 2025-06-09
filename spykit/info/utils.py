@@ -288,13 +288,10 @@ class InfoManager(QWidget):
 
     def update_current_shank(self, tab_obj):
 
-        tab_obj.is_updating = True
-
         i_sel_shank = tab_obj.shank_type.current_index()
         new_shank = i_sel_shank if self.main_obj.session_obj.is_per_shank() else None
         self.main_obj.session_obj.set_current_shank(new_shank)
-
-        tab_obj.is_updating = False
+        tab_obj.is_updating = True
 
     def channel_mouse_move(self, evnt):
 

@@ -618,16 +618,12 @@ class TracePlot(TraceLabelMixin, PlotWidget):
                 self.reset_inset_traces_indices()
 
             # sets up the y-data array
-            try:
-                y0 = self.session_info.get_traces(
-                    start_frame=i_frm0,
-                    end_frame=i_frm1,
-                    channel_ids=channel_id,
-                    return_scaled=self.trace_props.get('scale_signal'),
-                )
-
-            except:
-                a = 1
+            y0 = self.session_info.get_traces(
+                start_frame=i_frm0,
+                end_frame=i_frm1,
+                channel_ids=channel_id,
+                return_scaled=self.trace_props.get('scale_signal'),
+            )
 
             # calculates the signal difference (if using difference calc)
             if use_diff:
@@ -1049,7 +1045,8 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
     def setup_label_text(self, i_channel):
 
-        loc_ch = self.session_info.get_channel_location(i_channel)
+        probe = self.session_info.get_raw_recording_probe()
+        loc_ch = self.session_info.get_channel_location(i_channel, probe)
         status_ch = self.session_info.get_channel_status(i_channel)
         self.hm_roi.setPen(self.l_pen_status[status_ch])
 
