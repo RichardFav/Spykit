@@ -145,7 +145,7 @@ class ProbePlot(PlotWidget):
 
         # sets up the probe dataframe
         self.main_view.reset_axes_limits(False)
-        self.sub_view.reset_axes_limits(False, i_shank=0)
+        self.sub_view.reset_axes_limits(False, is_init=True)
         self.probe_dframe = self.probe.to_dataframe(complete=True)
 
     def setup_label_text(self, i_channel):
@@ -426,8 +426,18 @@ class ProbePlot(PlotWidget):
 
     def reset_probe_views(self):
 
+        # recreates the plot view
         self.main_view.create_probe_plot()
         self.sub_view.create_probe_plot()
+
+        if self.session_info.is_per_shank():
+            # case is plotting a specifc shank
+            i_shank = self.session_info.current_shank
+            self.main_view.reset_axes_limits(False, i_shank=i_shank)
+
+        else:
+            # case is plotting all shanks simultaneously
+            self.main_view.reset_axes_limits(False)
 
         self.main_view.roi.setVisible(True)
 
@@ -570,6 +580,7 @@ class ProbeView(GraphicsObject):
     pw = 0.05
     n_ar = 10
     p_gap = 0.05
+    p_exp_shank = 0.2
 
     # plot pen widgets
     pen = mkPen(width=2, color='b')
@@ -640,6 +651,10 @@ class ProbeView(GraphicsObject):
         self.c_pos = probe.contact_positions
         self.c_vert = self.setup_contact_coords(probe.get_contact_vertices())
         self.c_poly = [QPolygonF(x) for x in self.c_vert]
+
+        # separates the shank-contact ID mapping array
+        s_id0, idx = np.unique(probe._shank_ids, return_inverse=True)
+        self.s_id = [np.where(idx == i)[0] for i in range(len(s_id0))]
 
         # probe properties
         self.p_title = probe.get_title()
@@ -813,15 +828,19 @@ class ProbeView(GraphicsObject):
     # Axes Limit Functions
     # ---------------------------------------------------------------------------
 
-    def reset_axes_limits(self, is_full=True, i_shank=None):
+    def reset_axes_limits(self, is_full=True, i_shank=None, is_init=False):
 
-        if i_shank is not None:
+        if is_init:
             # case is using domain reduced to a single shank
             _x_lim, _y_lim = self.get_init_roi_limits()
 
         elif is_full:
             # case is using the full probe domain
             _x_lim, _y_lim = self.x_lim_full, self.y_lim_full
+
+        elif i_shank is not None:
+            # case is using the shank domain
+            _x_lim, _y_lim = self.get_expanded_shank_limits(i_shank)
 
         else:
             # case is using domain reduced to a all shanks
@@ -837,8 +856,10 @@ class ProbeView(GraphicsObject):
 
     def get_axes_limits(self, probe):
 
-        # calculates the contact vertex range
+        # field retrieval
         c_vert = np.array(probe.get_contact_vertices())
+
+        # calculates the total contact vertex range
         c_vert_tot = np.vstack(c_vert)
         c_min_ex, c_max_ex = self.calc_expanded_limits(c_vert_tot, np.array([0.1, 0.1]))
 
@@ -857,7 +878,7 @@ class ProbeView(GraphicsObject):
         self.y_lim_shank = []
         for sh in probe.get_shanks():
             c_vert_sh = np.vstack(c_vert[sh.device_channel_indices])
-            sh_min_ex, sh_max_ex = self.calc_reduced_limits(c_vert_sh, p_exp=[0, 0])
+            sh_min_ex, sh_max_ex = self.calc_reduced_limits(c_vert_sh, p_exp=[0.0, 0.0])
             self.x_lim_shank.append([sh_min_ex[0], sh_max_ex[0]])
             self.y_lim_shank.append([sh_min_ex[1], sh_max_ex[1]])
 
@@ -931,6 +952,13 @@ class ProbeView(GraphicsObject):
         y_lim = cf.list_add([0, (1 + 2 * self.pw) * dy_lim0], y_lim0[0] - self.pw * dy_lim0)
 
         return x_lim, y_lim
+
+    def get_expanded_shank_limits(self, i_shank):
+
+        _x_lim = list(self.calc_expanded_limits(self.x_lim_shank[i_shank], self.p_exp_shank))
+        _y_lim = list(self.calc_expanded_limits(self.y_lim_shank[i_shank], self.p_exp_shank))
+
+        return _x_lim, _y_lim
 
     def calc_reduced_limits(self, p, c_min=None, c_max=None, p_exp=None):
 

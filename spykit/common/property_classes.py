@@ -267,6 +267,14 @@ class SessionWorkBook(QObject):
         ch_id, _ = self.get_channel_ids(np.where(i_bad_ch)[0])
         return ch_id
 
+    def get_shank_index(self):
+
+        if self.is_per_shank():
+            return 1
+
+        else:
+            return None
+
     def get_shank_ids(self):
 
         ch_info = self.get_channel_info()
@@ -274,17 +282,21 @@ class SessionWorkBook(QObject):
 
     def get_shank_count(self):
 
-        return len(np.unique(self.get_shank_ids()))
+        return self.session.get_session_runs(0,'grouped').get_probe().get_shank_count()
 
-    def get_shank_names(self):
+    def get_shank_names(self, per_shank=None):
 
-        # initialisations
-        shank_list = ['All Shanks']
+        if per_shank is None:
+            per_shank = self.is_per_shank()
 
-        # if there is more than one shank, then separate out the names
-        shank_ids = np.unique(self.get_shank_ids())
-        if len(shank_ids) > 1:
-            shank_list += ['Shank #{0}'.format(s_id) for s_id in shank_ids]
+        if per_shank:
+            # if there is more than one shank, then separate out the names
+            n_shanks = self.get_shank_count()
+            shank_list = ['Shank #{0}'.format(s_id) for s_id in range(n_shanks)]
+
+        else:
+            # initialisations
+            shank_list = ['All Shanks']
 
         # returns the shank name list
         return shank_list
@@ -372,7 +384,15 @@ class SessionWorkBook(QObject):
 
     def is_concat_run(self):
 
-        return (self.prep_type != '0-raw') and (self.session.prep_obj.concat_runs)
+        return (not self.is_raw_run()) and self.session.prep_obj.concat_runs
+
+    def is_per_shank(self):
+
+        return (not self.is_raw_run()) and self.session.prep_obj.per_shank
+
+    def is_raw_run(self):
+
+        return self.prep_type == '0-raw'
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions

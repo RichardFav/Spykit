@@ -427,3 +427,9 @@ def get_selected_file_path(file_dlg, f_mode):
     else:
         return f_path
 
+
+def list_class_props(c):
+
+    for p in dir(c):
+        if not p.startswith('__'):
+            print(p)

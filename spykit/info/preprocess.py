@@ -753,9 +753,12 @@ class PreprocessSetup(QMainWindow):
             # updates the pre-processing information
             pr_val = self.session.prep_obj.pp_steps_tot.values()
             prep_tab = self.main_obj.info_manager.get_info_tab('preprocess')
+
+            # resets the preprocessing configuration fields
             prep_tab.configs.prep_task = [x[0] for x in pr_val]
             prep_tab.configs.task_name = [pp_flds[x] for x in prep_tab.configs.prep_task]
             prep_tab.configs.task_para = dict(pr_val)
+            prep_tab.configs.set_prep_opt(self.per_shank, self.concat_runs)
 
         # runs the post window close functions
         self.close_preprocessing.emit(self.has_pp)

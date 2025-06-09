@@ -330,4 +330,3 @@ class ChannelInfoTab(InfoWidget):
         # initialisations
         self.is_updating = False
         self.set_update_flag.emit(False)
-

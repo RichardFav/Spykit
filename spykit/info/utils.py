@@ -207,9 +207,7 @@ class InfoManager(QWidget):
 
             case 'shank':
                 # resets the current shank
-                i_sel_shank = tab_obj.shank_type.current_index()
-                new_shank = None if (i_sel_shank == 0) else (i_sel_shank - 1)
-                self.main_obj.session_obj.set_current_shank(new_shank)
+                self.update_current_shank(tab_obj)
 
         # updates the current preprocessing data type
         if tab_obj.data_flds is not None:
@@ -228,8 +226,11 @@ class InfoManager(QWidget):
                 ch_status = self.session_obj.session.bad_ch[0]
                 channel_tab.update_channel_status(ch_status, self.session_obj.get_keep_channels())
 
-                # updates the run type properties (disable if displaying concatenate run)
+                # run/concatenation types (based on selection)
                 is_concat = self.session_obj.is_concat_run()
+                is_per_shank = self.session_obj.is_per_shank()
+
+                # updates the run type properties (disable if displaying concatenate run)
                 channel_tab.run_type.set_enabled(not is_concat)
 
                 # resets the run index (if displaying a concatenated run)
@@ -239,6 +240,14 @@ class InfoManager(QWidget):
                     self.session_obj.set_current_run(channel_tab.run_type.obj_cbox.itemText(0))
                     channel_tab.is_updating = False
 
+                # updates the run type properties (disable if displaying concatenate run)
+                channel_tab.shank_type.set_enabled(is_per_shank)
+
+                # resets the shank list
+                shank_list = self.session_obj.get_shank_names(is_per_shank)
+                channel_tab.reset_combobox_fields('shank', shank_list)
+                self.update_current_shank(tab_obj)
+
                 # resets the trace view
                 self.main_obj.plot_manager.reset_trace_views()
                 self.main_obj.plot_manager.reset_probe_views()
@@ -246,6 +255,7 @@ class InfoManager(QWidget):
             case 'shank':
                 # resets the trace/trigger view
                 self.main_obj.plot_manager.reset_trace_views(2)
+                self.main_obj.plot_manager.reset_probe_views()
 
     def channel_status_update(self, tab_obj, is_filt):
 
@@ -263,6 +273,12 @@ class InfoManager(QWidget):
     def update_flag_change(self, is_updating):
 
         self.is_updating = is_updating
+
+    def update_current_shank(self, tab_obj):
+
+        i_sel_shank = tab_obj.shank_type.current_index()
+        new_shank = i_sel_shank if self.main_obj.session_obj.is_per_shank() else None
+        self.main_obj.session_obj.set_current_shank(new_shank)
 
     def channel_mouse_move(self, evnt):
 
