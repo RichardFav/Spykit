@@ -65,6 +65,7 @@ class ProbePlot(PlotWidget):
         self.vb_sub = None
         self.sub_xhair = None
         self.inset_id = None
+        self.i_shank_pr = None
         # self.sub_label = None
         # self.out_label = None
 
@@ -126,7 +127,7 @@ class ProbePlot(PlotWidget):
         else:
             # resets the main probe view
             self.main_view.reset_probe_fields(self.probe)
-            self.main_view.reset_inset_roi(False)
+            self.main_view.reset_inset_roi(is_full=False)
 
         if self.sub_view is None:
             # creates the inset view
@@ -434,12 +435,22 @@ class ProbePlot(PlotWidget):
             # case is plotting a specifc shank
             i_shank = self.session_info.current_shank
             self.main_view.reset_axes_limits(False, i_shank=i_shank)
+            self.reset_shank_roi(i_shank)
+
+            # resets the previous shank index
+            self.i_shank_pr = i_shank
 
         else:
             # case is plotting all shanks simultaneously
             self.main_view.reset_axes_limits(False)
 
+            # resets the previous shank index
+            self.i_shank_pr = None
+
         self.main_view.roi.setVisible(True)
+
+        # #
+        # vb.setLimits(xMin=_x_lim[0], xMax=_x_lim[1], yMin=_y_lim[0], yMax=_y_lim[1])
 
     def reset_out_line(self, ch_status):
 
@@ -553,6 +564,38 @@ class ProbePlot(PlotWidget):
             else:
                 # resets the label visibility
                 p_view.out_label.setVisible(False)
+
+    def reset_shank_roi(self, i_shank):
+
+        # retrieves the roi position
+        w, h = self.main_view.roi.size()
+        x, y = self.main_view.roi.x(), self.main_view.roi.y()
+
+        # retrieves the main viewbox
+        x_lim_vb, y_lim_vb = self.main_view.getViewBox().viewRange()
+
+        # determines if the current roi position is within the axis range
+        dx_lim = np.array((x + np.array([0, w]) - np.array(x_lim_vb)))
+        dy_lim = np.array((y + np.array([0, h]) - np.array(y_lim_vb)))
+        if (int(np.prod(np.sign(dx_lim))) != -1) or (int(np.prod(np.sign(dy_lim))) != -1):
+            if self.i_shank_pr is None:
+                # case is the previous view was full screen
+                x_lim_new, y_lim_new = self.main_view.get_init_roi_limits(i_shank)
+
+                # sets the roi coordinates/dimensions
+                p_new = [x_lim_new[0], y_lim_new[0]]
+                sz_new = [np.diff(x_lim_new), np.diff(y_lim_new)]
+
+            else:
+                # case is the preview view was from another shank
+                x_lim_pr, y_lim_pr = self.main_view.get_expanded_shank_limits(self.i_shank_pr)
+
+                # sets the roi coordinates/dimensions
+                sz_new = [w, h]
+                p_new = [x_lim_vb[0] + (x - x_lim_pr[0]), y_lim_vb[0] + (y - y_lim_pr[0])]
+
+            # updates the roi positions
+            self.main_view.reset_inset_roi(p_0=p_new, p_sz=sz_new)
 
     # ---------------------------------------------------------------------------
     # Static Methods
@@ -801,9 +844,10 @@ class ProbeView(GraphicsObject):
 
         return p_0, p_sz, p_lim
 
-    def reset_inset_roi(self, is_full):
+    def reset_inset_roi(self, p_0=None, p_sz=None, is_full=True):
 
-        p_0, p_sz, self.roi.maxBounds = self.get_inset_roi_prop(is_full)
+        if p_0 is None:
+            p_0, p_sz, self.roi.maxBounds = self.get_inset_roi_prop(is_full)
 
         self.roi.setPos(p_0)
         self.roi.setSize(p_sz)
@@ -854,6 +898,10 @@ class ProbeView(GraphicsObject):
         if is_full:
             vb.setLimits(xMin=_x_lim[0], xMax=_x_lim[1], yMin=_y_lim[0], yMax=_y_lim[1])
 
+        elif self.roi is not None:
+            mx_bnds = QRectF(_x_lim[0], _y_lim[0], np.diff(_x_lim)[0], np.diff(_y_lim)[0])
+            self.roi.maxBounds = mx_bnds
+
     def get_axes_limits(self, probe):
 
         # field retrieval
@@ -886,7 +934,7 @@ class ProbeView(GraphicsObject):
         self.width = self.x_lim_full[1] - self.x_lim_full[0]
         self.height = self.y_lim_full[1] - self.y_lim_full[0]
 
-    def get_shank_axes_limits(self, i_shank=0):
+    def get_shank_axes_limits(self, i_shank):
 
         x_lim0 = self.x_lim_shank[i_shank]
         y_lim0 = self.y_lim_shank[i_shank]
@@ -943,9 +991,9 @@ class ProbeView(GraphicsObject):
             # updates the line data
             self.out_line.setData(self.x_lim_full, [self.y_out, self.y_out])
 
-    def get_init_roi_limits(self):
+    def get_init_roi_limits(self, i_shank=0):
 
-        x_lim0, y_lim0 = self.get_shank_axes_limits()
+        x_lim0, y_lim0 = self.get_shank_axes_limits(i_shank)
         dx_lim0, dy_lim0 = np.diff(x_lim0)[0], np.diff(y_lim0)[0]
 
         x_lim = cf.list_add([0, (1 + 2 * self.pw) * dx_lim0], x_lim0[0] - self.pw * dx_lim0)

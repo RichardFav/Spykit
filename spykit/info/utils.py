@@ -1,5 +1,6 @@
 # module imports
 import re
+import time
 import numpy as np
 from copy import deepcopy
 from collections import ChainMap
@@ -194,6 +195,8 @@ class InfoManager(QWidget):
         # if manually updating the combobox, then exit
         if self.is_updating:
             return
+        else:
+            self.is_updating = True
 
         # updates the current run flag
         match d_type:
@@ -208,11 +211,15 @@ class InfoManager(QWidget):
             case 'shank':
                 # resets the current shank
                 self.update_current_shank(tab_obj)
+                self.main_obj.session_obj.reset_current_session(True)
 
         # updates the current preprocessing data type
         if tab_obj.data_flds is not None:
             i_data = tab_obj.data_type.current_index()
             self.main_obj.session_obj.set_prep_type(tab_obj.data_flds[i_data])
+
+        # flag that the tab object is updating
+        tab_obj.is_updating = True
 
         match d_type:
             case 'run':
@@ -222,40 +229,45 @@ class InfoManager(QWidget):
 
             case 'data':
                 # resets the channel statuses
-                channel_tab = self.get_info_tab('channel')
                 ch_status = self.session_obj.session.bad_ch[0]
-                channel_tab.update_channel_status(ch_status, self.session_obj.get_keep_channels())
+                tab_obj.update_channel_status(ch_status, self.session_obj.get_keep_channels())
+                tab_obj.reset_table_rows()
+                tab_obj.is_updating = True
 
                 # run/concatenation types (based on selection)
                 is_concat = self.session_obj.is_concat_run()
                 is_per_shank = self.session_obj.is_per_shank()
 
-                # updates the run type properties (disable if displaying concatenate run)
-                channel_tab.run_type.set_enabled(not is_concat)
-
                 # resets the run index (if displaying a concatenated run)
                 if is_concat:
-                    channel_tab.is_updating = True
-                    channel_tab.run_type.obj_cbox.setCurrentIndex(0)
-                    self.session_obj.set_current_run(channel_tab.run_type.obj_cbox.itemText(0))
-                    channel_tab.is_updating = False
+                    tab_obj.run_type.obj_cbox.setCurrentIndex(0)
+                    self.session_obj.set_current_run(tab_obj.run_type.obj_cbox.itemText(0))
 
                 # updates the run type properties (disable if displaying concatenate run)
-                channel_tab.shank_type.set_enabled(is_per_shank)
+                tab_obj.run_type.set_enabled(not is_concat)
+                tab_obj.shank_type.set_enabled(is_per_shank)
 
                 # resets the shank list
                 shank_list = self.session_obj.get_shank_names(is_per_shank)
-                channel_tab.reset_combobox_fields('shank', shank_list)
-                self.update_current_shank(tab_obj)
+                if len(shank_list) != tab_obj.shank_type.obj_cbox.count():
+                    tab_obj.reset_combobox_fields('shank', shank_list)
 
                 # resets the trace view
+                self.update_current_shank(tab_obj)
                 self.main_obj.plot_manager.reset_trace_views()
                 self.main_obj.plot_manager.reset_probe_views()
 
             case 'shank':
+                # resets the channel statuses
+                tab_obj.reset_table_rows()
+
                 # resets the trace/trigger view
                 self.main_obj.plot_manager.reset_trace_views(2)
                 self.main_obj.plot_manager.reset_probe_views()
+
+        # resets the update flags
+        self.is_updating = False
+        tab_obj.is_updating = False
 
     def channel_status_update(self, tab_obj, is_filt):
 
@@ -276,9 +288,13 @@ class InfoManager(QWidget):
 
     def update_current_shank(self, tab_obj):
 
+        tab_obj.is_updating = True
+
         i_sel_shank = tab_obj.shank_type.current_index()
         new_shank = i_sel_shank if self.main_obj.session_obj.is_per_shank() else None
         self.main_obj.session_obj.set_current_shank(new_shank)
+
+        tab_obj.is_updating = False
 
     def channel_mouse_move(self, evnt):
 

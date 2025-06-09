@@ -292,7 +292,7 @@ class SessionWorkBook(QObject):
         if per_shank:
             # if there is more than one shank, then separate out the names
             n_shanks = self.get_shank_count()
-            shank_list = ['Shank #{0}'.format(s_id) for s_id in range(n_shanks)]
+            shank_list = ['Shank #{0}'.format(s_id + 1) for s_id in range(n_shanks)]
 
         else:
             # initialisations
@@ -375,12 +375,16 @@ class SessionWorkBook(QObject):
             # case is using preprocessing fields
             s_keys = list(self.session._s._pp_runs[0]._preprocessed.keys())
 
+            # resets the current session name based on the shank index
+            if self.current_shank is None:
+                self.current_ses = s_keys[0]
+            else:
+                self.current_ses = s_keys[self.current_shank]
+
         else:
             # case is using raw data fields
             s_keys = list(self.session._s._raw_runs[0]._raw.keys())
-
-        # returns the first key field
-        self.current_ses = s_keys[0]
+            self.current_ses = s_keys[0]
 
     def is_concat_run(self):
 
@@ -388,7 +392,11 @@ class SessionWorkBook(QObject):
 
     def is_per_shank(self):
 
-        return (not self.is_raw_run()) and self.session.prep_obj.per_shank
+        if self.session is None:
+            return False
+
+        else:
+            return (not self.is_raw_run()) and self.session.prep_obj.per_shank
 
     def is_raw_run(self):
 
