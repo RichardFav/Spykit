@@ -71,6 +71,7 @@ class InfoManager(QWidget):
         self.p_info = {}
         self.calc_worker = []
         self.i_probe_ch = None
+        self.i_shank_pr = None
 
         # boolean class fields
         self.is_updating = False
@@ -248,18 +249,29 @@ class InfoManager(QWidget):
                 tab_obj.shank_type.set_enabled(is_per_shank)
 
                 # resets the shank list
+                reset_type = 0
                 shank_list = self.session_obj.get_shank_names(is_per_shank)
                 if len(shank_list) != tab_obj.shank_type.obj_cbox.count():
+                    reset_type = 2
                     tab_obj.reset_combobox_fields('shank', shank_list)
+
+                    # resets the current index (if separating by shank)
+                    if is_per_shank:
+                        if self.i_shank_pr is None:
+                            self.i_shank_pr = 0
+
+                        elif tab_obj.shank_type.current_index() != self.i_shank_pr:
+                            tab_obj.shank_type.set_current_index(self.i_shank_pr)
 
                 # resets the trace view
                 self.update_current_shank(tab_obj)
-                self.main_obj.plot_manager.reset_trace_views()
+                self.main_obj.plot_manager.reset_trace_views(reset_type)
                 self.main_obj.plot_manager.reset_probe_views()
 
             case 'shank':
                 # resets the channel statuses
                 tab_obj.reset_table_rows()
+                self.i_shank_pr = tab_obj.shank_type.current_index()
 
                 # resets the trace/trigger view
                 self.main_obj.plot_manager.reset_trace_views(2)

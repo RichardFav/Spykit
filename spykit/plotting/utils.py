@@ -242,6 +242,7 @@ class PlotManager(QWidget):
         probe = self.session_obj.get_current_recording_probe()
         t_dur_new = probe.get_total_duration()
 
+        # determines if there is a significant change in expt duration
         if np.abs(plt_trace.gen_props.get('t_dur') - t_dur_new) > self.eps:
             # sets the other plot trace fields
             plt_trace.gen_props.set('t_dur', t_dur_new, 0)
@@ -252,6 +253,10 @@ class PlotManager(QWidget):
             plt_trace.is_updating = True
             plt_trace.l_reg_x.setBounds([0, t_dur_new])
             plt_trace.is_updating = False
+
+            # updates the editbox value
+            gen_props = self.main_obj.prop_manager.get_prop_tab('general')
+            gen_props.reset_para_field('t_dur', t_dur_new)
 
             # ensures the linear region is within the new bounds
             l_reg_pos = plt_trace.l_reg_x.getRegion()

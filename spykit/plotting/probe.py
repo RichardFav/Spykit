@@ -131,7 +131,7 @@ class ProbePlot(PlotWidget):
 
         if self.sub_view is None:
             # creates the inset view
-            self.sub_view = ProbeView(self.h_plot[1, 0], self.probe, self.session_info)
+            self.sub_view = ProbeView(self.h_plot[1, 0], self.probe, self.session_info, l_wid=2)
 
             # sets the inset probe view properties
             self.h_plot[1, 0].addItem(self.sub_view)
@@ -628,27 +628,27 @@ class ProbeView(GraphicsObject):
     # plot pen widgets
     pen = mkPen(width=2, color='b')
     pen_h = mkPen(width=2, color='g')
-    pen_sel = mkPen(width=1, color='k')
 
     # probe polygon colours
-    p_col_probe = cf.get_colour_value('r', 128)
-    c_col_probe = cf.get_colour_value('y', 128)
-    c_col_hover = cf.get_colour_value('b', 220)
+    p_col_probe = cf.get_colour_value('r', 100)
+    c_col_probe = cf.get_colour_value('w', 128)
+    c_col_hover = cf.get_colour_value('c', 220)
     c_col_selected = cf.get_colour_value('g', 128)
-
-    # line pen widgets
-    l_pen_out = mkPen(color=cf.get_colour_value('k'), width=2)
-    l_pen_highlight = mkPen(color=cf.get_colour_value('b'), width=2)
 
     # pyqtsignal functions
     update_roi = pyqtSignal(object)
 
-    def __init__(self, main_obj, probe, session_info=None):
+    def __init__(self, main_obj, probe, session_info=None, l_wid=1):
         super(ProbeView, self).__init__()
 
         # sets the parent object
         self.main_obj = main_obj
         self.setParent(main_obj)
+
+        # line pen widgets
+        self.pen_sel = mkPen(color='k', width=l_wid)
+        self.l_pen_out = mkPen(color=cf.get_colour_value('k'), width=l_wid)
+        self.l_pen_highlight = mkPen(color=cf.get_colour_value('y'), width=2 * l_wid)
 
         # field initialisation
         self.p = None

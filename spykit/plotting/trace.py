@@ -651,14 +651,11 @@ class TracePlot(TraceLabelMixin, PlotWidget):
                 self.x_tr = np.empty((self.n_plt, n_frm))
                 self.x_tr[:] = np.linspace(self.t_lim[0], self.t_lim[1], n_frm)
 
+                y0 = np.minimum(np.maximum(y0, self.c_lim_lo), self.c_lim_hi)
+
                 for i in range(self.n_plt):
                     # determines the signal range values
-                    y_min, y_max = np.min(y0[:, i]), np.max(y0[:, i])
-                    if y_min == y_max:
-                        y_scl = 0.5 * np.ones(n_frm, dtype=float)
-
-                    else:
-                        y_scl = (y0[:, i] - y_min) / (y_max - y_min)
+                    y_scl = (y0[:, i] - self.c_lim_lo) / (self.c_lim_hi - self.c_lim_lo)
 
                     # calculates the scaled traces
                     self.y_tr[i, :] = (i * self.y_gap + self.y_ofs) + (1 - self.y_ofs) * y_scl

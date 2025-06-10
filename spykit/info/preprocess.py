@@ -698,8 +698,6 @@ class PreprocessSetup(QMainWindow):
             # case is starting the calculations
 
             # other field initialisations
-
-            #
             if self.is_auto:
                 # case is loading from file
                 self.n_task = len(self.prep_obj_auto[0])
@@ -707,7 +705,7 @@ class PreprocessSetup(QMainWindow):
 
             else:
                 # retrieves the task count
-                self.n_task = self.add_list.count()
+                self.n_task = deepcopy(self.add_list.count())
 
                 # sets the preprocessing options
                 prep_tab = self.main_obj.info_manager.get_info_tab('preprocess')
@@ -887,7 +885,7 @@ class PreprocessSetup(QMainWindow):
             pr_val_shank = self.i_shank * self.p_shank
 
             # calculates and sets the task/overall proportions
-            pr_task = self.i_task / self.n_task
+            pr_task = 0. if (self.n_task is None) else self.i_task / self.n_task
             pr_overall = pr_val_run + pr_val_shank + self.p_run * self.p_shank * pr_task
             pr_val = np.array([pr_overall, pr_task])
 

@@ -411,6 +411,7 @@ class MainWindow(QMainWindow):
 
         # updates the trace views
         self.plot_manager.reset_trace_views()
+        self.info_manager.prog_widget.update_message_label()
         self.menu_bar.set_menu_enabled_blocks('post-process')
 
     def run_preprocessing_dialog(self, pp_config=None):
@@ -819,6 +820,9 @@ class MenuBar(QObject):
                 prep_opt = tuple(prep_info.configs.prep_opt.values())
                 self.main_obj.run_preprocessing_dialog((prep_task, prep_opt))
 
+        # resets the status label
+        self.main_obj.info_manager.prog_widget.update_message_label()
+
     def load_trigger(self, file_info=None):
 
         # field retrieval
@@ -1006,8 +1010,11 @@ class MenuBar(QObject):
             # exit if they cancelled
             return
 
+        # clears the session data
         self.main_obj.session_obj.session = None
-        self.main_obj
+
+        # resets the status label
+        self.main_obj.info_manager.prog_widget.update_message_label()
 
     def default_dir(self):
 
@@ -1052,6 +1059,7 @@ class MenuBar(QObject):
 
         # disable menu item
         self.set_menu_enabled('clear_prep', False)
+        self.main_obj.info_manager.prog_widget.update_message_label()
 
     def run_test(self):
 
