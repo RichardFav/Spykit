@@ -24,10 +24,13 @@ from spykit.info.utils import InfoManager
 from spykit.plotting.utils import PlotManager
 from spykit.props.utils import PropManager
 from spykit.common.property_classes import SessionWorkBook
-from spykit.widgets.open_session import OpenSession
 from spykit.info.preprocess import PreprocessSetup, pp_flds
+
+#
 from spykit.threads.utils import ThreadWorker
+from spykit.widgets.open_session import OpenSession
 from spykit.widgets.default_dir import DefaultDir
+from spykit.widgets.spike_sorting import SpikeSortingDialog
 
 # spikewrap module import
 from spikewrap.configs._backend import canon
@@ -621,6 +624,7 @@ class MenuBar(QObject):
         # parent menu widgets
         h_menu_file = self.add_main_menu_item('File')
         h_menu_prep = self.add_main_menu_item('Preprocessing')
+        h_menu_sort = self.add_main_menu_item('Spike Sorting', 'sorting')
 
         # ---------------------------------------------------------------------------
         # Toolbar Setup
@@ -686,12 +690,24 @@ class MenuBar(QObject):
         # ---------------------------------------------------------------------------
 
         # initialisations
-        p_str = ['run_prep', 'clear_prep', None, 'run_test']
-        p_lbl = ['Preprocessing Setup', 'Clear Preprocessing', None, 'Run Test']
-        cb_fcn = [self.run_preproccessing, self.clear_preprocessing, None, self.run_test]
+        p_str = ['run_prep', 'clear_prep']
+        p_lbl = ['Preprocessing Setup', 'Clear Preprocessing']
+        cb_fcn = [self.run_preproccessing, self.clear_preprocessing]
 
         # adds the preprocessing menu items
         self.add_menu_items(h_menu_prep, p_lbl, cb_fcn, p_str, False)
+
+        # ---------------------------------------------------------------------------
+        # Preprocessing Menubar Item Setup
+        # ---------------------------------------------------------------------------
+
+        # initialisations
+        p_str = ['run_sort', 'clear_sort']
+        p_lbl = ['Spike Sorting Setup', 'Clear Spike Sorting']
+        cb_fcn = [self.run_spike_sorting, self.clear_spike_sorting]
+
+        # adds the preprocessing menu items
+        self.add_menu_items(h_menu_sort, p_lbl, cb_fcn, p_str, False)
 
         # ---------------------------------------------------------------------------
         # House-Keeping Exercises
@@ -700,10 +716,14 @@ class MenuBar(QObject):
         # disables the required menu items
         self.set_menu_enabled_blocks('init')
 
-    def add_main_menu_item(self, label):
+    def add_main_menu_item(self, label, obj_name=None):
 
         h_menu = self.menu_bar.addMenu(label)
-        h_menu.setObjectName(label.lower())
+
+        if obj_name is None:
+            h_menu.setObjectName(label.lower())
+        else:
+            h_menu.setObjectName(obj_name)
 
         return h_menu
 
@@ -755,6 +775,35 @@ class MenuBar(QObject):
 
         self.main_obj.setVisible(False)
         OpenSession(self.main_obj, self.main_obj.session_obj)
+
+    def clear_session(self):
+
+        # if there is a parameter change, then prompt the user if they want to change
+        q_str = 'Are you sure you want to clear the current session?'
+        u_choice = QMessageBox.question(self.main_obj, 'Clear Session?', q_str, cf.q_yes_no, cf.q_yes)
+        if u_choice == cf.q_no:
+            # exit if they cancelled
+            return
+
+        # clears the session data
+        self.main_obj.session_obj.session = None
+
+        # resets the status label
+        self.main_obj.info_manager.prog_widget.update_message_label()
+
+    def default_dir(self):
+
+        DefaultDir(self.main_obj).show()
+
+    def close_window(self):
+
+        # closes the window
+        self.main_obj.can_close = True
+        self.main_obj.close()
+
+    # ---------------------------------------------------------------------------
+    # Load Menubar Functions
+    # ---------------------------------------------------------------------------
 
     def load_session(self, file_info=None):
 
@@ -910,6 +959,10 @@ class MenuBar(QObject):
         # finish me!!
         pass
 
+    # ---------------------------------------------------------------------------
+    # Save Menubar Functions
+    # ---------------------------------------------------------------------------
+
     def save_session(self):
 
         # field retrieval
@@ -1001,31 +1054,6 @@ class MenuBar(QObject):
         config_dir = cw.get_def_dir("configs")
         self.save_file('config', config_data, def_dir=config_dir)
 
-    def clear_session(self):
-
-        # if there is a parameter change, then prompt the user if they want to change
-        q_str = 'Are you sure you want to clear the current session?'
-        u_choice = QMessageBox.question(self.main_obj, 'Clear Session?', q_str, cf.q_yes_no, cf.q_yes)
-        if u_choice == cf.q_no:
-            # exit if they cancelled
-            return
-
-        # clears the session data
-        self.main_obj.session_obj.session = None
-
-        # resets the status label
-        self.main_obj.info_manager.prog_widget.update_message_label()
-
-    def default_dir(self):
-
-        DefaultDir(self.main_obj).show()
-
-    def close_window(self):
-
-        # closes the window
-        self.main_obj.can_close = True
-        self.main_obj.close()
-
     # ---------------------------------------------------------------------------
     # Preprocessing Menubar Functions
     # ---------------------------------------------------------------------------
@@ -1037,7 +1065,7 @@ class MenuBar(QObject):
     def clear_preprocessing(self):
 
         # prompts the user if they want to clear
-        q_str = "Are you sure you want to clear the existing processing?"
+        q_str = "Are you sure you want to clear the existing data processing?"
         u_choice = QMessageBox.question(self.main_obj, 'Clear Preprocessing?', q_str, cf.q_yes_no, cf.q_yes)
         if u_choice == cf.q_no:
             # exit if the user cancelled
@@ -1075,6 +1103,31 @@ class MenuBar(QObject):
         )
 
         h_fig['run-001_g0_imec0'].savefig('TestHeatmap.png')
+
+    # ---------------------------------------------------------------------------
+    # Spike Sorting Menubar Functions
+    # ---------------------------------------------------------------------------
+
+    def run_spike_sorting(self):
+
+        # creates the button
+        h_app = SpikeSortingDialog()
+
+        # opens the
+        h_app.show()
+
+    def clear_spike_sorting(self):
+
+        # prompts the user if they want to clear
+        q_str = "Are you sure you want to clear the existing spike sorting calculations?"
+        u_choice = QMessageBox.question(self.main_obj, 'Clear Spike Sorting?', q_str, cf.q_yes_no, cf.q_yes)
+        if u_choice == cf.q_no:
+            # exit if the user cancelled
+            return
+
+        # disable menu item
+        self.set_menu_enabled('clear_sort', False)
+        self.main_obj.info_manager.prog_widget.update_message_label()
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
@@ -1159,7 +1212,7 @@ class MenuBar(QObject):
             case 'init':
                 # case is initialising
                 tool_off = ['save']
-                menu_off = ['save', 'clear', 'preprocessing', 'clear_prep', 'load_trigger', 'load_config']
+                menu_off = ['save', 'clear', 'preprocessing', 'sorting', 'clear_prep', 'load_trigger', 'load_config']
 
             case 'session-open':
                 # case is post session opening
@@ -1168,7 +1221,7 @@ class MenuBar(QObject):
 
             case 'post-process':
                 # case is post preprocessing
-                menu_on = ['clear_prep']
+                menu_on = ['clear_prep', 'sorting']
 
         # resets the menu enabled properties
         [self.set_menu_enabled(m_on, True) for m_on in menu_on]

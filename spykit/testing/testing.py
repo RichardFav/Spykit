@@ -15,7 +15,7 @@ import spykit.common.common_widget as cw
 import spykit.common.spikeinterface_func as sf
 import spykit.threads.utils as tw
 from spykit.info.preprocess import PreprocessInfoTab, PreprocessSetup
-from spykit.widgets.spike_sorting import SpikeSorting
+from spykit.widgets.spike_sorting import SpikeSortingDialog
 import spykit.info.utils as ui
 
 import spikewrap as sw
@@ -335,6 +335,6 @@ class Testing(object):
     def run_spike_sorting_test(self):
 
         # creates the button
-        h_app = SpikeSorting()
+        h_app = SpikeSortingDialog()
 
         return h_app

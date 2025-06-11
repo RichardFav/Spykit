@@ -18,11 +18,11 @@ x_gap = 5
 # ----------------------------------------------------------------------------------------------------------------------
 
 """
-    SpikeSorting:  
+    SpikeSortingDialog:  
 """
 
 
-class SpikeSorting(QMainWindow):
+class SpikeSortingDialog(QMainWindow):
     # pyqtsignal functions
     prop_updated = pyqtSignal()
 
