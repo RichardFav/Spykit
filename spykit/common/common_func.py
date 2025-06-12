@@ -1,6 +1,7 @@
 # module import
 import os
 import re
+import sys
 import math
 import platform
 import colorsys
@@ -12,6 +13,9 @@ import numpy as np
 from PyQt6.QtWidgets import (QMessageBox, QSizePolicy)
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor
+
+# operating system flag
+is_linux = sys.platform == 'linux'
 
 # other initialisations
 q_fix = QSizePolicy.Policy.Fixed

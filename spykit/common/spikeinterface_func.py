@@ -77,14 +77,15 @@ class DirectoryCheck(object):
                 # case is there are multiple matches
                 common_dir = os.path.commonpath(feas_dir)
 
-        #
+        # resets the common path length
         path_len = len(str(self.f_path))
         if len(common_dir) > path_len:
             self.f_path = self.f_path / common_dir[path_len + 1:]
 
         # searches each of the feasible directories
         for f in feas_dir:
-            f_list_new = ['*'] + f[len(common_dir)+1:].split(os.sep)
+            path_parts = [x for x in f.removeprefix(common_dir).split(os.sep) if len(x)]
+            f_list_new = ['*'] + path_parts
             self.check_folder_level(Path(f), f_list_new, 1)
 
         # converts the tree list to the final dataframe

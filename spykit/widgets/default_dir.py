@@ -31,8 +31,8 @@ class DefaultDir(QDialog):
 
     # group mapping fields
     grp_map = {
-        "data": "Default Data Directory",
-        "session": "Experiment Session Files",
+        "data": "Recording Data Directory",
+        "session": "Spykit Session Files",
         "trigger": "Trigger Channel Files",
         "configs": "Preprocessing Configuration Files",
     }

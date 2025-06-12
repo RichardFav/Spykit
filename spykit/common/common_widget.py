@@ -68,7 +68,7 @@ align_flag = {
 
 # file path/filter modes
 f_mode = {
-    'session': "Experiment Session File (*.ssf)",
+    'session': "Spykit Session File (*.ssf)",
     'trigger': "Experiment Trigger File (*.npy)",
     'config': "Spike Pipeline Config File (*.cfig)",
 }

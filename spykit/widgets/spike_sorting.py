@@ -45,7 +45,7 @@ class SpikeSortingDialog(QMainWindow):
     """
 
     def __init__(self, parent=None):
-        super(SpikeSorting, self).__init__(parent)
+        super(SpikeSortingDialog, self).__init__(parent)
 
         # initialisations
         self.s_props = {}
