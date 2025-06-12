@@ -69,12 +69,12 @@ class OpenSession(QMainWindow):
     # parameters
     x_max = 50
 
-    def __init__(self, parent=None, session_obj=None):
-        super(OpenSession, self).__init__(parent)
+    def __init__(self, main_obj):
+        super(OpenSession, self).__init__(main_obj)
 
         # input arguments
-        self.main_obj = parent
-        self.session_obj = session_obj
+        self.main_obj = main_obj
+        self.session_obj = main_obj.session_obj
 
         # other class widget setup
         self.main_layout = QGridLayout()
@@ -90,13 +90,14 @@ class OpenSession(QMainWindow):
         self.probe = SessionProbe(self)
 
         # other class fields
+        self.n_shank = None
         self.session = None
         self.session_obj.open_session = True
         self.scr_sz = QApplication.primaryScreen().size()
         self.probe_width = dlg_width - (file_width + 2 * x_gap)
 
         # boolean class fields
-        self.is_changed = True
+        self.is_changed = False
         self.can_close = False
 
         # field initialisation
@@ -112,12 +113,6 @@ class OpenSession(QMainWindow):
     # ---------------------------------------------------------------------------
     # Class Widget Setup Functions
     # ---------------------------------------------------------------------------
-
-    def setup_dialog(self):
-
-        # creates the dialog window
-        self.setWindowTitle("Session Information")
-        self.setFixedHeight(dlg_height)
 
     def setup_menubar(self):
 
@@ -150,6 +145,12 @@ class OpenSession(QMainWindow):
                 if ps in ['open', 'restart']:
                     h_tool.setEnabled(False)
 
+    def setup_dialog(self):
+
+        # creates the dialog window
+        self.setWindowTitle("Session Information")
+        self.setFixedHeight(dlg_height)
+
     def init_class_fields(self):
 
         # sets up the main layout
@@ -181,14 +182,33 @@ class OpenSession(QMainWindow):
         # reset the dialog width
         self.reset_dialog_width(False, False)
 
+        #
+        if self.session_obj.session is not None:
+            # if a session is loaded, then prompt the user if they want to start a new session
+            m_str = 'A Spykit session is already loaded. Would you like to start a new session?'
+            u_choice = QMessageBox.question(self, 'Start New Session?', m_str, cf.q_yes_no, cf.q_yes)
+
+            # if not, then reset the
+            if u_choice == cf.q_no:
+                # resets the tree view (with the existing session)
+                self.file.expt_folder.reset_selected_node(self.session_obj.session)
+
+                # f_path = str(self.file.expt_folder.obj_dir.f_path)
+                # s_path_rmv = s_path.removeprefix(f_path.replace("\\", "/"))
+
+                # reloads the session
+                self.session = self.session_obj.session
+                self.session_load(False)
+
     # ---------------------------------------------------------------------------
     # Toolbar/Menubar Functions
     # ---------------------------------------------------------------------------
 
-    def session_load(self):
+    def session_load(self, load_expt=True):
 
         # loads the current session
-        self.file.load_session()
+        if load_expt:
+            self.file.load_session()
 
         # disables the recording data/table run objects
         self.file.set_panel_props(False)
@@ -198,7 +218,7 @@ class OpenSession(QMainWindow):
         ses_names = self.session.get_session_names(run_names[0])
 
         # resets the toolbar properties
-        self.is_changed = True
+        self.is_changed = self.is_changed or load_expt
         self.set_toolbar_props('restart', True)
 
         # updates the probe properties
@@ -338,6 +358,18 @@ class OpenSession(QMainWindow):
 
         self.findChild(QAction, name).setEnabled(state)
 
+    def get_shank_names(self):
+
+        # retrieves the shank count
+        self.n_shank = self.session.get_session_runs(0, 'grouped').get_probe().get_shank_count()
+
+        # sets the shank names based on shank count
+        shank_names = ['All Shanks']
+        if self.n_shank > 1:
+            # case is there is multiple shanks
+            shank_names += ['Shank #{0}'.format(s_id + 1) for s_id in range(self.n_shank)]
+
+        return shank_names
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -1000,7 +1032,7 @@ class SessionProbe(QWidget):
                 'Sample Count', 'Model',
                 'Sampling Freq', 'Channel Count',
                 'Duration', 'Shank Count']
-    combo_lbl = ['Current Run', 'Current Shank']
+    # combo_lbl = ['Current Run', 'Current Shank']
 
     # widget stylesheets
     table_style = """
@@ -1050,9 +1082,7 @@ class SessionProbe(QWidget):
 
         # session/probe information fields
         self.info_text = []
-        self.info_combo = []
         self.info_lbl_dict = {}
-        self.info_combo_dict = {}
 
         # channel information widgets
         self.table_col = QLabelCheckCombo(None, lbl='Information Table Columns:', font=font_lbl)
@@ -1144,22 +1174,6 @@ class SessionProbe(QWidget):
             # stores the text widget
             self.info_text.append(lbl)
             n_r = i_r
-
-        # creates the combobox group
-        i_r0 = n_r + 1
-        for i, d in enumerate(self.combo_lbl):
-            # creates the text label object
-            combo_str = '{}:'.format(d)
-            combo = QLabelCombo(None, combo_str, font_lbl=font_lbl, name=d)
-            combo.connect(self.combo_info_change)
-
-            # adds the widget to the layout
-            i_r, i_c = i_r0 + int(i / 2), i % 2
-            self.info_layout.addWidget(combo.obj_lbl, i_r, 2 * i_c, 1, 1)
-            self.info_layout.addWidget(combo.obj_cbox, i_r, 2 * i_c + 1, 1, 1)
-
-            # stores the text widget
-            self.info_combo.append(combo)
 
     def setup_channel_frame(self):
 
@@ -1275,35 +1289,6 @@ class SessionProbe(QWidget):
             # otherwise, revert to the previous valid value
             h_edit.setText('%g' % self.get_dim_value(p_str))
 
-    def combo_info_change(self, h_combo):
-
-        # if updating manually, then exit
-        if self.is_updating:
-            return
-
-        # field retrieval
-        p_str = h_combo.objectName()
-        nw_val = h_combo.currentText()
-        self.info_combo_dict[p_str] = nw_val
-
-        # updates the property specific fields
-        if p_str == "Current Run":
-            # case is current run combobox
-            nw_list = self.get_session_name_list()
-            self.current_ses, self.current_run = nw_list[0], nw_val
-
-            # resets the session combobox fields
-            self.is_updating = True
-            self.info_combo[1].addItems(nw_list, True)
-            self.is_updating = False
-
-        else:
-            # case is the current session combobox
-            self.current_ses = nw_val
-
-        # updates the probe information
-        self.update_probe_info(False)
-
     # ---------------------------------------------------------------------------
     # ROI Dimension Functions
     # ---------------------------------------------------------------------------
@@ -1380,11 +1365,6 @@ class SessionProbe(QWidget):
     # Miscellaneous Functions
     # ---------------------------------------------------------------------------
 
-    def get_session_name_list(self):
-
-        r_txt = self.info_combo[0].current_text()
-        return self.root.session.get_session_names(r_txt)
-
     def get_current_run_list(self):
 
         return self.root.session.get_run_names()
@@ -1397,15 +1377,6 @@ class SessionProbe(QWidget):
         # updates the current run/session fields
         self.current_run = run_names[0]
         self.current_ses = ses_names[0]
-
-        # resets the information combo boxes
-        for i, h in enumerate(self.info_combo):
-            # sets up the combobox list
-            for t in self.combo_list[i]:
-                h.addItem(t)
-
-            # enables the combo box
-            h.set_enabled(len(self.combo_list[i]) > 1)
 
     def update_probe_info(self, is_init=True):
 
@@ -1492,12 +1463,6 @@ class SessionProbe(QWidget):
             'Duration': self.calc_duration(),
         }
 
-        # information label dictionary
-        self.info_combo_dict = {
-            'Current Run': self.current_run,
-            'Current Session': self.current_ses,
-        }
-
         # resets the information labels
         for h in self.info_text:
             # sets up the label string
@@ -1531,7 +1496,6 @@ class SessionProbe(QWidget):
 
         # clears the information fields
         [x.set_label("") for x in self.info_text]
-        [x.clear() for x in self.info_combo]
 
         # clears the table field
         self.channel_table.reset()
@@ -1858,6 +1822,17 @@ class ExptFolder(QWidget):
         if not isinstance(item, QStandardItem):
             obj_tree = self.h_tab[0].findChild(QFolderTree)
             obj_tree.update_tree_highlights()
+
+    def reset_selected_node(self, session):
+
+        # sets up the subject path node string
+        s_path = Path(session.subject_path)
+        s_path_rel = cf.convert_path(str(s_path.relative_to(self.obj_dir.f_path)))
+        sub_path = '/*/{0}'.format(s_path_rel)
+
+        # resets the selected subject
+        obj_tree = self.h_tab[0].findChild(QFolderTree)
+        self.reset_selected_subject(obj_tree, sub_path)
 
     # ---------------------------------------------------------------------------
     # Static Methods

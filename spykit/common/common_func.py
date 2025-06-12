@@ -437,3 +437,8 @@ def list_class_props(c):
     for p in dir(c):
         if not p.startswith('__'):
             print(p)
+
+
+def convert_path(p_str):
+
+    return p_str.replace('\\', '/')

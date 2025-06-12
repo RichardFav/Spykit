@@ -774,7 +774,7 @@ class MenuBar(QObject):
     def new_session(self):
 
         self.main_obj.setVisible(False)
-        OpenSession(self.main_obj, self.main_obj.session_obj)
+        OpenSession(self.main_obj)
 
     def clear_session(self):
 

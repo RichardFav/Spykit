@@ -841,10 +841,11 @@ class SessionObject(QObject):
 
     def force_close_workers(self):
 
-        for tw in self.t_worker:
-            if tw.is_running:
-                tw.force_quit()
-                self.channel_calc.emit(tw.desc, self)
+        if self.t_worker is not None:
+            for tw in self.t_worker:
+                if tw.is_running:
+                    tw.force_quit()
+                    self.channel_calc.emit(tw.desc, self)
 
     # ---------------------------------------------------------------------------
     # Protected Properties
