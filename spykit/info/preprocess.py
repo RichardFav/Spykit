@@ -1201,10 +1201,11 @@ class RunPreProcessing(QObject):
 
         for i_step, (step_num, pp_info) in enumerate(self.pp_steps_new.items()):
             # updates the progressbar
+            run_pp_step = True
             pp_name, pp_opt = pp_info
             self.update_prep_prog(3, i_step, pp_name)
 
-            # retrieves t\he preprocessing step parameters
+            # retrieves the preprocessing step parameters
             if self.per_shank and (pp_name == 'interpolate_channels'):
                 # if analysing by shank, and interpolating bad channels, then ensure the channels for removal exist
                 # on the current shank
@@ -1215,17 +1216,17 @@ class RunPreProcessing(QObject):
 
                 else:
                     # if there are no bad channels, then continue
-                    pp_step_names.pop(pp_step_names.index(pp_name))
-                    continue
+                    run_pp_step = False
 
-            if (pp_name == 'drift_correct') and (pp_data[prev_name]._dtype.kind == 'i'):
-                # special case - the motion correction code only works on float32 data types
-                #                if the data is uint16, then covert before running
-                preprocessed_rec = self.pp_funcs[pp_name](pp_data[prev_name].astype('float32'), **pp_opt)
+            if run_pp_step:
+                if (pp_name == 'drift_correct') and (pp_data[prev_name]._dtype.kind == 'i'):
+                    # special case - the motion correction code only works on float32 data types
+                    #                if the data is uint16, then covert before running
+                    preprocessed_rec = self.pp_funcs[pp_name](pp_data[prev_name].astype('float32'), **pp_opt)
 
-            else:
-                # otherwise, run the spikewrap function as per normal
-                preprocessed_rec = self.pp_funcs[pp_name](pp_data[prev_name], **pp_opt)
+                else:
+                    # otherwise, run the spikewrap function as per normal
+                    preprocessed_rec = self.pp_funcs[pp_name](pp_data[prev_name], **pp_opt)
 
             # stores the preprocessing run object
             step_num_tot = int(step_num) + step_ofs
