@@ -264,6 +264,17 @@ class PlotManager(QWidget):
                 new_pos = [t_dur_new - np.diff(l_reg_pos), t_dur_new]
                 plt_trace.l_reg_x.setRegion(new_pos)
 
+        match reset_type:
+            case 2:
+                # case is resising the y-axis
+
+                # if the frame is partially zoomed, then determine if enough channels have
+                # been removed to warrent resizing the y-axis
+                if plt_trace.reset_yzoom_limits():
+                    plt_trace.iz_lvl = -1
+                else:
+                    reset_type = 0
+
         # resets the general properties and the trace view
         plt_trace.reset_gen_props()
         plt_trace.reset_trace_view(reset_type)

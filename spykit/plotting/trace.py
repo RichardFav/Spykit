@@ -565,7 +565,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.reset_plot_items()
 
         # case is there are no plots (collapse y-axis range)
-        self.y_lim_tr = (2 + (self.n_plt - 1) * self.y_gap) if self.n_plt else (self.y_ofs / 2.)
+        self.y_lim_tr = self.calc_yaxis_limit()
 
         # flag that manual updating is taking place
         self.is_updating = True
@@ -1106,6 +1106,63 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         # updates the trace properties
         self.update_trace_props()
 
+    def reset_yzoom_limits(self):
+
+        # only consider partially zoomed axes
+        if self.iz_lvl < 0:
+            return True
+
+        # if there is no change in channel count, then exit
+        n_plt_new = self.get_channel_count()
+        if (n_plt_new == self.n_plt) or (n_plt_new == 0):
+            return True
+
+        # memory allocation
+        is_ok = True
+        y_lim_new = self.calc_yaxis_limit(n_plt_new)
+
+        #
+        for i_lvl in range(self.iz_lvl + 1):
+            #
+            pz_lvl0 = self.pz_lvl[i_lvl, 1]
+
+            # if channels have been removed, then determine if the axes needs resizing
+            dpz_lvl0 = np.diff(pz_lvl0)[0]
+            if dpz_lvl0 * self.n_plt > n_plt_new:
+                # too many chanmels are removed so resize
+                is_ok = False
+                if i_lvl == self.iz_lvl:
+                    return True
+
+            elif pz_lvl0[1] * self.n_plt > n_plt_new:
+                # case is the upper limit is exceeded, so reset the proportional zoom
+                self.pz_lvl[i_lvl, 1] = 1. - np.array([dpz_lvl0 * self.y_lim_tr, 0.]) / y_lim_new
+
+            else:
+                # otherwise, rescale the axis limits
+                self.pz_lvl[i_lvl, 1] = (self.y_lim_tr / y_lim_new) * self.pz_lvl[i_lvl, 1]
+
+        # determines if any zoom levels need to be fully resized
+        if not is_ok:
+            # case is the 2nd partial zoom needs resizing
+            self.pz_lvl[0, :] = self.pz_lvl[1, :]
+            self.pz_lvl[1, :] = None
+            self.iz_lvl = 0
+
+        # resets the y-axis limits and region position
+        self.y_lim_tr = y_lim_new
+        self.zy_full = [0, self.y_lim_tr]
+
+        # resets the axes/linear region limits
+        self.is_updating = True
+        y_lim_nw = self.get_prop_ylimits()
+        self.h_plot[0, 0].setYRange(y_lim_nw[0], y_lim_nw[1], padding=0)
+        self.l_reg_y.setRegion(100 * self.pz_lvl[self.iz_lvl][1] )
+        self.is_updating = False
+
+        # flag that a reset is not required
+        return False
+
     # ---------------------------------------------------------------------------
     # Frame Region Event Functions
     # ---------------------------------------------------------------------------
@@ -1214,13 +1271,6 @@ class TracePlot(TraceLabelMixin, PlotWidget):
                 # updates the tooltip string
                 self.is_show = obj_but.isChecked()
                 obj_but.setToolTip(self.lbl_tt_str[int(self.is_show)])
-
-                # # updates the plot labels (depending on toggle value)
-                # if self.is_show and (not is_map):
-                #     self.update_labels()
-                #
-                # else:
-                #     self.hide_labels()
 
             case 'save':
                 # case is the figure save button
@@ -1338,6 +1388,13 @@ class TracePlot(TraceLabelMixin, PlotWidget):
     # ---------------------------------------------------------------------------
     # Plot Property Functions
     # ---------------------------------------------------------------------------
+
+    def calc_yaxis_limit(self, n_plt=None):
+
+        if n_plt is None:
+            n_plt = self.n_plt
+
+        return (2 + (n_plt - 1) * self.y_gap) if n_plt else (self.y_ofs / 2.)
 
     def get_prop_xlimits(self):
 

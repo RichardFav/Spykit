@@ -84,6 +84,9 @@ class ProbePlot(PlotWidget):
 
     def init_class_fields(self):
 
+        # sets the event functions
+        self.leaveEvent = self.leave_widget
+
         for i in range(2):
             # sets the plot item properties
             plot_item = self.h_plot[i, 0].getPlotItem()
@@ -173,16 +176,27 @@ class ProbePlot(PlotWidget):
 
     def enter_view(self, is_main, *_):
 
-        pass
+        if is_main and (self.sub_view.ch_label is not None):
+            self.remove_contact_highlight(self.sub_view)
+
+        elif (self.main_view.ch_label is not None):
+            self.remove_contact_highlight(self.main_view)
 
     def leave_view(self, is_main, *_):
 
-        if self.main_view.ch_label is not None:
-            if is_main:
-                self.main_view.ch_label.setVisible(False)
+        if is_main and (self.main_view.ch_label is not None):
+            self.remove_contact_highlight(self.main_view)
 
-            else:
-                self.main_view.ch_label.setVisible(False)
+        elif (self.sub_view.ch_label is not None):
+            self.remove_contact_highlight(self.sub_view)
+
+    def leave_widget(self, evnt):
+
+        if self.main_view.ch_label is not None:
+            self.remove_contact_highlight(self.main_view)
+
+        elif self.sub_view.ch_label is not None:
+            self.remove_contact_highlight(self.sub_view)
 
     def inset_mouse_release(self, rect):
 
@@ -319,16 +333,9 @@ class ProbePlot(PlotWidget):
             if p_view.ch_label is not None:
                 p_view.ch_label.setPos(m_pos + QPointF(-dx_pos, dy_pos))
 
-        elif p_view.i_sel_contact is not None:
-            # if not hovering over an object, then disable the label
-            p_view.i_sel_contact = None
-            p_view.create_probe_plot()
-
-            if p_view.ch_label is not None:
-                p_view.ch_label.setVisible(False)
-
-            # disables the trace highlight
-            self.reset_highlight.emit(False, None)
+        else:
+            # otherwise, remove the contact highlight
+            self.remove_contact_highlight(p_view)
 
     def main_roi_moved(self, p_pos):
 
@@ -411,6 +418,21 @@ class ProbePlot(PlotWidget):
 
         self.main_view.reset_highlight_pos(p_pos)
         self.sub_view.reset_highlight_pos(p_pos)
+
+    def remove_contact_highlight(self, p_view):
+
+        if p_view.i_sel_contact is None:
+            return
+
+        # if not hovering over an object, then disable the label
+        p_view.i_sel_contact = None
+        p_view.create_probe_plot()
+
+        if p_view.ch_label is not None:
+            p_view.ch_label.setVisible(False)
+
+        # disables the trace highlight
+        self.reset_highlight.emit(False, None)
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
