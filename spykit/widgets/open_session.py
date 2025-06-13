@@ -204,7 +204,7 @@ class OpenSession(QMainWindow):
     # Toolbar/Menubar Functions
     # ---------------------------------------------------------------------------
 
-    def session_load(self, load_expt=True):
+    def session_load(self, evnt=None, load_expt=True):
 
         # loads the current session
         if load_expt:
