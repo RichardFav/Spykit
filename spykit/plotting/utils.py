@@ -272,6 +272,8 @@ class PlotManager(QWidget):
                 # been removed to warrent resizing the y-axis
                 if plt_trace.reset_yzoom_limits():
                     plt_trace.iz_lvl = -1
+                    plt_trace.pz_lvl[:] = None
+
                 else:
                     reset_type = 0
 
