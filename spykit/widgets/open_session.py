@@ -198,7 +198,7 @@ class OpenSession(QMainWindow):
 
                 # reloads the session
                 self.session = self.session_obj.session
-                self.session_load(False)
+                self.session_load(load_expt=False)
 
     # ---------------------------------------------------------------------------
     # Toolbar/Menubar Functions
