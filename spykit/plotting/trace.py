@@ -877,13 +877,6 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         # resets the zoomed limits
         self.store_zoom_limits()
 
-        # if self.hm_roi is not None:
-        #     self.hm_roi.setPos([0, self.t_lim[0]])
-
-        # # updates the labels (if currently displaying)
-        # if self.is_show:
-        #     self.update_labels()
-
         # resets the update flag
         self.is_updating = False
 

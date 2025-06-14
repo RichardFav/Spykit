@@ -64,6 +64,7 @@ class TriggerPlot(PlotWidget):
         # plot item mouse event functions
         self.trace_release_fcn = None
         self.trace_dclick_fcn = None
+        self.release_fcn = None
 
         # other class fields
         self.t_dur = None
@@ -144,6 +145,10 @@ class TriggerPlot(PlotWidget):
         # self.plot_item.setDownsampling(ds=1000)
         self.plot_item.setDownsampling(auto=True)
         self.plot_item.setClipToView(True)
+
+        # resets the mouse release event function
+        self.release_fcn = self.h_plot[0, 0].mouseReleaseEvent
+        self.h_plot[0, 0].mouseReleaseEvent = self.trace_mouse_release
 
         # sets the plot button callback functions
         for pb in self.plot_but:
@@ -392,6 +397,24 @@ class TriggerPlot(PlotWidget):
     # ---------------------------------------------------------------------------
     # Signal Trace Plot Event Functions
     # ---------------------------------------------------------------------------
+
+    def trace_mouse_release(self, evnt) -> None:
+
+        # runs the original mouse event function
+        self.release_fcn(evnt)
+
+        # flag that updating is taking place
+        self.is_updating = True
+
+        # retrieves the x/y axis limits
+        x_lim_zoom = self.v_box[0, 0].viewRange()[0]
+
+        # resets the x-axis linear regions and plot axis limits
+        self.l_reg_x.setRegion(x_lim_zoom)
+        self.h_plot[0, 0].setXRange(x_lim_zoom[0], x_lim_zoom[1], padding=0)
+
+        # resets the update flag
+        self.is_updating = False
 
     def trace_double_click(self, evnt=None) -> None:
 
