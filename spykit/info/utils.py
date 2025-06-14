@@ -202,6 +202,7 @@ class InfoManager(QWidget):
 
         # field retrieval
         trace_view = self.main_obj.plot_manager.get_plot_view('trace')
+        trig_view = self.main_obj.plot_manager.get_plot_view('trigger')
 
         # updates the current run flag
         match d_type:
@@ -209,27 +210,35 @@ class InfoManager(QWidget):
                 # case is the plot data type
 
                 # field retrieval
+                trig_update = False
                 new_type = tab_obj.data_type.current_text()
-                is_concat = self.session_obj.is_concat_run()
-                t_dur_run = self.session_obj.get_run_durations()
+                t_dur_run = np.round(self.session_obj.get_run_durations(), cf.n_dp)
 
                 if self.session_obj.is_raw_run() and self.session_obj.session.prep_obj.concat_runs:
                     # case is changing from a raw data to concatenated preprocessed data type
+                    full_zoom = np.array_equal(np.array([0, t_dur_run[self.i_run_pr]]),
+                                               np.array(trig_view.l_reg_x.getRegion()))
+                    if full_zoom:
+                        # case is using full zoom
+                        trig_view.t_lim = np.array([0, np.sum(t_dur_run)])
 
-                    # if the run index is > 0, then reset the trace view
-                    if self.i_run_pr > 0:
-                        # offsets the
+                    elif self.i_run_pr > 0:
+                        # if the run index is > 0, then reset the trace view
                         t_ofs = np.round(np.sum(t_dur_run[:self.i_run_pr]), cf.n_dp)
-                        trace_view.t_lim += t_ofs
+                        trig_view.t_lim += t_ofs
 
-                        # updates the start/finish values
-                        # self.reset_trace_props(trace_view)
-                        trace_view.gen_props.set_n('t_start', trace_view.t_lim[0])
-                        trace_view.gen_props.set_n('t_finish', trace_view.t_lim[1])
+                    # updates the TriggerView duration
+                    trig_update = True
+                    trig_view.gen_props.set_n('t_dur', np.round(np.sum(t_dur_run), cf.n_dp))
 
                 elif (new_type == "Raw") and self.session_obj.is_concat_run():
                     # case is changing from concatenated preprocessed data type to raw data
-                    a = 1
+
+                    # updates the TriggerView duration
+                    trig_update = True
+                    self.i_run_pr = tab_obj.run_type.current_index()
+                    trig_view.gen_props.set_n('t_dur', t_dur_run[self.i_run_pr])
+                    trig_view.t_lim = np.array([0, t_dur_run[self.i_run_pr]])
 
             case 'run':
                 # case is the session run type
@@ -258,6 +267,9 @@ class InfoManager(QWidget):
             case 'data':
                 # case is the plot data type
 
+                # field retrieval
+                is_concat = self.session_obj.is_concat_run()
+
                 # resets the channel statuses
                 ch_status = self.session_obj.session.bad_ch[0]
                 tab_obj.update_channel_status(ch_status, self.session_obj.get_keep_channels())
@@ -269,8 +281,8 @@ class InfoManager(QWidget):
 
                 # resets the run index (if displaying a concatenated run)
                 if is_concat:
-                    tab_obj.run_type.obj_cbox.setCurrentIndex(0)
-                    self.session_obj.set_current_run(tab_obj.run_type.obj_cbox.itemText(0))
+                    # tab_obj.run_type.obj_cbox.setCurrentIndex(0)
+                    # self.session_obj.set_current_run(tab_obj.run_type.obj_cbox.itemText(0))
 
                     # resets the previous run index
                     self.i_run_pr = None
@@ -298,6 +310,9 @@ class InfoManager(QWidget):
                 self.update_current_shank(tab_obj)
                 self.main_obj.plot_manager.reset_trace_views(reset_type)
                 self.main_obj.plot_manager.reset_probe_views()
+
+                if trig_update:
+                    self.main_obj.plot_manager.reset_trig_views()
 
             case 'run':
                 # case is the session run

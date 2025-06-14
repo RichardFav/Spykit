@@ -99,7 +99,7 @@ class TriggerPlot(PlotWidget):
         self.session_info = ses_info
         self.s_props = self.session_info.session_props
         self.t_dur = self.s_props.get_value('t_dur')
-        self.t_lim = [0, self.t_dur]
+        self.t_lim = np.array([0, self.t_dur])
 
         # experiment properties
         self.i_run_reg = self.get_run_index()
@@ -120,9 +120,7 @@ class TriggerPlot(PlotWidget):
         self.update_trigger_trace()
 
         # creates the image transform
-        tr_x = QtGui.QTransform()
-        tr_x.scale(self.t_dur / self.n_col_img, 1.0)
-        self.ximage_item.setTransform(tr_x)
+        self.reset_ximage_scale()
 
         # linear region position update
         self.l_reg_x.setPos(0, self.t_dur)
@@ -228,10 +226,11 @@ class TriggerPlot(PlotWidget):
         trig_path = arrayToQPath(y_tr_run[:, 0] / s_freq, y_tr_run[:, 1], connect='all')
         self.trig_trace.setPath(trig_path)
 
-        # # updates the other properties
-        # self.h_plot[0, 0].setXRange(0., t_dur_x)
-        # self.v_box[0, 0].setLimits(xMax=t_dur_x)
-        # self.l_reg_x.setBounds([0, t_dur_x])
+        # updates the other properties
+        self.h_plot[0, 0].setXRange(0., t_dur_x)
+        self.v_box[0, 0].setLimits(xMax=t_dur_x)
+        self.l_reg_x.setBounds([0, t_dur_x])
+        self.l_reg_x.setRegion(self.t_lim)
 
         # resets the manual update flag
         self.is_updating = False
@@ -325,7 +324,7 @@ class TriggerPlot(PlotWidget):
         if self.is_updating:
             return
 
-        self.t_lim = list(self.l_reg_x.getRegion())
+        self.t_lim = np.array(self.l_reg_x.getRegion())
         self.v_box[0, 0].setXRange(self.t_lim[0], self.t_lim[1], padding=0)
 
     def xtrig_region_move(self, l_reg):
@@ -389,6 +388,12 @@ class TriggerPlot(PlotWidget):
             x_reg1_post = self.l_reg_xs[i_run][i_reg1 + 1].getRegion()
             l_reg1.setBounds([x_reg0[1], x_reg1_post])
 
+    def reset_ximage_scale(self):
+
+        tr_x = QtGui.QTransform()
+        tr_x.scale(self.t_dur / self.n_col_img, 1.0)
+        self.ximage_item.setTransform(tr_x)
+
     # ---------------------------------------------------------------------------
     # Plot Button Event Functions
     # ---------------------------------------------------------------------------
@@ -441,7 +446,7 @@ class TriggerPlot(PlotWidget):
             PlotWidget.mousePressEvent(self, evnt)
 
             # updates the time limits
-            self.t_lim = [0, self.t_dur]
+            self.t_lim = np.array([0, self.t_dur])
             self.h_plot[0, 0].setXRange(self.t_lim[0], self.t_lim[1], padding=0)
             self.l_reg_x.setRegion(self.t_lim)
 
@@ -465,9 +470,9 @@ class TriggerPlot(PlotWidget):
         # ensures the limits are correct
         if shift_time:
             if self.t_lim is None:
-                self.t_lim = [0, self.t_dur]
+                self.t_lim = np.array([0, self.t_dur])
 
-            self.t_lim = cf.list_add(self.t_lim, -dt_start_ofs)
+            self.t_lim -= dt_start_ofs
             if self.t_lim[0] < 0:
                 self.t_lim[0] = 0
 
@@ -483,10 +488,13 @@ class TriggerPlot(PlotWidget):
             dt_reg_x = np.diff(t_reg_x)[0]
 
             if dt_reg_x > self.t_dur:
-                self.t_lim = [0, self.t_dur]
+                self.t_lim = np.array([0, self.t_dur])
 
             elif t_reg_x[1] > self.t_dur:
                 self.t_lim[1] = self.t_dur
+
+        # creates the image transform
+        self.reset_ximage_scale()
 
         # resets the plot view properties
         self.v_box[0, 0].setLimits(xMin=0, xMax=self.t_dur)
