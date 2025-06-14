@@ -195,14 +195,20 @@ class TriggerPlot(PlotWidget):
 
     def update_trigger_trace(self, reset_run=False):
 
+        # flag that manual updating is taking place
+        self.is_updating = True
+
         # sets up the trace plot
+        t_dur = self.session_info.get_run_durations()
         if self.session_info.is_concat_run():
             i_run = 0
             y_tr_run = self.y_tr[1]
+            t_dur_x = np.sum(t_dur)
 
         else:
             i_run = self.get_run_index()
             y_tr_run = self.y_tr[0][i_run]
+            t_dur_x = np.round(t_dur[i_run], cf.n_dp)
 
         if reset_run:
             # hides the current linear regions
@@ -221,6 +227,14 @@ class TriggerPlot(PlotWidget):
         s_freq = self.get_sample_freq()
         trig_path = arrayToQPath(y_tr_run[:, 0] / s_freq, y_tr_run[:, 1], connect='all')
         self.trig_trace.setPath(trig_path)
+
+        # # updates the other properties
+        # self.h_plot[0, 0].setXRange(0., t_dur_x)
+        # self.v_box[0, 0].setLimits(xMax=t_dur_x)
+        # self.l_reg_x.setBounds([0, t_dur_x])
+
+        # resets the manual update flag
+        self.is_updating = False
 
     def setup_frame_image(self):
 
@@ -407,11 +421,11 @@ class TriggerPlot(PlotWidget):
         self.is_updating = True
 
         # retrieves the x/y axis limits
-        x_lim_zoom = self.v_box[0, 0].viewRange()[0]
+        self.t_lim = self.v_box[0, 0].viewRange()[0]
 
         # resets the x-axis linear regions and plot axis limits
-        self.l_reg_x.setRegion(x_lim_zoom)
-        self.h_plot[0, 0].setXRange(x_lim_zoom[0], x_lim_zoom[1], padding=0)
+        self.l_reg_x.setRegion(self.t_lim)
+        self.h_plot[0, 0].setXRange(self.t_lim[0], self.t_lim[1], padding=0)
 
         # resets the update flag
         self.is_updating = False
@@ -464,15 +478,27 @@ class TriggerPlot(PlotWidget):
             self.trig_props.reset_region_timing(self.t_dur, dt_start_ofs)
 
         else:
-            self.t_lim = [0, self.t_dur]
+            # resets the region limits
+            t_reg_x = np.array(self.l_reg_x.getRegion())
+            dt_reg_x = np.diff(t_reg_x)[0]
 
-        # resets the plot view axis
+            if dt_reg_x > self.t_dur:
+                self.t_lim = [0, self.t_dur]
+
+            elif t_reg_x[1] > self.t_dur:
+                self.t_lim[1] = self.t_dur
+
+        # resets the plot view properties
         self.v_box[0, 0].setLimits(xMin=0, xMax=self.t_dur)
         self.v_box[0, 0].setLimits(yMin=-0.1, yMax=100.1)
-        self.v_box[1, 0].setLimits(xMin=0, xMax=self.t_dur)
         self.v_box[0, 0].setXRange(self.t_lim[0], self.t_lim[1], padding=0)
-        self.v_box[1, 0].setXRange(0, self.t_dur, padding=0)
-        self.update_trigger_trace()
+
+        # updates the time linear region properties
+        self.v_box[1, 0].setLimits(xMin=0, xMax=self.t_dur)
+
+        # updates the trigger trace
+        if shift_time:
+            self.update_trigger_trace()
 
         # resets the linear region
         self.is_updating = True
