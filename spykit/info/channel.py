@@ -1,11 +1,10 @@
 # module import
 import time
 import numpy as np
+from copy import deepcopy
 
-#
+# spykit module imports
 import spykit.common.common_func as cf
-
-# custom module imports
 from spykit.info.utils import InfoWidget
 from spykit.common.common_widget import QLabelCombo, QLabelCheckCombo, font_lbl
 
@@ -163,6 +162,9 @@ class ChannelInfoTab(InfoWidget):
 
     def check_filter_item(self):
 
+        # retrieves the filtered items
+        self.get_filtered_items()
+
         # resets the table view
         self.status_change.emit(self, self.is_filt)
         self.data_change.emit(self)
@@ -199,6 +201,7 @@ class ChannelInfoTab(InfoWidget):
         # initialisations
         ch_info = None
         i_shank_sel = None
+        n_row = deepcopy(self.table.rowCount())
 
         # field retrieval
         if self.main_obj.session_obj.is_per_shank():
@@ -210,8 +213,8 @@ class ChannelInfoTab(InfoWidget):
 
         # determines which items meet the filter selection
         sel_filt = self.status_filter.get_selected_items()
-        self.is_filt = np.zeros(self.table.rowCount(), dtype=bool)
-        for i_row in range(self.table.rowCount()):
+        self.is_filt = np.zeros(n_row, dtype=bool)
+        for i_row in range(n_row):
             # sets the status filter for the current row
             item = self.table.item(i_row, self.i_status_col)
             self.is_filt[i_row] = item.text() in sel_filt
