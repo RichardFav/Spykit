@@ -1356,10 +1356,6 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         p_type = self.trace_props.get('plot_type')
         return (p_type == 'Heatmap') or ((p_type == 'Auto') and (n_channel >= self.n_plt_max))
 
-    def use_diff_signal(self):
-
-        return self.trace_props.get('sig_type') == 'Difference'
-
     def get_channel_count(self):
 
         return len(self.session_info.get_selected_channels())
@@ -1367,6 +1363,10 @@ class TracePlot(TraceLabelMixin, PlotWidget):
     def get_run_index(self):
 
         return self.session_info.session.get_run_index(self.session_info.current_run)
+
+    def use_diff_signal(self):
+
+        return self.trace_props.get('sig_type') == 'Difference'
 
     # ---------------------------------------------------------------------------
     # Other Plot View Functions
@@ -1388,13 +1388,6 @@ class TracePlot(TraceLabelMixin, PlotWidget):
     # ---------------------------------------------------------------------------
     # Plot Property Functions
     # ---------------------------------------------------------------------------
-
-    def calc_yaxis_limit(self, n_plt=None):
-
-        if n_plt is None:
-            n_plt = self.n_plt
-
-        return (2 + (n_plt - 1) * self.y_gap) if n_plt else (self.y_ofs / 2.)
 
     def get_prop_xlimits(self):
 
@@ -1427,6 +1420,13 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
         else:
             return self.pz_lvl[self.iz_lvl, 0]
+
+    def calc_yaxis_limit(self, n_plt=None):
+
+        if n_plt is None:
+            n_plt = self.n_plt
+
+        return (2 + (n_plt - 1) * self.y_gap) if n_plt else (self.y_ofs / 2.)
 
     def calc_prop_time_limits(self, x_only=False):
 

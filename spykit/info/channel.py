@@ -74,6 +74,10 @@ class ChannelInfoTab(InfoWidget):
         self.init_option_fields()
         self.init_other_class_fields()
 
+    # ---------------------------------------------------------------------------
+    # Class Initialisation Functions
+    # ---------------------------------------------------------------------------
+
     def init_option_fields(self):
 
         # adds the option widget to the tab layout
@@ -114,6 +118,10 @@ class ChannelInfoTab(InfoWidget):
         self.table.leaveEvent = self.table_mouse_leave
         self.table.mouseMoveEvent = self.table_mouse_move
 
+    # ---------------------------------------------------------------------------
+    # Mouse Event Functions
+    # ---------------------------------------------------------------------------
+
     def table_mouse_move(self, evnt):
 
         self.table_move_fcn(evnt)
@@ -124,37 +132,9 @@ class ChannelInfoTab(InfoWidget):
         self.table_leave_fcn(evnt)
         self.mouse_leave.emit(evnt)
 
-    def reset_combobox_fields(self, cb_type, cb_list):
-
-        # flag that the combobox is being updated manually
-        self.is_updating = True
-
-        # retrieves the combo box
-        c_type = '{0}_type'.format(cb_type)
-        combo = getattr(self, c_type)
-
-        # clears and resets the combobox fields
-        combo.addItems(cb_list, True)
-
-        # resets the combobox fields
-        combo.set_enabled(len(cb_list) > 1)
-
-        match cb_type:
-            case 'run':
-                combo.connect(self.combo_run_change)
-
-            case 'data':
-                combo.connect(self.combo_data_change)
-
-            case 'shank':
-                combo.set_enabled(len(cb_list) > 1)
-                combo.connect(self.combo_shank_change)
-
-        # updates the combo box field
-        setattr(self, c_type, combo)
-
-        # resets the update flag
-        self.is_updating = False
+    # ---------------------------------------------------------------------------
+    # Widget Event Functions
+    # ---------------------------------------------------------------------------
 
     def combo_data_change(self, h_combo):
 
@@ -180,54 +160,6 @@ class ChannelInfoTab(InfoWidget):
         # if manually updating, then exit
         if not self.is_updating:
             self.status_change.emit(self)
-
-    def update_channel_status(self, ch_status, is_keep, is_init=False):
-
-        # initialisations
-        self.is_updating = True
-        self.set_update_flag.emit(True)
-        ch_avail = self.get_avail_channel_fcn(is_raw=True)
-
-        # updates the table with the new information
-        ch_list, i_rmv = [], []
-        for i_row, (ch_id, c_stat) in enumerate(ch_status.items()):
-            item = self.table.item(i_row, self.i_status_col)
-
-            if ch_id in ch_avail:
-                # case is the channel is available
-                self.set_table_row_colour(i_row, c_stat if is_keep[i_row] else 'rejected')
-                self.set_table_row_enabled(i_row, True)
-                item.setText(c_stat)
-
-                if c_stat not in ch_list:
-                    ch_list.append(c_stat)
-
-            else:
-                # case is the item has been removed
-                i_rmv.append(i_row)
-                self.set_table_row_colour(i_row, 'removed')
-                self.set_table_row_enabled(i_row, False)
-                item.setText('removed')
-
-        if len(i_rmv):
-            self.force_reset_flags.emit(i_rmv)
-
-        # determines the selected filter items
-        if is_init:
-            sel_filt = np.unique(list(ch_status.values()))
-
-        else:
-            sel_filt = self.status_filter.get_selected_items()
-
-        # resets the status filter
-        self.status_filter.clear()
-        self.status_filter.setEnabled(True)
-        for s_filt in ch_list:
-            self.status_filter.add_item(s_filt, s_filt in sel_filt)
-
-        # resets the update flag
-        self.is_updating = False
-        self.set_update_flag.emit(False)
 
     def check_filter_item(self):
 
@@ -301,6 +233,86 @@ class ChannelInfoTab(InfoWidget):
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
     # ---------------------------------------------------------------------------
+
+    def update_channel_status(self, ch_status, is_keep, is_init=False):
+
+        # initialisations
+        self.is_updating = True
+        self.set_update_flag.emit(True)
+        ch_avail = self.get_avail_channel_fcn(is_raw=True)
+
+        # updates the table with the new information
+        ch_list, i_rmv = [], []
+        for i_row, (ch_id, c_stat) in enumerate(ch_status.items()):
+            item = self.table.item(i_row, self.i_status_col)
+
+            if ch_id in ch_avail:
+                # case is the channel is available
+                self.set_table_row_colour(i_row, c_stat if is_keep[i_row] else 'rejected')
+                self.set_table_row_enabled(i_row, True)
+                item.setText(c_stat)
+
+                if c_stat not in ch_list:
+                    ch_list.append(c_stat)
+
+            else:
+                # case is the item has been removed
+                i_rmv.append(i_row)
+                self.set_table_row_colour(i_row, 'removed')
+                self.set_table_row_enabled(i_row, False)
+                item.setText('removed')
+
+        if len(i_rmv):
+            self.force_reset_flags.emit(i_rmv)
+
+        # determines the selected filter items
+        if is_init:
+            sel_filt = np.unique(list(ch_status.values()))
+
+        else:
+            sel_filt = self.status_filter.get_selected_items()
+
+        # resets the status filter
+        self.status_filter.clear()
+        self.status_filter.setEnabled(True)
+        for s_filt in ch_list:
+            self.status_filter.add_item(s_filt, s_filt in sel_filt)
+
+        # resets the update flag
+        self.is_updating = False
+        self.set_update_flag.emit(False)
+
+    def reset_combobox_fields(self, cb_type, cb_list):
+
+        # flag that the combobox is being updated manually
+        self.is_updating = True
+
+        # retrieves the combo box
+        c_type = '{0}_type'.format(cb_type)
+        combo = getattr(self, c_type)
+
+        # clears and resets the combobox fields
+        combo.addItems(cb_list, True)
+
+        # resets the combobox fields
+        combo.set_enabled(len(cb_list) > 1)
+
+        match cb_type:
+            case 'run':
+                combo.connect(self.combo_run_change)
+
+            case 'data':
+                combo.connect(self.combo_data_change)
+
+            case 'shank':
+                combo.set_enabled(len(cb_list) > 1)
+                combo.connect(self.combo_shank_change)
+
+        # updates the combo box field
+        setattr(self, c_type, combo)
+
+        # resets the update flag
+        self.is_updating = False
 
     def reset_data_types(self, d_names, d_flds):
 

@@ -12,7 +12,9 @@ import spykit.common.common_widget as cw
 from spykit.plotting.utils import PlotWidget
 
 # pyqtgraph modules
-from pyqtgraph import exporters, mkPen, mkBrush, ImageItem, PlotCurveItem, LinearRegionItem, ColorMap
+from pyqtgraph import (ImageItem, PlotCurveItem, LinearRegionItem, ColorMap,
+                       exporters, mkPen, mkBrush, arrayToQPath)
+from pyqtgraph.Qt.QtWidgets import QGraphicsPathItem
 from pyqtgraph.Qt import QtGui
 
 # pyqt6 module import
@@ -75,7 +77,7 @@ class TriggerPlot(PlotWidget):
 
         # class widgets
         self.ximage_item = ImageItem()
-        self.trig_trace = PlotCurveItem(pen=self.l_pen_trig, skipFiniteCheck=False)
+        self.trig_trace = QGraphicsPathItem()
 
         # sets up the plot regions
         self.setup_subplots(n_r=2, n_c=1)
@@ -153,6 +155,7 @@ class TriggerPlot(PlotWidget):
 
         # adds the traces to the main plot
         self.h_plot[0, 0].addItem(self.trig_trace)
+        self.trig_trace.setPen(self.l_pen_trig)
 
         # sets the signal trace plot event functions
         self.trace_dclick_fcn = self.h_plot[0, 0].mousePressEvent
@@ -188,7 +191,13 @@ class TriggerPlot(PlotWidget):
     def update_trigger_trace(self, reset_run=False):
 
         # sets up the trace plot
-        i_run = self.get_run_index()
+        if self.session_info.is_concat_run():
+            i_run = 0
+            y_tr_run = self.y_tr[1]
+
+        else:
+            i_run = self.get_run_index()
+            y_tr_run = self.y_tr[0][i_run]
 
         if reset_run:
             # hides the current linear regions
@@ -203,19 +212,10 @@ class TriggerPlot(PlotWidget):
             self.i_run_reg = i_run
             self.reset_gen_props(False)
 
-        if self.s_props is None:
-            s_freq = self.session_info.session_props.get_value('s_freq')
-        else:
-            s_freq = self.s_props.get_value('s_freq')
-
         # sets up the scaled trigger trace
-        i_frm0 = int(self.t_start_ofs * s_freq)
-        i_frm1 = int((self.t_start_ofs + self.t_dur) * s_freq)
-        y_tr_new = self.p_ofs + (1 - 2 * self.p_ofs) * cf.normalise_trace(self.y_tr[i_run][i_frm0:i_frm1])
-
-        # resets the trigger trace data
-        self.trig_trace.clear()
-        self.trig_trace.setData(self.x_tr[i_frm0:i_frm1] - self.t_start_ofs, y_tr_new)
+        s_freq = self.get_sample_freq()
+        trig_path = arrayToQPath(y_tr_run[:, 0] / s_freq, y_tr_run[:, 1], connect='all')
+        self.trig_trace.setPath(trig_path)
 
     def setup_frame_image(self):
 
@@ -494,6 +494,64 @@ class TriggerPlot(PlotWidget):
 
         return next((i for i, x in enumerate(self.l_reg_xs[i_run]) if l_reg == x))
 
+    def get_sample_freq(self):
+
+        if self.s_props is None:
+            return self.session_info.session_props.get_value('s_freq')
+
+        else:
+            return self.s_props.get_value('s_freq')
+
     def reset_trace_values(self):
 
-        self.y_tr = self.session_info.session.sync_ch
+        # field retrieval
+        t_dur = self.session_info.get_run_durations()
+        n_run = self.session_info.session.get_run_count()
+
+        # memory allocation
+        n_tr = []
+        self.y_tr = np.empty(1 + int(n_run > 1), dtype=object)
+        self.y_tr[0] = np.empty(n_run, dtype=object)
+
+        #
+        for i_run in range(n_run):
+            # retrieves the current sync channel data
+            sync_ch = self.session_info.session.sync_ch[i_run]
+
+            # sets the start end values
+            n_tr.append(len(sync_ch))
+            y_tr_0 = np.array([0, sync_ch[0]])
+            y_tr_1 = np.array([(n_tr[i_run]-1), sync_ch[-1]])
+
+            # determines the points where the trigger channel changes
+            i_ch = np.where(np.diff(sync_ch) != 0)[0]
+            if len(i_ch):
+                # case is there is a trigger for this run
+                x_tr_m = np.vstack((i_ch, i_ch)).transpose().flatten()
+                y_tr_m = np.vstack((sync_ch[i_ch], sync_ch[i_ch+1])).transpose().flatten()
+                xy_tr_m = np.vstack((x_tr_m, y_tr_m)).transpose()
+                self.y_tr[0][i_run] = np.vstack((y_tr_0, xy_tr_m, y_tr_1))
+
+            else:
+                # case is there is no trigger channel signal for this run
+                self.y_tr[0][i_run] = np.vstack((y_tr_0, y_tr_1))
+
+        # sets the concatenated run change indices (if multi-run)
+        if n_run > 1:
+            # initialisations
+            i_ofs = 0.
+            A = np.empty(n_run, dtype=object)
+
+            # combines the trigger channel change indices over all runs
+            for i_run in range(n_run):
+                # updates the change indices
+                A[i_run] = deepcopy(self.y_tr[0][i_run]) + np.array([i_ofs, 0.])
+                i_ofs += n_tr[i_run]
+
+            # combines the sub arrays over all runs
+            A = np.vstack(A)
+
+            # removes any repeated value rows
+            is_keep = np.hstack((np.ones(1, dtype=bool), np.diff(A[:, 1]) != 0))
+            is_keep[-1] = True
+            self.y_tr[1] = A[is_keep, :]

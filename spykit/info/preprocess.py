@@ -1069,9 +1069,11 @@ class RunPreProcessing(QObject):
         # session object
         self.s = s
 
+        # boolean class fields
+        self.per_shank = False
+        self.concat_runs = False
+
         # other class field initialisations
-        self.per_shank = None
-        self.concat_runs = None
         self.prepro_dict = None
         self.pp_steps_new = None
         self.pp_steps_tot = None

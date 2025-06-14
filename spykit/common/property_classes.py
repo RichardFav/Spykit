@@ -211,13 +211,38 @@ class SessionWorkBook(QObject):
 
         return self.session.get_session_runs(self.current_run, self.current_ses, self.prep_type, self.current_shank)
 
-    def get_raw_recording_probe(self):
+    def get_run_durations(self):
 
-        return self.session.get_session_runs(self.current_run, self.current_ses, None)
+        # memory allocation
+        n_run = self.session.get_run_count()
+        t_dur = np.zeros(n_run, dtype=float)
 
-    def get_current_prep_data_names(self):
+        # retrieves the durations of each raw run
+        for i_run in range(n_run):
+            probe = self.session.get_session_runs(i_run, i_run, pp_type='raw')
+            t_dur[i_run] = probe.get_duration()
 
-        return self.session.get_prep_data_names(self.current_run, self.current_ses)
+        return t_dur
+
+    def get_raw_recording_probe(self, i_run=None, ses_name=None):
+
+        if i_run is None:
+            i_run = self.current_run
+
+        if ses_name is None:
+            ses_name = self.current_ses
+
+        return self.session.get_session_runs(i_run, ses_name, None)
+
+    def get_current_prep_data_names(self, i_run=None, ses_name=None):
+
+        if i_run is None:
+            i_run = self.current_run
+
+        if ses_name is None:
+            ses_name = self.current_ses
+
+        return self.session.get_prep_data_names(i_run, ses_name)
 
     def get_channel_location(self, i_channel, probe=None):
 
@@ -787,7 +812,7 @@ class SessionObject(QObject):
         if isinstance(i_run, str):
             i_run = self.get_run_index(i_run)
 
-        if (pp_type is None) or (pp_type == '0-raw'):
+        if (pp_type is None) or (pp_type.endswith('raw')):
             if run_type is None:
                 # case is the run type is not specified
                 run = self._s._raw_runs[i_run]
@@ -799,6 +824,9 @@ class SessionObject(QObject):
 
             else:
                 return self._s._raw_runs[i_run]._raw['grouped']
+
+        elif self.prep_obj.concat_runs:
+            return self._s._pp_runs[0]._preprocessed[run_type][pp_type]
 
         else:
             return self._s._pp_runs[i_run]._preprocessed[run_type][pp_type]
