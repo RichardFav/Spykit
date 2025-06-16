@@ -240,7 +240,7 @@ class PlotManager(QWidget):
 
         # resets the trace duration
         probe = self.session_obj.get_current_recording_probe()
-        t_dur_new = probe.get_total_duration()
+        t_dur_new = np.round(probe.get_total_duration(), cf.n_dp)
 
         # determines if there is a significant change in expt duration
         if np.abs(plt_trace.gen_props.get('t_dur') - t_dur_new) > self.eps:
@@ -270,12 +270,13 @@ class PlotManager(QWidget):
 
                 # if the frame is partially zoomed, then determine if enough channels have
                 # been removed to warrent resizing the y-axis
-                if plt_trace.reset_yzoom_limits():
-                    plt_trace.iz_lvl = -1
-                    plt_trace.pz_lvl[:] = None
+                if plt_trace.n_plt > 0:
+                    if plt_trace.reset_yzoom_limits():
+                        plt_trace.iz_lvl = -1
+                        plt_trace.pz_lvl[:] = None
 
-                else:
-                    reset_type = 0
+                    else:
+                        reset_type = 0
 
         # resets the general properties and the trace view
         plt_trace.reset_gen_props()

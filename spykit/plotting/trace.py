@@ -122,6 +122,11 @@ class TraceLabelMixin:
 
 # ----------------------------------------------------------------------------------------------------------------------
 
+"""
+    TracePlot:
+"""
+
+
 class TracePlot(TraceLabelMixin, PlotWidget):
     # pyqtsignal functions
     hide_plot = pyqtSignal()
@@ -511,6 +516,8 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.reset_trace_view()
         self.update_trace_props()
 
+
+
         # resets the x-axis linear item transform
         tr_x = QtGui.QTransform()
         tr_x.scale(self.t_dur / self.n_col_img, 1.0)
@@ -518,6 +525,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
         # resets the linear region
         self.is_updating = True
+        self.v_box[1, 0].setXRange(0, self.t_dur, padding=0)
         self.l_reg_x.setRegion((t_lim_p[0], t_lim_p[1]))
         self.is_updating = False
 
@@ -1107,7 +1115,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
         # if there is no change in channel count, then exit
         n_plt_new = self.get_channel_count()
-        if (n_plt_new == self.n_plt) or (n_plt_new == 0):
+        if (n_plt_new == self.n_plt) or np.any(np.array([self.n_plt, n_plt_new]) == 0):
             return True
 
         # memory allocation

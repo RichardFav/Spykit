@@ -20,7 +20,7 @@ from spykit.threads.utils import ThreadWorker
 # pyqt imports
 from PyQt6.QtWidgets import (QWidget, QFrame, QTabWidget, QVBoxLayout, QFormLayout, QHBoxLayout,
                              QListWidget, QGridLayout, QSpacerItem, QDialog, QMainWindow, QProgressBar, QMessageBox)
-from PyQt6.QtCore import QSize, pyqtSignal, QObject, QTimeLine
+from PyQt6.QtCore import QSize, pyqtSignal, QObject, QTimeLine, Qt
 from PyQt6.QtGui import QIcon, QFont, QColor
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -386,6 +386,7 @@ class PreprocessSetup(QMainWindow):
         # sets the dialog window properties
         self.setWindowTitle("Preprocessing Setup")
         self.setFixedSize(self.dlg_width, self.dlg_height)
+        self.setWindowModality(Qt.WindowModality(1))
 
         # sets the main widget properties
         self.main_widget.setLayout(self.list_layout)

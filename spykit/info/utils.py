@@ -212,20 +212,25 @@ class InfoManager(QWidget):
                 # field retrieval
                 trig_update = False
                 new_type = tab_obj.data_type.current_text()
+                i_run_sel = tab_obj.run_type.current_index()
                 t_dur_run = np.round(self.session_obj.get_run_durations(), cf.n_dp)
 
                 if self.session_obj.is_raw_run() and self.session_obj.session.prep_obj.concat_runs:
                     # case is changing from a raw data to concatenated preprocessed data type
+
+                    # TraceView limit update
+                    if i_run_sel > 0:
+                        # if the run index is > 0, then reset the trace view
+                        t_ofs = np.round(np.sum(t_dur_run[:self.i_run_pr]), cf.n_dp)
+                        trace_view.t_lim += t_ofs
+                        trig_view.t_lim += t_ofs
+
+                    # TriggerView limit update
                     full_zoom = np.array_equal(np.array([0, t_dur_run[self.i_run_pr]]),
                                                np.array(trig_view.l_reg_x.getRegion()))
                     if full_zoom:
                         # case is using full zoom
                         trig_view.t_lim = np.array([0, np.sum(t_dur_run)])
-
-                    elif self.i_run_pr > 0:
-                        # if the run index is > 0, then reset the trace view
-                        t_ofs = np.round(np.sum(t_dur_run[:self.i_run_pr]), cf.n_dp)
-                        trig_view.t_lim += t_ofs
 
                     # updates the TriggerView duration
                     trig_update = True
@@ -234,9 +239,28 @@ class InfoManager(QWidget):
                 elif (new_type == "Raw") and self.session_obj.is_concat_run():
                     # case is changing from concatenated preprocessed data type to raw data
 
+                    # determines the run that the trace view starts in
+                    t_dur_sum = np.cumsum(t_dur_run)
+                    self.i_run_pr = next((i for i, x in enumerate(t_dur_sum) if x >= trace_view.t_lim[0]))
+                    if self.i_run_pr != i_run_sel:
+                        # updates the run comoobox if it does not match
+                        tab_obj.is_updating = True
+                        tab_obj.run_type.set_current_index(self.i_run_pr)
+                        tab_obj.is_updating = False
+
+                    # resets the trace view time range
+                    if self.i_run_pr > 0:
+                        trace_view.t_lim -= t_dur_sum[self.i_run_pr - 1]
+
+                    # ensures the upper limit is within the run duration
+                    trace_view.t_lim[1] = np.min([trace_view.t_lim[1], t_dur_run[self.i_run_pr]])
+                    if not np.array_equal(trace_view.l_reg_x.getRegion(), trace_view.t_lim):
+                        trace_view.is_updating = True
+                        trace_view.l_reg_x.setRegion(trace_view.t_lim)
+                        trace_view.is_updating = False
+
                     # updates the TriggerView duration
                     trig_update = True
-                    self.i_run_pr = tab_obj.run_type.current_index()
                     trig_view.gen_props.set_n('t_dur', t_dur_run[self.i_run_pr])
                     trig_view.t_lim = np.array([0, t_dur_run[self.i_run_pr]])
 
@@ -324,8 +348,8 @@ class InfoManager(QWidget):
                     t_dur_run = self.session_obj.get_run_durations()[i_run_new]
 
                     # if the current time span is feasible, then reset
-                    if trace_view.t_lim[1] > (t_dur_run - 0.1):
-                        a = 1
+                    if trace_view.t_lim[1] > t_dur_run:
+                        trace_view.t_lim -= (trace_view.t_lim[1] - t_dur_run)
 
                 # resets the trace/trigger view
                 self.main_obj.plot_manager.reset_trace_views()

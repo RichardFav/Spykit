@@ -10,7 +10,7 @@ import spykit.common.common_widget as cw
 # pyqt6 module import
 from PyQt6.QtWidgets import (QMainWindow, QWidget, QFrame, QFormLayout, QVBoxLayout, QHBoxLayout, QGridLayout,
                              QLineEdit, QCheckBox, QTabWidget, QSizePolicy, QProgressBar)
-from PyQt6.QtCore import pyqtSignal, QTimeLine
+from PyQt6.QtCore import pyqtSignal, QTimeLine, Qt
 
 # widget dimensions
 x_gap = 5
@@ -126,6 +126,7 @@ class SpikeSortingDialog(QMainWindow):
         # creates the dialog window
         self.setWindowTitle("Spike Sorting Parameters")
         self.setFixedSize(self.dlg_width, self.dlg_height)
+        self.setWindowModality(Qt.WindowModality(1))
         self.setLayout(self.main_layout)
 
         # sets the main widget properties
