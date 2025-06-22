@@ -796,6 +796,51 @@ class PreprocessSetup(QMainWindow):
         # runs the preprocessing
         self.session.prep_obj.preprocess(pp_config, per_shank, concat_runs)
 
+    def preprocessing_complete(self):
+
+        # pauses for a little bit...
+        time.sleep(0.25)
+
+        # updates the boolean flags
+        self.has_pp = True
+
+        if self.is_auto:
+            # case is automatically opening
+            self.close_window()
+
+        else:
+            # stops the timer
+            for pb in self.prog_bar:
+                pb.set_progbar_state(False)
+
+            # resets the current session (if run to completion)
+            if self.is_running:
+                # clears the added list
+                self.is_updating = True
+                self.add_list.clear()
+                self.is_updating = False
+
+                # resets the completion flag
+                self.is_running = False
+
+            # resets the other fields
+            self.set_preprocess_props(True)
+            for cb in self.checkbox_opt:
+                cb.setEnabled(False)
+
+            # resets the toggle button
+            self.is_updating = True
+            self.button_control[4].setChecked(False)
+            self.button_control[4].setText(self.prep_str[0])
+            self.is_updating = False
+
+        # deletes the worker object
+        self.t_worker.deleteLater()
+
+    # ---------------------------------------------------------------------------
+    # Worker Progress Functions
+    # ---------------------------------------------------------------------------
+
     def worker_progress(self, pr_type, pr_dict):
 
         # initialisations
@@ -893,47 +938,6 @@ class PreprocessSetup(QMainWindow):
         # updates the progressbar fields
         for pb, ms, pv in zip(self.prog_bar, m_str, pr_val):
             pb.update_prog_fields(ms, pv)
-
-    def preprocessing_complete(self):
-
-        # pauses for a little bit...
-        time.sleep(0.25)
-
-        # updates the boolean flags
-        self.has_pp = True
-
-        if self.is_auto:
-            # case is automatically opening
-            self.close_window()
-
-        else:
-            # stops the timer
-            for pb in self.prog_bar:
-                pb.set_progbar_state(False)
-
-            # resets the current session (if run to completion)
-            if self.is_running:
-                # clears the added list
-                self.is_updating = True
-                self.add_list.clear()
-                self.is_updating = False
-
-                # resets the completion flag
-                self.is_running = False
-
-            # resets the other fields
-            self.set_preprocess_props(True)
-            for cb in self.checkbox_opt:
-                cb.setEnabled(False)
-
-            # resets the toggle button
-            self.is_updating = True
-            self.button_control[4].setChecked(False)
-            self.button_control[4].setText(self.prep_str[0])
-            self.is_updating = False
-
-        # deletes the worker object
-        self.t_worker.deleteLater()
 
     def setup_overall_progress_msg(self):
 

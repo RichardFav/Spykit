@@ -390,6 +390,13 @@ class MainWindow(QMainWindow):
     # Preprocessing Functions
     # ---------------------------------------------------------------------------
 
+    def run_preprocessing_dialog(self, pp_config=None):
+
+        # opens the preprocessing setup
+        h_app = PreprocessSetup(self, pp_config)
+        h_app.close_preprocessing.connect(self.on_preprocessing_close)
+        h_app.show()
+
     def on_preprocessing_close(self, has_pp):
 
         # runs the preprocessing specifc updates
@@ -417,12 +424,22 @@ class MainWindow(QMainWindow):
         self.info_manager.prog_widget.update_message_label()
         self.menu_bar.set_menu_enabled_blocks('post-process')
 
-    def run_preprocessing_dialog(self, pp_config=None):
+    # ---------------------------------------------------------------------------
+    # Spike Sorting Functions
+    # ---------------------------------------------------------------------------
+
+    def run_spike_sorting_dialog(self, ss_config=None):
 
         # opens the preprocessing setup
-        h_app = PreprocessSetup(self, pp_config)
-        h_app.close_preprocessing.connect(self.on_preprocessing_close)
+        h_app = SpikeSortingDialog(self, ss_config)
+        h_app.close_spike_sorting.connect(self.on_spike_sorting_close)
         h_app.show()
+
+    def on_spike_sorting_close(self, has_ss):
+
+        # runs the preprocessing specifc updates
+        if has_pp:
+            pass
 
     # ---------------------------------------------------------------------------
     # Obsolete Preprocessing Functions
@@ -1110,11 +1127,7 @@ class MenuBar(QObject):
 
     def run_spike_sorting(self):
 
-        # creates the button
-        h_app = SpikeSortingDialog()
-
-        # opens the
-        h_app.show()
+        self.main_obj.run_spike_sorting_dialog()
 
     def clear_spike_sorting(self):
 
@@ -1212,7 +1225,8 @@ class MenuBar(QObject):
             case 'init':
                 # case is initialising
                 tool_off = ['save']
-                menu_off = ['save', 'clear', 'preprocessing', 'sorting', 'clear_prep', 'load_trigger', 'load_config']
+                menu_off = ['save', 'clear', 'preprocessing', 'sorting',
+                            'clear_prep', 'clear_sort', 'load_trigger', 'load_config']
 
             case 'session-open':
                 # case is post session opening
@@ -1221,7 +1235,11 @@ class MenuBar(QObject):
 
             case 'post-process':
                 # case is post preprocessing
-                menu_on = ['clear_prep', 'sorting']
+                menu_on = ['sorting', 'clear_prep']
+
+            case 'post-sorting':
+                # case is post preprocessing
+                menu_on = ['clear_sort']
 
         # resets the menu enabled properties
         [self.set_menu_enabled(m_on, True) for m_on in menu_on]

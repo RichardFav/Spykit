@@ -12,7 +12,9 @@ dependencies:
   - bigtree
   - scikit-image
   - pandas
+  - docker
   - torch
+  - kilosort
   - pip:
     - spikeinterface
     - spikewrap

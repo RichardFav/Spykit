@@ -20,6 +20,7 @@ import spykit.common.common_func as cf
 from spykit.threads.utils import ThreadWorker
 from spykit.info.preprocess import pp_flds, RunPreProcessing
 from spykit.info.preprocess import prep_task_map as pp_map
+from spykit.widgets.spike_sorting import RunSpikeSorting
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -543,6 +544,7 @@ class SessionObject(QObject):
         self.bad_ch = None
         self.sync_ch = None
         self.prep_obj = None
+        self.sort_obj = None
         self.t_worker = None
         self.ssf_load = ssf_load
         self.data_init = {'bad': False, 'sync': False}
@@ -580,6 +582,7 @@ class SessionObject(QObject):
         # loads the raw data and channel data
         self._s.load_raw_data()
         self.prep_obj = RunPreProcessing(self._s)
+        self.sort_obj = RunSpikeSorting(self._s)
         # self.prep_obj.update_prog.connect(self.update_prog)
 
         # loads the channel data (if not loading session from .ssf file)

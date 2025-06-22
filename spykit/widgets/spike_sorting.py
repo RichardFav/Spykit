@@ -1,16 +1,18 @@
 # module import
+import time
 import numpy as np
 from copy import deepcopy
 from functools import partial as pfcn
 
-# custom module imports
+# spykit module imports
 import spykit.common.common_func as cf
 import spykit.common.common_widget as cw
+from spykit.threads.utils import ThreadWorker
 
 # pyqt6 module import
 from PyQt6.QtWidgets import (QMainWindow, QWidget, QFrame, QFormLayout, QVBoxLayout, QHBoxLayout, QGridLayout,
                              QLineEdit, QCheckBox, QTabWidget, QSizePolicy, QProgressBar)
-from PyQt6.QtCore import pyqtSignal, QTimeLine, Qt
+from PyQt6.QtCore import pyqtSignal, QTimeLine, Qt, QObject
 
 # widget dimensions
 x_gap = 5
@@ -25,6 +27,7 @@ x_gap = 5
 class SpikeSortingDialog(QMainWindow):
     # pyqtsignal functions
     prop_updated = pyqtSignal()
+    close_spike_sorting = pyqtSignal(bool)
 
     # widget dimensions
     n_prog = 2
@@ -44,12 +47,15 @@ class SpikeSortingDialog(QMainWindow):
         }
     """
 
-    def __init__(self, parent=None):
-        super(SpikeSortingDialog, self).__init__(parent)
+    def __init__(self, main_obj, ss_config):
+        super(SpikeSortingDialog, self).__init__(main_obj)
 
-        # initialisations
-        self.s_props = {}
-        self.s_type = 'kilosort2'
+        # sets the input arguments
+        self.main_obj = main_obj
+        self.ss_config = ss_config
+
+        # creates the preprocessing run class object
+        self.session = self.main_obj.session_obj.session
 
         # sets the central widget
         self.main_widget = QWidget(self)
@@ -73,6 +79,12 @@ class SpikeSortingDialog(QMainWindow):
         # boolean class fields
         self.is_updating = False
         self.is_running = True
+        self.has_ss = False
+
+        # initialisations
+        self.s_props = {}
+        self.s_type = 'kilosort2'
+        self.t_worker = None
 
         # sets up the property fields
         self.setup_prop_fields()
@@ -372,7 +384,18 @@ class SpikeSortingDialog(QMainWindow):
         # resets the button state
         self.is_running = not self.button_cont[0].isChecked()
 
-        if state:
+        if self.is_running:
+            # sets up the configuration dictionary
+            sort_config = self.setup_config_dict()
+
+            # retrieves the preprocessing information
+            prep_obj = self.main_obj.session_obj.session.prep_obj
+            sort_opt = (prep_obj.per_shank, prep_obj.concat_runs)
+
+            # starts running the pre-processing
+            self.setup_spike_sorting_worker((sort_config, sort_opt))
+
+        else:
             # case is cancelling the calculations
             self.is_running = False
 
@@ -387,15 +410,68 @@ class SpikeSortingDialog(QMainWindow):
 
             # resets the other properties
             self.set_preprocess_props(True)
-            self.button_control[4].setText('Start Preprocessing')
-
-        else:
-            # case is cancelling the calculations
-            self.is_running = True
+            self.button_control[0].setText(self.sort_str[0])
 
     def close_window(self):
 
+        # runs the post window close functions
+        self.close_spike_sorting.emit(self.has_ss)
+
+        # closes the window
         self.close()
+
+    # ---------------------------------------------------------------------------
+    # Spike Sorting Worker Functions
+    # ---------------------------------------------------------------------------
+
+    def setup_spike_sorting_worker(self, sort_obj):
+
+        # creates the threadworker object
+        self.t_worker = ThreadWorker(self, self.run_spike_sorting_worker, sort_obj)
+        self.t_worker.work_finished.connect(self.spike_sorting_complete)
+
+        # starts the worker object
+        self.t_worker.start()
+
+    def run_spike_sorting_worker(self, sort_obj):
+
+        # sorting parameters
+        sort_config, sort_opt = sort_obj
+        per_shank, concat_runs = sort_opt
+
+        # runs the preprocessing
+        self.session.sort_obj.sort(sort_config, per_shank, concat_runs)
+
+    def spike_sorting_complete(self):
+
+        # pauses for a little bit...
+        time.sleep(0.25)
+
+        # updates the boolean flags
+        self.has_ss = True
+
+    # ---------------------------------------------------------------------------
+    # Worker Progress Functions
+    # ---------------------------------------------------------------------------
+
+    def worker_progress(self, pr_type, pr_dict):
+
+        # initialisations
+        pr_val = None
+        m_str = [None, None]
+
+    def setup_overall_progress_msg(self):
+
+        # initialisations
+        m_str0 = 'Progress'
+
+    # ---------------------------------------------------------------------------
+    # Miscellaneous Methods
+    # ---------------------------------------------------------------------------
+
+    def setup_config_dict(self):
+
+        return {'sorting': {self.s_type: self.s_props[self.s_type]}}
 
     # ---------------------------------------------------------------------------
     # Static Methods
@@ -406,3 +482,43 @@ class SpikeSortingDialog(QMainWindow):
 
         return {'name': name, 'type': obj_type, 'value': value, 'p_fld': p_fld,
                 'p_list': p_list, 'p_misc': p_misc, 'ch_fld': ch_fld}
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+"""
+    RunSpikeSorting:  
+"""
+
+
+class RunSpikeSorting(QObject):
+
+    def __init__(self, s):
+        super(RunSpikeSorting, self).__init__()
+
+        # session object
+        self.s = s
+
+        # boolean class fields
+        self.per_shank = False
+        self.concat_runs = False
+
+    def sort(self, ss_config, per_shank, concat_runs):
+
+        # sets the input arguments
+        self.per_shank = per_shank
+        self.concat_runs = concat_runs
+        self.ss_config = ss_config
+
+        # REMOVE ME LATER
+        ss_config = {'sorting': {'kilosort4': {'batch_size': 5000}}}
+
+        # runs the spike sorting solver
+        self.s.sort(
+            ss_config,
+            run_sorter_method="local",
+            per_shank=False,
+            concat_runs=False,
+        )
+
+        # initialises the progressbar
+        self.update_prep_prog(0)
