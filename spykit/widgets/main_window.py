@@ -438,7 +438,7 @@ class MainWindow(QMainWindow):
     def on_spike_sorting_close(self, has_ss):
 
         # runs the preprocessing specifc updates
-        if has_pp:
+        if has_ss:
             pass
 
     # ---------------------------------------------------------------------------

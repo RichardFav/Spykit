@@ -333,6 +333,7 @@ class PreprocessSetup(QMainWindow):
         self.task_frame = QFrame(None if self.is_auto else self)
         self.progress_frame = QFrame(self)
         self.checkbox_frame = QWidget()
+
         self.add_list = QListWidget(None)
         self.task_list = QListWidget(None)
         self.spacer_top = QSpacerItem(20, 60, cf.q_min, cf.q_max)

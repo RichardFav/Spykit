@@ -85,6 +85,7 @@ icon_dir = os.path.join(resource_dir, 'icons').replace('\\', '/')
 para_dir = os.path.join(resource_dir, 'parameters').replace('\\', '/')
 figure_dir = os.path.join(resource_dir, 'figures').replace('\\', '/')
 def_file = os.path.join(resource_dir, 'def_dir.pkl').replace('\\', '/')
+ssort_para = os.path.join(resource_dir, 'ssort_para.csv').replace('\\', '/')
 
 # icon paths
 icon_path = {
