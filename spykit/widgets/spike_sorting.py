@@ -55,6 +55,14 @@ class SpikeSortingDialog(QMainWindow):
         'Custom': 'custom',
     }
 
+    # sorter group descriptions
+    sorter_group_desc = {
+        'local': 'Spikewrap Sorters',
+        'image': 'Locally Stored Docker Images',
+        'other': 'Available Docker Images',
+        'custom': 'Custom Sorters',
+    }
+
     # widget stylesheets
     border_style = "border: 1px solid;"
     no_border_style = "border: 0px; padding-top: 3px;"
@@ -85,6 +93,7 @@ class SpikeSortingDialog(QMainWindow):
 
         # sets the central widget
         self.main_widget = QWidget(self)
+        self.ss_obj = SpikeSortPara(self.session)
 
         # widget layouts
         self.main_layout = QGridLayout()
@@ -116,10 +125,9 @@ class SpikeSortingDialog(QMainWindow):
         # initialisations
         self.s_props = {}
         self.s_prop_flds = {}
-        self.t_worker = None
         self.g_type = None
-        self.s_type = 'kilosort2'
-        self.ss_obj = SpikeSortPara(self.session)
+        self.s_type = None
+        self.t_worker = None
 
         # initialises the major widget groups
         self.init_class_fields()
@@ -129,7 +137,8 @@ class SpikeSortingDialog(QMainWindow):
         self.init_button_frame()
         self.set_widget_config()
 
-        #
+        # REMOVE ME LATER
+        self.tab_group_sort.currentWidget().findChild(QTabWidget).setCurrentIndex(1)
         a = 1
 
     # ---------------------------------------------------------------------------
@@ -141,7 +150,6 @@ class SpikeSortingDialog(QMainWindow):
         # creates the dialog window
         self.setWindowTitle("Spike Sorting Parameters")
         self.setFixedSize(self.dlg_width, self.dlg_height)
-        # self.setFixedWidth(self.dlg_width)
         self.setWindowModality(Qt.WindowModality(1))
         self.setLayout(self.main_layout)
 
@@ -197,12 +205,13 @@ class SpikeSortingDialog(QMainWindow):
         # sets up the sorter tab groups (for each type)
         for i, (gn, gf) in enumerate(self.sorter_groups.items()):
             # creates the sorter group tab
-            grp_tab = self.create_para_object(QVBoxLayout(), gf, None, 'sorttab', None)
+            grp_tab = self.create_sort_group_tab(gf)
             self.tab_group_sort.addTab(grp_tab, gn)
             self.tab_group_sort.setTabEnabled(i, grp_tab.isEnabled())
+            self.tab_group_sort.setTabToolTip(i, self.sorter_group_desc[gf])
 
         # sets the main tab group callback function
-        self.tab_group_sort.currentChanged.connect(self.main_tab_change)
+        self.tab_group_sort.currentChanged.connect(self.sort_tab_change)
 
         # resets the tab types
         self.reset_tab_types()
@@ -273,32 +282,45 @@ class SpikeSortingDialog(QMainWindow):
         for sl in s_list:
             # sets an empty sorter name (some sorters don't have descriptions)
             s_name = None
+            s_desc = None
 
             # sets the sorter specific parameter fields
             match sl:
                 case 'ironclust':
                     # case is Ironcluster
                     s_name = 'IronClust'
+                    s_desc =("Ironclust is a density-based spike sorter designed for high-density probes \n"
+                             "(e.g. Neuropixels). It uses features and spike location estimates for clustering, and \n"
+                             "it performs a drift correction. For more information see https://doi.org/10.1101/101030")
 
                 case 'simple':
                     # case is simple
                     s_name = 'Simple'
+                    s_desc =  ("Implementation of a very simple sorter usefull for teaching.\n\n"
+                              " * detect peaks\n"
+                              " * project waveforms with SVD or PCA\n"
+                              " * apply a well known clustering algos from scikit-learn\n\n"
+                              "No template matching. No auto cleaning.\n\n"
+                              "Mainly usefull for few channels (1 to 8), teaching and testing.")
 
                 case 'tridesclous2':
                     # case is Tridesclous2
                     s_name = 'Tridesclous2'
+                    s_desc = ("Tridesclous2 is a template-matching spike sorter with a real-time engine.\n"
+                              "For more information see https://tridesclous.readthedocs.io")
 
                 case 'waveclus_snippets':
                     # case is Wave Clus
                     s_name = 'Wave Clus Snippets'
 
+            if s_desc is None:
+                s_desc = get_sorter_description(sl)
+                if (s_desc is None) or (len(s_desc) == 0):
+                    s_desc = 'No Description'
+
             # retrieves the sorter description and name fields
-            s_desc = get_sorter_description(sl)
             if s_name is None:
                 s_name = self.get_sorter_name(s_desc)
-
-            if (s_desc is None) or (len(s_desc) == 0):
-                s_desc = 'No Description'
 
             # sets the property fields for the sorter
             self.s_prop_flds[s_type][sl] = {
@@ -340,118 +362,61 @@ class SpikeSortingDialog(QMainWindow):
         #
         return len(s_list)
 
-    def create_para_object(self, layout, p_str, p_val, p_type, p_str_p):
+    def create_sort_group_tab(self, p_str):
 
-        match p_type:
-            case p_type if p_type in ['tab', 'sorttab']:
-                # case is a tab widget
+        # creates the tab widget
+        obj_tab = QWidget()
+        obj_tab.setObjectName(p_str)
 
-                # creates the tab widget
-                obj_tab = QWidget()
-                obj_tab.setObjectName(p_str)
+        # creates the children objects for the current parent object
+        tab_layout = QFormLayout(obj_tab)
+        tab_layout.setSpacing(0)
+        tab_layout.setContentsMargins(1, 1, 0, 0)
+        tab_layout.setLabelAlignment(cf.align_type['right'])
 
-                # creates the children objects for the current parent object
-                tab_layout = QFormLayout(obj_tab)
-                tab_layout.setSpacing(0)
-                tab_layout.setContentsMargins(1, 1, 0, 0)
-                tab_layout.setLabelAlignment(cf.align_type['right'])
+        # creates the panel object
+        panel_frame = QFrame()
+        panel_frame.setFrameStyle(QFrame.Shadow.Plain | QFrame.Shape.Box)
+        panel_frame.setSizePolicy(QSizePolicy(cf.q_exp, cf.q_exp))
+        tab_layout.addWidget(panel_frame)
 
-                # creates the panel object
-                panel_frame = QFrame()
-                panel_frame.setFrameStyle(QFrame.Shadow.Plain | QFrame.Shape.Box)
-                panel_frame.setSizePolicy(QSizePolicy(cf.q_exp, cf.q_exp))
-                tab_layout.addWidget(panel_frame)
+        # sets up the parameter layout
+        layout_para = QVBoxLayout()
+        layout_para.setSpacing(x_gap)
 
-                # sets up the parameter layout
-                layout_para = QFormLayout(panel_frame) if p_type == 'tab' else QVBoxLayout()
-                layout_para.setSpacing(x_gap)
+        # sets up the sort group tab
+        s_list = getattr(self.ss_obj, '{0}_s'.format(p_str))
+        if len(s_list):
+            # field retrieval
+            s_prop_tab = self.s_prop_flds[p_str]
 
-                if p_type == 'tab':
-                    # case is a solver parameter tab
-                    if len(p_val):
-                        # sets the layout parameters
-                        layout_para.setLabelAlignment(cf.align_type['right'])
-                        layout_para.setContentsMargins(2 * x_gap, 2 * x_gap, 2 * x_gap, x_gap)
+            # creates the tab group widget
+            obj_tab_group = QTabWidget(self)
+            layout_para.addWidget(obj_tab_group)
+            layout_para.setContentsMargins(x_gap, x_gap, x_gap, x_gap)
 
-                        # creates the tab parameter objects
-                        for k, v in p_val.items():
-                            self.create_para_object(layout_para, k, v, v['type'], p_str_p + [k])
+            # creates the solver parameter tabs
+            for i, (k, v) in enumerate(s_prop_tab.items()):
+                # creates the spike sorter tab object
+                obj_tab_para = SpikeSorterTab(self, k)
+                obj_tab_group.addTab(obj_tab_para, v['name'])
+                obj_tab_group.setTabToolTip(i, v['desc'])
 
-                else:
-                    # case is a solver tab group
+                # stores the tab widget
+                s_prop_tab[k]['tab'] = obj_tab_para
 
-                    # sets up the sort group tab
-                    s_list = getattr(self.ss_obj, '{0}_s'.format(p_str))
-                    if len(s_list):
-                        # field retrieval
-                        s_prop_tab = self.s_prop_flds[p_str]
+            # sets the tabgroup callback function
+            obj_tab_group.currentChanged.connect(self.sort_tab_change)
 
-                        # creates the tab group widget
-                        obj_tab_group = QTabWidget(self)
-                        layout_para.addWidget(obj_tab_group)
-                        layout_para.setContentsMargins(x_gap, x_gap, x_gap, x_gap)
+        else:
+            obj_tab.setEnabled(False)
 
-                        # creates the solver parameter tabs
-                        for k, v in s_prop_tab.items():
-                            # creates the spike sorter tab object
-                            obj_tab_para = SpikeSorterTab(self, k)
-                            obj_tab_para.setToolTip(v['desc'])
-                            obj_tab_group.addTab(obj_tab_para, v['name'])
+        # sets the tab layout
+        panel_frame.setLayout(layout_para)
+        obj_tab.setLayout(tab_layout)
 
-                            # stores the tab widget
-                            s_prop_tab[k]['tab'] = obj_tab_para
-
-                        #
-                        obj_tab_group.currentChanged.connect(self.sub_tab_change)
-
-                    else:
-                        obj_tab.setEnabled(False)
-
-                # sets the tab layout
-                panel_frame.setLayout(layout_para)
-                obj_tab.setLayout(tab_layout)
-
-                # returns the tab object
-                return obj_tab
-
-            # case is a checkbox
-            case 'checkbox':
-                # creates the checkbox widget
-                obj_checkbox = cw.create_check_box(
-                    None, p_val['name'], p_val['value'], font=cw.font_lbl, name=p_str)
-                obj_checkbox.setContentsMargins(0, 0, 0, 0)
-
-                # adds the widget to the layout
-                layout.addRow(obj_checkbox)
-
-                # sets up the slot function
-                cb_fcn = pfcn(self.prop_update, p_str_p, obj_checkbox)
-                obj_checkbox.stateChanged.connect(cb_fcn)
-
-            case 'edit':
-                # sets up the editbox string
-                lbl_str = '{0}:'.format(p_val['name'])
-                if p_val['value'] is None:
-                    # parameter string is empty
-                    edit_str = ''
-
-                elif isinstance(p_val['value'], str):
-                    # parameter is a string
-                    edit_str = p_val['value']
-
-                else:
-                    # parameter is numeric
-                    edit_str = '%g' % (p_val['value'])
-
-                # creates the label/editbox widget combo
-                obj_edit = cw.QLabelEdit(None, lbl_str, edit_str, name=p_str, font_lbl=cw.font_lbl)
-                # obj_edit.obj_lbl.setFixedWidth(self.lbl_width)
-                obj_edit.obj_lbl.setStyleSheet(self.no_border_style)
-                layout.addRow(obj_edit)
-
-                # sets up the label/editbox slot function
-                cb_fcn = pfcn(self.prop_update, p_str_p)
-                obj_edit.connect(cb_fcn)
+        # returns the tab object
+        return obj_tab
 
     # ---------------------------------------------------------------------------
     # Widget Event Functions
@@ -465,19 +430,19 @@ class SpikeSortingDialog(QMainWindow):
 
         self.concat_runs = self.checkbox_opt[1].checkState() == cf.chk_state[False]
 
-    def main_tab_change(self):
+    def sort_tab_change(self):
 
         # resets the tab types
         self.reset_tab_types()
 
-        pass
+        # retrieves the currently selected tab properties
+        s_prop_t = self.s_prop_flds[self.g_type][self.s_type]['tab']
+        if not s_prop_t.is_init:
+            # initialise the sorter tab (if not initalised)
+            s_prop_t.setup_tab_objects()
 
-    def sub_tab_change(self):
-
-        # resets the tab types
-        self.reset_tab_types()
-
-        pass
+        # REMOVE ME LATER
+        a = 1
 
     def prop_update(self, p_str, h_obj):
 

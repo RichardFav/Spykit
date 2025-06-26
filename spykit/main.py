@@ -13,7 +13,7 @@ from PyQt6.QtWidgets import QApplication, QTreeWidget, QTreeWidgetItem, QTreeVie
 # from PyQt6.QtGui import QStandardItemModel, QStandardItem
 
 # debugging parameters
-is_testing = False
+is_testing = True
 test_type = 13
 
 data = {"Project A": ["file_a.py", "file_a.txt", "something.xls"],
