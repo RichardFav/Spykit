@@ -431,7 +431,7 @@ class MainWindow(QMainWindow):
     def run_spike_sorting_dialog(self, ss_config=None):
 
         # opens the preprocessing setup
-        h_app = SpikeSortingDialog(self, ss_config)
+        h_app = SpikeSortingDialog(self, ss_config=ss_config)
         h_app.close_spike_sorting.connect(self.on_spike_sorting_close)
         h_app.show()
 

@@ -345,7 +345,10 @@ class Testing(object):
 
     def run_spike_sorting_para_test(self):
 
+        import time
+
+        t0 = time.time()
         ss_para = SpikeSortPara(None)
-        a = 1
+        print(time.time() - t0)
 
         return None

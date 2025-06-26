@@ -64,16 +64,24 @@ class SpikeSortingDialog(QMainWindow):
         }
     """
 
-    def __init__(self, main_obj, ss_config):
+    def __init__(self, main_obj=None, ss_config=None):
         super(SpikeSortingDialog, self).__init__(main_obj)
 
         # sets the input arguments
         self.main_obj = main_obj
         self.ss_config = ss_config
 
-        # creates the preprocessing run class object
-        self.session = self.main_obj.session_obj.session
-        self.prep_opt = [self.session.prep_obj.per_shank, self.session.prep_obj.concat_runs]
+        if main_obj is not None:
+            # creates the preprocessing run class object
+            self.session = self.main_obj.session_obj.session
+            self.prep_opt = [self.session.prep_obj.per_shank, self.session.prep_obj.concat_runs]
+
+            # preprocessing options
+            self.per_shank_pp = self.session.prep_obj.per_shank
+            self.concat_runs_pp = self.session.prep_obj.concat_runs
+
+        else:
+            self.session = None
 
         # sets the central widget
         self.main_widget = QWidget(self)
@@ -92,13 +100,6 @@ class SpikeSortingDialog(QMainWindow):
         self.cont_frame = QFrame(self)
         self.tab_group_sort = QTabWidget(self)
 
-        # sorter class fields
-        self.all_sorters = available_sorters()
-        self.local_sorters = installed_sorters()
-        self.image_sorters = []
-        self.other_sorters = []
-        self.custom_sorters = []
-
         # other class widget
         self.prog_bar = []
         self.button_cont = []
@@ -112,15 +113,13 @@ class SpikeSortingDialog(QMainWindow):
         self.per_shank = False
         self.concat_runs = False
 
-        # preprocessing options
-        self.per_shank_pp = self.session.prep_obj.per_shank
-        self.concat_runs_pp = self.session.prep_obj.concat_runs
-
         # initialisations
         self.s_props = {}
         self.s_prop_flds = {}
-        self.s_type = 'kilosort2'
         self.t_worker = None
+        self.g_type = None
+        self.s_type = 'kilosort2'
+        self.ss_obj = SpikeSortPara(self.session)
 
         # initialises the major widget groups
         self.init_class_fields()
@@ -130,170 +129,12 @@ class SpikeSortingDialog(QMainWindow):
         self.init_button_frame()
         self.set_widget_config()
 
+        #
+        a = 1
+
     # ---------------------------------------------------------------------------
     # Class Property Widget Setup Functions
     # ---------------------------------------------------------------------------
-
-    def setup_prop_fields(self, s_type):
-
-        # retrieves the sorter list
-        self.s_prop_flds[s_type] = {}
-        s_list = getattr(self, '{0}_sorters'.format(s_type))
-
-        # -----------------------------------------------------------------------
-        # Sorting Properties
-        # -----------------------------------------------------------------------
-
-        for sl in s_list:
-            # sets an empty sorter name (some sorters don't have descriptions)
-            s_name = None
-
-            #
-            match sl:
-                case 'combinato':
-                    # case is Combinato
-
-                    #
-                    ds_list = ['Negative', 'Positive']
-
-                    #
-                    pp = {
-                        # 'detect_sign': self.create_para_field('Use Common Avg Ref', 'combobox'),
-
-                        # 'car': self.create_para_field('Use Common Avg Ref', 'checkbox', False, p_fld='kilosort2'),
-                        # 'freq_min': self.create_para_field('Min Frequency', 'edit', 150, p_fld='kilosort2')
-                    }
-
-                case 'hdsort':
-                    # case is HDSort
-                    pp = {}
-
-                case 'herdingspikes':
-                    # case is Herding Spikes
-                    pp = {}
-
-                case 'ironclust':
-                    # case is Ironcluster
-                    pp = {}
-                    s_name = 'IronClust'
-
-                case 'kilosort':
-                    # case is Kilosort
-                    pp = {}
-
-                case 'kilosort2':
-                    # case is Kilosort2
-                    pp = {}
-
-                case 'kilosort2_5':
-                    # case is Kilosort2.5
-                    pp = {}
-
-                case 'kilosort3':
-                    # case is Kilosort3
-                    pp = {}
-
-                case 'kilosort4':
-                    # case is Kilosort4
-
-                    # parameter values
-                    p_max = np.inf
-                    p_val0 = 60000
-
-                    # sets up the parameter dictionary
-                    pp = {
-                        # 'batch_size': self.create_para_field(
-                        #     'Data Batch Size', 'edit', p_val0, p_fld=sl, p_min=1, p_max=p_max),
-                    }
-
-                case 'klusta':
-                    # case is Klusta
-                    pp = {}
-
-                case 'mountainsort4':
-                    # case is Mountainsort4
-                    pp = {}
-
-                case 'mountainsort5':
-                    # case is MountainSort5
-                    pp = {}
-
-                case 'pykilosort':
-                    # case is pykilosort
-                    pp = {}
-
-                case 'simple':
-                    # case is simple
-                    pp = {}
-                    s_name = 'Simple'
-
-                case 'spykingcircus':
-                    # case is Spyking Circus
-                    pp = {}
-
-                case 'spykingcircus2':
-                    # case is Spyking Circus 2
-                    pp = {}
-
-                case 'tridesclous':
-                    # case is Tridesclous
-                    pp = {}
-
-                case 'tridesclous2':
-                    # case is Tridesclous2
-                    pp = {}
-                    s_name = 'Tridesclous2'
-
-                case 'waveclus':
-                    # case is Wave Clus
-                    pp = {}
-
-                case 'waveclus_snippets':
-                    # case is Wave Clus
-                    pp = {}
-                    s_name = 'Wave Clus Snippets'
-
-                case 'yass':
-                    # case is Yass
-                    pp = {}
-
-            # retrieves the sorter description and name fields
-            s_desc = get_sorter_description(sl)
-            if s_name is None:
-                s_name = self.get_sorter_name(s_desc)
-
-            if (s_desc is None) or (len(s_desc) == 0):
-                s_desc = 'No Description'
-
-            # sets the property fields for the sorter
-            self.s_prop_flds[s_type][sl] = {'name': s_name, 'props': pp, 'desc': s_desc}
-
-        # # sets up the sorting tab parameter fields
-        # pp_k2 = {'car': self.create_para_field('Use Common Avg Ref', 'checkbox', False, p_fld='kilosort2'),
-        #          'freq_min': self.create_para_field('Min Frequency', 'edit', 150, p_fld='kilosort2')}
-        # pp_k2_5 = {'car': self.create_para_field('Use Common Avg Ref', 'checkbox', False, p_fld='kilosort2_5'),
-        #            'freq_min': self.create_para_field('Min Frequency', 'edit', 150, p_fld='kilosort2_5'), }
-        # pp_k3 = {'car': self.create_para_field('Use Common Avg Ref', 'checkbox', False, p_fld='kilosort3'),
-        #          'freq_min': self.create_para_field('Min Frequency', 'edit', 300, p_fld='kilosort3'), }
-        # pp_m5 = {'scheme': self.create_para_field('Scheme', 'edit', 2, p_fld='mountainsort5'),
-        #          'filter': self.create_para_field('Filter', 'checkbox', False, p_fld='mountainsort5'), }
-
-        # # stores the sorting properties
-        # self.s_prop_flds = {
-        #     'kilosort2': {'name': 'KiloSort 2', 'props': pp_k2},
-        #     'kilosort2_5': {'name': 'KiloSort 2.5', 'props': pp_k2_5},
-        #     'kilosort3': {'name': 'KiloSort 3', 'props': pp_k3},
-        #     'mountainsort5': {'name': 'MountainSort 5', 'props': pp_m5},
-        # }
-
-        # initialises the fields for all properties
-        for kp, vp in self.s_prop_flds[s_type].items():
-            # sets up the parent field
-            self.s_props[kp] = {}
-
-            # sets the children properties
-            for k, p in vp['props'].items():
-                self.s_props[kp][k] = p['value']
 
     def init_class_fields(self):
 
@@ -314,7 +155,7 @@ class SpikeSortingDialog(QMainWindow):
 
         # sets up the property fields
         for s_type in ['local', 'image', 'other']:
-            self.setup_prop_fields(s_type)
+            self.init_sorter_props(s_type)
 
     def init_button_frame(self):
 
@@ -360,16 +201,11 @@ class SpikeSortingDialog(QMainWindow):
             self.tab_group_sort.addTab(grp_tab, gn)
             self.tab_group_sort.setTabEnabled(i, grp_tab.isEnabled())
 
-        # # # creates the tab group object
-        # for k, v in self.s_prop_flds.items():
-        #     tab_layout = QVBoxLayout()
-        #     obj_tab = self.create_para_object(tab_layout, k, v['props'], 'tab', [k])
-        #     self.tab_group_sort.addTab(obj_tab, v['name'])
-        #
-        # # tab-group change callback function
-        # i_tab0 = list(self.s_props.keys()).index(self.s_type)
-        # self.tab_group_sort.setCurrentIndex(i_tab0)
-        # self.tab_group_sort.currentChanged.connect(self.sort_tab_change)
+        # sets the main tab group callback function
+        self.tab_group_sort.currentChanged.connect(self.main_tab_change)
+
+        # resets the tab types
+        self.reset_tab_types()
 
     def init_checkbox_opt(self):
 
@@ -395,15 +231,16 @@ class SpikeSortingDialog(QMainWindow):
             checkbox_new.pressed.connect(cb)
             checkbox_new.setFixedHeight(cf.but_height)
 
-        # sets the by shank checkbox enabled properties
-        n_shank = self.main_obj.session_obj.get_shank_count()
-        self.checkbox_opt[0].setEnabled((n_shank > 1) and (not self.per_shank_pp))
-        self.checkbox_opt[0].setCheckState(cf.chk_state[self.per_shank_pp])
+        if self.main_obj is not None:
+            # sets the by shank checkbox enabled properties
+            n_shank = self.main_obj.session_obj.get_shank_count()
+            self.checkbox_opt[0].setEnabled((n_shank > 1) and (not self.per_shank_pp))
+            self.checkbox_opt[0].setCheckState(cf.chk_state[self.per_shank_pp])
 
-        # sets the concatenation checkbox enabled properties
-        n_run = self.session.get_run_count()
-        self.checkbox_opt[1].setEnabled((n_run > 1) and (not self.concat_runs_pp))
-        self.checkbox_opt[1].setCheckState(cf.chk_state[self.concat_runs_pp])
+            # sets the concatenation checkbox enabled properties
+            n_run = self.session.get_run_count()
+            self.checkbox_opt[1].setEnabled((n_run > 1) and (not self.concat_runs_pp))
+            self.checkbox_opt[1].setCheckState(cf.chk_state[self.concat_runs_pp])
 
     def init_progress_frame(self):
 
@@ -422,6 +259,54 @@ class SpikeSortingDialog(QMainWindow):
 
             self.prog_bar.append(prog_bar_new)
             self.progress_layout.addWidget(prog_bar_new)
+
+    def init_sorter_props(self, s_type):
+
+        # retrieves the sorter list
+        self.s_prop_flds[s_type] = {}
+        s_list = getattr(self.ss_obj, '{0}_s'.format(s_type))
+
+        # -----------------------------------------------------------------------
+        # Sorting Properties
+        # -----------------------------------------------------------------------
+
+        for sl in s_list:
+            # sets an empty sorter name (some sorters don't have descriptions)
+            s_name = None
+
+            # sets the sorter specific parameter fields
+            match sl:
+                case 'ironclust':
+                    # case is Ironcluster
+                    s_name = 'IronClust'
+
+                case 'simple':
+                    # case is simple
+                    s_name = 'Simple'
+
+                case 'tridesclous2':
+                    # case is Tridesclous2
+                    s_name = 'Tridesclous2'
+
+                case 'waveclus_snippets':
+                    # case is Wave Clus
+                    s_name = 'Wave Clus Snippets'
+
+            # retrieves the sorter description and name fields
+            s_desc = get_sorter_description(sl)
+            if s_name is None:
+                s_name = self.get_sorter_name(s_desc)
+
+            if (s_desc is None) or (len(s_desc) == 0):
+                s_desc = 'No Description'
+
+            # sets the property fields for the sorter
+            self.s_prop_flds[s_type][sl] = {
+                'name': s_name,
+                'desc': s_desc,
+                'tab': None,
+                'props': {},
+            }
 
     def set_widget_config(self):
 
@@ -450,7 +335,7 @@ class SpikeSortingDialog(QMainWindow):
     def create_sorter_tab_group(self, grp_type):
 
         # retrieves the list of sorters
-        s_list = getattr(self, '{0}_sorters'.format(grp_type))
+        s_list = getattr(self.ss_obj, '{0}_s'.format(grp_type))
 
         #
         return len(s_list)
@@ -496,19 +381,28 @@ class SpikeSortingDialog(QMainWindow):
                     # case is a solver tab group
 
                     # sets up the sort group tab
-                    s_list = getattr(self, '{0}_sorters'.format(p_str))
+                    s_list = getattr(self.ss_obj, '{0}_s'.format(p_str))
                     if len(s_list):
+                        # field retrieval
+                        s_prop_tab = self.s_prop_flds[p_str]
+
                         # creates the tab group widget
-                        obj_tab_group = QTabWidget()
+                        obj_tab_group = QTabWidget(self)
                         layout_para.addWidget(obj_tab_group)
                         layout_para.setContentsMargins(x_gap, x_gap, x_gap, x_gap)
 
                         # creates the solver parameter tabs
-                        s_prop_tab = self.s_prop_flds[p_str]
                         for k, v in s_prop_tab.items():
-                            obj_tab_para = self.create_para_object(QVBoxLayout(), k, v['props'], 'tab', [k])
-                            obj_tab_group.addTab(obj_tab_para, v['name'])
+                            # creates the spike sorter tab object
+                            obj_tab_para = SpikeSorterTab(self, k)
                             obj_tab_para.setToolTip(v['desc'])
+                            obj_tab_group.addTab(obj_tab_para, v['name'])
+
+                            # stores the tab widget
+                            s_prop_tab[k]['tab'] = obj_tab_para
+
+                        #
+                        obj_tab_group.currentChanged.connect(self.sub_tab_change)
 
                     else:
                         obj_tab.setEnabled(False)
@@ -571,10 +465,19 @@ class SpikeSortingDialog(QMainWindow):
 
         self.concat_runs = self.checkbox_opt[1].checkState() == cf.chk_state[False]
 
-    def sort_tab_change(self):
+    def main_tab_change(self):
 
-        i_tab_nw = self.tab_group_sort.currentIndex()
-        self.s_type = list(self.s_prop_flds)[i_tab_nw]
+        # resets the tab types
+        self.reset_tab_types()
+
+        pass
+
+    def sub_tab_change(self):
+
+        # resets the tab types
+        self.reset_tab_types()
+
+        pass
 
     def prop_update(self, p_str, h_obj):
 
@@ -698,6 +601,17 @@ class SpikeSortingDialog(QMainWindow):
         # updates the boolean flags
         self.has_ss = True
 
+    def reset_tab_types(self):
+
+        # tab-group change callback function
+        h_tab_sel = self.tab_group_sort.currentWidget()
+        self.g_type = h_tab_sel.objectName()
+
+        # retrieves the sub-group type
+        h_tab_grp_sub = h_tab_sel.findChild(QTabWidget)
+        self.s_type = h_tab_grp_sub.currentWidget().objectName()
+
+
     # ---------------------------------------------------------------------------
     # Worker Progress Functions
     # ---------------------------------------------------------------------------
@@ -795,6 +709,39 @@ class RunSpikeSorting(QObject):
 # ----------------------------------------------------------------------------------------------------------------------
 
 """
+    SpikeSorterTab:  
+"""
+
+
+class SpikeSorterTab(QTabWidget):
+
+    def __init__(self, main_dlg, s_name):
+        super(SpikeSorterTab, self).__init__(main_dlg)
+
+        # sets the input arguments
+        self.s_name = s_name
+        self.main_dlg = main_dlg
+
+        # sets the main widget names
+        self.setObjectName(s_name)
+
+        # other class fields
+        self.s_props = None
+        self.is_init = False
+
+    def setup_tab_objects(self):
+
+        # retrieves the sorter properties
+        self.s_props = self.main_dlg.ss_obj.setup_sorter_para(self.s_name)
+
+        a = 1
+
+        # updates the initialisation flag
+        self.is_init = True
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+"""
     RunSpikeSorting:  
 """
 
@@ -803,10 +750,14 @@ class SpikeSortPara(QObject):
     # common sorter fields
 
     # other static class fields
+    ig_para = ['shift', 'scale', 'bad_channels', 'datashift', 'fs', 'x_centers']
     l_pattern = rf"(?<={re.escape('spikeinterface/')}).*?(?={re.escape('-')})"
 
-    def __init__(self, s):
+    def __init__(self, s=None):
         super(SpikeSortPara, self).__init__()
+
+        # sets the session object
+        self.s = s
 
         # memory allocation
         self.all_s = available_sorters()
@@ -822,8 +773,13 @@ class SpikeSortPara(QObject):
         # loads the sorting parameters
         self.load_sort_para()
 
-        # REMOVE ME LATER
-        self.setup_sorter_para(self.all_s[0])
+        # # REMOVE ME LATER
+        # for s in self.all_s:
+        #     # if s == 'kilosort4':
+        #     #     continue
+        #
+        #     print('Sorter: {0}'.format(s))
+        #     self.setup_sorter_para(s)
 
     def load_sort_para(self):
 
@@ -833,13 +789,23 @@ class SpikeSortPara(QObject):
         # reads the spike sorting parameter csv file
         df = pd.read_csv(cw.ssort_para, header=0)
         for row in df.itertuples():
-            self.ss_info[row.Parameter] = {'label': row.Label, 'type': row.Type}
+            self.ss_info[row.Parameter] = {
+                'label': row.Label,
+                'type': row.Type,
+                'min': row.Min,
+                'max': row.Max,
+                'class': row.Class,
+            }
 
     def get_sorter_info(self):
 
-        # retrieves the docker client
-        client = docker.from_env()
-        if client is None:
+        try:
+            # retrieves the docker client
+            client = docker.from_env(timeout=5)
+            image_list = client.images.list()
+
+        except:
+            # if there was a timeout error, then exit
             return
 
         # sets the other sorters
@@ -853,7 +819,7 @@ class SpikeSortPara(QObject):
                 self.other_s.pop(i_match)
 
         # removes any docker images from the other sorters list
-        for img_l in client.images.list():
+        for img_l in image_list:
             # retrieves the sorter name from the repo tag
             r_tag = img_l.attrs['RepoTags'][0]
             s_name = re.search(self.l_pattern, r_tag)[0]
@@ -867,65 +833,70 @@ class SpikeSortPara(QObject):
     def setup_sorter_para(self, s_name):
 
         # initialisations
-        p_dict = {}
         p_info = get_default_sorter_params(s_name)
         p_desc = get_sorter_params_description(s_name)
 
         # determines the common info/description fields
-        k_common = list(set(p_info.keys()).intersection(set(p_desc.keys())))
+        p_fld_common = list(set(p_info.keys()).intersection(set(p_desc.keys())))
         match s_name:
             # appends parameter fields (based on sorter type)
-            case 'tridesclous2'
+            case 'tridesclous2':
                 # case is the tridesclous2 sorter
-                k_common += ['apply_motion_correction', 'motion_correction']
+                p_fld_common += ['apply_motion_correction', 'motion_correction']
+
+        # stores the parameter field for the sorter
+        return self.setup_sorter_para_fields(s_name, p_fld_common, p_info, p_desc)
+
+    def setup_sorter_para_fields(self, s_name, p_fld, p_value, p_desc=None, d_name=None, i_lvl=0):
+
+        # initialisations
+        p_dict = {}
 
         # sets up the fields for all common parameters in the sorter
-        for k in k_common:
+        for pf in p_fld:
+            # skip any parameters that are being ignored
+            if pf in self.ig_para:
+                continue
+
             # sets up the base parameter field
-            p_dict[k] = self.setup_para_field(self.ss_info[k], p_info[k], p_desc[k])
+            p_desc_f = self.get_description_field(p_desc, pf)
+            p_dict[pf] = self.setup_para_field(self.ss_info[pf], p_value[pf], p_desc_f, i_lvl)
 
             # sets parameter specific fields
-            p_type = p_dict[k]['type']
+            p_type = p_dict[pf]['type']
             match p_type:
-                case p_type if p_type in ['edit_float', 'edit_int']:
+                case p_type if p_type in ['edit_float', 'edit_int', 'group_edit_float', 'group_edit_int']:
                     # case is a numerical float
-                    p_dict[k] = self.setup_para_limits(p_dict[k], s_name)
-
-                case 'edit_string'
-                    # case is a string
-                    pass
-
-                case 'group_edit_float':
-                    # case is a multi-numerical float
-                    pass
-
-                case 'group_edit_int':
-                    # case is a multi-numerical integer
-                    pass
-
-                case 'checkbox'
-                    # case is a checkbox (boolean)
-                    pass
+                    p_dict[pf] = self.setup_para_limits(pf, p_dict[pf])
 
                 case 'combobox':
                     # case is a combobox (enumeration)
-                    p_dict[k]['list'] = self.setup_para_list(k, s_name)
-
-                case 'filespec':
-                    # case is a file chooser
-                    pass
+                    p_dict[pf]['list'] = self.setup_para_list(pf, s_name, d_name)
 
                 case 'dict':
                     # case is a dictionary field
-                    p_dict[k] = self.setup_para_dictionary(p_dict[k], s_name)
+                    p_dict[pf]['child'] = self.setup_para_dictionary(pf, p_dict[pf], s_name)
 
-    def setup_para_limits(self, p_dict, s_name=None, d_name=None):
+        # returns the dictionary
+        return p_dict
 
-        pass
+    def setup_para_limits(self, p_fld, p_dict):
 
-    def setup_para_dictionary(self, p_dict, s_name=None, d_name=None):
+        # sets the lower parameter limit
+        p_lim_lo = 0 if p_dict['isint'] else 0.
 
-        pass
+        # sets the lower/upper limits
+        p_dict['min'] = self.get_limit_value(p_dict['min'], p_lim_lo)
+        p_dict['max'] = self.get_limit_value(p_dict['max'], np.inf)
+
+        return p_dict
+
+    def setup_para_dictionary(self, p_fld, p_dict, s_name, d_name=None):
+
+        # memory allocation
+        p_fld_ch = p_dict['value']
+        i_lvl_ch = p_dict['lvl'] + 1
+        return self.setup_sorter_para_fields(s_name, list(p_fld_ch.keys()), p_fld_ch, d_name=p_fld, i_lvl=i_lvl_ch)
 
     def setup_para_list(self, p_fld, s_name, d_name=None):
 
@@ -960,6 +931,10 @@ class SpikeSortPara(QObject):
                     case _:
                         # case is the newer sorter types
                         return ['neg', 'pos', 'both']
+
+            case 'dtype':
+                # case is the data type (fixed)
+                return ['int16']
 
             case 'feature_type':
                 # case is the feature type
@@ -1052,6 +1027,32 @@ class SpikeSortPara(QObject):
                 # case is the ironclust version (ironclust)
                 return ['1', '2']
 
+    def setup_para_field(self, ss_info, value, desc, lvl=0):
+
+        # sets the integer flag
+        isint = ss_info['type'] in ['group_edit_int', 'edit_int']
+
+        return {
+            # common parameter fields
+            'label': ss_info['label'],
+            'value': value,
+            'type': ss_info['type'],
+            'class': ss_info['class'],
+            'desc': desc,
+            'lvl': lvl,
+
+            # numerical fields
+            'isint': isint,
+            'min': self.convert_string(ss_info['min'], isint),
+            'max': self.convert_string(ss_info['max'], isint),
+
+            # combobox fields
+            'list': [],
+
+            # children parameter fields (dictionaries)
+            'child': {},
+        }
+
     def get_para_label(self, p_fld, s_type):
 
         pass
@@ -1060,23 +1061,43 @@ class SpikeSortPara(QObject):
 
         pass
 
-    def setup_para_field(self, ss_info, value, desc):
+    @staticmethod
+    def get_limit_value(p_val, p_val_def):
 
-        return {
-            # common parameter fields
-            'value': v,
-            'label': ss_info['label'],
-            'type': ss_info['type'],
-            'desc': desc,
+        if np.isnan(p_val) or np.isinf(p_val):
+            # case is the parameter value is not set, so use the default value
+            return p_val_def
 
-            # numerical fields
-            'min': 0,
-            'max': inf,
-            'isint': ss_info['type'] in ['group_edit_int', 'edit_int'],
+        else:
+            # otherwise, return the limit value
+            return p_val
 
-            # combobox fields
-            'list': [],
+    @staticmethod
+    def convert_string(p_val_str, isint):
 
-            # children parameter fields (dictionaries)
-            'children': [],
-        }
+        if isint:
+            # case is an integer string
+            try:
+                return int(p_val_str)
+            except:
+                return np.nan
+
+        else:
+            # case is a float string
+            try:
+                return float(p_val_str)
+            except:
+                return np.nan
+
+    @staticmethod
+    def get_description_field(p_desc, pf):
+
+        match pf:
+            case 'apply_motion_correction':
+                return 'Apply Motion Correction?'
+
+            case 'motion_correction':
+                return 'Motion Correction Parameters'
+
+            case _:
+                return '' if (p_desc is None) else p_desc[pf]
