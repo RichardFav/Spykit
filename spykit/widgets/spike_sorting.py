@@ -817,9 +817,13 @@ class SpikeSortPara(QObject):
 
         # spike sorting parameters
         self.ss_para = {}
+        self.ss_info = {}
 
         # loads the sorting parameters
         self.load_sort_para()
+
+        # REMOVE ME LATER
+        self.setup_sorter_para(self.all_s[0])
 
     def load_sort_para(self):
 
@@ -829,7 +833,7 @@ class SpikeSortPara(QObject):
         # reads the spike sorting parameter csv file
         df = pd.read_csv(cw.ssort_para, header=0)
         for row in df.itertuples():
-            self.ss_para[row.Parameter] = {'label': row.Label, 'type': row.Type}
+            self.ss_info[row.Parameter] = {'label': row.Label, 'type': row.Type}
 
     def get_sorter_info(self):
 
@@ -860,6 +864,194 @@ class SpikeSortPara(QObject):
                 i_match = self.other_s.index(s_name)
                 self.other_s.pop(i_match)
 
+    def setup_sorter_para(self, s_name):
+
+        # initialisations
+        p_dict = {}
+        p_info = get_default_sorter_params(s_name)
+        p_desc = get_sorter_params_description(s_name)
+
+        # determines the common info/description fields
+        k_common = list(set(p_info.keys()).intersection(set(p_desc.keys())))
+        match s_name:
+            # appends parameter fields (based on sorter type)
+            case 'tridesclous2'
+                # case is the tridesclous2 sorter
+                k_common += ['apply_motion_correction', 'motion_correction']
+
+        # sets up the fields for all common parameters in the sorter
+        for k in k_common:
+            # sets up the base parameter field
+            p_dict[k] = self.setup_para_field(self.ss_info[k], p_info[k], p_desc[k])
+
+            # sets parameter specific fields
+            p_type = p_dict[k]['type']
+            match p_type:
+                case p_type if p_type in ['edit_float', 'edit_int']:
+                    # case is a numerical float
+                    p_dict[k] = self.setup_para_limits(p_dict[k], s_name)
+
+                case 'edit_string'
+                    # case is a string
+                    pass
+
+                case 'group_edit_float':
+                    # case is a multi-numerical float
+                    pass
+
+                case 'group_edit_int':
+                    # case is a multi-numerical integer
+                    pass
+
+                case 'checkbox'
+                    # case is a checkbox (boolean)
+                    pass
+
+                case 'combobox':
+                    # case is a combobox (enumeration)
+                    p_dict[k]['list'] = self.setup_para_list(k, s_name)
+
+                case 'filespec':
+                    # case is a file chooser
+                    pass
+
+                case 'dict':
+                    # case is a dictionary field
+                    p_dict[k] = self.setup_para_dictionary(p_dict[k], s_name)
+
+    def setup_para_limits(self, p_dict, s_name=None, d_name=None):
+
+        pass
+
+    def setup_para_dictionary(self, p_dict, s_name=None, d_name=None):
+
+        pass
+
+    def setup_para_list(self, p_fld, s_name, d_name=None):
+
+        match p_fld:
+            case 'amplitude_mode':
+                # case is amplitude mode (spykingcircus2)
+                return ['extremum', 'at_index', 'peak_to_peak']
+
+            case 'clusterer':
+                # case is the clusterer
+                return ['hdbscan']
+
+            case 'cluster_selection_method':
+                # case is the cluster selection methods (simple/tridesclous2)
+                return ['leaf', 'eom']
+
+            case 'common_ref_type':
+                # case is the common reference type (ironclust)
+                return ['none', 'mean', 'median', 'trimmean']
+
+            case 'common_reference':
+                # case is the common reference calculation type (herdingspikes)
+                return ['average', 'median']
+
+            case 'detect_sign':
+                # case is the peak detection sign
+                match s_name:
+                    case s_name if s_name in ['combinato', 'hdsort', 'mountainsort4', 'tridesclous']:
+                        # case is the older sorter types
+                        return ['neg', 'pos']
+
+                    case _:
+                        # case is the newer sorter types
+                        return ['neg', 'pos', 'both']
+
+            case 'feature_type':
+                # case is the feature type
+                match s_name:
+                    case 'ironclust':
+                        # case is the ironclust sorter
+                        return ['gpca', 'pca', 'vpp', 'vmin', 'vminmax', 'cov', 'energy', 'xcov']
+
+                    case s_name if s_name in ['waveclus', 'waveclus_snippets']:
+                        # case is the waveclus/waveclus_snippets sorters:
+                        return ['wav', 'pca']
+
+            case p_fld if p_fld in ['filter_type', 'filter_detect_type']:
+                # case is the filter/filter detect types (ironclust)
+                return ["none", "bandpass", "wiener", "fftdiff", "ndiff"]
+
+            case 'ftype':
+                # case is the filtering function type (spykingcircus2)
+                return ['bessel']                       # QUESTION: Any more filtering functions?!
+
+            case 'loop_mode':
+                # case is the loop mode (hdsort)
+                return ['loop', 'local_parfor', 'grid']
+
+            case 'method':
+                # case is the method selection
+                match d_name:
+                    case d_name if d_name in ['clustering', 'matching']:
+                        # case is clustering/matching dictionary
+                        match s_name:
+                            case s_name if s_name in ['spykingcircus2', 'tridesclous2']:
+                                # case is the spykingcircus2 sorter
+                                return ['naive', 'tridesclous', 'circus', 'circus-omp-svd', 'wobble']
+
+                            case 'simple':
+                                # case is the simple sorter
+                                return ['hdbscan']              # QUESTION: Any more filtering functions?!
+
+                    case 'detection':
+                        # case is the detection dictionary
+                        return ['by_channel', 'locally_exclusive', 'locally_exclusive_cl',
+                                'by_channel_torch', 'locally_exclusive_torch', 'matched_filtering']
+
+                    case 'selection':
+                        # case is the selection dictionary (spykingcircus2/tridesclous2)
+                        return ['uniform', 'uniform_locations', 'smart_sampling_amplitudes',
+                                'smart_sampling_locations', 'smart_sampling_locations_and_time']
+
+                    case 'sparsity':
+                        # case is the sparsity dictionary (spykingcircus2)
+                        return ['radius', 'best_channels', 'closest_channels', 'snr', 'amplitude', 'energy']
+
+            case 'mode':
+                # case is the mode selection
+                match d_name:
+                    case 'cache_preprocessing':
+                        # case is cache preprocessing (spykingcircus2/tridesclous2)
+                        return ['memory', 'folder', 'zarr']
+
+                    case 'whitening':
+                        # case is whitening (spykingcircus2)
+                        return ['local', 'global']
+
+            case 'peak_sign':
+                # case is the peak sign (simple/spykingcircus2/tridesclous2)
+                return ['neg', 'pos', 'both']
+
+            case 'preprocessing_function':
+                # case is the preprocessing function (pykilosort)
+                return ['kilosort2', 'destriping']
+
+            case 'preset':
+                # case is the motion correction presets (spykingcircus2/tridesclous2)
+                return ['dredge', 'dredge_fast', 'nonrigid_accurate',
+                        'nonrigid_fast_and_accurate', 'rigid_fast', 'kilosort_like']
+
+            case 'scheme':
+                # case is the sorting scheme
+                return ['1', '2', '3']
+
+            case 'scheme2_training_recording_sampling_mode':
+                # case is the scheme 2 training sampling mode (mountainsort5)
+                return ['initial', 'uniform']
+
+            case 'torch_device':
+                # case is the torch device (kilosort4)
+                return ['auto', 'cuda', 'cpu']
+
+            case 'version':
+                # case is the ironclust version (ironclust)
+                return ['1', '2']
+
     def get_para_label(self, p_fld, s_type):
 
         pass
@@ -868,4 +1060,23 @@ class SpikeSortPara(QObject):
 
         pass
 
+    def setup_para_field(self, ss_info, value, desc):
 
+        return {
+            # common parameter fields
+            'value': v,
+            'label': ss_info['label'],
+            'type': ss_info['type'],
+            'desc': desc,
+
+            # numerical fields
+            'min': 0,
+            'max': inf,
+            'isint': ss_info['type'] in ['group_edit_int', 'edit_int'],
+
+            # combobox fields
+            'list': [],
+
+            # children parameter fields (dictionaries)
+            'children': [],
+        }

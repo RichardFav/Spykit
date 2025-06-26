@@ -1,298 +1,298 @@
 Parameter,Label,Type
-acg_threshold,ACG Threshold Level,Edit (Float)
-add_if_nearer_than,Min Electrode Group Distance (um),Edit (Float)
-adjacency_radius,Channel Neighbourhood Radius (um),Edit (Float)
-AHP_thr,Min Spike AHP Threshold,Edit (Float)
-allow_single_cluster,Allow Single Cluster?,Checkbox
-alignment_window,Inter-Channel Peak Sample Count,Edit (Int)
-amplitude_mode,Amplitude Mode,Combobox
-amp_avg_duration,Max Spike Amplitude Duration (ms),Edit (Float)
-apply_motion_correction,Apply Motion Correction?,Checkbox
-apply_preprocessing,Apply Preprocessing Steps?,Checkbox
-artifact_threshold,Artifact Threshold ,Edit (Float)
-AUCsplit,AUC Split Criterion Threshold,Edit (Float)
-auto_merge,Automatic Merging Threshold,Edit (Float)
-batch_sec_drift,Batch Clustering Duration (s),Edit (Float)
-batch_size,Data Batch Size (Frames),Edit (Int)
-binning_depth,Drift Correction Vertical Bin Size (um),Edit (Float)
-cache_preprocessing,Cache Preprocessing,Dictionary
-car,Use Common Average Referencing?,Checkbox
-ccg_threshold,CCG Threshold Level,Edit (Float)
-chunk_duration,Chunk Duration (s),Edit (String)
-clear_cache,Force Cache Clearing?,Checkbox
-clip_post,Post-Peak Cutout Duration (ms),Edit (Float)
-clip_pre,Pre-Peak Cutout Duration (ms),Edit (Float)
-clip_size,Min Waveform Sample Count,Edit (Int)
-cluster_downsampling,Cluster Downsample Fraction,Edit (Float)
-cluster_neighbors,Cluster Nearest Neighbour Count,Edit (Int)
-clusterer,Cluster Selection Method,Combobox
-clusterer_kwargs,Clustering Parameters,Dictionary
-clustering,Clustering Parameters,Dictionary
-clustering_alpha,Waveform PC Feature Threshold,Edit (Float)
-clustering_bandwidth,Cluster Meanshift Bandwidth (um),Edit (Float)
-clustering_bin_seeding,Use Clustering Bin Seeding?,Checkbox
-clustering_chunk,Initial Clustering Estimate Period (s),GroupEditbox (Int)
-clustering_max_elts,Clustering Max Event per Electrode,Edit (Int)
-clustering_min_bin_freq,Min Spikes per Bin,Edit (Int)
-clustering_n_jobs,Clustering Job Count,Edit (Int)
-cluster_selection_method,Cluster Selection Method,Combobox
-common_ref_removal,Remove Median Common Reference,Checkbox
-common_ref_type,Common Average Reference Method,Combobox
-common_reference,Common Average Reference Method,Combobox
-core_dist_n_jobs,Clustering Job Count,Edit (Int)
-debug,Keep Internal Data Structures?,Checkbox
-decay_filtering,Exclude Duplicate Spikes?,Checkbox
-decay_ratio,Spatial Decay Rate,Edit (Float)
-delete_cache,Delete Cache?,Checkbox
-delete_recording_dat,Delete Recording Data File?,Checkbox
-delete_temporary_recording,Delete Temporary Files?,Checkbox
-delta_cut,Cluster Detection Threshold,Edit (Float)
-denoise,Use Denoise Filter?,Checkbox
-detect_filter_fmax,Detection Low-Pass Cutoff Freq (Hz),Edit (Float)
-detect_filter_fmin,Detection High-Pass Cutoff Freq (Hz),Edit (Float)
-detect_filter_order,Detection Filter Order,Edit (Int)
-detect_interval,Min Inter-Event Duration (Frames),Edit (Int)
-detect_sign,Detection Sign,Combobox
-detect_threshold,Spike Detection Threshold,Edit (Float)
-detect_time_radius_msec,Spike Refractory Period (ms),Edit (Float)
-detection,Detection Parameters,Dictionary
-deterministic_mode,Use Deterministic Mode?,Checkbox
-dmin,Template Vertical Size (um),Edit (Float)
-dminx,Template Horizontal Size (um),Edit (Float)
-do_CAR,Use Common Average Referencing?,Checkbox
-do_correction,Apply Drift Correction?,Checkbox
-do_filter,Use Bandpass Filter?,Checkbox
-do_merge,Apply Merging?,Checkbox
-do_whitening,Use Whitening?,Checkbox
-drift_smoothing,Drift Gaussian Smoothing Factor,GroupEditbox (Float)
+acg_threshold,ACG Threshold Level,edit_float
+add_if_nearer_than,Min Electrode Group Distane,edit_float
+adjacency_radius,Channel Neighbourhood Radius (um),edit_float
+AHP_thr,Min Spike AHP Threshold,edit_float
+allow_single_cluster,Allow Single Cluster?,checkbox
+alignment_window,Inter-Channel Peak Sample Count,edit_int
+amplitude_mode,Amplitude Mode,combobox
+amp_avg_duration,Max Spike Amplitude Duration (ms),edit_float
+apply_motion_correction,Apply Motion Correction?,checkbox
+apply_preprocessing,Apply Preprocessing Steps?,checkbox
+artifact_threshold,Artifact Threshold ,edit_float
+AUCsplit,AUC Split Criterion Threshold,edit_float
+auto_merge,Automatic Merging Threshold,edit_float
+batch_sec_drift,Batch Clustering Duration (s),edit_float
+batch_size,Data Batch Size (Frames),edit_int
+binning_depth,Drift Correction Vertical Bin Size (um),edit_float
+cache_preprocessing,Cache Preprocessing,dict
+car,Use Common Average Referencing?,checkbox
+ccg_threshold,CCG Threshold Level,edit_float
+chunk_duration,Chunk Duration (s),edit_string
+clear_cache,Force Cache Clearing?,checkbox
+clip_post,Post-Peak Cutout Duration (ms),edit_float
+clip_pre,Pre-Peak Cutout Duration (ms),edit_float
+clip_size,Min Waveform Sample Count,edit_int
+cluster_downsampling,Cluster Downsample Fraction,edit_float
+cluster_neighbors,Cluster Nearest Neighbour Count,edit_int
+clusterer,Cluster Selection Method,combobox
+clusterer_kwargs,Clustering Parameters,dict
+clustering,Clustering Parameters,dict
+clustering_alpha,Waveform PC Feature Threshold,edit_float
+clustering_bandwidth,Cluster Meanshift Bandwidth (um),edit_float
+clustering_bin_seeding,Use Clustering Bin Seeding?,checkbox
+clustering_chunk,Initial Clustering Estimate Period (s),group_edit_int
+clustering_max_elts,Clustering Max Event per Electrode,edit_int
+clustering_min_bin_freq,Min Spikes per Bin,edit_int
+clustering_n_jobs,Clustering Job Count,edit_int
+cluster_selection_method,Cluster Selection Method,combobox
+common_ref_removal,Remove Median Common Reference,checkbox
+common_ref_type,Common Average Reference Method,combobox
+common_reference,Common Average Reference Method,combobox
+core_dist_n_jobs,Clustering Job Count,edit_int
+debug,Keep Internal Data Structures?,checkbox
+decay_filtering,Exclude Duplicate Spikes?,checkbox
+decay_ratio,Spatial Decay Rate,edit_float
+delete_cache,Delete Cache?,checkbox
+delete_recording_dat,Delete Recording Data File?,checkbox
+delete_temporary_recording,Delete Temporary Files?,checkbox
+delta_cut,Cluster Detection Threshold,edit_float
+denoise,Use Denoise Filter?,checkbox
+detect_filter_fmax,Detection Low-Pass Cutoff Freq (Hz),edit_float
+detect_filter_fmin,Detection High-Pass Cutoff Freq (Hz),edit_float
+detect_filter_order,Detection Filter Order,edit_int
+detect_interval,Min Inter-Event Duration (Frames),edit_int
+detect_sign,Detection Sign,combobox
+detect_threshold,Spike Detection Threshold,edit_float
+detect_time_radius_msec,Spike Refractory Period (ms),edit_float
+detection,Detection Parameters,dict
+deterministic_mode,Use Deterministic Mode?,checkbox
+dmin,Template Vertical Size (um),edit_float
+dminx,Template Horizontal Size (um),edit_float
+do_CAR,Use Common Average Referencing?,checkbox
+do_correction,Apply Drift Correction?,checkbox
+do_filter,Use Bandpass Filter?,checkbox
+do_merge,Apply Merging?,checkbox
+do_whitening,Use Whitening?,checkbox
+drift_smoothing,Drift Gaussian Smoothing Factor,group_edit_float
 dtype,Data Type,??
-duplicate_spike_ms,Spike Refractory Period (ms),Edit (Float)
-enable_detect_filter,Use Detection Filter?,Checkbox
-enable_sort_filter,Use Sorting Filter?,Checkbox
-exclude_sweep_ms,Exclusion Sweep Duration (ms),Edit (Float)
-extract_s_after,Post-Peak Cutout Duration (Frames),Edit (Int)
-extract_s_before,Pre-Peak Cutout Duration (Frames),Edit (Int)
-feature_type,Extraction Feature Type,Combobox
-features,Feature Parameters,Dictionary
-fft_thresh,FFT Noise Peak Threshold,Edit (Float)
-fft_thresh_low,FFT Noise Peak Lower Threshold,Edit (Float)
-fGpu,Enable GPU Usage?,Checkbox
-filter,Use Filtering?,Checkbox
-filter_detect_type,Detection Filter Type,Combobox
-sort_filter_order,Sorting Filter Order,Edit (Int)
-filter_type,Filter Type,Combobox
-filtering,Filtering Parameters,Dictionary
-FirstMatchFactor,First Match Factor,Edit (Float)
-fParfor,Use Parfor Loop?,Checkbox
-freq_max,Low-Pass Cutoff Freq (Hz),Edit (Float)
-freq_min,High-Pass Cutoff Freq (Hz),Edit (Float)
-fshigh,High-Pass Cutoff Freq (Hz),Edit (Float)
-fslow,Low-Pass Cutoff Freq (Hz),Edit (Float)
-ftype,Filtering Type,Combobox
-gain,Signal Gain Factor,Edit (Float)
-general,General Parameters,Dictionary
-generate_phy,Generate Phys File?,Checkbox
-genericSpkTh,Template Crossing Threshold,Edit (Float)
-gpu_id,GPU ID,Edit (Int)
-highpass_cutoff,Butterworth High-Pass Cutoff Freq (Hz),Edit (Float)
-index_maximum,Max Peak Index Sample Count,Edit (Int)
-indices_per_spike,Sample per Spike,Edit (Int)
-inner_radius,Spike Neighbourhood Radius (um),Edit (Float)
-interpolation,Use Spike Interpolation?,Checkbox
-invert_sign,Invert Data Sign?,Checkbox
-job_kwargs,Job Arguments,Dictionary
-keep_good_only,Keep Good Units Only?,Checkbox
-knn,KNN Count,Edit (Int)
-lam,Amplitude Penalty Importance,Edit (Int)
-left_cutout_time,Pre-Peak Cutout Duration (s),Edit (Float)
-loc_range,Local Minima Window Size,GroupEditbox (Int)
-localize,Perform Spike Localisation?,Checkbox
-long_range,Spatial Neighbourhood Size,GroupEditbox (Int)
-loop_mode,Loop Mode,Combobox
-low_memory,Low Memory Settings,Checkbox
-lowpass,Enable Internal Low-Pass Filtering?,Checkbox
-margin_ms,Temporal Border Margin (ms),Edit (Float)
-matching,Matching Parameter,Dictionary
-max_channel_distance,Max Channel Distance (um),Edit (Float)
-max_cluster_subset,Max Clustering Subset Size,Edit (Int)
-max_distance_um,Max Merge Distance (um),Edit (Float)
-max_distance_within_group,Max Electrode Group Distance,Edit (Float)
-max_el_per_group,Max Channels per Electrode,Edit (Int)
-max_peels,Max Iteration Count,Edit (Int)
-max_spike_duration,Max Spike Duration (s),Edit (Float)
-max_spikes_per_unit,Max Spike Count,Edit (Int)
-max_spk,Max Spike Count,Edit (Int)
-MaxClustersPerTemp,Max Cluster Count,Edit (Int)
-MaxDistMatchGrouping,Max Cluster Distance,Edit (Float)
-maxtemp,Max Calculated Temperature,Edit (Float)
-memory_limit,Memory Limit,Edit (Float)
-merge_overlap_thresh,KNN Overlap Merge Threshold,Edit (Float)
-merge_radius_um,Merge Threshold Radius (um),Edit (Float)
-merge_spikes,Use Automatic Merging?,Checkbox
-merge_thresh,Automatic Merging Threshold,Edit (Float)
-merge_thresh_cc,Cross-Correlogram Merge Threshold,Edit (Float)
-merging,Merging Parameters,Dictionary
-method,Method,Combobox
-method_kwargs,Method Arguments,Dictionary
-min_avg_amp,Min Spike Amplitude,Edit (Float)
-min_clus,Min Cluster Size Increase,Edit (Float)
-min_cluster_size,Min Cluster Size,Edit (Int)
-min_count,Min Cluster Size,Edit (Int)
-min_el_per_group,Min Channels per Electrode,Edit (Int)
-min_n_peaks,Min Selection Peak Count,Edit (Int)
-min_samples,Min Sample Count,Edit (Int)
-min_template_size,Min Universal Std Dev,Edit (Float)
-minFR,Minimum Channel Fire Rate,Edit (Float)
-minfr_goodchannels,Minimum Good Channel Fire Rate,Edit (Float)
-MinInputSizeRecluster,Min Recluster Spike Count,Edit (Int)
-MinSpikesPerClusterMultiSelect,Min Spikes per Cluster,Edit (Int)
-mintemp,Min Calculated Temperature,Edit (Float)
-mintemp,Min Calculated Temperature,Edit (Float)
-mode,Mode,Combobox
-momentum,Averaging Sample Size,GroupEditbox (Float)
-motion_correction,Motion Correction Parameters,Dictionary
-multi_processing,Use Multi-Core Processing?,Checkbox
-multi_units_only,Track Multi-Unit Activity Only?,Checkbox
-ms_before,Pre-Peak Cutout Duration (ms),Edit (Float)
-ms_after,Post-Peak Cutout Duration (ms),Edit (Float)
-n_components,PCA Dimension Count,Edit (Int)
-n_features_per_channel,PCA Feature per Channel,Edit (Int)
-n_gpu_processors,GPU Processor Count,Edit (Int)
-n_jobs,File Save Job Count,Edit (Int)
-n_pc_dims,PCA Dimension Count,Edit (Int)
-n_pcs,Spike Extraction Feature Count,Edit (Int)
-n_processors,CPU Processor Count,Edit (Int)
-n_sec_chunk,Processing Chunk Duration (s),Edit (Float)
-n_sec_chunk_gpu_deconv,GPU Deconvolution Chunk Duration (s),Edit (Float)
-n_sec_chunk_gpu_detect,GPU Detection Chunk Duration (s),Edit (Float)
-n_templates,Single-Channel Template Count,Edit (Int)
-nblocks,Probe Registation Block Count,Edit (Int)
-nearest_chans,Detection Nearest Channel Count,Edit (Int)
-nearest_templates,Detection Nearest Template Count,Edit (Int)
-neighbor_radius,Channel Neighbourhood Radius (um),Edit (Float)
-neural_nets_path,Neural Net File Path,Filespec
-neuron_discover,Recluster During Deconvolution?,Checkbox
-Nfilt,Cluster Count,Edit (Int)
-nfilt_factor,Max Good Channel Cluster Count,Edit (Int)
-npca_per_channel,PCA Features per Channel,Edit (Int)
-npca_per_subdivision,PCA Features per Subdivision,Edit (Int)
-nPCs,PCA Dimension Count,Edit (Int)
-n_component,PCA Dimension Count,Edit (Int)
-n_peaks_per_channel,Peak Count per Channel,Edit (Int)
-nRepeat_merge,Merge Repeat Count,Edit (Int)
-nSites_whiten,Whitening Channel Range,Edit (Int)
-nskip,Whitening Matrix Batch Stride,Edit (Int)
-NT,Batch Size,Edit (Int)
-nt,Waveform Sample Count,Edit (Int)
-nt0,Waveform Size (Frames),Edit (Int)
-nt0min,Waveform Alignment Index,Edit (Int)
-ntbuff,Symmetrical Buffer Size,Edit (Int)
-num_starting_clusters,Initial Cluster Count,Edit (Int)
-num_workers,CPU Processor Count,Edit (Int)
-nup,Interpolation Factor,Edit (Int)
-out_file,Output Filename,Filespec
-output_filename,Output Filename,Filespec
-parfor,Use Matlab Parfor?,Checkbox
-pc_per_chan,PCA Dimension Count,Edit (Int)
-pca_n_waveforms_max,Max PCA Waveform Count,Edit (Int)
-pca_ncomponents,PCA Dimension Count,Edit (Int)
-pca_whiten,Use Whitening?,Checkbox
-peak_jitter,Max Peak Misalignment Duration (ms),Edit (Float)
-peak_sign,Detection Sign,Combobox
-perform_drift_registration,Apply Drift Correction?,Checkbox
-phy_percent_spikes,Phys Processing Spike Ratio,Edit (Float)
-position_limit,Channel Neighbourhood Radius (um),Edit (Float)
-post_merge_mode,Enable Post Merge Mode?,Checkbox
-preclust_threshold,Pre-Clustering Crossing Threshold,Edit (Float)
-preprocessing_function,Pre-Processing Function,Combobox
-prm_template_name,Template File Name,Filespec
-progress_bar,Show Terminal Progress Bar?,Checkbox
-projection_threshold,Project Threshold,GroupEditbox
-radius_um,Channel Neighbourhood Radius (um),Edit (Float)
-ReclusterClusters,Recluster Large Clusters?,Checkbox
-recursive_depth,Clustering Recursion Depth,Edit (Int)
-RecursiveDepth,Clustering Recursion Depth,Edit (Int)
-ref_ms,Spike Refractory Period (ms),Edit (Float)
-regularize,Regularise Whitening?,Checkbox
-reorder,Reorder Batches for Drift Correction?,Checkbox
-rescale,Automatically Rescale Data?,Checkbox
-rescale_value,Data Rescale Factor,Edit (Float)
-right_cutout_time,Post-Peak Cutout Duration (s),Edit (Float)
-rise_duration,Max Spike Rise Time (ms),Edit (Float)
-save_array,Save Intermediate Arrays?,Checkbox
-save_drift_spike_detections,Save Drift Correction Spikes?,Checkbox
-save_extra_vars,Save Extra Variables,Checkbox
-save_preprocessed_copy,Save Preprocessed Data?,Checkbox
-save_rez_to_mat,Save Rez Internal Struct?,Checkbox
-save_shape,Save Spike Shapes?,Checkbox
-save_temp_files,Save Temporary Files?,Checkbox
-scaleproc,Whitening Scale Factor,Edit (Int)
-scales,Wavelet Decomposition Levels,Edit (Int)
-scheme,Sorting Scheme,Edit (Int)
-scheme1_detect_channel_radius,Scheme 1 Exclusion Radius,Edit (Float)
-scheme2_detect_channel_radius,Scheme 2/Phase 2 Exclusion Radius,Edit (Float)
-scheme2_max_num_snippets_per_training_batch,Max Training Batch Snipper Count,Edit (Int)
-scheme2_phase1_detect_channel_radius,Scheme 2/Phase 1 Exclusion Radius,Edit (Float)
-scheme2_training_duration_sec,Scheme 2 Training Duration (s),Edit (Float)
-scheme2_training_recording_sampling_mode,Scheme 2 Recording Sample Mode,Combobox
-scheme3_block_duration_sec,Scheme 3 Block Duration (s),Edit (Float)
-SecondMatchFactor,Second Match Factor,Edit (Float)
-seed,Random Number Generator Seed,Edit (Int)
-selection,Selection Parameters,Dictionary
-sig,Spatial Smoothing Constant (um),Edit (Float)
-sig_datashift,Gaussian Smoothing Std Dev,Edit (Float)
-sig_interp,Spatial Smoothing Constant (um),Edit (Float)
-sigmaMask,Residual Variance Spatial Constant (um),Edit (Float)
-skip_kilosort_preprocessing,Skip Kilosort Preprocessing?,Checkbox
-snippet_mask_radius,Snippet Mask Radius (um),Edit (Float)
-snippet_T1,Pre-Peak Cutout Duration (Frames),Edit (Int)
-snippet_T2,Post-Peak Cutout Duration (Frames),Edit (Int)
-sort_filter_fmax,Sorting Low-Pass Cutoff Freq (Hz),Edit (Float)
-sort_filter_fmin,Sorting High-Pass Cutoff Freq (Hz),Edit (Float)
-sort_filter_order,Sorting Filter Order,Edit (Int)
-sort_mode,Enable Sort Mode?,Checkbox
-sparsity,Sparsity Parameters,Dictionary
-spatial_radius,Spike Neighbourhood Radius (um),Edit (Float)
-spike_duration,Max Spike Duration (ms),Edit (Float)
-sparsity_threshold,Sparsity Threshold,Edit (Float)
-spike_size_ms,Template Duration (s),Edit (Float)
-spkTh,Spike Detection Threshold,Edit (Float)
-split_radius_um,Split Radius Threshold (um),Edit (Float)
-stable_mode,Stabilise Data Output?,Checkbox
-stdmax,Artifact Removal Threshold ,Edit (Float)
-step_sec_drift,Anatomical Similarity Duration (s),Edit (Float)
-svd,SVD Parameters,Dictionary
-tempdir,Temporary Output Directory,Filespec
-template_sdnum,Max Cluster Radius (Std Dev),Edit (Float)
-template_sizes,Universal Spike Template Sizes,Edit (Int)
-template_update_time,Template Update Duration (s),Edit (Float)
-template_width_ms,Template Width (ms),Edit (Float)
-templates,Template Parameters,Dictionary
-templates_from_data,Estimate Templates from Data?,Checkbox
-templates_from_svd,Compute Template from SVD?,Checkbox
-templateScaling,Template Scale Factor,Edit (Int)
-Th,Projection Threshold,GroupEditbox
-Th_learned,Learned Template Spike Threshold,Edit (Float)
-Th_single_ch,Pre-Clustering Crossing Threshold,Edit (Float)
-Th_universal,Universal Template Spike Threshold,Edit (Float)
-ThPre,Pre-Clustering Crossing Threshold,Edit (Float)
-threshold,Spike Detection Threshold,Edit (Float)
-threshold_diff,Difference Threshold,Edit (Float)
-threshold_strong_std_factor,Strong Spike Detection Threshold,Edit (Float)
-threshold_weak_std_factor,Weak Spike Detection Threshold,Edit (Float)
-torch_device,Torch Device,Combobox
-update_templates,Update Template?,Checkbox
-upsampling_factor,Upsample Factor,Edit (Int)
-use_binary_file,Use Binary File,Checkbox
-useGPU,Enable GPU Usage?,Checkbox
-verbose,Show Terminal Progress Bar?,Checkbox
-version,IRC Command Version,Combobox
-w_post,Post-Peak Cutout Duration (Frames),Edit (Int)
-w_pre,Pre-Peak Cutout Duration (Frames),Edit (Int)
-wave_length,Waveform Size (Frames),Edit (Int)
-waveforms,Waveform Parameters,Dictionary
-whiten,Use Whitening?,Checkbox
-whitening,Whitening Parameters,Dictionary
-whitening_max_elts,Whitening Max Event per Electrode,Edit (Int)
-whitening_range,Whitening Matrix Channel Range,Edit (Int)
-whiteningRange,Whitening Channel Range,Edit (Int)
+duplicate_spike_ms,Spike Refractory Period (ms),edit_float
+enable_detect_filter,Use Detection Filter?,checkbox
+enable_sort_filter,Use Sorting Filter?,checkbox
+exclude_sweep_ms,Exclusion Sweep Duration (ms),edit_float
+extract_s_after,Post-Peak Cutout Duration (Frames),edit_int
+extract_s_before,Pre-Peak Cutout Duration (Frames),edit_int
+feature_type,Extraction Feature Type,combobox
+features,Feature Parameters,dict
+fft_thresh,FFT Noise Peak Threshold,edit_float
+fft_thresh_low,FFT Noise Peak Lower Threshold,edit_float
+fGpu,Enable GPU Usage?,checkbox
+filter,Use Filtering?,checkbox
+filter_detect_type,Detection Filter Type,combobox
+sort_filter_order,Sorting Filter Order,edit_int
+filter_type,Filter Type,combobox
+filtering,Filtering Parameters,dict
+FirstMatchFactor,First Match Factor,edit_float
+fParfor,Use Parfor Loop?,checkbox
+freq_max,Low-Pass Cutoff Freq (Hz),edit_float
+freq_min,High-Pass Cutoff Freq (Hz),edit_float
+fshigh,High-Pass Cutoff Freq (Hz),edit_float
+fslow,Low-Pass Cutoff Freq (Hz),edit_float
+ftype,Filtering Type,combobox
+gain,Signal Gain Factor,edit_float
+general,General Parameters,dict
+generate_phy,Generate Phys File?,checkbox
+genericSpkTh,Template Crossing Threshold,edit_float
+gpu_id,GPU ID,edit_int
+highpass_cutoff,Butterworth High-Pass Cutoff Freq (Hz),edit_float
+index_maximum,Max Peak Index Sample Count,edit_int
+indices_per_spike,Sample per Spike,edit_int
+inner_radius,Spike Neighbourhood Radius (um),edit_float
+interpolation,Use Spike Interpolation?,checkbox
+invert_sign,Invert Data Sign?,checkbox
+job_kwargs,Job Arguments,dict
+keep_good_only,Keep Good Units Only?,checkbox
+knn,KNN Count,edit_int
+lam,Amplitude Penalty Importance,edit_int
+left_cutout_time,Pre-Peak Cutout Duration (s),edit_float
+loc_range,Local Minima Window Size,group_edit_int
+localize,Perform Spike Localisation?,checkbox
+long_range,Spatial Neighbourhood Size,group_edit_int
+loop_mode,Loop Mode,combobox
+low_memory,Low Memory Settings,checkbox
+lowpass,Enable Internal Low-Pass Filtering?,checkbox
+margin_ms,Temporal Border Margin (ms),edit_float
+matching,Matching Parameter,dict
+max_channel_distance,Max Channel Distance (um),edit_float
+max_cluster_subset,Max Clustering Subset Size,edit_int
+max_distance_um,Max Merge Distance (um),edit_float
+max_distance_within_group,Max Electrode Group Distance,edit_float
+max_el_per_group,Max Channels per Electrode,edit_int
+max_peels,Max Iteration Count,edit_int
+max_spike_duration,Max Spike Duration (s),edit_float
+max_spikes_per_unit,Max Spike Count,edit_int
+max_spk,Max Spike Count,edit_int
+MaxClustersPerTemp,Max Cluster Count,edit_int
+MaxDistMatchGrouping,Max Cluster Distance,edit_float
+maxtemp,Max Calculated Temperature,edit_float
+memory_limit,Memory Limit,edit_float
+merge_overlap_thresh,KNN Overlap Merge Threshold,edit_float
+merge_radius_um,Merge Threshold Radius (um),edit_float
+merge_spikes,Use Automatic Merging?,checkbox
+merge_thresh,Automatic Merging Threshold,edit_float
+merge_thresh_cc,Cross-Correlogram Merge Threshold,edit_float
+merging,Merging Parameters,dict
+method,Method,combobox
+method_kwargs,Method Arguments,dict
+min_avg_amp,Min Spike Amplitude,edit_float
+min_clus,Min Cluster Size Increase,edit_float
+min_cluster_size,Min Cluster Size,edit_int
+min_count,Min Cluster Size,edit_int
+min_el_per_group,Min Channels per Electrode,edit_int
+min_n_peaks,Min Selection Peak Count,edit_int
+min_samples,Min Sample Count,edit_int
+min_template_size,Min Universal Std Dev,edit_float
+minFR,Minimum Channel Fire Rate,edit_float
+minfr_goodchannels,Minimum Good Channel Fire Rate,edit_float
+MinInputSizeRecluster,Min Recluster Spike Count,edit_int
+MinSpikesPerClusterMultiSelect,Min Spikes per Cluster,edit_int
+mintemp,Min Calculated Temperature,edit_float
+mintemp,Min Calculated Temperature,edit_float
+mode,Mode,combobox
+momentum,Averaging Sample Size,group_edit_float
+motion_correction,Motion Correction Parameters,dict
+multi_processing,Use Multi-Core Processing?,checkbox
+multi_units_only,Track Multi-Unit Activity Only?,checkbox
+ms_before,Pre-Peak Cutout Duration (ms),edit_float
+ms_after,Post-Peak Cutout Duration (ms),edit_float
+n_components,PCA Dimension Count,edit_int
+n_features_per_channel,PCA Feature per Channel,edit_int
+n_gpu_processors,GPU Processor Count,edit_int
+n_jobs,File Save Job Count,edit_int
+n_pc_dims,PCA Dimension Count,edit_int
+n_pcs,Spike Extraction Feature Count,edit_int
+n_processors,CPU Processor Count,edit_int
+n_sec_chunk,Processing Chunk Duration (s),edit_float
+n_sec_chunk_gpu_deconv,GPU Deconvolution Chunk Duration (s),edit_float
+n_sec_chunk_gpu_detect,GPU Detection Chunk Duration (s),edit_float
+n_templates,Single-Channel Template Count,edit_int
+nblocks,Probe Registation Block Count,edit_int
+nearest_chans,Detection Nearest Channel Count,edit_int
+nearest_templates,Detection Nearest Template Count,edit_int
+neighbor_radius,Channel Neighbourhood Radius (um),edit_float
+neural_nets_path,Neural Net File Path,filespec
+neuron_discover,Recluster During Deconvolution?,checkbox
+Nfilt,Cluster Count,edit_int
+nfilt_factor,Max Good Channel Cluster Count,edit_int
+npca_per_channel,PCA Features per Channel,edit_int
+npca_per_subdivision,PCA Features per Subdivision,edit_int
+nPCs,PCA Dimension Count,edit_int
+n_component,PCA Dimension Count,edit_int
+n_peaks_per_channel,Peak Count per Channel,edit_int
+nRepeat_merge,Merge Repeat Count,edit_int
+nSites_whiten,Whitening Channel Range,edit_int
+nskip,Whitening Matrix Batch Stride,edit_int
+NT,Batch Size,edit_int
+nt,Waveform Sample Count,edit_int
+nt0,Waveform Size (Frames),edit_int
+nt0min,Waveform Alignment Index,edit_int
+ntbuff,Symmetrical Buffer Size,edit_int
+num_starting_clusters,Initial Cluster Count,edit_int
+num_workers,CPU Processor Count,edit_int
+nup,Interpolation Factor,edit_int
+out_file,Output Filename,filespec
+output_filename,Output Filename,filespec
+parfor,Use Matlab Parfor?,checkbox
+pc_per_chan,PCA Dimension Count,edit_int
+pca_n_waveforms_max,Max PCA Waveform Count,edit_int
+pca_ncomponents,PCA Dimension Count,edit_int
+pca_whiten,Use Whitening?,checkbox
+peak_jitter,Max Peak Misalignment Duration (ms),edit_float
+peak_sign,Detection Sign,combobox
+perform_drift_registration,Apply Drift Correction?,checkbox
+phy_percent_spikes,Phys Processing Spike Ratio,edit_float
+position_limit,Channel Neighbourhood Radius (um),edit_float
+post_merge_mode,Enable Post Merge Mode?,checkbox
+preclust_threshold,Pre-Clustering Crossing Threshold,edit_float
+preprocessing_function,Pre-Processing Function,combobox
+prm_template_name,Template File Name,filespec
+progress_bar,Show Terminal Progress Bar?,checkbox
+projection_threshold,Project Threshold,group_edit_int
+radius_um,Channel Neighbourhood Radius (um),edit_float
+ReclusterClusters,Recluster Large Clusters?,checkbox
+recursive_depth,Clustering Recursion Depth,edit_int
+RecursiveDepth,Clustering Recursion Depth,edit_int
+ref_ms,Spike Refractory Period (ms),edit_float
+regularize,Regularise Whitening?,checkbox
+reorder,Reorder Batches for Drift Correction?,checkbox
+rescale,Automatically Rescale Data?,checkbox
+rescale_value,Data Rescale Factor,edit_float
+right_cutout_time,Post-Peak Cutout Duration (s),edit_float
+rise_duration,Max Spike Rise Time (ms),edit_float
+save_array,Save Intermediate Arrays?,checkbox
+save_drift_spike_detections,Save Drift Correction Spikes?,checkbox
+save_extra_vars,Save Extra Variables,checkbox
+save_preprocessed_copy,Save Preprocessed Data?,checkbox
+save_rez_to_mat,Save Rez Internal Struct?,checkbox
+save_shape,Save Spike Shapes?,checkbox
+save_temp_files,Save Temporary Files?,checkbox
+scaleproc,Whitening Scale Factor,edit_int
+scales,Wavelet Decomposition Levels,edit_int
+scheme,Sorting Scheme,edit_int
+scheme1_detect_channel_radius,Scheme 1 Exclusion Radius,edit_float
+scheme2_detect_channel_radius,Scheme 2/Phase 2 Exclusion Radius,edit_float
+scheme2_max_num_snippets_per_training_batch,Max Training Batch Snipper Count,edit_int
+scheme2_phase1_detect_channel_radius,Scheme 2/Phase 1 Exclusion Radius,edit_float
+scheme2_training_duration_sec,Scheme 2 Training Duration (s),edit_float
+scheme2_training_recording_sampling_mode,Scheme 2 Recording Sample Mode,combobox
+scheme3_block_duration_sec,Scheme 3 Block Duration (s),edit_float
+SecondMatchFactor,Second Match Factor,edit_float
+seed,Random Number Generator Seed,edit_int
+selection,Selection Parameters,dict
+sig,Spatial Smoothing Constant (um),edit_float
+sig_datashift,Gaussian Smoothing Std Dev,edit_float
+sig_interp,Spatial Smoothing Constant (um),edit_float
+sigmaMask,Residual Variance Spatial Constant (um),edit_float
+skip_kilosort_preprocessing,Skip Kilosort Preprocessing?,checkbox
+snippet_mask_radius,Snippet Mask Radius (um),edit_float
+snippet_T1,Pre-Peak Cutout Duration (Frames),edit_int
+snippet_T2,Post-Peak Cutout Duration (Frames),edit_int
+sort_filter_fmax,Sorting Low-Pass Cutoff Freq (Hz),edit_float
+sort_filter_fmin,Sorting High-Pass Cutoff Freq (Hz),edit_float
+sort_filter_order,Sorting Filter Order,edit_int
+sort_mode,Enable Sort Mode?,checkbox
+sparsity,Sparsity Parameters,dict
+spatial_radius,Spike Neighbourhood Radius (um),edit_float
+spike_duration,Max Spike Duration (ms),edit_float
+sparsity_threshold,Sparsity Threshold,edit_float
+spike_size_ms,Template Duration (s),edit_float
+spkTh,Spike Detection Threshold,edit_float
+split_radius_um,Split Radius Threshold (um),edit_float
+stable_mode,Stabilise Data Output?,checkbox
+stdmax,Artifact Removal Threshold ,edit_float
+step_sec_drift,Anatomical Similarity Duration (s),edit_float
+svd,SVD Parameters,dict
+tempdir,Temporary Output Directory,filespec
+template_sdnum,Max Cluster Radius (Std Dev),edit_float
+template_sizes,Universal Spike Template Sizes,edit_int
+template_update_time,Template Update Duration (s),edit_float
+template_width_ms,Template Width (ms),edit_float
+templates,Template Parameters,dict
+templates_from_data,Estimate Templates from Data?,checkbox
+templates_from_svd,Compute Template from SVD?,checkbox
+templateScaling,Template Scale Factor,edit_int
+Th,Projection Threshold,group_edit_int
+Th_learned,Learned Template Spike Threshold,edit_float
+Th_single_ch,Pre-Clustering Crossing Threshold,edit_float
+Th_universal,Universal Template Spike Threshold,edit_float
+ThPre,Pre-Clustering Crossing Threshold,edit_float
+threshold,Spike Detection Threshold,edit_float
+threshold_diff,Difference Threshold,edit_float
+threshold_strong_std_factor,Strong Spike Detection Threshold,edit_float
+threshold_weak_std_factor,Weak Spike Detection Threshold,edit_float
+torch_device,Torch Device,combobox
+update_templates,Update Template?,checkbox
+upsampling_factor,Upsample Factor,edit_int
+use_binary_file,Use Binary File,checkbox
+useGPU,Enable GPU Usage?,checkbox
+verbose,Show Terminal Progress Bar?,checkbox
+version,IRC Command Version,combobox
+w_post,Post-Peak Cutout Duration (Frames),edit_int
+w_pre,Pre-Peak Cutout Duration (Frames),edit_int
+wave_length,Waveform Size (Frames),edit_int
+waveforms,Waveform Parameters,dict
+whiten,Use Whitening?,checkbox
+whitening,Whitening Parameters,dict
+whitening_max_elts,Whitening Max Event per Electrode,edit_int
+whitening_range,Whitening Matrix Channel Range,edit_int
+whiteningRange,Whitening Channel Range,edit_int
