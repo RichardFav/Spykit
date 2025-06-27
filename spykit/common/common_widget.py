@@ -1519,21 +1519,25 @@ class QEditButton(QWidget):
 
         # creates the layout widget
         self.layout = QHBoxLayout()
-        self.layout.setSpacing(1)
+        self.layout.setSpacing(0)
         self.layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(self.layout)
 
         # creates the label/combobox widget combo
         self.obj_edit = create_line_edit(None, file_path, align='left')
-        self.obj_button = create_combo_box(None, '...', font=self.font_but)
+        self.obj_but = create_push_button(None, '...', font=self.font_but)
 
+        # adds the sub-widgets to the main widget
         self.layout.addWidget(self.obj_edit)
-        self.layout.addWidget(self.obj_button)
-        self.obj_button.setFixedSize(b_sz, b_sz)
+        self.layout.addWidget(self.obj_but)
+
+        # sets the button properties
+        self.obj_but.setFixedSize(b_sz, b_sz)
+        self.obj_but.setStyleSheet("border: 1px solid black;")
 
     def connect(self, cb_fcn):
-        cb_fcn = functools.partial(cb_fcn, self.obj_button)
-        self.obj_button.editingFinished.connect(cb_fcn)
+        cb_fcn = functools.partial(cb_fcn, self.obj_but)
+        self.obj_but.clicked.connect(cb_fcn)
 
 # ----------------------------------------------------------------------------------------------------------------------
 

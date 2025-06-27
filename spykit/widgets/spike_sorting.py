@@ -19,7 +19,7 @@ from spikeinterface.sorters import (available_sorters, installed_sorters, get_so
 # pyqt6 module import
 from PyQt6.QtWidgets import (QMainWindow, QWidget, QFrame, QFormLayout, QVBoxLayout, QHBoxLayout, QGridLayout,
                              QLineEdit, QCheckBox, QTabWidget, QSizePolicy, QProgressBar, QTreeWidget, QTreeWidgetItem,
-                             QHeaderView, QComboBox)
+                             QHeaderView, QComboBox, QPushButton)
 from PyQt6.QtCore import pyqtSignal, QTimeLine, Qt, QObject
 from PyQt6.QtGui import QColor, QFont
 
@@ -661,17 +661,20 @@ class SpikeSorterTab(QTabWidget):
     tree_style = """    
         QTreeWidget {
             font: Arial 8px;
+            hover-background-color: transparent; /* Used on Windows */
+            selection-background-color: transparent; /* Used on Windows */            
         }
 
         QTreeWidget::item {
             height: 23px;
         }        
-
+        
         QTreeWidget::item:has-children {
             background: #A0A0A0;
             padding-left: 5px;
             color: white;
         }
+ 
     """
 
     def __init__(self, main_dlg, s_name):
@@ -884,7 +887,7 @@ class SpikeSorterTab(QTabWidget):
 
             case 'filespec':
                 # case is a checkbox
-                h_obj = cw.QEditButton(None, p_value, p_name, b_sz=self.item_row_size)
+                h_obj = cw.QEditButton(None, p_value, p_name, b_sz=self.item_row_size-2)
                 h_obj.obj_edit.setReadOnly(True)
 
                 # sets the object callback functions
