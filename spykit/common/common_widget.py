@@ -1504,6 +1504,40 @@ class QFileSpec(QGroupBox):
 # ----------------------------------------------------------------------------------------------------------------------
 
 """
+    QFileSpec:
+"""
+
+
+class QEditButton(QWidget):
+    font_but = create_font_obj(is_bold=True, size=10)
+
+    def __init__(self, parent=None, file_path=None, name=None, f_mode='*.*', b_sz=20):
+        super(QEditButton, self).__init__(parent)
+
+        if name is not None:
+            self.setObjectName(name)
+
+        # creates the layout widget
+        self.layout = QHBoxLayout()
+        self.layout.setSpacing(1)
+        self.layout.setContentsMargins(0, 0, 0, 0)
+        self.setLayout(self.layout)
+
+        # creates the label/combobox widget combo
+        self.obj_edit = create_line_edit(None, file_path, align='left')
+        self.obj_button = create_combo_box(None, '...', font=self.font_but)
+
+        self.layout.addWidget(self.obj_edit)
+        self.layout.addWidget(self.obj_button)
+        self.obj_button.setFixedSize(b_sz, b_sz)
+
+    def connect(self, cb_fcn):
+        cb_fcn = functools.partial(cb_fcn, self.obj_button)
+        self.obj_button.editingFinished.connect(cb_fcn)
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+"""
     HTMLDelegate:
 """
 

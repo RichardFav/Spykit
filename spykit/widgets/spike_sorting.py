@@ -18,8 +18,10 @@ from spikeinterface.sorters import (available_sorters, installed_sorters, get_so
 
 # pyqt6 module import
 from PyQt6.QtWidgets import (QMainWindow, QWidget, QFrame, QFormLayout, QVBoxLayout, QHBoxLayout, QGridLayout,
-                             QLineEdit, QCheckBox, QTabWidget, QSizePolicy, QProgressBar)
+                             QLineEdit, QCheckBox, QTabWidget, QSizePolicy, QProgressBar, QTreeWidget, QTreeWidgetItem,
+                             QHeaderView, QComboBox)
 from PyQt6.QtCore import pyqtSignal, QTimeLine, Qt, QObject
+from PyQt6.QtGui import QColor, QFont
 
 # widget dimensions
 x_gap = 5
@@ -139,7 +141,6 @@ class SpikeSortingDialog(QMainWindow):
 
         # REMOVE ME LATER
         self.tab_group_sort.currentWidget().findChild(QTabWidget).setCurrentIndex(1)
-        a = 1
 
     # ---------------------------------------------------------------------------
     # Class Property Widget Setup Functions
@@ -422,14 +423,6 @@ class SpikeSortingDialog(QMainWindow):
     # Widget Event Functions
     # ---------------------------------------------------------------------------
 
-    def checkbox_split_shank(self):
-
-        self.per_shank = self.checkbox_opt[0].checkState() == cf.chk_state[False]
-
-    def checkbox_concat_expt(self):
-
-        self.concat_runs = self.checkbox_opt[1].checkState() == cf.chk_state[False]
-
     def sort_tab_change(self):
 
         # resets the tab types
@@ -441,55 +434,13 @@ class SpikeSortingDialog(QMainWindow):
             # initialise the sorter tab (if not initalised)
             s_prop_t.setup_tab_objects()
 
-        # REMOVE ME LATER
-        a = 1
+    def checkbox_split_shank(self):
 
-    def prop_update(self, p_str, h_obj):
+        self.per_shank = self.checkbox_opt[0].checkState() == cf.chk_state[False]
 
-        # if manually updating elsewhere, then exit
-        if self.is_updating:
-            return
+    def checkbox_concat_expt(self):
 
-        if isinstance(h_obj, QCheckBox):
-            self.check_prop_update(h_obj, p_str)
-
-        elif isinstance(h_obj, QLineEdit):
-            self.edit_prop_update(h_obj, p_str)
-
-        # flag that the property has been updated
-        self.prop_updated.emit()
-
-    def check_prop_update(self, h_obj, p_str):
-
-        cf.set_multi_dict_value(self.s_props, p_str, h_obj.isChecked())
-
-    def edit_prop_update(self, h_obj, p_str):
-
-        # field retrieval
-        str_para = []
-        nw_val = h_obj.text()
-
-        if p_str in str_para:
-            # case is a string field
-            cf.set_multi_dict_value(self.s_props, p_str, nw_val)
-
-        else:
-            # determines if the new value is valid
-            chk_val = cf.check_edit_num(nw_val, min_val=0)
-            if chk_val[1] is None:
-                # case is the value is valid
-                cf.set_multi_dict_value(self.s_props, p_str, chk_val[0])
-
-            else:
-                # otherwise, reset the previous value
-                p_val_pr = self.s_props[p_str[0]][p_str[1]]
-                if (p_val_pr is None) or isinstance(p_val_pr, str):
-                    # case is the parameter is empty
-                    h_obj.setText('')
-
-                else:
-                    # otherwise, update the numeric string
-                    h_obj.setText('%g' % p_val_pr)
+        self.concat_runs = self.checkbox_opt[1].checkState() == cf.chk_state[False]
 
     def start_spike_sort(self):
 
@@ -575,7 +526,6 @@ class SpikeSortingDialog(QMainWindow):
         # retrieves the sub-group type
         h_tab_grp_sub = h_tab_sel.findChild(QTabWidget)
         self.s_type = h_tab_grp_sub.currentWidget().objectName()
-
 
     # ---------------------------------------------------------------------------
     # Worker Progress Functions
@@ -679,6 +629,50 @@ class RunSpikeSorting(QObject):
 
 
 class SpikeSorterTab(QTabWidget):
+    # table dimensions
+    x_gap = 5
+    hght_row = 25
+    item_row_size = 23
+
+    # array class fields
+    tree_hdr = ['Property', 'Value']
+
+    # value to label sign key
+    sign_v2l = {
+        -1: 'neg',
+        0: 'both',
+        1: 'pos',
+    }
+
+    # value to label sign key
+    sign_l2v = {
+        'neg': -1,
+        'both': 0,
+        'pos': 1,
+    }
+
+    # font objects
+    gray_col = QColor(160, 160, 160, 255)
+    item_child_font = cw.create_font_obj(8)
+    item_font = cw.create_font_obj(9, True, QFont.Weight.Bold)
+    lbl_align = cw.align_flag['right'] | cw.align_flag['vcenter']
+
+    # widget stylesheets
+    tree_style = """    
+        QTreeWidget {
+            font: Arial 8px;
+        }
+
+        QTreeWidget::item {
+            height: 23px;
+        }        
+
+        QTreeWidget::item:has-children {
+            background: #A0A0A0;
+            padding-left: 5px;
+            color: white;
+        }
+    """
 
     def __init__(self, main_dlg, s_name):
         super(SpikeSorterTab, self).__init__(main_dlg)
@@ -687,35 +681,398 @@ class SpikeSorterTab(QTabWidget):
         self.s_name = s_name
         self.main_dlg = main_dlg
 
-        # sets the main widget names
-        self.setObjectName(s_name)
+        # field retrieval
+        self.tree_prop = QTreeWidget(self)
+        self.tab_layout = QVBoxLayout(self)
 
         # other class fields
         self.s_props = None
+        self.n_grp, self.n_para = 0, 0
+        self.h_grp, self.h_para = {}, []
+
+        # boolean class fields
         self.is_init = False
+        self.is_updating = False
+
+        # initialises the class fields
+        self.init_class_fields()
+
+    # ---------------------------------------------------------------------------
+    # Class Widget Setup Functions
+    # ---------------------------------------------------------------------------
+
+    def init_class_fields(self):
+
+        # sets the layout propeties
+        self.tab_layout.setContentsMargins(0, 0, 0, 0)
+
+        # sets the main widget names
+        self.setLayout(self.tab_layout)
+        self.setObjectName(self.s_name)
 
     def setup_tab_objects(self):
 
         # retrieves the sorter properties
         self.s_props = self.main_dlg.ss_obj.setup_sorter_para(self.s_name)
 
-        a = 1
+        # sets the tree-view properties
+        self.tree_prop.setLineWidth(1)
+        self.tree_prop.setColumnCount(2)
+        self.tree_prop.setIndentation(12)
+        self.tree_prop.setItemsExpandable(True)
+        self.tree_prop.setStyleSheet(self.tree_style)
+        self.tree_prop.setHeaderLabels(self.tree_hdr)
+        self.tree_prop.setFrameStyle(QFrame.Shape.WinPanel | QFrame.Shadow.Plain)
+        self.tree_prop.setAlternatingRowColors(True)
+        self.tree_prop.setItemDelegateForColumn(0, cw.HTMLDelegate())
+
+        # determines the unique parameter class indices
+        p_fld = np.array(list(self.s_props.keys()))
+        p_class = [self.s_props[pf]['class'] for pf in p_fld]
+        p_grp, i_grp = np.unique(p_class, return_inverse=True)
+
+        # creates the table fields for each
+        for i, pg in enumerate(p_grp):
+            # determines the parameters within the current grouping
+            j_grp = np.where(i_grp == i)[0]
+            g_hdr = 'Unclassified' if (pg == 'nan') else pg
+
+            # creates the parent item
+            item = QTreeWidgetItem(self.tree_prop)
+
+            # sets the item properties
+            item.setText(0, g_hdr)
+            item.setFont(0, self.item_font)
+            item.setFirstColumnSpanned(True)
+            item.setExpanded(True)
+
+            # adds the tree widget item
+            self.tree_prop.addTopLevelItem(item)
+            for j, ps in enumerate(p_fld[j_grp]):
+                # creates the property name field
+                item_ch, obj_prop = self.create_child_tree_item(item, ps)
+
+                # sets the item properties
+                item_ch.setTextAlignment(0, self.lbl_align)
+                item.addChild(item_ch)
+
+                if obj_prop is not None:
+                    # adds the child tree widget item
+                    obj_prop.setFixedHeight(self.item_row_size)
+                    self.tree_prop.setItemWidget(item_ch, 1, obj_prop)
+
+        # adds the tree widget to the parent widget
+        self.tab_layout.addWidget(self.tree_prop)
+
+        # resizes the columns to fit, then resets to fixed size
+        tree_header = self.tree_prop.header()
+        tree_header.setDefaultAlignment(cf.align_type['center'])
+        tree_header.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
+        tree_header.updateSection(0)
+        tree_header.updateSection(1)
+        tree_header.setSectionResizeMode(QHeaderView.ResizeMode.Fixed)
 
         # updates the initialisation flag
         self.is_init = True
 
+    def create_child_tree_item(self, item_p, p_name, i_edit=None):
+
+        # REMOVE ME LATER
+        item_ch, h_obj = None, None
+
+        # retrieves the main property values
+        props = self.s_props[p_name]
+        p_type, p_value = props['type'], props['value']
+        p_desc = self.reshape_para_desc(props['desc'])
+
+        # if creating a group editbox item
+        if i_edit is None:
+            # case is the other parameter types
+            lbl_str = '{0}'.format(props['label'])
+
+        else:
+            # case is an editbox grouping
+            p_value = p_value[i_edit]
+            p_type = p_type.replace('group_', '')
+            lbl_str = 'Element #{0}'.format(i_edit + 1)
+
+        # initialisations
+        cb_fcn_base = pfcn(self.prop_update, p_name)
+
+        # creates the tree widget item
+        item_ch = QTreeWidgetItem(item_p)
+        item_ch.setText(0, lbl_str)
+        item_ch.setToolTip(0, p_desc)
+
+        match p_type:
+            case p_type if p_type in ['edit_float', 'edit_int', 'edit_string']:
+                # case is a lineedit
+                if p_type != 'edit_string':
+                    p_value = str(p_value)
+
+                # creates the lineedit widget
+                h_obj = cw.create_line_edit(None, str(p_value), font=self.item_child_font)
+                h_obj.setObjectName(p_name)
+
+                # sets the object callback functions
+                cb_fcn = pfcn(cb_fcn_base, h_obj)
+                h_obj.editingFinished.connect(cb_fcn)
+
+            case 'combobox':
+                # case is a combobox
+                h_obj = QComboBox()
+
+                # adds the combobox items
+                p_list = props['list']
+                for p in p_list:
+                    h_obj.addItem(p)
+
+                # special parameter field updates
+                match p_name:
+                    case p_name if p_name in ['detect_sign', 'peak_sign']:
+                        if isinstance(p_value, int):
+                            p_value = self.sign_v2l[p_value]
+
+                # sets the widget properties
+                i_sel0 = p_list.index(p_value)
+                h_obj.setCurrentIndex(i_sel0)
+                h_obj.setObjectName(p_name)
+                h_obj.setFont(self.item_child_font)
+                h_obj.setEnabled(len(p_name) > 1)
+
+                # sets the object callback functions
+                cb_fcn = pfcn(cb_fcn_base, h_obj)
+                h_obj.currentIndexChanged.connect(cb_fcn)
+
+            case 'checkbox':
+                # case is a checkbox
+                h_obj = QCheckBox()
+
+                # sets the widget properties
+                h_obj.setCheckState(cf.chk_state[p_value])
+                h_obj.setStyleSheet("padding-left: 5px;")
+                h_obj.setObjectName(p_name)
+
+                # sets the object callback functions
+                cb_fcn = pfcn(cb_fcn_base, h_obj)
+                h_obj.clicked.connect(cb_fcn)
+
+            case p_type if p_type in ['group_edit_float', 'group_edit_int']:
+                # case is a lineedit group
+
+                # creates the editbox groups
+                n_edit = len(p_value)
+                for i_edit in range(n_edit):
+                    # creates the child node
+                    item_ch_d, h_obj_d = self.create_child_tree_item(item_ch, p_name, i_edit)
+
+                    # sets the item properties
+                    item_ch_d.setTextAlignment(0, self.lbl_align)
+                    item_ch.addChild(item_ch_d)
+
+                    # adds the child tree widget item
+                    h_obj_d.setFixedHeight(self.item_row_size)
+                    h_obj_d.setObjectName('{0}_{1}'.format(p_name, i_edit))
+                    self.tree_prop.setItemWidget(item_ch_d, 1, h_obj_d)
+
+                    # sets the object callback functions
+                    cb_fcn = pfcn(cb_fcn_base, h_obj_d, i_edit)
+                    h_obj_d.editingFinished.connect(cb_fcn)
+
+                # expands the children tree nodes
+                item_ch.setExpanded(True)
+
+            case 'filespec':
+                # case is a checkbox
+                h_obj = cw.QEditButton(None, p_value, p_name, b_sz=self.item_row_size)
+                h_obj.obj_edit.setReadOnly(True)
+
+                # sets the object callback functions
+                h_obj.connect(cb_fcn_base)
+
+            case 'dict':
+                # case is a dictionary
+                for k in props['child']:
+                    # creates the child node
+                    item_ch_d, obj_prop_d = self.create_child_tree_item(item_ch, k)
+
+                    # sets the item properties
+                    item_ch_d.setTextAlignment(0, self.lbl_align)
+                    item_ch.addChild(item_ch_d)
+
+                    if obj_prop_d is not None:
+                        # adds the child tree widget item
+                        obj_prop_d.setFixedHeight(self.item_row_size)
+                        self.tree_prop.setItemWidget(item_ch_d, 1, obj_prop_d)
+
+                # expands the children tree nodes
+                item_ch.setExpanded(True)
+
+        # returns the objects
+        return item_ch, h_obj
+
+    # ---------------------------------------------------------------------------
+    # Widget Update Event Functions
+    # ---------------------------------------------------------------------------
+
+    def prop_update(self, p_str, h_obj, i_edit=None):
+
+        # if manually updating elsewhere, then exit
+        if self.is_updating:
+            return
+
+        if isinstance(h_obj, QCheckBox):
+            self.check_prop_update(h_obj, p_str)
+
+        elif isinstance(h_obj, QLineEdit):
+            self.edit_prop_update(h_obj, p_str)
+
+        elif isinstance(h_obj, QComboBox):
+            self.combo_prop_update(h_obj, p_str)
+
+        elif isinstance(h_obj, QPushButton):
+            self.file_spec_update(h_obj, p_str)
+
+    def check_prop_update(self, h_obj, p_str):
+
+        self.s_props[p_str]['value'] = h_obj.isChecked()
+
+    def edit_prop_update(self, h_obj, p_str, i_edit=None):
+
+        # field retrieval
+        str_para = []
+        new_value = h_obj.text()
+        p_min = self.s_props[p_str]['min']
+        p_max = self.s_props[p_str]['max']
+
+        if p_str in str_para:
+            # case is a string field
+            if i_edit is None:
+                self.s_props[p_str]['value'] = new_value
+            else:
+                self.s_props[p_str]['value'][i_edit] = new_value
+
+        else:
+            # determines if the new value is valid
+            chk_val = cf.check_edit_num(nw_val, min_val=p_min, max_val=p_max)
+            if chk_val[1] is None:
+                # converts the editbox value (parameter dependent)
+                nw_val = self.convert_edit_value(chk_val[0], p_str, True)
+
+                # case is the value is valid
+                if i_edit is None:
+                    self.s_props[p_str]['value'] = nw_val
+                else:
+                    self.s_props[p_str]['value'][i_edit] = nw_val
+
+            else:
+                # retrieves the previous value
+                if i_edit is None:
+                    p_val_pr = self.s_props[p_str]['value']
+                else:
+                    p_val_pr = self.s_props[p_str]['value'][i_edit]
+
+                # otherwise, reset the previous value
+                p_val_pr = self.convert_edit_value(p_val_pr, p_str, False)
+                if (p_val_pr is None) or isinstance(p_val_pr, str):
+                    # case is the parameter is empty
+                    h_obj.setText('')
+
+                else:
+                    # otherwise, update the numeric string
+                    h_obj.setText('%g' % p_val_pr)
+
+    def combo_prop_update(self, h_obj, p_str):
+
+        # retrieves the current selection
+        p_value = h_obj.currentText()
+
+        # parameter specific updates
+        match p_str:
+            case p_name if p_name in ['detect_sign', 'peak_sign']:
+                p_value = self.sign_l2v[p_value]
+
+        # updates the property field
+        self.s_props[p_str]['value'] = p_value
+
+    def file_spec_update(self, h_obj, p_str):
+
+        a = 1
+
+    # ---------------------------------------------------------------------------
+    # Miscellaneous Functions
+    # ---------------------------------------------------------------------------
+
+    def convert_edit_value(p_val, p_fld, is_set):
+
+        # return a none value if already none
+        if p_val is None:
+            return None
+
+        match p_fld:
+            case 'chunk_memory':
+                if is_set_para:
+                    # case is setting the parameter value
+                    return '{0}M'.format(p_val)
+                else:
+                    # case is getting the parameter value
+                    return int(p_val.replace('M', ''))
+
+            case 'chunk_duration':
+                if is_set_para:
+                    # case is setting the parameter value
+                    return '{0}s'.format(p_val)
+                else:
+                    # case is getting the parameter value
+                    return float(p_val.replace('s', ''))
+
+            case _:
+                # case is the other parameters
+                return p_val
+
+    # ---------------------------------------------------------------------------
+    # Static Methods
+    # ---------------------------------------------------------------------------
+
+    @staticmethod
+    def reshape_para_desc(p_desc0):
+
+        # parameters
+        i_ofs = 0
+        n_col_sp = 50
+
+        # if the string is short, then exit
+        if len(p_desc0) <= n_col_sp:
+            return p_desc0
+
+        # otherwise, determine the points to place a carriage return
+        p_desc_sp = np.array(p_desc0.split())
+        n_desc_s = np.cumsum([len(x)+1 for x in p_desc_sp])
+
+        # inserts carriage returns at the necessary locations
+        while np.any(n_desc_s > n_col_sp):
+            ii = np.where(n_desc_s > n_col_sp)[0]
+            if len(ii):
+                jj = ii[0] + (i_ofs + 1)
+                p_desc_sp = np.insert(p_desc_sp, jj, '\n')
+                n_desc_s -= n_desc_s[ii[0]]
+                i_ofs += 1
+
+        # recombines the string
+        return ' '.join(p_desc_sp)
+
+
 # ----------------------------------------------------------------------------------------------------------------------
 
 """
-    RunSpikeSorting:  
+    SpikeSortPara:  
 """
 
 
 class SpikeSortPara(QObject):
-    # common sorter fields
-
     # other static class fields
-    ig_para = ['shift', 'scale', 'bad_channels', 'datashift', 'fs', 'x_centers']
+    ig_para = ['shift', 'scale', 'bad_channels', 'datashift',
+               'fs', 'x_centers', 'delete_tmp_files']
     l_pattern = rf"(?<={re.escape('spikeinterface/')}).*?(?={re.escape('-')})"
 
     def __init__(self, s=None):
@@ -738,13 +1095,9 @@ class SpikeSortPara(QObject):
         # loads the sorting parameters
         self.load_sort_para()
 
-        # # REMOVE ME LATER
-        # for s in self.all_s:
-        #     # if s == 'kilosort4':
-        #     #     continue
-        #
-        #     print('Sorter: {0}'.format(s))
-        #     self.setup_sorter_para(s)
+    # ---------------------------------------------------------------------------
+    # Class Widget Setup Functions
+    # ---------------------------------------------------------------------------
 
     def load_sort_para(self):
 
@@ -761,39 +1114,6 @@ class SpikeSortPara(QObject):
                 'max': row.Max,
                 'class': row.Class,
             }
-
-    def get_sorter_info(self):
-
-        try:
-            # retrieves the docker client
-            client = docker.from_env(timeout=5)
-            image_list = client.images.list()
-
-        except:
-            # if there was a timeout error, then exit
-            return
-
-        # sets the other sorters
-        self.other_s = list(set(self.all_s) - set(self.local_s))
-        self.other_s.sort()
-
-        # removes any local sorters from the other sorters list
-        for l_sort in self.local_s:
-            if l_sort in self.other_s:
-                i_match = self.other_s.index(l_sort)
-                self.other_s.pop(i_match)
-
-        # removes any docker images from the other sorters list
-        for img_l in image_list:
-            # retrieves the sorter name from the repo tag
-            r_tag = img_l.attrs['RepoTags'][0]
-            s_name = re.search(self.l_pattern, r_tag)[0]
-
-            # if the sorter is in the other sorters list, then remove it and add to the image sorter list
-            if s_name in self.other_s:
-                self.image_s.append(s_name)
-                i_match = self.other_s.index(s_name)
-                self.other_s.pop(i_match)
 
     def setup_sorter_para(self, s_name):
 
@@ -840,7 +1160,10 @@ class SpikeSortPara(QObject):
 
                 case 'dict':
                     # case is a dictionary field
-                    p_dict[pf]['child'] = self.setup_para_dictionary(pf, p_dict[pf], s_name)
+                    p_dict_ch = self.setup_para_dictionary(pf, p_dict[pf], s_name)
+                    for k, v in p_dict_ch.items():
+                        p_dict[k] = v
+                        p_dict[pf]['child'].append(k)
 
         # returns the dictionary
         return p_dict
@@ -1001,6 +1324,7 @@ class SpikeSortPara(QObject):
             # common parameter fields
             'label': ss_info['label'],
             'value': value,
+            'dvalue': value,
             'type': ss_info['type'],
             'class': ss_info['class'],
             'desc': desc,
@@ -1015,8 +1339,45 @@ class SpikeSortPara(QObject):
             'list': [],
 
             # children parameter fields (dictionaries)
-            'child': {},
+            'child': [],
         }
+
+    # ---------------------------------------------------------------------------
+    # Getter Functions
+    # ---------------------------------------------------------------------------
+
+    def get_sorter_info(self):
+
+        try:
+            # retrieves the docker client
+            client = docker.from_env(timeout=5)
+            image_list = client.images.list()
+
+        except:
+            # if there was a timeout error, then exit
+            return
+
+        # sets the other sorters
+        self.other_s = list(set(self.all_s) - set(self.local_s))
+        self.other_s.sort()
+
+        # removes any local sorters from the other sorters list
+        for l_sort in self.local_s:
+            if l_sort in self.other_s:
+                i_match = self.other_s.index(l_sort)
+                self.other_s.pop(i_match)
+
+        # removes any docker images from the other sorters list
+        for img_l in image_list:
+            # retrieves the sorter name from the repo tag
+            r_tag = img_l.attrs['RepoTags'][0]
+            s_name = re.search(self.l_pattern, r_tag)[0]
+
+            # if the sorter is in the other sorters list, then remove it and add to the image sorter list
+            if s_name in self.other_s:
+                self.image_s.append(s_name)
+                i_match = self.other_s.index(s_name)
+                self.other_s.pop(i_match)
 
     def get_para_label(self, p_fld, s_type):
 
@@ -1025,6 +1386,10 @@ class SpikeSortPara(QObject):
     def get_para_type(self, p_fld, s_type):
 
         pass
+
+    # ---------------------------------------------------------------------------
+    # Static Methods
+    # ---------------------------------------------------------------------------
 
     @staticmethod
     def get_limit_value(p_val, p_val_def):
