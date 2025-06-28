@@ -30,6 +30,27 @@ x_gap = 5
 # ----------------------------------------------------------------------------------------------------------------------
 
 """
+    Common Functions:  
+"""
+
+def convert_string(p_val_str, isint):
+    if isint:
+        # case is an integer string
+        try:
+            return int(p_val_str)
+        except:
+            return np.nan
+
+    else:
+        # case is a float string
+        try:
+            return float(p_val_str)
+        except:
+            return np.nan
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+"""
     SpikeSortingDialog:  
 """
 
@@ -96,7 +117,7 @@ class SpikeSortingDialog(QMainWindow):
 
         # sets the central widget
         self.main_widget = QWidget(self)
-        self.ss_obj = SpikeSortPara(None if (main_obj is None) else main_obj.session_obj)
+        self.ss_obj = SpikeSortInfo(None if (main_obj is None) else main_obj.session_obj)
 
         # widget layouts
         self.main_layout = QGridLayout()
@@ -815,8 +836,8 @@ class SpikeSorterTab(QTabWidget):
         self.tree_prop.setItemDelegateForColumn(0, cw.HTMLDelegate())
 
         # determines the unique parameter class indices
-        p_fld = np.array(list(self.s_props.keys()))
-        p_class = [self.s_props[pf]['class'] for pf in p_fld]
+        p_fld = np.array([x for x in self.s_props.keys() if x.startswith(self.s_name)])
+        p_class = [self.s_props[pf].get('ctype') for pf in p_fld]
         p_grp, i_grp = np.unique(p_class, return_inverse=True)
 
         # creates the table fields for each
@@ -834,9 +855,20 @@ class SpikeSorterTab(QTabWidget):
             item.setFirstColumnSpanned(True)
             item.setExpanded(True)
 
+            # sets the reduced parameter group
+            p_fld_grp = p_fld[j_grp]
+            is_ok = np.ones(len(p_fld_grp), dtype=bool)
+
             # adds the tree widget item
             self.tree_prop.addTopLevelItem(item)
-            for j, ps in enumerate(p_fld[j_grp]):
+            for j, ps in enumerate(p_fld_grp):
+                if not is_ok[j]:
+                    continue
+
+                elif len(self.s_props[ps].get('child')):
+                    for ps_c in self.s_props[ps].get('child'):
+                        is_ok[p_fld_grp == ps_c] = False
+
                 # creates the property name field
                 item_ch, obj_prop = self.create_child_tree_item(item, ps)
 
@@ -871,17 +903,13 @@ class SpikeSorterTab(QTabWidget):
 
         # retrieves the main property values
         props = self.s_props[p_fld]
-        p_type, p_value = props['type'], props['value']
-
-        try:
-            p_desc = self.reshape_para_desc(props['desc'])
-        except:
-            a = 1
+        p_type, p_value = props.get('type'), props.get('value')
+        p_desc = self.reshape_para_desc(props.get('desc'))
 
         # if creating a group editbox item
         if i_edit is None:
             # case is the other parameter types
-            lbl_str = '{0}'.format(props['label'])
+            lbl_str = '{0}'.format(props.get('label'))
 
         else:
             # case is an editbox grouping
@@ -890,7 +918,7 @@ class SpikeSorterTab(QTabWidget):
             lbl_str = 'Element #{0}'.format(i_edit + 1)
 
         # initialisations
-        cb_fcn_base = pfcn(self.prop_update, p_fld)
+        cb_fcn_base = pfcn(self.prop_update, props, p_fld)
 
         # if p_name == 'method_kwargs':
         #     a = 1
@@ -922,12 +950,16 @@ class SpikeSorterTab(QTabWidget):
                 h_obj = QComboBox()
 
                 # adds the combobox items
-                p_list = props['list']
-                for p in p_list:
-                    h_obj.addItem(p)
+                try:
+                    p_list = props.get('list')
+                    for p in p_list:
+                        h_obj.addItem(p)
+
+                except:
+                    a = 1
 
                 # converts the combo value
-                p_value = self.convert_combo_value(p_value, p_fld)
+                p_value = self.convert_combo_value(p_value, p_fld.split('-')[-1])
                 i_sel0 = p_list.index(p_value)
 
                 # sets the widget properties
@@ -987,11 +1019,14 @@ class SpikeSorterTab(QTabWidget):
                 h_obj.connect(cb_fcn_base)
 
             case 'dict':
-                if len(props['child']) == 0:
+                if p_fld == 'detection':
+                    a = 1
+
+                if len(props.get('child')) == 0:
                     return None, None
 
                 # case is a dictionary
-                for k in props['child']:
+                for k in props.get('child'):
                     # creates the child node
                     item_ch_d, obj_prop_d = self.create_child_tree_item(item_ch, k)
 
@@ -1018,41 +1053,42 @@ class SpikeSorterTab(QTabWidget):
     # Widget Update Event Functions
     # ---------------------------------------------------------------------------
 
-    def prop_update(self, p_str, h_obj, i_edit=None):
+    def prop_update(self, p_props, p_str, h_obj, i_edit=None):
 
         # if manually updating elsewhere, then exit
         if self.is_updating:
             return
 
         if isinstance(h_obj, QCheckBox):
-            self.check_prop_update(h_obj, p_str)
+            self.check_prop_update(h_obj, p_props, p_str)
 
         elif isinstance(h_obj, QLineEdit):
-            self.edit_prop_update(h_obj, p_str)
+            self.edit_prop_update(h_obj, p_props, p_str)
 
         elif isinstance(h_obj, QComboBox):
-            self.combo_prop_update(h_obj, p_str)
+            self.combo_prop_update(h_obj, p_props, p_str)
 
         elif isinstance(h_obj, cw.QEditButton):
-            self.file_spec_update(h_obj, p_str)
+            self.file_spec_update(h_obj, p_props, p_str)
 
-    def check_prop_update(self, h_obj, p_str):
+    def check_prop_update(self, h_obj, s_prop_p, p_str):
 
-        self.s_props[p_str]['value'] = h_obj.isChecked()
+        # updates the value field
+        s_prop_p.set('value', h_obj.isChecked())
 
-    def edit_prop_update(self, h_obj, p_str, i_edit=None):
+    def edit_prop_update(self, h_obj, s_prop_p, p_str, i_edit=None):
 
         # field retrieval
         new_str = h_obj.text()
-        p_min = self.s_props[p_str]['min']
-        p_max = self.s_props[p_str]['max']
+        p_min = s_prop_p.get('min')
+        p_max = s_prop_p.get('max')
 
-        if self.s_props[p_str]['type'] == 'edit_string':
+        if s_prop_p.get('type') == 'edit_string':
             # case is a string field
             if i_edit is None:
-                self.s_props[p_str]['value'] = new_str
+                s_prop_p.set('value', new_str)
             else:
-                self.s_props[p_str]['value'][i_edit] = new_str
+                s_prop_p.value[i_edit] = new_str
 
         else:
             # determines if the new value is valid
@@ -1063,16 +1099,16 @@ class SpikeSorterTab(QTabWidget):
 
                 # case is the value is valid
                 if i_edit is None:
-                    self.s_props[p_str]['value'] = new_val
+                    s_prop_p.set('value', new_val)
                 else:
-                    self.s_props[p_str]['value'][i_edit] = new_val
+                    s_prop_p.value[i_edit] = new_val
 
             else:
                 # retrieves the previous value
                 if i_edit is None:
-                    p_val_pr = self.s_props[p_str]['value']
+                    p_val_pr = s_prop_p.get('value')
                 else:
-                    p_val_pr = self.s_props[p_str]['value'][i_edit]
+                    p_val_pr = s_prop_p.value[i_edit]
 
                 # otherwise, reset the previous value
                 p_val_pr = self.convert_edit_value(p_val_pr, p_str, False)
@@ -1084,23 +1120,21 @@ class SpikeSorterTab(QTabWidget):
                     # otherwise, update the numeric string
                     h_obj.setText('%g' % p_val_pr)
 
-    def combo_prop_update(self, h_obj, p_str):
-
-        # retrieves the current selection
-        p_value = h_obj.currentText()
+    def combo_prop_update(self, h_obj, s_prop_p, p_str):
 
         # parameter specific updates
-        match p_str:
+        p_value = h_obj.currentText()
+        match p_str[-1]:
             case p_name if p_name in ['detect_sign', 'peak_sign']:
                 p_value = self.sign_l2v[p_value]
 
         # updates the property field
-        self.s_props[p_str]['value'] = p_value
+        s_prop_p.set('value', p_value)
 
-    def file_spec_update(self, h_obj, p_str):
+    def file_spec_update(self, h_obj, s_prop_p, p_str):
 
         # sets the default file path
-        def_path = self.s_props[p_str]['value']
+        def_path = s_prop_p.get('value')
         if (def_path is None) or (len(def_path) == 0):
             # if no path is set, use the current directory
             def_path = os.getcwd()
@@ -1114,7 +1148,7 @@ class SpikeSorterTab(QTabWidget):
         if file_dlg.exec() == QDialog.DialogCode.Accepted:
             # sets the file path
             nw_path = file_dlg.selectedFiles()[0]
-            self.s_props[p_str]['value'] = nw_path
+            s_prop_p.set('value', nw_path)
 
             # sets the other path fields
             f_name = os.path.split(nw_path)[1]
@@ -1138,6 +1172,14 @@ class SpikeSorterTab(QTabWidget):
 
         # returns the parameter value
         return p_value
+
+    def get_prop_field(self, p_str):
+
+        s_prop_p = self.s_props[p_str]
+        for p in p_str[1:]:
+            s_prop_p = s_prop_p[p]
+
+        return s_prop_p
 
     # ---------------------------------------------------------------------------
     # Static Methods
@@ -1243,15 +1285,56 @@ class SpikeSorterTab(QTabWidget):
     SpikeSortPara:  
 """
 
+# setup_para_field(self, ss_info, value, desc, lvl=0)
 
-class SpikeSortPara(QObject):
+class SpikeSortPara(object):
+    def __init__(self, ss_info, value, desc):
+        super(SpikeSortPara, self).__init__()
+
+        # sets the integer flag
+        isint = ss_info['type'] in ['group_edit_int', 'edit_int']
+
+        # common parameter fields
+        self.label = ss_info['label']
+        self.type = ss_info['type']
+        self.ctype = ss_info['class']
+        self.value = value
+        self.dvalue = value
+        self.desc = desc
+
+        # numerical fields
+        self.isint = isint
+        self.min = convert_string(ss_info['min'], isint)
+        self.max = convert_string(ss_info['max'], isint)
+
+        # combobox fields
+        self.list = []
+
+        # children parameter fields (dictionaries)
+        self.child = []
+        self.parent = []
+
+    def set(self, p_fld, p_value):
+        setattr(self, p_fld, p_value)
+
+    def get(self, p_fld):
+        return getattr(self, p_fld)
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+"""
+    SpikeSortInfo:  
+"""
+
+
+class SpikeSortInfo(QObject):
     # other static class fields
     ig_para = ['shift', 'scale', 'datashift',
                'fs', 'x_centers', 'delete_tmp_files']
     l_pattern = rf"(?<={re.escape('spikeinterface/')}).*?(?={re.escape('-')})"
 
     def __init__(self, ses_obj=None):
-        super(SpikeSortPara, self).__init__()
+        super(SpikeSortInfo, self).__init__()
 
         # sets the session object
         self.ses_obj = ses_obj
@@ -1305,25 +1388,23 @@ class SpikeSortPara(QObject):
                 p_fld_common += ['apply_motion_correction', 'motion_correction']
 
         # stores the parameter field for the sorter
-        return self.setup_sorter_para_fields(s_name, p_fld_common, p_info, p_desc)
+        return self.setup_sorter_para_fields(s_name, p_fld_common, p_info, p_desc, p_str=[s_name], p_dict={})
 
-    def setup_sorter_para_fields(self, s_name, p_fld, p_value, p_desc=None, d_name=None, i_lvl=0):
-
-        # initialisations
-        p_dict = {}
+    def setup_sorter_para_fields(self, s_name, p_fld, p_value, p_desc=None, p_str=[], p_dict={}):
 
         # sets up the fields for all common parameters in the sorter
-        for pf in p_fld:
+        for pf0 in p_fld:
             # skip any parameters that are being ignored
-            if pf in self.ig_para:
+            if pf0 in self.ig_para:
                 continue
 
             # sets up the base parameter field
-            p_desc_f = self.get_description_field(p_desc, pf)
-            p_dict[pf] = self.setup_para_field(self.ss_info[pf], p_value[pf], p_desc_f, i_lvl)
+            pf = '-'.join(p_str + [pf0])
+            p_desc_f = self.get_description_field(p_desc, pf0)
+            p_dict[pf] = SpikeSortPara(self.ss_info[pf0], p_value[pf0], p_desc_f)
 
             # sets parameter specific fields
-            p_type = p_dict[pf]['type']
+            p_type = p_dict[pf].type
             match p_type:
                 case p_type if p_type in ['edit_float', 'edit_int', 'group_edit_float', 'group_edit_int']:
                     # case is a numerical float
@@ -1331,14 +1412,17 @@ class SpikeSortPara(QObject):
 
                 case 'combobox':
                     # case is a combobox (enumeration)
-                    p_dict[pf]['list'] = self.setup_para_list(pf, s_name, d_name)
+                    d_name = pf.split('-')[-2]
+                    p_dict[pf].set('list', self.setup_para_list(pf0, s_name, d_name))
 
                 case 'dict':
                     # case is a dictionary field
-                    p_dict_ch = self.setup_para_dictionary(pf, p_dict[pf], s_name)
-                    for k, v in p_dict_ch.items():
-                        p_dict[k] = v
-                        p_dict[pf]['child'].append(k)
+                    p_str_c = p_str + [pf0]
+                    self.setup_para_dictionary(pf, p_dict, s_name, p_str_c)
+
+                    # sets the children field names
+                    for k in p_dict[pf].value.keys():
+                        p_dict[pf].child.append('-'.join(p_str_c + [k]))
 
                 case 'fixed':
                     # case is a fixed parameter field
@@ -1347,7 +1431,8 @@ class SpikeSortPara(QObject):
                             # case is bad channels (kilosort4)
                             if self.ses_obj is not None:
                                 bad_ch = self.ses_obj.get_bad_channels()[1]
-                                p_dict[pf]['value'], p_dict[pf]['dvalue'] = bad_ch, bad_ch
+                                p_dict[pf].set('value', bad_ch)
+                                p_dict[pf].set('dvalue', bad_ch)
 
         # returns the dictionary
         return p_dict
@@ -1355,20 +1440,19 @@ class SpikeSortPara(QObject):
     def setup_para_limits(self, p_fld, p_dict):
 
         # sets the lower parameter limit
-        p_lim_lo = 0 if p_dict['isint'] else 0.
+        p_lim_lo = 0 if p_dict.get('isint') else 0.
 
         # sets the lower/upper limits
-        p_dict['min'] = self.get_limit_value(p_dict['min'], p_lim_lo)
-        p_dict['max'] = self.get_limit_value(p_dict['max'], np.inf)
+        p_dict.set('min', self.get_limit_value(p_dict.get('min'), p_lim_lo))
+        p_dict.set('max', self.get_limit_value(p_dict.get('max'), np.inf))
 
         return p_dict
 
-    def setup_para_dictionary(self, p_fld, p_dict, s_name, d_name=None):
+    def setup_para_dictionary(self, p_fld, p_dict, s_name, p_str):
 
         # memory allocation
-        p_fld_ch = p_dict['value']
-        i_lvl_ch = p_dict['lvl'] + 1
-        return self.setup_sorter_para_fields(s_name, list(p_fld_ch.keys()), p_fld_ch, d_name=p_fld, i_lvl=i_lvl_ch)
+        p_fld_ch = p_dict[p_fld].get('value')
+        self.setup_sorter_para_fields(s_name, list(p_fld_ch.keys()), p_fld_ch, p_str=p_str, p_dict=p_dict)
 
     def setup_para_list(self, p_fld, s_name, d_name=None):
 
@@ -1499,32 +1583,32 @@ class SpikeSortPara(QObject):
                 # case is the ironclust version (ironclust)
                 return ['1', '2']
 
-    def setup_para_field(self, ss_info, value, desc, lvl=0):
-
-        # sets the integer flag
-        isint = ss_info['type'] in ['group_edit_int', 'edit_int']
-
-        return {
-            # common parameter fields
-            'label': ss_info['label'],
-            'value': value,
-            'dvalue': value,
-            'type': ss_info['type'],
-            'class': ss_info['class'],
-            'desc': desc,
-            'lvl': lvl,
-
-            # numerical fields
-            'isint': isint,
-            'min': self.convert_string(ss_info['min'], isint),
-            'max': self.convert_string(ss_info['max'], isint),
-
-            # combobox fields
-            'list': [],
-
-            # children parameter fields (dictionaries)
-            'child': [],
-        }
+    # def setup_para_field(self, ss_info, value, desc, lvl=0):
+    #
+    #     # sets the integer flag
+    #     isint = ss_info.get('type') in ['group_edit_int', 'edit_int']
+    #
+    #     return {
+    #         # common parameter fields
+    #         'label': ss_info['label'],
+    #         'value': value,
+    #         'dvalue': value,
+    #         'type': ss_info['type'],
+    #         'class': ss_info['class'],
+    #         'desc': desc,
+    #         'lvl': lvl,
+    #
+    #         # numerical fields
+    #         'isint': isint,
+    #         'min': convert_string(ss_info['min'], isint),
+    #         'max': convert_string(ss_info['max'], isint),
+    #
+    #         # combobox fields
+    #         'list': [],
+    #
+    #         # children parameter fields (dictionaries)
+    #         'child': [],
+    #     }
 
     # ---------------------------------------------------------------------------
     # Getter Functions
@@ -1585,23 +1669,6 @@ class SpikeSortPara(QObject):
         else:
             # otherwise, return the limit value
             return p_val
-
-    @staticmethod
-    def convert_string(p_val_str, isint):
-
-        if isint:
-            # case is an integer string
-            try:
-                return int(p_val_str)
-            except:
-                return np.nan
-
-        else:
-            # case is a float string
-            try:
-                return float(p_val_str)
-            except:
-                return np.nan
 
     @staticmethod
     def get_description_field(p_desc, pf):
