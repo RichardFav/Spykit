@@ -460,7 +460,11 @@ class SpikeSortingDialog(QMainWindow):
                 h_tab_grp.setTabEnabled(i_tab, True)
 
                 # deletes the worker object
-                self.t_worker.deleteLater()
+                try:
+                    self.t_worker.deleteLater()
+                    self.t_worker = None
+                except:
+                    pass
 
                 # connects the preprocessing signal function
                 self.session.sort_obj.update_prog.connect(self.worker_progress)
@@ -518,7 +522,7 @@ class SpikeSortingDialog(QMainWindow):
 
             # stops the worker
             self.t_worker.force_quit()
-            self.t_worker.deleteLater()
+            self.t_worker = None
             time.sleep(0.01)
 
             # disables the progressbar fields
@@ -532,6 +536,11 @@ class SpikeSortingDialog(QMainWindow):
 
         # force closes any running workers
         if (self.t_worker is not None) and self.t_worker.is_running:
+            # stops the progressbar
+            self.prog_bar.set_progbar_state(False)
+            time.sleep(0.1)
+
+            # force closes the thread worker
             self.t_worker.force_quit()
 
         # runs the post window close functions
