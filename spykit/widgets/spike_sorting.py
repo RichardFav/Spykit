@@ -860,13 +860,13 @@ class SpikeSorterTab(QTabWidget):
         # updates the initialisation flag
         self.is_init = True
 
-    def create_child_tree_item(self, item_p, p_name, i_edit=None):
+    def create_child_tree_item(self, item_p, p_fld, i_edit=None):
 
         # REMOVE ME LATER
         item_ch, h_obj = None, None
 
         # retrieves the main property values
-        props = self.s_props[p_name]
+        props = self.s_props[p_fld]
         p_type, p_value = props['type'], props['value']
         p_desc = self.reshape_para_desc(props['desc'])
 
@@ -882,7 +882,7 @@ class SpikeSorterTab(QTabWidget):
             lbl_str = 'Element #{0}'.format(i_edit + 1)
 
         # initialisations
-        cb_fcn_base = pfcn(self.prop_update, p_name)
+        cb_fcn_base = pfcn(self.prop_update, p_fld)
 
         # if p_name == 'method_kwargs':
         #     a = 1
@@ -899,11 +899,11 @@ class SpikeSorterTab(QTabWidget):
                     p_value = ""
 
                 else:
-                    p_value = str(self.convert_edit_value(p_value, p_name, False))
+                    p_value = str(self.convert_edit_value(p_value, p_fld, False))
 
                 # creates the lineedit widget
                 h_obj = cw.create_line_edit(None, p_value, font=self.item_child_font)
-                h_obj.setObjectName(p_name)
+                h_obj.setObjectName(p_fld)
 
                 # sets the object callback functions
                 cb_fcn = pfcn(cb_fcn_base, h_obj)
@@ -918,18 +918,15 @@ class SpikeSorterTab(QTabWidget):
                 for p in p_list:
                     h_obj.addItem(p)
 
-                # special parameter field updates
-                match p_name:
-                    case p_name if p_name in ['detect_sign', 'peak_sign']:
-                        if isinstance(p_value, int):
-                            p_value = self.sign_v2l[p_value]
+                # converts the combo value
+                p_value = self.convert_combo_value(p_value, p_fld)
+                i_sel0 = p_list.index(p_value)
 
                 # sets the widget properties
-                i_sel0 = p_list.index(p_value)
                 h_obj.setCurrentIndex(i_sel0)
-                h_obj.setObjectName(p_name)
+                h_obj.setObjectName(p_fld)
                 h_obj.setFont(self.item_child_font)
-                h_obj.setEnabled(len(p_name) > 1)
+                h_obj.setEnabled(len(p_fld) > 1)
 
                 # sets the object callback functions
                 cb_fcn = pfcn(cb_fcn_base, h_obj)
@@ -942,7 +939,7 @@ class SpikeSorterTab(QTabWidget):
                 # sets the widget properties
                 h_obj.setCheckState(cf.chk_state[p_value])
                 h_obj.setStyleSheet("padding-left: 5px;")
-                h_obj.setObjectName(p_name)
+                h_obj.setObjectName(p_fld)
 
                 # sets the object callback functions
                 cb_fcn = pfcn(cb_fcn_base, h_obj)
@@ -955,7 +952,7 @@ class SpikeSorterTab(QTabWidget):
                 n_edit = len(p_value)
                 for i_edit in range(n_edit):
                     # creates the child node
-                    item_ch_d, h_obj_d = self.create_child_tree_item(item_ch, p_name, i_edit)
+                    item_ch_d, h_obj_d = self.create_child_tree_item(item_ch, p_fld, i_edit)
 
                     # sets the item properties
                     item_ch_d.setTextAlignment(0, self.lbl_align)
@@ -963,7 +960,7 @@ class SpikeSorterTab(QTabWidget):
 
                     # adds the child tree widget item
                     h_obj_d.setFixedHeight(self.item_row_size)
-                    h_obj_d.setObjectName('{0}_{1}'.format(p_name, i_edit))
+                    h_obj_d.setObjectName('{0}_{1}'.format(p_fld, i_edit))
                     self.tree_prop.setItemWidget(item_ch_d, 1, h_obj_d)
 
                     # sets the object callback functions
@@ -975,7 +972,7 @@ class SpikeSorterTab(QTabWidget):
 
             case 'filespec':
                 # case is a checkbox
-                h_obj = cw.QEditButton(None, p_value, p_name, b_sz=self.item_row_size-2)
+                h_obj = cw.QEditButton(None, p_value, p_fld, b_sz=self.item_row_size - 2)
                 h_obj.obj_edit.setReadOnly(True)
 
                 # sets the object callback functions
@@ -1095,11 +1092,61 @@ class SpikeSorterTab(QTabWidget):
 
     def file_spec_update(self, h_obj, p_str):
 
-        a = 1
+        # retrieves the path infoformation
+        f_mode, is_dir = self.get_para_path_info(p_str)
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
     # ---------------------------------------------------------------------------
+
+    def convert_combo_value(self, p_value, p_fld):
+
+        # special parameter field updates
+        match p_fld:
+            case p_fld if p_fld in ['detect_sign', 'peak_sign']:
+                if isinstance(p_value, int):
+                    p_value = self.sign_v2l[p_value]
+
+            case 'version':
+                p_value = str(p_value)
+
+        # returns the parameter value
+        return p_value
+
+    # ---------------------------------------------------------------------------
+    # Static Methods
+    # ---------------------------------------------------------------------------
+
+    @staticmethod
+    def get_para_path_info(p_str):
+
+        # initialisations
+        is_dir = False
+        f_mode = "All Files (*.*)"
+
+        match p_str:
+            case 'neural_nets_path':
+                # case is the neural network path file (yass)
+                pass
+
+            case 'out_file':
+                # case is the output file (herdingspikes)
+                pass
+
+            case 'prm_template_name':
+                # case is the prm template file (ironclust)
+                pass
+
+            case 'tmpdir':
+                # case is the temporary directory (mountainsort4)
+                is_dir = True
+
+            case 'output_filename'
+                # case is the output filename (pykilosort)
+                pass
+
+        # returns
+        return f_mode, is_dir
 
     @staticmethod
     def convert_edit_value(p_val, p_fld, is_set_para):
