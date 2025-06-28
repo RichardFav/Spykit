@@ -1,5 +1,6 @@
 # module import
 import re
+import os
 import time
 import docker
 import numpy as np
@@ -19,7 +20,7 @@ from spikeinterface.sorters import (available_sorters, installed_sorters, get_so
 # pyqt6 module import
 from PyQt6.QtWidgets import (QMainWindow, QWidget, QFrame, QFormLayout, QVBoxLayout, QHBoxLayout, QGridLayout,
                              QLineEdit, QCheckBox, QTabWidget, QSizePolicy, QProgressBar, QTreeWidget, QTreeWidgetItem,
-                             QHeaderView, QComboBox, QPushButton)
+                             QHeaderView, QComboBox, QPushButton, QDialog)
 from PyQt6.QtCore import pyqtSignal, QTimeLine, Qt, QObject, QThread
 from PyQt6.QtGui import QColor, QFont
 
@@ -326,7 +327,6 @@ class SpikeSortingDialog(QMainWindow):
                 'desc': s_desc,
                 'tab': None,
                 'grp': None,
-                'props': {},
             }
 
     def init_other_special(self):
@@ -637,7 +637,11 @@ class SpikeSortingDialog(QMainWindow):
 
         # search for the words that comprise the sorter name (capitalised words)
         for s_desc_sp in s_desc.split():
-            if s_desc_sp[0].isupper() or s_desc_sp.isnumeric():
+            if s_desc_sp == 'pykilosort':
+                s_name_list.append(s_desc_sp.capitalize())
+                break
+
+            elif s_desc_sp[0].isupper() or s_desc_sp.isnumeric():
                 # if capitalised, then add
                 s_name_list.append(s_desc_sp)
 
@@ -868,7 +872,11 @@ class SpikeSorterTab(QTabWidget):
         # retrieves the main property values
         props = self.s_props[p_fld]
         p_type, p_value = props['type'], props['value']
-        p_desc = self.reshape_para_desc(props['desc'])
+
+        try:
+            p_desc = self.reshape_para_desc(props['desc'])
+        except:
+            a = 1
 
         # if creating a group editbox item
         if i_edit is None:
@@ -893,12 +901,12 @@ class SpikeSorterTab(QTabWidget):
         item_ch.setToolTip(0, p_desc)
 
         match p_type:
-            case p_type if p_type in ['edit_float', 'edit_int']:
+            case p_type if p_type in ['edit_float', 'edit_int', 'edit_string']:
                 # case is a lineedit
                 if p_value is None:
                     p_value = ""
 
-                else:
+                elif (p_type != 'edit_string'):
                     p_value = str(self.convert_edit_value(p_value, p_fld, False))
 
                 # creates the lineedit widget
@@ -1025,7 +1033,7 @@ class SpikeSorterTab(QTabWidget):
         elif isinstance(h_obj, QComboBox):
             self.combo_prop_update(h_obj, p_str)
 
-        elif isinstance(h_obj, QPushButton):
+        elif isinstance(h_obj, cw.QEditButton):
             self.file_spec_update(h_obj, p_str)
 
     def check_prop_update(self, h_obj, p_str):
@@ -1035,30 +1043,29 @@ class SpikeSorterTab(QTabWidget):
     def edit_prop_update(self, h_obj, p_str, i_edit=None):
 
         # field retrieval
-        str_para = []
-        new_value = h_obj.text()
+        new_str = h_obj.text()
         p_min = self.s_props[p_str]['min']
         p_max = self.s_props[p_str]['max']
 
-        if p_str in str_para:
+        if self.s_props[p_str]['type'] == 'edit_string':
             # case is a string field
             if i_edit is None:
-                self.s_props[p_str]['value'] = new_value
+                self.s_props[p_str]['value'] = new_str
             else:
-                self.s_props[p_str]['value'][i_edit] = new_value
+                self.s_props[p_str]['value'][i_edit] = new_str
 
         else:
             # determines if the new value is valid
-            chk_val = cf.check_edit_num(new_value, min_val=p_min, max_val=p_max)
+            chk_val = cf.check_edit_num(new_str, min_val=p_min, max_val=p_max)
             if chk_val[1] is None:
                 # converts the editbox value (parameter dependent)
-                final_val = self.convert_edit_value(chk_val[0], p_str, True)
+                new_val = self.convert_edit_value(chk_val[0], p_str, True)
 
                 # case is the value is valid
                 if i_edit is None:
-                    self.s_props[p_str]['value'] = final_val
+                    self.s_props[p_str]['value'] = new_val
                 else:
-                    self.s_props[p_str]['value'][i_edit] = final_val
+                    self.s_props[p_str]['value'][i_edit] = new_val
 
             else:
                 # retrieves the previous value
@@ -1092,8 +1099,27 @@ class SpikeSorterTab(QTabWidget):
 
     def file_spec_update(self, h_obj, p_str):
 
-        # retrieves the path infoformation
-        f_mode, is_dir = self.get_para_path_info(p_str)
+        # sets the default file path
+        def_path = self.s_props[p_str]['value']
+        if (def_path is None) or (len(def_path) == 0):
+            # if no path is set, use the current directory
+            def_path = os.getcwd()
+
+        # retrieves the parameter path info fields
+        f_filter, f_caption, is_dir, is_open = self.get_para_path_info(p_str)
+
+        # runs the file dialog
+        file_dlg = cw.FileDialogModal(
+            caption=f_caption, f_filter=f_filter, f_directory=def_path, dir_only=is_dir)
+        if file_dlg.exec() == QDialog.DialogCode.Accepted:
+            # sets the file path
+            nw_path = file_dlg.selectedFiles()[0]
+            self.s_props[p_str]['value'] = nw_path
+
+            # sets the other path fields
+            f_name = os.path.split(nw_path)[1]
+            h_obj.obj_edit.setText('../{0}'.format(f_name))
+            h_obj.obj_edit.setToolTip(nw_path)
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
@@ -1122,31 +1148,35 @@ class SpikeSorterTab(QTabWidget):
 
         # initialisations
         is_dir = False
-        f_mode = "All Files (*.*)"
+        is_open = True
 
         match p_str:
             case 'neural_nets_path':
                 # case is the neural network path file (yass)
-                pass
-
-            case 'out_file':
-                # case is the output file (herdingspikes)
-                pass
+                f_caption = 'Select Neural Network Path File'
+                f_filter = 'Neural Network File (*.pt, *.ckpt)'
 
             case 'prm_template_name':
                 # case is the prm template file (ironclust)
-                pass
+                f_caption = 'Select PRM Template File'
+                f_filter = '.prm Template File (*.prm)'
 
-            case 'tmpdir':
+            case 'tempdir':
                 # case is the temporary directory (mountainsort4)
-                is_dir = True
+                is_dir, is_open, f_filter = True, False, None
+                f_caption = 'Select Temporary File Directory'
 
-            case 'output_filename'
-                # case is the output filename (pykilosort)
-                pass
+            # case 'out_file':
+            #     # case is the output file (herdingspikes)
+            #     is_open = False
+            #     f_caption = 'Set Output Filename'
+            #
+            # case 'output_filename':
+            #     # case is the output filename (pykilosort)
+            #     is_open = False
+            #     f_caption = 'Set Output Filename'
 
-        # returns
-        return f_mode, is_dir
+        return f_filter, f_caption, is_dir, is_open
 
     @staticmethod
     def convert_edit_value(p_val, p_fld, is_set_para):
@@ -1184,7 +1214,10 @@ class SpikeSorterTab(QTabWidget):
         n_col_sp = 50
 
         # if the string is short, then exit
-        if len(p_desc0) <= n_col_sp:
+        if p_desc0 is None:
+            return "No description provided..."
+
+        elif len(p_desc0) <= n_col_sp:
             return p_desc0
 
         # otherwise, determine the points to place a carriage return

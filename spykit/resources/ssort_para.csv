@@ -187,8 +187,8 @@ ntbuff,Symmetrical Buffer Size,edit_int,Whitening,,
 num_starting_clusters,Initial Cluster Count,edit_int,Clustering,,
 num_workers,CPU Processor Count,edit_int,Job Parameters,,
 nup,Interpolation Factor,edit_int,,,
-out_file,Output Filename,filespec,Data Files,***,***
-output_filename,Output Filename,filespec,Data Files,***,***
+out_file,Output Filename,edit_string,Data Files,***,***
+output_filename,Output Filename,edit_string,Data Files,***,***
 parfor,Use Matlab Parfor?,checkbox,Job Parameters,***,***
 pc_per_chan,PCA Dimension Count,edit_int,,2,inf
 pca_n_waveforms_max,Max PCA Waveform Count,edit_int,Waveforms,,

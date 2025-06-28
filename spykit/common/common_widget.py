@@ -1536,7 +1536,7 @@ class QEditButton(QWidget):
         self.obj_but.setStyleSheet("border: 1px solid black;")
 
     def connect(self, cb_fcn):
-        cb_fcn = functools.partial(cb_fcn, self.obj_but)
+        cb_fcn = functools.partial(cb_fcn, self)
         self.obj_but.clicked.connect(cb_fcn)
 
 # ----------------------------------------------------------------------------------------------------------------------
