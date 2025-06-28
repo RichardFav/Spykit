@@ -262,7 +262,7 @@ class PreprocessInfoTab(InfoWidgetPara):
 
         not_rmv = np.logical_not(self.is_channel_removed())
         not_keep = np.logical_not(self.keep_channel_fcn())
-        return self.bad_channel_fcn(['out'], not_keep, not_rmv)
+        return self.bad_channel_fcn(['out'], not_keep, not_rmv)[0]
 
     def get_interp_channels(self):
 
@@ -270,7 +270,7 @@ class PreprocessInfoTab(InfoWidgetPara):
         not_rmv = np.logical_not(self.is_channel_removed())
         is_feas = np.logical_or(is_keep, not_rmv)
 
-        return self.bad_channel_fcn(['dead', 'noise'], is_feas=is_feas)
+        return self.bad_channel_fcn(['dead', 'noise'], is_feas=is_feas)[0]
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -376,8 +376,6 @@ class PreprocessSetup(QMainWindow):
         self.init_control_buttons()
         self.set_widget_config()
 
-        # self.setModal(True)
-
     # ---------------------------------------------------------------------------
     # Class Property Widget Setup Functions
     # ---------------------------------------------------------------------------
@@ -388,6 +386,7 @@ class PreprocessSetup(QMainWindow):
         self.setWindowTitle("Preprocessing Setup")
         self.setFixedSize(self.dlg_width, self.dlg_height)
         self.setWindowModality(Qt.WindowModality(1))
+        # self.setModal(True)
 
         # sets the main widget properties
         self.main_widget.setLayout(self.list_layout)
@@ -483,7 +482,7 @@ class PreprocessSetup(QMainWindow):
         # channel interpolation field (if it exists) if either a) there are no bad channels or
         # b) the common reference calculations have already taken place
         if 'Channel Interpolation' in self.l_task:
-            bad_ch_id = self.main_obj.session_obj.get_bad_channels()
+            bad_ch_id = self.main_obj.session_obj.get_bad_channels()[0]
             if (len(bad_ch_id) == 0) or ('Common Reference' not in self.l_task):
                 self.l_task.pop(self.l_task.index('Channel Interpolation'))
 

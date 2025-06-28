@@ -289,9 +289,9 @@ class SessionWorkBook(QObject):
 
         # returns the final bad channel IDs
         # i_bad_ch = np.logical_and(i_bad_filt, self.channel_data.is_keep)
-        i_bad_ch = np.logical_and(i_bad_filt, is_feas)
-        ch_id, _ = self.get_channel_ids(np.where(i_bad_ch)[0])
-        return ch_id
+        i_bad_ch = np.where(np.logical_and(i_bad_filt, is_feas))[0]
+        ch_id, _ = self.get_channel_ids(i_bad_ch)
+        return ch_id, i_bad_ch
 
     def get_shank_index(self):
 

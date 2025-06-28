@@ -2612,9 +2612,6 @@ class QProgressWidget(QWidget):
         self.time_line.stop()
         self.is_running = False
 
-# ----------------------------------------------------------------------------------------------------------------------
-# TABLE WIDGET CUSTOM MODEL CLASSES
-# ----------------------------------------------------------------------------------------------------------------------
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -2717,7 +2714,7 @@ class QDialogProgress(QWidget):
     # Miscellaneous Functions
     # ---------------------------------------------------------------------------
 
-    def update_prog_fields(self, m_str, pr_val):
+    def update_prog_fields(self, m_str, pr_val=None):
 
         if not self.is_task:
             # case is the overall progress
@@ -2757,6 +2754,9 @@ class QDialogProgress(QWidget):
         self.prog_bar.setEnabled(state)
 
 
+# ----------------------------------------------------------------------------------------------------------------------
+# TABLE WIDGET CUSTOM MODEL CLASSES
+# ----------------------------------------------------------------------------------------------------------------------
 
 """
     PandasModel: 

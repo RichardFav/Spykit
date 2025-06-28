@@ -303,3 +303,4 @@ clustering_subset,Cluster Spike Count,edit_int,Clustering,1,inf
 adjacency_radius_out,Outer Neighbourhood Radius (um),edit_float,,0,inf
 delete_tmp_files,Delete Temporary Files?,checkbox,Data Files,***,***
 nSkipCov,Whitening Matrix Batch Stride,edit_int,Whitening,1,inf
+bad_channels,Bad Channels,fixed,Fixed,***,***
