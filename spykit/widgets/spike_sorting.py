@@ -20,7 +20,7 @@ from spikeinterface.sorters import (available_sorters, installed_sorters, get_so
 # pyqt6 module import
 from PyQt6.QtWidgets import (QMainWindow, QWidget, QFrame, QFormLayout, QVBoxLayout, QHBoxLayout, QGridLayout,
                              QLineEdit, QCheckBox, QTabWidget, QSizePolicy, QProgressBar, QTreeWidget, QTreeWidgetItem,
-                             QHeaderView, QComboBox, QPushButton, QDialog)
+                             QHeaderView, QComboBox, QPushButton, QDialog, QMessageBox)
 from PyQt6.QtCore import pyqtSignal, QTimeLine, Qt, QObject, QThread
 from PyQt6.QtGui import QColor, QFont
 
@@ -145,6 +145,7 @@ class SpikeSortingDialog(QMainWindow):
         self.is_updating = False
         self.per_shank = False
         self.concat_runs = False
+        self.is_prop_change = False
         self.is_worker_running = False
 
         # initialisations
@@ -161,9 +162,6 @@ class SpikeSortingDialog(QMainWindow):
         self.init_progress_frame()
         self.init_button_frame()
         self.set_widget_config()
-
-        # REMOVE ME LATER
-        self.tab_group_sort.currentWidget().findChild(QTabWidget).setCurrentIndex(1)
 
         # runs the other special initialisations
         self.init_other_special()
@@ -355,6 +353,27 @@ class SpikeSortingDialog(QMainWindow):
         # special case - loading the kilosort4 parameter info takes quite a long
         #                time to run (~30s). therefore, load using a background thread
         if 'kilosort4' in self.ss_obj.all_s:
+            # if the sorting information is set, then exit
+            if 'kilosort4' in self.session.sort_obj.s_props:
+                self.s_prop_flds['kilosort4']['tab'].setup_tab_objects()
+                self.set_sorter_tab_enabled('kilosort4', True)
+                return
+
+            # resets the tab object (if current sorter is kilosort4)
+            if self.s_type == 'kilosort4':
+                # determines the sorter list (that kilosort4 belongs to)
+                s_list = getattr(self.ss_obj, '{0}_s'.format(self.g_type))
+                if len(s_list) == 1:
+                    # if there are no other sorters, then wait for the sorter to load instead
+                    self.set_sorter_tab_enabled('kilosort4', True)
+                    return
+
+                else:
+                    # otherwise, determines the first non-kilosort4 solver and resets the tab
+                    i_sort0 = s_list.index('kilosort4')
+                    i_sort_new = np.where(np.array(s_list) != 'kilosort4')[0][0]
+                    self.tab_group_sort.currentWidget().findChild(QTabWidget).setCurrentIndex(i_sort_new)
+
             # connects the preprocessing signal function
             self.is_worker_running = True
             self.session.sort_obj.update_prog.connect(self.info_worker_progress)
@@ -426,6 +445,13 @@ class SpikeSortingDialog(QMainWindow):
                 obj_tab_group.addTab(obj_tab_para, v['name'])
                 obj_tab_group.setTabToolTip(i, v['desc'])
 
+                # sets the solver properties (if already available)
+                if k in self.session.sort_obj.s_props:
+                    obj_tab_para.s_props = self.session.sort_obj.s_props[k]
+
+                # connects the callback functions
+                obj_tab_para.prop_change.connect(self.sort_prop_change)
+
                 # stores the tab widget
                 self.s_prop_flds[k]['tab'] = obj_tab_para
                 self.s_prop_flds[k]['grp'] = p_str
@@ -476,9 +502,7 @@ class SpikeSortingDialog(QMainWindow):
                 self.prog_bar.update_prog_fields(self.prog_bar.wait_lbl)
 
                 # re-enables the tab header
-                g_tab, i_tab = self.get_sorter_tab_props('kilosort4')
-                h_tab_grp = self.tab_group_sort.findChild(QTabWidget, name=g_tab)
-                h_tab_grp.setTabEnabled(i_tab, True)
+                self.set_sorter_tab_enabled('kilosort4', True)
 
                 # deletes the worker object
                 try:
@@ -564,6 +588,17 @@ class SpikeSortingDialog(QMainWindow):
             # force closes the thread worker
             self.t_worker.force_quit()
 
+        # if there is a change, prompt the user if they would like to update the props
+        if self.is_prop_change:
+            q_str = 'Do you want to update the parameter changes?'
+            u_choice = QMessageBox.question(self.main_obj, 'Update Changes?', q_str, cf.q_yes_no_cancel, cf.q_yes)
+            if u_choice == cf.q_yes:
+                # case is the user chose to update the parameters
+                self.update_sort_para_changes()
+
+            elif u_choice == cf.q_cancel:
+                return
+
         # runs the post window close functions
         self.close_spike_sorting.emit(self.has_ss)
 
@@ -629,6 +664,12 @@ class SpikeSortingDialog(QMainWindow):
     # Miscellaneous Methods
     # ---------------------------------------------------------------------------
 
+    def set_sorter_tab_enabled(self, sl_name, state):
+
+        g_tab, i_tab = self.get_sorter_tab_props(sl_name)
+        h_tab_grp = self.tab_group_sort.findChild(QTabWidget, name=g_tab)
+        h_tab_grp.setTabEnabled(i_tab, state)
+
     def setup_config_dict(self):
 
         return {'sorting': {self.s_type: self.s_props[self.s_type]}}
@@ -638,6 +679,17 @@ class SpikeSortingDialog(QMainWindow):
         s_props = self.s_prop_flds[s_name]
         s_list = getattr(self.ss_obj,'{0}_s'.format(s_props['grp']))
         return s_props['grp'], s_list.index(s_name)
+
+    def update_sort_para_changes(self):
+
+        for sl_k, sl_v in self.s_prop_flds.items():
+            s_props = sl_v['tab'].s_props
+            if s_props is not None:
+                self.session.sort_obj.s_props[sl_k] = s_props
+
+    def sort_prop_change(self):
+
+        self.is_prop_change = True
 
     # ---------------------------------------------------------------------------
     # Static Methods
@@ -689,6 +741,7 @@ class RunSpikeSorting(QObject):
 
         # session object
         self.s = s
+        self.s_props = {}
 
         # boolean class fields
         self.per_shank = False
@@ -734,7 +787,10 @@ class RunSpikeSorting(QObject):
 
 
 class SpikeSorterTab(QTabWidget):
-    # table dimensions
+    # pyqtsignal functions
+    prop_change = pyqtSignal()
+
+    # widget dimensions
     x_gap = 5
     hght_row = 25
     item_row_size = 23
@@ -920,9 +976,6 @@ class SpikeSorterTab(QTabWidget):
         # initialisations
         cb_fcn_base = pfcn(self.prop_update, props, p_fld)
 
-        # if p_name == 'method_kwargs':
-        #     a = 1
-
         # creates the tree widget item
         item_ch = QTreeWidgetItem(item_p)
         item_ch.setText(0, lbl_str)
@@ -950,13 +1003,9 @@ class SpikeSorterTab(QTabWidget):
                 h_obj = QComboBox()
 
                 # adds the combobox items
-                try:
-                    p_list = props.get('list')
-                    for p in p_list:
-                        h_obj.addItem(p)
-
-                except:
-                    a = 1
+                p_list = props.get('list')
+                for p in p_list:
+                    h_obj.addItem(p)
 
                 # converts the combo value
                 p_value = self.convert_combo_value(p_value, p_fld.split('-')[-1])
@@ -1019,9 +1068,6 @@ class SpikeSorterTab(QTabWidget):
                 h_obj.connect(cb_fcn_base)
 
             case 'dict':
-                if p_fld == 'detection':
-                    a = 1
-
                 if len(props.get('child')) == 0:
                     return None, None
 
@@ -1075,6 +1121,7 @@ class SpikeSorterTab(QTabWidget):
 
         # updates the value field
         s_prop_p.set('value', h_obj.isChecked())
+        self.prop_change.emit()
 
     def edit_prop_update(self, h_obj, s_prop_p, p_str, i_edit=None):
 
@@ -1082,9 +1129,11 @@ class SpikeSorterTab(QTabWidget):
         new_str = h_obj.text()
         p_min = s_prop_p.get('min')
         p_max = s_prop_p.get('max')
+        p_isint = s_prop_p.get('isint')
 
         if s_prop_p.get('type') == 'edit_string':
             # case is a string field
+            self.prop_change.emit()
             if i_edit is None:
                 s_prop_p.set('value', new_str)
             else:
@@ -1092,16 +1141,21 @@ class SpikeSorterTab(QTabWidget):
 
         else:
             # determines if the new value is valid
-            chk_val = cf.check_edit_num(new_str, min_val=p_min, max_val=p_max)
+            chk_val = cf.check_edit_num(new_str, min_val=p_min, max_val=p_max, is_int=p_isint)
             if chk_val[1] is None:
                 # converts the editbox value (parameter dependent)
                 new_val = self.convert_edit_value(chk_val[0], p_str, True)
+                if p_isint:
+                    new_val = int(new_val)
 
                 # case is the value is valid
                 if i_edit is None:
                     s_prop_p.set('value', new_val)
                 else:
                     s_prop_p.value[i_edit] = new_val
+
+                # flag that the property has been updated
+                self.prop_change.emit()
 
             else:
                 # retrieves the previous value
@@ -1129,6 +1183,7 @@ class SpikeSorterTab(QTabWidget):
                 p_value = self.sign_l2v[p_value]
 
         # updates the property field
+        self.prop_change.emit()
         s_prop_p.set('value', p_value)
 
     def file_spec_update(self, h_obj, s_prop_p, p_str):
@@ -1147,6 +1202,7 @@ class SpikeSorterTab(QTabWidget):
             caption=f_caption, f_filter=f_filter, f_directory=def_path, dir_only=is_dir)
         if file_dlg.exec() == QDialog.DialogCode.Accepted:
             # sets the file path
+            self.prop_change.emit()
             nw_path = file_dlg.selectedFiles()[0]
             s_prop_p.set('value', nw_path)
 
@@ -1285,7 +1341,6 @@ class SpikeSorterTab(QTabWidget):
     SpikeSortPara:  
 """
 
-# setup_para_field(self, ss_info, value, desc, lvl=0)
 
 class SpikeSortPara(object):
     def __init__(self, ss_info, value, desc):
@@ -1388,7 +1443,9 @@ class SpikeSortInfo(QObject):
                 p_fld_common += ['apply_motion_correction', 'motion_correction']
 
         # stores the parameter field for the sorter
-        return self.setup_sorter_para_fields(s_name, p_fld_common, p_info, p_desc, p_str=[s_name], p_dict={})
+        p_dict = {}
+        self.setup_sorter_para_fields(s_name, p_fld_common, p_info, p_desc, p_str=[s_name], p_dict=p_dict)
+        return p_dict
 
     def setup_sorter_para_fields(self, s_name, p_fld, p_value, p_desc=None, p_str=[], p_dict={}):
 
@@ -1582,33 +1639,6 @@ class SpikeSortInfo(QObject):
             case 'version':
                 # case is the ironclust version (ironclust)
                 return ['1', '2']
-
-    # def setup_para_field(self, ss_info, value, desc, lvl=0):
-    #
-    #     # sets the integer flag
-    #     isint = ss_info.get('type') in ['group_edit_int', 'edit_int']
-    #
-    #     return {
-    #         # common parameter fields
-    #         'label': ss_info['label'],
-    #         'value': value,
-    #         'dvalue': value,
-    #         'type': ss_info['type'],
-    #         'class': ss_info['class'],
-    #         'desc': desc,
-    #         'lvl': lvl,
-    #
-    #         # numerical fields
-    #         'isint': isint,
-    #         'min': convert_string(ss_info['min'], isint),
-    #         'max': convert_string(ss_info['max'], isint),
-    #
-    #         # combobox fields
-    #         'list': [],
-    #
-    #         # children parameter fields (dictionaries)
-    #         'child': [],
-    #     }
 
     # ---------------------------------------------------------------------------
     # Getter Functions
