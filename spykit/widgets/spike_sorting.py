@@ -1483,7 +1483,7 @@ class SpikeSortInfo(QObject):
 
                 case 'fixed':
                     # case is a fixed parameter field
-                    match pf:
+                    match pf.split('-')[-1]:
                         case 'bad_channels':
                             # case is bad channels (kilosort4)
                             if self.ses_obj is not None:
@@ -1499,9 +1499,27 @@ class SpikeSortInfo(QObject):
         # sets the lower parameter limit
         p_lim_lo = 0 if p_dict.get('isint') else 0.
 
+        # specific parameter updates
+        match p_fld.split('-')[-1]:
+            case 'batch_size':
+                # case is the batch size (kilosort4)
+
+                # determines the maximum batch size
+                batch_size_max = int(self.ses_obj.get_frame_count() / 2)
+                p_dict.set('max', batch_size_max)
+
+                # if infeasible, then reset the batch size values
+                if p_dict.get('value') > batch_size_max:
+                    p_dict.set('value', batch_size_max)
+
+            case _:
+                # case is the other parameters
+
+                # sets the parameter upper limit
+                p_dict.set('max', self.get_limit_value(p_dict.get('max'), np.inf))
+
         # sets the lower/upper limits
         p_dict.set('min', self.get_limit_value(p_dict.get('min'), p_lim_lo))
-        p_dict.set('max', self.get_limit_value(p_dict.get('max'), np.inf))
 
         return p_dict
 

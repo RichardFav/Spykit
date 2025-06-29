@@ -20,6 +20,7 @@ from pyqtgraph.Qt import QtGui
 # pyqt6 module import
 from PyQt6.QtWidgets import (QWidget)
 from PyQt6.QtCore import pyqtSignal, Qt, QObject
+from PyQt6.QtGui import QPainterPath
 
 # plot button fields
 b_icon = ['save', 'close']
@@ -529,7 +530,8 @@ class TriggerPlot(PlotWidget):
 
     def clear_plot_view(self):
 
-        self.trig_trace.clear()
+        self.trig_trace.setPath(QPainterPath())
+        self.trig_trace.update()
 
     def show_view(self):
 

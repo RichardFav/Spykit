@@ -206,7 +206,7 @@ class SessionWorkBook(QObject):
 
     def get_frame_count(self):
 
-        return self.session_props
+        return self.session_props.n_samples
 
     def get_current_recording_probe(self):
 
