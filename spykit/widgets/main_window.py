@@ -597,7 +597,8 @@ class MainWindow(QMainWindow):
         # f_file = "C:/Work/Other Projects/EPhys Project/Code/spykit/spykit/resources/session/tiny_session.ssf"
         # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/tiny_example.ssf"
         # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/tiny_example (preprocessed).ssf"
-        f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/tiny_example (preprocessed2).ssf"
+        # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/tiny_example (preprocessed2).ssf"
+        f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/tiny_example (sorting).ssf"
         # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/large_example.ssf"
 
         self.menu_bar.load_session(f_file)
@@ -845,6 +846,10 @@ class MenuBar(QObject):
         self.main_obj.session_obj.reset_session(ses_data)
         self.main_obj.session_obj.reset_channel_data(channel_data)
 
+        # resets the sorting information object
+        if 'sorting_props' in ses_data:
+            self.main_obj.session_obj.set_sorting_props(ses_data['sorting_props'])
+
         # updates the bad/sync channel status table fields
         self.main_obj.bad_channel_change()
         self.main_obj.sync_channel_change()
@@ -995,6 +1000,7 @@ class MenuBar(QObject):
             'state': ses_obj.state,
             'configs': prep_tab.configs,
             'session_props': ses_obj.session.get_session_props(),
+            'sorting_props': ses_obj.session.sort_obj.s_props,
             'prop_para': self.main_obj.prop_manager.get_prop_para(prop_list),
             'info_para': self.main_obj.info_manager.get_info_para(info_list),
             'channel_data': {

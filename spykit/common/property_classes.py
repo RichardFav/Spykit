@@ -380,6 +380,10 @@ class SessionWorkBook(QObject):
 
         self.prep_type = new_type
 
+    def set_sorting_props(self, new_sort_props):
+
+        self.session.sort_obj.s_props = new_sort_props
+
     # ---------------------------------------------------------------------------
     # Session wrapper functions
     # ---------------------------------------------------------------------------
