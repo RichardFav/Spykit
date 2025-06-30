@@ -442,3 +442,26 @@ def list_class_props(c):
 def convert_path(p_str):
 
     return p_str.replace('\\', '/')
+
+
+def disp_nested_dict(d, p_gap='', show_dict=True, d_str=''):
+
+    for k, v in d.items():
+        if isinstance(v, dict):
+            nw_str = '{0}{1}:'.format(p_gap, k)
+            if show_dict:
+                print(nw_str)
+                disp_nested_dict(v, p_gap + '  ', show_dict)
+            else:
+                d_str_d = disp_nested_dict(v, p_gap + '  ', show_dict)
+                d_str = '{0}{1}\n{2}'.format(d_str, nw_str, d_str_d)
+
+        else:
+            nw_str = '  {0}{1}: {2}'.format(p_gap, k, v)
+            if show_dict:
+                print(nw_str)
+            else:
+                d_str = '{0}{1}\n'.format(d_str, nw_str)
+
+    if not show_dict:
+        return d_str

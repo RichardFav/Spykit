@@ -551,6 +551,15 @@ class SpikeSortingDialog(QMainWindow):
         self.is_running = not self.button_cont[0].isChecked()
 
         if self.is_running:
+            if not self.check_sort_overwrite():
+                # if the user cancelled, then exit the function
+                self.is_updating = True
+                self.button_cont[0].setChecked(False)
+                self.is_updating = False
+
+                # exits the function
+                return
+
             # sets up the configuration dictionary
             sort_config = self.setup_config_dict()
 
@@ -623,9 +632,10 @@ class SpikeSortingDialog(QMainWindow):
         # sorting parameters
         sort_config, sort_opt = sort_obj
         per_shank, concat_runs = sort_opt
+        run_sorter_method = self.get_sorter_method()
 
         # runs the preprocessing
-        self.session.sort_obj.sort(sort_config, per_shank, concat_runs)
+        self.session.sort_obj.sort(sort_config, per_shank, concat_runs, run_sorter_method)
 
     def spike_sorting_complete(self):
 
@@ -717,6 +727,96 @@ class SpikeSortingDialog(QMainWindow):
 
         self.is_prop_change = True
 
+    def get_sorter_method(self):
+
+        match self.g_type:
+            case 'local':
+                # case is a local solver
+                return 'local'
+
+            case 'custom':
+                # FINISH ME!
+                pass
+
+            case _:
+                # case is using occker
+                return 'docker'
+
+    def check_sort_overwrite(self):
+
+        # determines if the output path exists
+        out_path = self.session._s.get_output_path()
+        if not out_path.exists():
+            return True
+
+        # retrieves the sorter output paths
+        out_path = self.get_output_file_path(deepcopy(out_path))
+        if len(out_path):
+            # case is there is at least one output path that exists
+            q_str = 'The spike sorting data output folder already exists. Do you want to overwrite the folder?'
+            u_choice = QMessageBox.question(self.main_obj, 'Overwrite Folder?', q_str, cf.q_yes_no, cf.q_yes)
+            if u_choice == cf.q_yes:
+                # case is the user chose to overwrite the folder
+                self.delete_sorter_folders(out_path)
+                return True
+
+            else:
+                # otherwise, flag that the user ooes not want to overwrite the existing
+                return False
+
+        else:
+            # case is none of the final output paths exist
+            return True
+
+    def get_output_file_path(self, out_path_base):
+
+        # field retrieval
+        out_path = []
+        n_run = self.session.get_run_count()
+        n_shank = self.main_obj.session_obj.get_shank_count()
+
+        # retrieves the session per shank/concat run flags
+        per_shank = self.session.prep_obj.per_shank or self.per_shank
+        concat_runs = self.session.prep_obj.concat_runs or self.concat_runs
+
+        # retrieves the full output paths (based on type)
+        if concat_runs:
+            # case is the runs are concatenated
+            out_path_concat = out_path_base / "concat_run" / "sorting"
+            if not out_path_concat.exists():
+                # case is the base output path doesn't exist so exit
+                return []
+
+            elif per_shank:
+                # case is analysing by shank
+                for i_shank in range(n_shank):
+                    out_path_new = out_path_concat / 'shank_{0}'.format(i_shank)
+                    if out_path_new.exists():
+                        out_path.append(out_path_new)
+
+            else:
+                # case is grouping analysis
+                out_path.append(out_path_concat)
+
+        else:
+            # case is the runs are analysed separately
+            r_names = self.session.get_run_names()
+            for i_run, rn in zip(r_names):
+                out_path_run = out_path_base / rn / "sorting"
+                if per_shank:
+                    # case is analysing by shank
+                    for i_shank in range(n_shank):
+                        out_path_new = out_path_run / 'shank_{0}'.format(i_shank)
+                        if out_path_new.exists():
+                            out_path.append(out_path_new)
+
+                else:
+                    # case is grouping analysis
+                    out_path.append(out_path_run)
+
+        # returns the array
+        return out_path
+
     # ---------------------------------------------------------------------------
     # Static Methods
     # ---------------------------------------------------------------------------
@@ -751,6 +851,11 @@ class SpikeSortingDialog(QMainWindow):
         # returns the final sorter name
         return ' '.join(s_name_list)
 
+    @staticmethod
+    def delete_sorter_folders(out_path):
+        for op in out_path:
+            shutil.rmtree(op, ignore_errors=True)
+
 # ----------------------------------------------------------------------------------------------------------------------
 
 """
@@ -772,22 +877,21 @@ class RunSpikeSorting(QObject):
         # boolean class fields
         self.per_shank = False
         self.concat_runs = False
+        self.run_sorter_method = False
 
-    def sort(self, ss_config, per_shank, concat_runs):
+    def sort(self, ss_config, per_shank, concat_runs, run_sorter_method):
 
         # sets the input arguments
         self.per_shank = per_shank
         self.concat_runs = concat_runs
         self.ss_config = ss_config
-
-        # REMOVE ME LATER
-        ss_config = {'sorting': {'kilosort4': {'batch_size': 5000}}}
+        self.run_sorter_method = run_sorter_method
 
         # runs the spike sorting solver
         self.s.sort(
             ss_config,
-            run_sorter_method="local",
-            per_shank=self.per_shanke,
+            run_sorter_method=run_sorter_method,
+            per_shank=self.per_shank,
             concat_runs=self.concat_runs,
         )
 
