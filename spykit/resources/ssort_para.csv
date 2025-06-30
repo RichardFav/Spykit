@@ -99,7 +99,7 @@ indices_per_spike,Sample per Spike,edit_int,Waveforms,,
 inner_radius,Spike Neighbourhood Radius (um),edit_float,,,
 interpolation,Use Spike Interpolation?,checkbox,,***,***
 invert_sign,Invert Data Sign?,checkbox,Detection,***,***
-job_kwargs,Job Arguments,dict,Job Arguments,***,***
+job_kwargs,Job Arguments,dict,Job Parameters,***,***
 keep_good_only,Keep Good Units Only?,checkbox,Clustering,***,***
 knn,KNN Count,edit_int,Merging,,
 lam,Amplitude Penalty Importance,edit_int,,,
@@ -110,11 +110,11 @@ long_range,Spatial Neighbourhood Size,group_edit_int,,,
 loop_mode,Loop Mode,combobox,,***,***
 low_memory,Low Memory Settings,checkbox,Job Parameters,***,***
 lowpass,Enable Internal Low-Pass Filtering?,checkbox,Filtering,***,***
-margin_ms,Temporal Border Margin (ms),edit_float,,,
+margin_ms,Temporal Border Margin (ms),edit_float,Waveforms,,
 matching,Matching Parameter,dict,Templates,***,***
 max_channel_distance,Max Channel Distance (um),edit_float,,1,inf
 max_cluster_subset,Max Clustering Subset Size,edit_int,Clustering,1,inf
-max_distance_um,Max Merge Distance (um),edit_float,,,
+max_distance_um,Max Merge Distance (um),edit_float,Merging,,
 max_distance_within_group,Max Electrode Group Distance,edit_float,,,
 max_el_per_group,Max Channels per Electrode,edit_int,,,
 max_peels,Max Iteration Count,edit_int,,1,10000
@@ -234,7 +234,7 @@ scheme2_training_duration_sec,Scheme 2 Training Duration (s),edit_float,,,
 scheme2_training_recording_sampling_mode,Scheme 2 Recording Sample Mode,combobox,,***,***
 scheme3_block_duration_sec,Scheme 3 Block Duration (s),edit_float,,,
 SecondMatchFactor,Second Match Factor,edit_float,Templates,,
-seed,Random Number Generator Seed,edit_int,,0,65535
+seed,Random Number Generator Seed,edit_int,Merging,0,65535
 selection,Selection Parameters,dict,Selection,***,***
 sig,Spatial Smoothing Constant (um),edit_float,,,
 sig_datashift,Gaussian Smoothing Std Dev,edit_float,,,
@@ -297,7 +297,7 @@ whiteningRange,Whitening Channel Range,edit_int,Whitening,1,inf
 chunk_memory,Chunk Memory Size (MB),edit_int,Data,0,inf
 select_per_channel,Select per Channel?,checkbox,Selection,***,***
 filter_order,Filtering Order,edit_int,Filtering,1,inf
-preset,Presets,combobox,Motion Correction ,***,***
+preset,Presets,combobox,Motion Correction,***,***
 chunk_size,Chunk Sample Size (Frames),edit_int,Data,0,inf
 clustering_subset,Cluster Spike Count,edit_int,Clustering,1,inf
 adjacency_radius_out,Outer Neighbourhood Radius (um),edit_float,,0,inf

@@ -88,9 +88,9 @@ class MainWindow(QMainWindow):
         # sets the widget style sheets
         self.set_styles()
 
-        # REMOVE ME LATER
-        if os.environ['COMPUTERNAME'] == "DESKTOP-NLLEH0V":
-            self.testing()
+        # # REMOVE ME LATER
+        # if os.environ['COMPUTERNAME'] == "DESKTOP-NLLEH0V":
+        #     self.testing()
 
     # ---------------------------------------------------------------------------
     # Class Widget Setup Functions
@@ -316,6 +316,9 @@ class MainWindow(QMainWindow):
             case 'preprocess':
                 # case is the preprocessing calculations
                 job_desc = "Running Preprocessing"
+
+            case 'sorterpara':
+                job_desc = "Load Sorter Parameters"
 
         self.info_manager.add_job(job_name, job_desc)
 
@@ -597,8 +600,7 @@ class MainWindow(QMainWindow):
         # f_file = "C:/Work/Other Projects/EPhys Project/Code/spykit/spykit/resources/session/tiny_session.ssf"
         # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/tiny_example.ssf"
         f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/tiny_example (preprocessed).ssf"
-        # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/tiny_example (preprocessed2).ssf"
-        # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/tiny_example (sorting).ssf"
+        # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/tiny_example (sorting - SK2).ssf"
         # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/large_example.ssf"
 
         self.menu_bar.load_session(f_file)

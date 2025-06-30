@@ -13,6 +13,7 @@ from PyQt6.QtCore import Qt, QSize, QRect, pyqtSignal, pyqtBoundSignal, QObject
 # spikeinterface/spikewrap module import
 import spikewrap as sw
 import spikeinterface as si
+from spikeinterface.sorters import available_sorters
 from spikeinterface.core import order_channels_by_depth
 
 # spykit module imports
@@ -20,7 +21,7 @@ import spykit.common.common_func as cf
 from spykit.threads.utils import ThreadWorker
 from spykit.info.preprocess import pp_flds, RunPreProcessing
 from spykit.info.preprocess import prep_task_map as pp_map
-from spykit.widgets.spike_sorting import RunSpikeSorting
+from spykit.widgets.spike_sorting import RunSpikeSorting, SpikeSortInfo
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -502,6 +503,7 @@ class SessionWorkBook(QObject):
             _probe_current = _self.get_current_recording_probe()
             _self.channel_data = ChannelData(_probe_current)
             _self.session_props = SessionProps(_probe_current)
+            _self.session.load_sorting_para(_self)
 
         else:
             # case is there is no session set (clearing session)
@@ -641,6 +643,19 @@ class SessionObject(QObject):
         # pauses for things to catch up...
         time.sleep(0.1)
 
+    def load_sorting_para(self, ses_obj):
+
+        # updates the signal function
+        if (ses_obj.session.sig_fcn is not None) and (not ses_obj.session.ssf_load):
+            # sets up the bad channel detection worker
+            t_worker_sort = ThreadWorker(None, self.get_sorter_info, (ses_obj))
+            t_worker_sort.work_finished.connect(self.post_get_sorter_info)
+            t_worker_sort.desc = 'sorterpara'
+            t_worker_sort.start()
+
+            # updates the signal function
+            self.sig_fcn('sorterpara')
+
     def recalc_bad_channel_detect(self, p_props):
 
         # pauses for things to catch up...
@@ -752,6 +767,13 @@ class SessionObject(QObject):
         # returns the min/max values
         return t_blk, y_min, y_max, i_run
 
+    @staticmethod
+    def get_sorter_info(run_data):
+
+        # initialisations
+        ss_info = SpikeSortInfo(run_data)
+        return ss_info.setup_all_sort_para()
+
     # ---------------------------------------------------------------------------
     # Post thread worker functions
     # ---------------------------------------------------------------------------
@@ -801,6 +823,13 @@ class SessionObject(QObject):
             self.data_init['minmax'] = True
 
         self.channel_calc.emit('minmax', self)
+
+    def post_get_sorter_info(self, data):
+
+        # updates the sorter parameter fields
+        self.sort_obj.s_props = data
+
+        self.channel_calc.emit('sorterpara', self)
 
     # ---------------------------------------------------------------------------
     # Preprocessing Functions

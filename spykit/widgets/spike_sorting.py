@@ -672,7 +672,33 @@ class SpikeSortingDialog(QMainWindow):
 
     def setup_config_dict(self):
 
-        return {'sorting': {self.s_type: self.s_props[self.s_type]}}
+        # retrieves the sorter parameters
+        h_tab_s = self.tab_group_sort.currentWidget()
+        s_props_s = h_tab_s.findChild(SpikeSorterTab, name=self.s_type).s_props
+
+        # determines the parameters with non-default value
+        s_dict = {}
+        ndef_para = [k for (k, v) in s_props_s.items() if (v.value != v.dvalue)]
+        for nd_p in ndef_para:
+            # determines which level
+            p_sp = nd_p.split('-')
+            n_lvl = len(p_sp) - 1
+
+            # sets the parameter field within the config dictionary
+            s_dict_p = s_dict
+            for i_lvl in range(n_lvl):
+                p_fld = p_sp[i_lvl + 1]
+                if (i_lvl + 1) == n_lvl:
+                    # case is the leaf level
+                    s_dict_p[p_fld] = s_props_s[nd_p].get('value')
+
+                else:
+                    # case is a branch level
+                    if p_fld not in s_dict_p:
+                        s_dict_p[p_fld] = {}
+                    s_dict_p = s_dict_p[p_fld]
+
+        return {'sorting': {self.s_type: s_dict}}
 
     def get_sorter_tab_props(self, s_name):
 
@@ -892,38 +918,46 @@ class SpikeSorterTab(QTabWidget):
         self.tree_prop.setItemDelegateForColumn(0, cw.HTMLDelegate())
 
         # determines the unique parameter class indices
-        p_fld = np.array([x for x in self.s_props.keys() if x.startswith(self.s_name)])
-        p_class = [self.s_props[pf].get('ctype') for pf in p_fld]
+        p_fld = np.array(list(self.s_props.keys()))
+        p_class = [self.s_props[pf].get_para_class() for pf in p_fld]
         p_grp, i_grp = np.unique(p_class, return_inverse=True)
+        is_ok = np.ones(len(p_fld), dtype=bool)
 
         # creates the table fields for each
         for i, pg in enumerate(p_grp):
             # determines the parameters within the current grouping
             j_grp = np.where(i_grp == i)[0]
-            g_hdr = 'Unclassified' if (pg == 'nan') else pg
+
+            # determine if there are any feasible parameters
+            is_ok_grp = is_ok[j_grp]
+            if np.any(is_ok_grp):
+                # sets the reduced parameter group
+                p_fld_grp = p_fld[j_grp]
+            else:
+                # otherwise, continue to the next grouping
+                continue
 
             # creates the parent item
             item = QTreeWidgetItem(self.tree_prop)
 
             # sets the item properties
-            item.setText(0, g_hdr)
+            item.setText(0, pg)
             item.setFont(0, self.item_font)
             item.setFirstColumnSpanned(True)
             item.setExpanded(True)
 
-            # sets the reduced parameter group
-            p_fld_grp = p_fld[j_grp]
-            is_ok = np.ones(len(p_fld_grp), dtype=bool)
-
             # adds the tree widget item
             self.tree_prop.addTopLevelItem(item)
             for j, ps in enumerate(p_fld_grp):
-                if not is_ok[j]:
+                if not is_ok_grp[j]:
                     continue
 
                 elif len(self.s_props[ps].get('child')):
-                    for ps_c in self.s_props[ps].get('child'):
-                        is_ok[p_fld_grp == ps_c] = False
+                    is_ok[np.strings.startswith(p_fld, ps)] = False
+                    is_ok_grp[np.strings.startswith(p_fld_grp, ps)] = False
+
+                if ps.endswith('seed'):
+                    a = 1
 
                 # creates the property name field
                 item_ch, obj_prop = self.create_child_tree_item(item, ps)
@@ -959,7 +993,7 @@ class SpikeSorterTab(QTabWidget):
 
         # retrieves the main property values
         props = self.s_props[p_fld]
-        p_type, p_value = props.get('type'), props.get('value')
+        p_type, p_value = props.get('type').strip(), props.get('value')
         p_desc = self.reshape_para_desc(props.get('desc'))
 
         # if creating a group editbox item
@@ -1068,7 +1102,11 @@ class SpikeSorterTab(QTabWidget):
                 h_obj.connect(cb_fcn_base)
 
             case 'dict':
+                # case is a dictionary
+
+                # if there are no dictionary fields then exit
                 if len(props.get('child')) == 0:
+                    item_p.removeChild(item_ch)
                     return None, None
 
                 # case is a dictionary
@@ -1090,6 +1128,7 @@ class SpikeSorterTab(QTabWidget):
                 item_ch.setExpanded(True)
 
             case 'fixed':
+                item_p.removeChild(item_ch)
                 return None, None
 
         # returns the objects
@@ -1131,7 +1170,7 @@ class SpikeSorterTab(QTabWidget):
         p_max = s_prop_p.get('max')
         p_isint = s_prop_p.get('isint')
 
-        if s_prop_p.get('type') == 'edit_string':
+        if s_prop_p.get('type').strip() == 'edit_string':
             # case is a string field
             self.prop_change.emit()
             if i_edit is None:
@@ -1334,7 +1373,6 @@ class SpikeSorterTab(QTabWidget):
         # recombines the string
         return ' '.join(p_desc_sp)
 
-
 # ----------------------------------------------------------------------------------------------------------------------
 
 """
@@ -1375,6 +1413,14 @@ class SpikeSortPara(object):
     def get(self, p_fld):
         return getattr(self, p_fld)
 
+    def get_para_class(self):
+
+        if isinstance(self.ctype, float):
+            return "Unclassified"
+
+        else:
+            return self.ctype.strip()
+
 # ----------------------------------------------------------------------------------------------------------------------
 
 """
@@ -1387,6 +1433,15 @@ class SpikeSortInfo(QObject):
     ig_para = ['shift', 'scale', 'datashift',
                'fs', 'x_centers', 'delete_tmp_files']
     l_pattern = rf"(?<={re.escape('spikeinterface/')}).*?(?={re.escape('-')})"
+
+    # group parameter to class key
+    grp_key = {
+        'sparsity': 'Sparsity',
+        'clustering': 'Clustering',
+        'whitening': 'Whitening',
+        'selection': 'Selection',
+        'cache_preprocessing': 'Cache Preprocessing',
+    }
 
     def __init__(self, ses_obj=None):
         super(SpikeSortInfo, self).__init__()
@@ -1423,10 +1478,22 @@ class SpikeSortInfo(QObject):
             self.ss_info[row.Parameter] = {
                 'label': row.Label,
                 'type': row.Type,
+                'class': row.Class,
                 'min': row.Min,
                 'max': row.Max,
-                'class': row.Class,
             }
+
+    def setup_all_sort_para(self):
+
+        # initialisations
+        s_props = {}
+
+        # retrieves the parameters (over all sorters)
+        for sl in self.all_s:
+            s_props[sl] = self.setup_sorter_para(sl)
+
+        # returns the sorting props
+        return s_props
 
     def setup_sorter_para(self, s_name):
 
@@ -1454,6 +1521,14 @@ class SpikeSortInfo(QObject):
             # skip any parameters that are being ignored
             if pf0 in self.ig_para:
                 continue
+
+            # special parameter
+            match pf0:
+                case pf0 if pf0 in ['threshold', 'mode', 'method', 'method_kwargs']:
+                    # case is the threshold level
+                    if len(p_str) > 1:
+                        # if part of a sub-classification, then reset to the parent
+                        self.ss_info[pf0]['class'] = self.ss_info[p_str[-1]]['class']
 
             # sets up the base parameter field
             pf = '-'.join(p_str + [pf0])
@@ -1485,11 +1560,12 @@ class SpikeSortInfo(QObject):
                     # case is a fixed parameter field
                     match pf.split('-')[-1]:
                         case 'bad_channels':
-                            # case is bad channels (kilosort4)
-                            if self.ses_obj is not None:
-                                bad_ch = self.ses_obj.get_bad_channels()[1]
-                                p_dict[pf].set('value', bad_ch)
-                                p_dict[pf].set('dvalue', bad_ch)
+                            pass
+
+                            # # case is bad channels (kilosort4)
+                            # if self.ses_obj is not None:
+                            #     bad_ch = self.ses_obj.get_bad_channels()[1]
+                            #     p_dict[pf].set('value', bad_ch)
 
         # returns the dictionary
         return p_dict
