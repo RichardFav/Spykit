@@ -571,7 +571,8 @@ class SpikeSortingDialog(QMainWindow):
 
             # retrieves the preprocessing information
             prep_obj = self.main_obj.session_obj.session.prep_obj
-            sort_opt = (prep_obj.per_shank, prep_obj.concat_runs)
+            sort_opt = (self.per_shank and (not prep_obj.per_shank),
+                        self.concat_runs and (not prep_obj.concat_runs))
 
             # starts running the pre-processing
             self.setup_spike_sorting_worker((sort_config, sort_opt))
