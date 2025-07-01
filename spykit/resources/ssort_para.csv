@@ -244,8 +244,8 @@ skip_kilosort_preprocessing,Skip Kilosort Preprocessing?,checkbox,Data Files,***
 snippet_mask_radius,Snippet Mask Radius (um),edit_float,Waveforms,,
 snippet_T1,Pre-Peak Cutout Duration (Frames),edit_int,Waveforms,,
 snippet_T2,Post-Peak Cutout Duration (Frames),edit_int,Waveforms,,
-sort_filter_fmax,Sorting Low-Pass Cutoff Freq (Hz),edit_float,Filtering,,
-sort_filter_fmin,Sorting High-Pass Cutoff Freq (Hz),edit_float,Filtering,,
+sort_filter_fmax,Sorting High-Pass Cutoff Freq (Hz),edit_float,Filtering,,
+sort_filter_fmin,Sorting Low-Pass Cutoff Freq (Hz),edit_float,Filtering,,
 sort_filter_order,Sorting Filter Order,edit_int,Filtering,,
 sort_filter_order,Sorting Filter Order,edit_int,Filtering,,
 sort_mode,Enable Sort Mode?,checkbox,,***,***
