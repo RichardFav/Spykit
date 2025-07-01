@@ -14,6 +14,7 @@ dependencies:
   - pandas
   - docker
   - torch
+  - hdbscan
   - kilosort
   - pip:
     - spikeinterface

@@ -88,9 +88,9 @@ class MainWindow(QMainWindow):
         # sets the widget style sheets
         self.set_styles()
 
-        # # REMOVE ME LATER
-        # if os.environ['COMPUTERNAME'] == "DESKTOP-NLLEH0V":
-        #     self.testing()
+        # REMOVE ME LATER
+        if os.environ['COMPUTERNAME'] == "DESKTOP-NLLEH0V":
+            self.testing()
 
     # ---------------------------------------------------------------------------
     # Class Widget Setup Functions

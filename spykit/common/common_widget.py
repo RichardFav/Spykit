@@ -2402,6 +2402,7 @@ class QProgressWidget(QWidget):
     # static string fields
     dp_max = 10
     p_max = 1000
+    t_int = 50
     t_period = 1000
     lbl_width = 170
     wait_lbl = "No Session Data Loaded"
@@ -2464,7 +2465,7 @@ class QProgressWidget(QWidget):
         # sets the timeline properties
         self.time_line.setLoopCount(int(1e6))
         self.time_line.setFrameRange(0, self.p_max)
-        self.time_line.setUpdateInterval(50)
+        self.time_line.setUpdateInterval(self.t_int)
         self.time_line.frameChanged.connect(self.prog_update)
 
     def prog_update(self):
@@ -2623,9 +2624,11 @@ class QProgressWidget(QWidget):
 class QDialogProgress(QWidget):
     # static string fields
     dp_max = 10
+    t_int = 50
     p_max = 1000
     t_period = 1000
     lbl_width = 200
+
     wait_lbl = 'Waiting For User Input...'
 
     prog_style = """
@@ -2641,11 +2644,12 @@ class QDialogProgress(QWidget):
         }
     """
 
-    def __init__(self, parent=None, font=None, is_task=True):
+    def __init__(self, parent=None, font=None, is_task=True, timer_lbl=False):
         super(QDialogProgress, self).__init__(parent)
 
         # input arguments
         self.is_task = is_task
+        self.timer_lbl = timer_lbl
 
         # widget setup
         self.layout = QHBoxLayout(self)
@@ -2653,11 +2657,17 @@ class QDialogProgress(QWidget):
         self.prog_bar = QProgressBar(self, minimum=0, maximum=self.p_max, textVisible=False)
         self.time_line = QTimeLine(self.t_period) if is_task else None
 
+        # timer class fields
+        self.t0 = None
+        self.i_time = None
+
         # other class fields
         self.n_jobs = 0
         self.pr_max = 1.0
+        self.m_str = None
         self.is_running = False
         self.p_max_r = self.p_max + 2 * self.dp_max
+        self.n_frm_update = int(self.t_period / self.t_int)
 
         # initialises the class fields
         self.init_class_fields()
@@ -2680,7 +2690,7 @@ class QDialogProgress(QWidget):
         # sets the progressbar properties
         self.prog_bar.setStyleSheet(self.prog_style)
 
-        # sets the timeline properties
+        # sets the timeline properties (indefinite task only)
         if self.is_task:
             self.time_line.setLoopCount(int(1e6))
             self.time_line.setFrameRange(0, self.p_max)
@@ -2693,15 +2703,29 @@ class QDialogProgress(QWidget):
 
     def prog_timer(self):
 
+        # case is calculating from the timer
         pr_scl = self.p_max_r * self.pr_max
         p_val = int(pr_scl * self.time_line.currentValue()) - self.dp_max
         p_val = np.min([self.p_max, np.max([0, p_val])])
+
+        # updates the progressbar
         self.prog_bar.setValue(p_val)
+
+        # updates the timer-based label (if required)
+        if self.timer_lbl:
+            t_lbl = np.floor(time.time() - self.t0)
+            if t_lbl > self.i_time:
+                # if there is a
+                self.update_time_string(t_lbl)
+                self.i_time += 1
 
     def start_timer(self):
 
         if self.time_line is not None:
+            self.i_time = -1
+            self.t0 = time.time()
             self.is_running = True
+
             self.time_line.start()
 
     def stop_timer(self):
@@ -2714,7 +2738,7 @@ class QDialogProgress(QWidget):
     # Miscellaneous Functions
     # ---------------------------------------------------------------------------
 
-    def update_prog_fields(self, m_str, pr_val=None):
+    def update_prog_fields(self, m_str_nw, pr_val=None):
 
         if not self.is_task:
             # case is the overall progress
@@ -2722,11 +2746,18 @@ class QDialogProgress(QWidget):
             self.prog_bar.setValue(p_val)
 
         # updates the message label
-        if m_str is not None:
-            self.lbl_obj.setText(m_str)
+        if m_str_nw is not None:
+            self.m_str = m_str_nw
+            self.lbl_obj.setText(self.m_str)
 
         # pauses for a little bit
         time.sleep(0.005)
+
+    def update_time_string(self, t_lbl):
+
+        t_str = time.strftime('%H:%M:%S', time.gmtime(t_lbl))
+        m_str_nw = '{0} ({1})'.format(self.m_str, t_str)
+        self.lbl_obj.setText(m_str_nw)
 
     def set_progbar_state(self, state):
 
@@ -2740,7 +2771,6 @@ class QDialogProgress(QWidget):
             self.stop_timer()
 
             # resets the progressbar
-            self.prog_bar.setValue(self.p_max)
             time.sleep(0.25)
             self.prog_bar.setValue(0)
 
@@ -2753,6 +2783,19 @@ class QDialogProgress(QWidget):
         self.lbl_obj.setEnabled(state)
         self.prog_bar.setEnabled(state)
 
+    def set_label(self, m_str_nw):
+
+        self.m_str = m_str_nw
+
+        if self.timer_lbl:
+            self.update_time_string(self.i_time)
+
+        else:
+            self.lbl_obj.setText(self.m_str)
+
+    def set_full_prog(self):
+
+        self.prog_bar.setValue(self.p_max)
 
 # ----------------------------------------------------------------------------------------------------------------------
 # TABLE WIDGET CUSTOM MODEL CLASSES

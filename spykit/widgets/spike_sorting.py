@@ -3,6 +3,7 @@ import re
 import os
 import time
 import docker
+import shutil
 import numpy as np
 import pandas as pd
 from copy import deepcopy
@@ -132,7 +133,7 @@ class SpikeSortingDialog(QMainWindow):
         self.checkbox_frame = QFrame(self)
         self.cont_frame = QFrame(self)
         self.tab_group_sort = QTabWidget(self)
-        self.prog_bar = cw.QDialogProgress(font=cw.font_lbl, is_task=True)
+        self.prog_bar = cw.QDialogProgress(font=cw.font_lbl, is_task=True, timer_lbl=True)
 
         # other class widget
         self.button_cont = []
@@ -267,14 +268,9 @@ class SpikeSortingDialog(QMainWindow):
             checkbox_new.setFixedHeight(cf.but_height)
 
         if self.main_obj is not None:
-            # sets the by shank checkbox enabled properties
-            n_shank = self.main_obj.session_obj.get_shank_count()
-            self.checkbox_opt[0].setEnabled((n_shank > 1) and (not self.per_shank_pp))
+            # updates the checkbox properties
+            self.set_checkbox_enabled_props()
             self.checkbox_opt[0].setCheckState(cf.chk_state[self.per_shank_pp])
-
-            # sets the concatenation checkbox enabled properties
-            n_run = self.session.get_run_count()
-            self.checkbox_opt[1].setEnabled((n_run > 1) and (not self.concat_runs_pp))
             self.checkbox_opt[1].setCheckState(cf.chk_state[self.concat_runs_pp])
 
     def init_progress_frame(self):
@@ -549,6 +545,7 @@ class SpikeSortingDialog(QMainWindow):
 
         # resets the button state
         self.is_running = not self.button_cont[0].isChecked()
+        time.sleep(0.05)
 
         if self.is_running:
             if not self.check_sort_overwrite():
@@ -559,6 +556,15 @@ class SpikeSortingDialog(QMainWindow):
 
                 # exits the function
                 return
+
+            # disables the panel properties
+            self.set_sorting_props(False)
+            self.button_cont[0].setChecked(True)
+
+            # updates the progressbar
+            self.prog_bar.set_label("Running Spike Sorting")
+            self.prog_bar.set_progbar_state(True)
+            time.sleep(0.1)
 
             # sets up the configuration dictionary
             sort_config = self.setup_config_dict()
@@ -571,20 +577,15 @@ class SpikeSortingDialog(QMainWindow):
             self.setup_spike_sorting_worker((sort_config, sort_opt))
 
         else:
-            # case is cancelling the calculations
-            self.is_running = False
-
             # stops the worker
             self.t_worker.force_quit()
-            self.t_worker = None
             time.sleep(0.01)
 
             # disables the progressbar fields
             self.prog_bar.set_progbar_state(False)
 
             # resets the other properties
-            self.set_preprocess_props(True)
-            self.button_control[0].setText(self.sort_str[0])
+            self.set_sorting_props(True)
 
     def close_window(self):
 
@@ -618,6 +619,16 @@ class SpikeSortingDialog(QMainWindow):
     # Spike Sorting Worker Functions
     # ---------------------------------------------------------------------------
 
+    def set_checkbox_enabled_props(self):
+
+        # sets the by shank checkbox enabled properties
+        n_shank = self.main_obj.session_obj.get_shank_count()
+        self.checkbox_opt[0].setEnabled((n_shank > 1) and (not self.per_shank_pp))
+
+        # sets the concatenation checkbox enabled properties
+        n_run = self.session.get_run_count()
+        self.checkbox_opt[1].setEnabled((n_run > 1) and (not self.concat_runs_pp))
+
     def setup_spike_sorting_worker(self, sort_obj):
 
         # creates the threadworker object
@@ -639,8 +650,13 @@ class SpikeSortingDialog(QMainWindow):
 
     def spike_sorting_complete(self):
 
-        # pauses for a little bit...
-        time.sleep(0.25)
+        # stops and updates the progressbar
+        self.prog_bar.stop_timer()
+        self.prog_bar.set_label('Spike Sorting Complete')
+        self.prog_bar.set_full_prog()
+
+        # resets the other properties
+        self.set_sorting_props(True)
 
         # updates the boolean flags
         self.has_ss = True
@@ -673,6 +689,21 @@ class SpikeSortingDialog(QMainWindow):
     # ---------------------------------------------------------------------------
     # Miscellaneous Methods
     # ---------------------------------------------------------------------------
+
+    def set_sorting_props(self, state):
+
+        # sets the close button properties
+        self.sort_frame.setEnabled(state)
+        self.checkbox_frame.setEnabled(state)
+        self.button_cont[1].setEnabled(state)
+        self.button_cont[0].setText(self.sort_str[not state])
+
+        # updates the checkbox properties
+        if state:
+            self.set_checkbox_enabled_props()
+
+        # pause for update...
+        time.sleep(0.01)
 
     def set_sorter_tab_enabled(self, sl_name, state):
 
@@ -753,7 +784,7 @@ class SpikeSortingDialog(QMainWindow):
         out_path = self.get_output_file_path(deepcopy(out_path))
         if len(out_path):
             # case is there is at least one output path that exists
-            q_str = 'The spike sorting data output folder already exists. Do you want to overwrite the folder?'
+            q_str = 'Spike sorting data already exists for this experiment. Do you want to overwrite?'
             u_choice = QMessageBox.question(self.main_obj, 'Overwrite Folder?', q_str, cf.q_yes_no, cf.q_yes)
             if u_choice == cf.q_yes:
                 # case is the user chose to overwrite the folder
@@ -801,7 +832,7 @@ class SpikeSortingDialog(QMainWindow):
         else:
             # case is the runs are analysed separately
             r_names = self.session.get_run_names()
-            for i_run, rn in zip(r_names):
+            for i_run, rn in enumerate(r_names):
                 out_path_run = out_path_base / rn / "sorting"
                 if per_shank:
                     # case is analysing by shank
@@ -810,7 +841,7 @@ class SpikeSortingDialog(QMainWindow):
                         if out_path_new.exists():
                             out_path.append(out_path_new)
 
-                else:
+                elif out_path_run.exists():
                     # case is grouping analysis
                     out_path.append(out_path_run)
 
@@ -894,9 +925,6 @@ class RunSpikeSorting(QObject):
             per_shank=self.per_shank,
             concat_runs=self.concat_runs,
         )
-
-        # initialises the progressbar
-        self.update_prep_prog(0)
 
     def get_info(self, ss_obj, p_name):
 

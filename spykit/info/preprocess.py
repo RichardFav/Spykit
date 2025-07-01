@@ -722,9 +722,6 @@ class PreprocessSetup(QMainWindow):
                 self.setup_preprocessing_worker((prep_task, prep_opt))
 
         else:
-            # case is cancelling the calculations
-            self.is_running = False
-
             # stops the worker
             self.t_worker.force_quit()
             self.t_worker.deleteLater()
