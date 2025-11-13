@@ -30,6 +30,7 @@ from spykit.info.preprocess import PreprocessSetup, pp_flds
 from spykit.threads.utils import ThreadWorker
 from spykit.widgets.open_session import OpenSession
 from spykit.widgets.default_dir import DefaultDir
+from spykit.widgets.save_prep import SavePrep
 from spykit.widgets.spike_sorting import SpikeSortingDialog
 
 # spikewrap module import
@@ -422,10 +423,12 @@ class MainWindow(QMainWindow):
             channel_tab = self.info_manager.get_info_tab('channel')
             channel_tab.reset_data_types(task_name, pp_data_flds)
 
+            # updates the post-processing menu item blocks
+            self.menu_bar.set_menu_enabled_blocks('post-process')
+
         # updates the trace views
         self.plot_manager.reset_trace_views()
         self.info_manager.prog_widget.update_message_label()
-        self.menu_bar.set_menu_enabled_blocks('post-process')
 
     # ---------------------------------------------------------------------------
     # Spike Sorting Functions
@@ -676,21 +679,35 @@ class MenuBar(QObject):
         self.add_menu_items(h_menu_file, p_lbl, cb_fcn, p_str, True, has_ch=has_ch)
 
         # ---------------------------------------------------------------------------
-        # Save Menubar Item Setup
+        # Load Menubar Item Setup
         # ---------------------------------------------------------------------------
 
         # field retrieval
         h_file_open = self.get_menu_item('open')
         p_str = ['load_session', 'load_trigger', 'load_config']
-        p_lbl = ['Session', 'Trigger File', 'Config File']
+        p_lbl = ['Session...', 'Trigger File', 'Config File']
         cb_fcn = [self.load_session, self.load_trigger, self.load_config]
+        has_ch = [True, False, False]
 
         # adds the file menu items
-        self.add_menu_items(h_file_open, p_lbl, cb_fcn, p_str, False)
+        self.add_menu_items(h_file_open, p_lbl, cb_fcn, p_str, False, has_ch=has_ch)
 
         # disables the trigger/config files
         self.set_menu_enabled('load_trigger', False)
         self.set_menu_enabled('load_config', False)
+
+        # ---------------------------------------------------------------------------
+        # Load Session Menubar Item Setup
+        # ---------------------------------------------------------------------------
+
+        # field retrieval
+        h_session_load = self.get_menu_item('load_session')
+        p_str = ['load_spykit', 'load_preprocessed']
+        p_lbl = ['Spykit Session', 'Pre-Processed']
+        cb_fcn = [self.load_session, self.load_preprocessed]
+
+        # adds the file menu items
+        self.add_menu_items(h_session_load, p_lbl, cb_fcn, p_str, False)
 
         # ---------------------------------------------------------------------------
         # Save Menubar Item Setup
@@ -699,11 +716,28 @@ class MenuBar(QObject):
         # field retrieval
         h_file_save = self.get_menu_item('save')
         p_str = ['save_session', 'save_trigger', 'save_config']
-        p_lbl = ['Session', 'Trigger File', 'Config File']
+        p_lbl = ['Session...', 'Trigger File', 'Config File']
         cb_fcn = [self.save_session, self.save_trigger, self.save_config]
+        has_ch = [True, False, False]
 
         # adds the file menu items
-        self.add_menu_items(h_file_save, p_lbl, cb_fcn, p_str, False)
+        self.add_menu_items(h_file_save, p_lbl, cb_fcn, p_str, False, has_ch=has_ch)
+
+        # ---------------------------------------------------------------------------
+        # Save Session Menubar Item Setup
+        # ---------------------------------------------------------------------------
+
+        # field retrieval
+        h_session_save = self.get_menu_item('save_session')
+        p_str = ['save_raw', 'save_preprocessed']
+        p_lbl = ['Raw Session', 'Pre-Processed']
+        cb_fcn = [self.save_session, self.save_preprocessed]
+
+        # adds the file menu items
+        self.add_menu_items(h_session_save, p_lbl, cb_fcn, p_str, False)
+
+        # disables the save preprocessed data files menu item
+        self.set_menu_enabled('save_preprocessed', False)
 
         # ---------------------------------------------------------------------------
         # Preprocessing Menubar Item Setup
@@ -886,15 +920,16 @@ class MenuBar(QObject):
                     # if not, then exit
                     return
 
-                # sets the menu enabled properties
-                self.set_menu_enabled_blocks('post-process')
-
                 # runs the preprocessing dialog window
                 prep_opt = tuple(prep_info.configs.prep_opt.values())
                 self.main_obj.run_preprocessing_dialog((prep_task, prep_opt))
 
         # resets the status label
         self.main_obj.info_manager.prog_widget.update_message_label()
+
+    def load_preprocessed(self):
+
+        pass
 
     def load_trigger(self, file_info=None):
 
@@ -1016,6 +1051,10 @@ class MenuBar(QObject):
         # saves the session file
         session_dir = cw.get_def_dir("session")
         self.save_file('session', session_data, def_dir=session_dir)
+
+    def save_preprocessed(self):
+
+        SavePrep(self.main_obj).show()
 
     def save_trigger(self):
 
@@ -1233,7 +1272,7 @@ class MenuBar(QObject):
             case 'init':
                 # case is initialising
                 tool_off = ['save']
-                menu_off = ['save', 'clear', 'preprocessing', 'sorting',
+                menu_off = ['save', 'clear', 'preprocessing', 'save_preprocessed', 'sorting',
                             'clear_prep', 'clear_sort', 'load_trigger', 'load_config']
 
             case 'session-open':
@@ -1243,7 +1282,7 @@ class MenuBar(QObject):
 
             case 'post-process':
                 # case is post preprocessing
-                menu_on = ['sorting', 'clear_prep']
+                menu_on = ['sorting', 'clear_prep', 'save_preprocessed']
 
             case 'post-sorting':
                 # case is post preprocessing

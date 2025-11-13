@@ -3,6 +3,7 @@ import os
 import re
 import sys
 import math
+import string
 import platform
 import colorsys
 import threading
@@ -207,6 +208,32 @@ def check_edit_num(nw_str, is_int=False, min_val=-1e100, max_val=1e10, show_err=
     # shows the error and returns a None value
     return None, e_str
 
+
+def check_edit_string(nw_str, use_special=False):
+
+    # initialisations
+    nw_val, e_str = None, None
+
+    if use_special:
+        # case is any character is allowed
+        return nw_str, None
+
+    else:
+        # case is special characters aren't allowed
+        sp_chr = string.punctuation
+        if np.any([(x in sp_chr) for x in nw_str]):
+            # case is the string contains specidal characters
+            e_str = 'String input can''t contain any special characters.'
+
+        else:
+            # otherwise, return the input string
+            return nw_str, None
+
+    # outputs the error to screen
+    show_error(e_str, 'Error!')
+
+    # shows the error and returns a None value
+    return None, e_str
 
 def show_error(text, title=""):
 

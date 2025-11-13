@@ -3341,7 +3341,7 @@ def create_check_box(parent, text, state, font=None, name=None):
     if font is None:
         font = create_font_obj()
 
-    # creates the listbox object
+    # creates the checkbox object
     h_chk = QCheckBox(parent)
 
     # sets the object properties
@@ -3362,7 +3362,7 @@ def create_radio_button(parent, text, state, font=None, name=None):
     if font is None:
         font = create_font_obj()
 
-    # creates the listbox object
+    # creates the radiobutton object
     h_radio = QRadioButton(parent)
 
     # sets the object properties
@@ -3386,7 +3386,7 @@ def create_tab_group(parent, font=None, name=None):
     # creates the tab object
     h_tab_grp = QTabWidget(parent)
 
-    # sets the listbox object properties
+    # sets the tab group  properties
     h_tab_grp.setFont(font)
 
     # sets the object name string

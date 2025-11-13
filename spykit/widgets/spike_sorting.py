@@ -1086,8 +1086,8 @@ class SpikeSorterTab(QTabWidget):
                     continue
 
                 elif len(self.s_props[ps].get('child')):
-                    is_ok[np.strings.startswith(p_fld, ps)] = False
-                    is_ok_grp[np.strings.startswith(p_fld_grp, ps)] = False
+                    is_ok[np.array([x.startswith(ps) for x in p_fld])] = False
+                    is_ok_grp[np.array([x.startswith(ps) for x in p_fld_grp])] = False
 
                 if ps.endswith('seed'):
                     a = 1

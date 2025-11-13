@@ -189,6 +189,17 @@ class SessionWorkBook(QObject):
         else:
             return y_min, y_max
 
+    def get_preprocessing_steps(self):
+
+        # memory allocation
+        pp_steps = []
+        if self.has_pp_runs():
+            # retrieves the
+            pp_runs = self.get_pp_runs()
+            pp_steps = [v[0] for v in pp_runs[0]._pp_steps.values()]
+
+        return pp_steps
+
     def get_channel_count(self):
 
         probe_rec = self.get_current_recording_probe()
@@ -674,7 +685,7 @@ class SessionObject(QObject):
             ses_run = self.get_session_runs(i_run)
 
             # sets up the bad channel detection worker
-            t_worker_new = ThreadWorker(self.get_bad_channel, (ses_run, i_run, p_props))
+            t_worker_new = ThreadWorker(None, self.get_bad_channel, (ses_run, i_run, p_props))
             t_worker_new.work_finished.connect(self.post_get_bad_channel)
             t_worker_new.start()
 

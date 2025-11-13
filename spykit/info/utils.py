@@ -1124,8 +1124,15 @@ class InfoWidgetPara(InfoWidget, SearchMixin):
             cf.set_multi_dict_value(self.p_props, p_str, nw_val)
 
         else:
+            # case is numerica field, so set the min/max limit values
+            mn_val, mx_val = -np.inf, np.inf
+            if cf.get_multi_dict_value(self.p_props, p_str) < 0:
+                mx_val = 0
+            else:
+                mn_val = 0
+
             # determines if the new value is valid
-            chk_val = cf.check_edit_num(nw_val, min_val=0)
+            chk_val = cf.check_edit_num(nw_val, min_val=mn_val, max_val=mx_val)
             if chk_val[1] is None:
                 # case is the value is valid
                 cf.set_multi_dict_value(self.p_props, p_str, chk_val[0])
