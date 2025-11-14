@@ -189,6 +189,8 @@ class SavePrep(QDialog):
         # retrieves the recording object
         pp_rec = self.main_obj.session_obj.session.get_session_runs(
                     0, "grouped", pp_type=self.pp_data_flds[self.i_sel_pp])
+
+        # outputs the binary file
         pp_rec.save(format="binary", folder=out_folder, n_jobs=self.n_worker, progres_bar=True)
 
     def close_window(self):

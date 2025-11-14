@@ -283,7 +283,11 @@ class TriggerProps(PropWidget):
 
         # field retrieval
         i_run = self.get_run_index()
-        i_button = int(np.log2(abs(self.b_state - self.p_props.button_flag[i_run])))
+        db_state = self.b_state - self.p_props.button_flag[i_run]
+        if db_state == 0:
+            i_button = 0;
+        else:
+            i_button = int(np.log2(abs(db_state)))
 
         # resets the table row count
         self.is_updating = True
