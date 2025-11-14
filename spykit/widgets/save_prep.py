@@ -68,7 +68,7 @@ class SavePrep(QDialog):
 
         # sets the dialog window properties
         self.setFixedWidth(self.width_dlg)
-        self.setWindowTitle('Default Directory Paths')
+        self.setWindowTitle('Preprocessed Data Output')
         self.setLayout(self.main_layout)
         self.main_layout.setSpacing(self.x_gap)
 
