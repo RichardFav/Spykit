@@ -285,7 +285,7 @@ class TriggerProps(PropWidget):
         i_run = self.get_run_index()
         db_state = self.b_state - self.p_props.button_flag[i_run]
         if db_state == 0:
-            i_button = 0;
+            i_button = 0
         else:
             i_button = int(np.log2(abs(db_state)))
 

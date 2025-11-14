@@ -729,8 +729,8 @@ class MenuBar(QObject):
 
         # field retrieval
         h_session_save = self.get_menu_item('save_session')
-        p_str = ['save_raw', 'save_preprocessed']
-        p_lbl = ['Raw Session', 'Pre-Processed']
+        p_str = ['save_spykit', 'save_preprocessed']
+        p_lbl = ['Spykit Session', 'Pre-Processed']
         cb_fcn = [self.save_session, self.save_preprocessed]
 
         # adds the file menu items

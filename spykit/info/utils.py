@@ -76,6 +76,7 @@ class InfoManager(QWidget):
 
         # boolean class fields
         self.is_updating = False
+        self.table_fcn_set = False
         self.tab_show = [True, True, True, False]
 
         # widget layout setup
@@ -552,8 +553,10 @@ class InfoManager(QWidget):
         # table_obj.resizeColumnsToContents()
 
         # sets the checkbox callback function
-        cb_fcn = pfcn(self.table_cell_changed, t_type)
-        table_obj.cellChanged.connect(cb_fcn)
+        if not self.table_fcn_set:
+            self.table_fcn_set = True
+            cb_fcn = pfcn(self.table_cell_changed, t_type)
+            table_obj.cellChanged.connect(cb_fcn)
 
     def table_cell_changed(self, t_type, i_row_s, i_col):
 
