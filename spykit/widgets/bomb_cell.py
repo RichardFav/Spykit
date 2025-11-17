@@ -166,7 +166,7 @@ class BombCellSolver(QDialog):
     hght_button = 40
 
     # string class fields
-    mmap_name = 'mMapFile.bin'
+    mmap_name = 'mMapProg.bin'
 
     # array class fields
     p_str_u = ['ephysMetaFile', 'rawFile']
@@ -208,14 +208,15 @@ class BombCellSolver(QDialog):
         # boolean class fields
         self.has_bc = False
         self.is_updating = False
-        self.is_running = False;
+        self.is_running = False
+        self.can_close = False
 
         # folder/file path fields
-        self.data_dir = None
         self.mmap_file = None
 
         # other class fields
         self.i_tab = 0
+        self.bc_para_c = None
         self.solver_flag = None
         self.hght_dlg = 6 * self.x_gap + (self.hght_fspec + self.hght_para + self.hght_button)
 
@@ -307,7 +308,7 @@ class BombCellSolver(QDialog):
         # self.prog_bar.timer_fcn.connect(self.solver_prog_func)
 
         # progressbar label properties
-        self.prog_bar.lbl_obj.setContentsMargins(0, self.x_gap + 1, 0, 0)
+        self.prog_bar.lbl_obj.setContentsMargins(0, self.x_gap - 1, 0, 0)
         self.prog_bar.lbl_obj.setStyleSheet(self.no_border_style)
 
     def init_cont_buttons(self):
@@ -344,17 +345,74 @@ class BombCellSolver(QDialog):
 
         pass
 
-        # self.para_tab.setStyleSheet("""
-        #     QTabWidget::pane {
-        #         border: 1px solid black;
-        #         border-radius: 3px;
-        #         background-color: rgb(245, 245, 245);
-        #     }
-        # """)
+    # ---------------------------------------------------------------------------
+    # BombCell Solver Functions
+    # ---------------------------------------------------------------------------
 
-    # ---------------------------------------------------------------------------
-    # BombCell Solver Thread Worker Functions
-    # ---------------------------------------------------------------------------
+    def run_solver(self):
+
+        # resets the button state
+        self.is_running = self.cont_button[0].isChecked()
+        time.sleep(0.05)
+
+        if self.is_running:
+            if not self.check_sort_overwrite():
+                # if the user cancelled, then exit the function
+                self.is_updating = True
+                self.cont_button[0].setChecked(False)
+                self.is_updating = False
+
+                # exits the function
+                return
+
+            # disables the panel properties
+            self.set_button_props(False)
+            self.cont_button[0].setChecked(True)
+            self.cont_button[0].setText('Cancel Solver')
+
+            # updates the progressbar
+            self.prog_bar.set_label("Running Solver")
+            self.prog_bar.set_progbar_state(True)
+            time.sleep(0.1)
+
+            # creates the memory map file
+            self.create_solver_mmap()
+
+            # creates the threadworker object
+            self.t_worker = ThreadWorker(self, self.run_bombcell_solver, None)
+            self.t_worker.work_finished.connect(self.bombcell_solver_complete)
+
+            # starts the worker object
+            self.t_worker.start()
+
+        else:
+            # stops the worker
+            self.t_worker.force_quit()
+            time.sleep(0.01)
+
+            # deletes the memory map file
+            self.solver_flag[0] = np.uint8(0)
+            self.set_button_props(True)
+
+            # disables the progressbar fields
+            self.prog_bar.set_progbar_state(False)
+            self.cont_button[0].setText('Run Solver')
+
+    def set_button_props(self, state):
+
+        if state:
+            # resets the button properties
+            if self.has_bc:
+                self.check_para_reset(self.bc_para_c)
+            else:
+                self.check_para_reset()
+
+        else:
+            # force disable reset button
+            self.cont_button[1].setEnabled(False)
+
+        # sets the close window button
+        self.cont_button[2].setEnabled(state)
 
     def run_bombcell_solver(self, _):
 
@@ -374,9 +432,11 @@ class BombCellSolver(QDialog):
 
         # updates the boolean flags
         self.has_bc = True
+        self.bc_para_c = deepcopy(self.bc_pkg.BombCellFcn('getClassField', 'bcPara'))
+        self.set_button_props(True)
 
     # ---------------------------------------------------------------------------
-    # BombCell Solver Thread Worker Functions
+    # Memory Map Functions
     # ---------------------------------------------------------------------------
 
     def create_solver_mmap(self):
@@ -436,8 +496,7 @@ class BombCellSolver(QDialog):
 
                 # other field/object updates
                 self.para_group.setEnabled(True)
-                self.data_dir = self.bc_pkg.BombCellFcn('getClassField', 'dataDir')
-                self.mmap_file = os.path.join(self.data_dir, self.mmap_name)
+                self.mmap_file = def_path_new + "/" + self.mmap_name
 
             else:
                 # if not, then output an error to screen
@@ -490,43 +549,25 @@ class BombCellSolver(QDialog):
         self.is_updating = False
         self.cont_button[1].setEnabled(False)
 
-    def run_solver(self):
+    # ---------------------------------------------------------------------------
+    # Other Class Event Functions
+    # ---------------------------------------------------------------------------
 
-        # resets the button state
-        self.is_running = self.cont_button[0].isChecked()
-        time.sleep(0.05)
+    def closeEvent(self, event):
 
-        if self.is_running:
-            # disables the panel properties
-            self.cont_button[0].setChecked(True)
-            self.cont_button[0].setText('Cancel Solver')
-
-            # updates the progressbar
-            self.prog_bar.set_label("Running Solver")
-            self.prog_bar.set_progbar_state(True)
-            time.sleep(0.1)
-
-            # creates the memory map file
-            self.create_solver_mmap()
-
-            # creates the threadworker object
-            self.t_worker = ThreadWorker(self, self.run_bombcell_solver, None)
-            self.t_worker.work_finished.connect(self.bombcell_solver_complete)
-
-            # starts the worker object
-            self.t_worker.start()
+        if self.can_close:
+            # force close
+            event.accept()
 
         else:
-            # stops the worker
-            self.t_worker.force_quit()
-            time.sleep(0.01)
-
-            # deletes the memory map file
-            self.solver_flag[0] = np.uint8(0)
-
-            # disables the progressbar fields
-            self.prog_bar.set_progbar_state(False)
-            self.cont_button[0].setText('Run Solver')
+            # user confirmed close
+            q_str = "Are you sure you want to close the window?"
+            u_choice = QMessageBox.question(
+                self, 'Confirm Close?', q_str, cf.q_yes_no, cf.q_yes)
+            if u_choice == cf.q_yes:
+                event.accept()
+            else:
+                event.ignore()
 
     # ---------------------------------------------------------------------------
     # Window I/O Functions
@@ -541,6 +582,7 @@ class BombCellSolver(QDialog):
 
         if (self.main_obj is None) or force_close:
             # closes the dialog window
+            self.can_close = True
             self.close()
 
         else:
@@ -551,9 +593,42 @@ class BombCellSolver(QDialog):
     # Miscellaneous Functions
     # ---------------------------------------------------------------------------
 
-    def check_para_reset(self):
+    def check_sort_overwrite(self):
+
+        if (not self.has_bc):
+            # if there is no solution, then continue
+            return True
+
+        else:
+            # case is there is a solution
+            if self.check_para_change(self.bc_para_c):
+                # if the parameters have changed, then continue
+                return True
+
+            # otherwise, prompt the user to overwrite
+            q_str = 'BombCell solution already calculated. Do you want to overwrite?'
+            u_choice = QMessageBox.question(self.main_obj, 'Overwrite Folder?', q_str, cf.q_yes_no, cf.q_yes)
+            return u_choice == cf.q_yes
+
+    def check_para_reset(self, bc_para0=None):
 
         # field retrieval
+        self.cont_button[1].setEnabled(self.check_para_change(bc_para0))
+
+    def check_para_change(self, bc_para0=None):
+
+        # retrieves the comparison parameter struct (if not provided)
+        if bc_para0 is None:
+            bc_para0 = self.bc_pkg.BombCellFcn('getClassField', 'bcPara0')
+
+        # checks all current/comparison fields
         bc_para = self.bc_pkg.BombCellFcn('getClassField', 'bcPara')
-        bc_para0 = self.bc_pkg.BombCellFcn('getClassField', 'bcPara0')
-        self.cont_button[1].setEnabled(bc_para != bc_para0)
+        for pf, pv in bc_para0.items():
+            if (isinstance(pv,float) and np.isnan(pv)):
+                continue
+
+            elif (pv != bc_para[pf]):
+                return True
+
+        # flag that there is no difference
+        return False
