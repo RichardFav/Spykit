@@ -1,6 +1,7 @@
 # module import
 import os
 import time
+import mmap
 import functools
 import BombCellPkg
 import numpy as np
@@ -164,6 +165,9 @@ class BombCellSolver(QDialog):
     hght_para = 480
     hght_button = 40
 
+    # string class fields
+    mmap_name = 'mMapFile.bin'
+
     # array class fields
     p_str_u = ['ephysMetaFile', 'rawFile']
     tab_str = ['Quality', 'Classification']
@@ -206,8 +210,13 @@ class BombCellSolver(QDialog):
         self.is_updating = False
         self.is_running = False;
 
+        # folder/file path fields
+        self.data_dir = None
+        self.mmap_file = None
+
         # other class fields
         self.i_tab = 0
+        self.solver_flag = None
         self.hght_dlg = 6 * self.x_gap + (self.hght_fspec + self.hght_para + self.hght_button)
 
         # initialises the class fields
@@ -367,6 +376,29 @@ class BombCellSolver(QDialog):
         self.has_bc = True
 
     # ---------------------------------------------------------------------------
+    # BombCell Solver Thread Worker Functions
+    # ---------------------------------------------------------------------------
+
+    def create_solver_mmap(self):
+
+        # creates the memory mapping file
+        if not os.path.exists(self.mmap_file):
+            with open(self.mmap_file, 'wb') as f:
+                f.truncate(1)
+
+        # sets up the memory map
+        with open(self.mmap_file, 'r+b') as f:
+            self.mmap = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_WRITE)
+            self.solver_flag = np.frombuffer(self.mmap, dtype=np.uint8)
+            self.solver_flag[0] = np.uint8(1)
+
+    def delete_solver_mmap(self):
+
+        # deletes the file (if it exists)
+        if os.path.exists(self.mmap_file):
+            os.remove(self.mmap_file)
+
+    # ---------------------------------------------------------------------------
     # Class Widget Event Functions
     # ---------------------------------------------------------------------------
 
@@ -402,8 +434,10 @@ class BombCellSolver(QDialog):
                     h_obj.setText(f_name)
                     h_obj.setToolTip(f_file)
 
-                # enables the parameter group
+                # other field/object updates
                 self.para_group.setEnabled(True)
+                self.data_dir = self.bc_pkg.BombCellFcn('getClassField', 'dataDir')
+                self.mmap_file = os.path.join(self.data_dir, self.mmap_name)
 
             else:
                 # if not, then output an error to screen
@@ -472,6 +506,9 @@ class BombCellSolver(QDialog):
             self.prog_bar.set_progbar_state(True)
             time.sleep(0.1)
 
+            # creates the memory map file
+            self.create_solver_mmap()
+
             # creates the threadworker object
             self.t_worker = ThreadWorker(self, self.run_bombcell_solver, None)
             self.t_worker.work_finished.connect(self.bombcell_solver_complete)
@@ -483,6 +520,9 @@ class BombCellSolver(QDialog):
             # stops the worker
             self.t_worker.force_quit()
             time.sleep(0.01)
+
+            # deletes the memory map file
+            self.solver_flag[0] = np.uint8(0)
 
             # disables the progressbar fields
             self.prog_bar.set_progbar_state(False)
