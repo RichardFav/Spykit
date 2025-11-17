@@ -203,7 +203,7 @@ class SpikeSortingDialog(QMainWindow):
         self.cont_frame.setLayout(self.cont_layout)
         self.cont_frame.setStyleSheet(self.frame_border_style)
         self.cont_layout.setContentsMargins(0, 0, 0, 0)
-        self.cont_layout.setSpacing(2 * x_gap)
+        self.cont_layout.setSpacing(x_gap)
 
         # creates the control buttons
         for bs, cb in zip(b_str, cb_fcn):
@@ -507,7 +507,7 @@ class SpikeSortingDialog(QMainWindow):
                 except:
                     pass
 
-                # connects the preprocessing signal function
+                # connects the spike sorting signal function
                 self.session.sort_obj.update_prog.connect(self.worker_progress)
 
     def worker_progress(self):

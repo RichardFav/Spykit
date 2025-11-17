@@ -874,7 +874,7 @@ class InfoWidget(QWidget):
 
 class InfoWidgetPara(InfoWidget, SearchMixin):
     # pyqtSignal functions
-    prop_updated = pyqtSignal()
+    prop_updated = pyqtSignal(object)
 
     # dimensions
     x_gap = 5
@@ -896,6 +896,8 @@ class InfoWidgetPara(InfoWidget, SearchMixin):
 
         QTreeWidget::item {
             height: 23px;
+            background: #FFFFFF;
+            color: black;            
         }        
 
         QTreeWidget::item:has-children {
@@ -903,6 +905,7 @@ class InfoWidgetPara(InfoWidget, SearchMixin):
             padding-left: 5px;
             color: white;
         }
+        
     """
 
     def __init__(self, t_lbl, main_obj, layout=QVBoxLayout):
@@ -955,6 +958,9 @@ class InfoWidgetPara(InfoWidget, SearchMixin):
         self.tree_prop.setAlternatingRowColors(True)
         self.tree_prop.setItemDelegateForColumn(0, cw.HTMLDelegate())
 
+        self.tree_prop.itemCollapsed.connect(self.on_tree_collapse)
+        self.tree_prop.itemExpanded.connect(self.on_tree_expand)
+
         # creates the full property tree
         for pp_s, pp_h in self.p_prop_flds.items():
             # creates the parent item
@@ -993,6 +999,16 @@ class InfoWidgetPara(InfoWidget, SearchMixin):
         tree_header.updateSection(1)
         tree_header.setSectionResizeMode(QHeaderView.ResizeMode.Fixed)
         tree_header.setStyleSheet("background: rgba(240, 240, 255, 255);")
+
+    def on_tree_collapse(self):
+
+        self.tree_prop.viewport().update()
+        self.tree_prop.repaint()
+
+    def on_tree_expand(self):
+
+        self.tree_prop.viewport().update()
+        self.tree_prop.repaint()
 
     # ---------------------------------------------------------------------------
     # Property Field Functions
@@ -1110,7 +1126,7 @@ class InfoWidgetPara(InfoWidget, SearchMixin):
             self.doublespinbox_prop_update(h_obj, p_str)
 
         # flag that the property has been updated
-        self.prop_updated.emit()
+        self.prop_updated.emit(p_str)
 
     def check_prop_update(self, h_obj, p_str):
 
@@ -1128,11 +1144,12 @@ class InfoWidgetPara(InfoWidget, SearchMixin):
 
         else:
             # case is numerica field, so set the min/max limit values
+            p_val = cf.get_multi_dict_value(self.p_props, p_str)
             mn_val, mx_val = -np.inf, np.inf
-            if cf.get_multi_dict_value(self.p_props, p_str) < 0:
-                mx_val = 0
-            else:
+            if np.isnan(p_val) or (p_val > 0):
                 mn_val = 0
+            else:
+                mx_val = 0
 
             # determines if the new value is valid
             chk_val = cf.check_edit_num(nw_val, min_val=mn_val, max_val=mx_val)

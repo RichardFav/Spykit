@@ -142,10 +142,6 @@ class PreprocessInfoTab(InfoWidgetPara):
 
     def setup_prop_fields(self):
 
-        # -----------------------------------------------------------------------
-        # Preprocessing Properties
-        # -----------------------------------------------------------------------
-
         # list arrays
         mode_list = ['global', 'local']
         operator_list = ['median', 'average']

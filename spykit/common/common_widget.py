@@ -2622,6 +2622,9 @@ class QProgressWidget(QWidget):
 
 
 class QDialogProgress(QWidget):
+    # pyqtSignal signals
+    timer_fcn = pyqtSignal()
+
     # static string fields
     dp_max = 10
     t_int = 50
@@ -2718,6 +2721,9 @@ class QDialogProgress(QWidget):
                 # if there is a
                 self.update_time_string(t_lbl)
                 self.i_time += 1
+
+        # runs the signal function
+        self.timer_fcn.emit()
 
     def start_timer(self):
 
@@ -2982,6 +2988,7 @@ class InfoTableModel(QAbstractTableModel):
 
 
 class ROIViewBox(ViewBox):
+    # pyqtsignal funcions
     drawing_finished = pyqtSignal(QRectF)
 
     def __init__(self, parent=None):

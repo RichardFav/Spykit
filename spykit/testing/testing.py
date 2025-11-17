@@ -14,6 +14,7 @@ import spykit.common.common_widget as cw
 # import spykit.common.memory_map as mm
 import spykit.common.spikeinterface_func as sf
 import spykit.threads.utils as tw
+from spykit.widgets.bomb_cell import BombCellSolver
 from spykit.info.preprocess import PreprocessInfoTab, PreprocessSetup
 from spykit.widgets.spike_sorting import SpikeSortingDialog, SpikeSortPara
 import spykit.info.utils as ui
@@ -105,6 +106,10 @@ class Testing(object):
             case 14:
                 # case is the spike sorting parameter test
                 return self.run_spike_sorting_para_test()
+
+            case 15:
+                # case is running the bomb cell solver
+                return self.run_bomb_cell()
 
     def run_dialog_test(self, title_str="My Dialog"):
         """
@@ -352,3 +357,9 @@ class Testing(object):
         print(time.time() - t0)
 
         return None
+
+    def run_bomb_cell(self):
+
+        h_app = BombCellSolver(None)
+
+        return h_app

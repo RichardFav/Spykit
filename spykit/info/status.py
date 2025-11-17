@@ -154,6 +154,6 @@ class StatusInfoTab(InfoWidgetPara):
     # Miscellaneous Functions
     # ---------------------------------------------------------------------------
 
-    def status_prop_updated(self):
+    def status_prop_updated(self, p_str):
 
         self.toggle_calc.setEnabled(self.p_props0 != self.p_props)
