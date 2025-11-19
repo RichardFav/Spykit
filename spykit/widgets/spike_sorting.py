@@ -486,7 +486,7 @@ class SpikeSortingDialog(QMainWindow):
         match pr_type:
             case 0:
                 # case is starting
-                self.prog_bar.update_prog_fields('Loading Kilosort4 Information...')
+                self.prog_bar.update_prog_fields('Loading Information...')
 
             case 1:
                 # case is finishing
