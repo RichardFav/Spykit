@@ -168,10 +168,14 @@ class SessionWorkBook(QObject):
             can_show = np.logical_and(self.channel_data.is_selected, self.channel_data.is_filt)
             return np.where(can_show)[0]
 
+    def get_current_run_index(self):
+
+        return self.session.get_run_index(self.current_run)
+
     def get_min_max_values(self, t_lim, i_ch):
 
         # determines the current run
-        i_run = self.session.get_run_index(self.current_run)
+        i_run = self.get_current_run_index()
 
         # retrieves the blocks covered by the time range
         t_min_max = self.session.t_min_max[i_run]
@@ -562,6 +566,7 @@ class SessionObject(QObject):
         self.sync_ch = None
         self.prep_obj = None
         self.sort_obj = None
+        self.bcell_obj = None
         self.t_worker = None
         self.ssf_load = ssf_load
         self.data_init = {'bad': False, 'sync': False}

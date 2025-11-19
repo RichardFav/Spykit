@@ -25,6 +25,7 @@ from spykit.plotting.utils import PlotManager
 from spykit.props.utils import PropManager
 from spykit.common.property_classes import SessionWorkBook
 from spykit.info.preprocess import PreprocessSetup, pp_flds
+from spykit.widgets.bomb_cell import BombCellSolver
 
 #
 from spykit.threads.utils import ThreadWorker
@@ -77,6 +78,7 @@ class MainWindow(QMainWindow):
         self.info_manager = InfoManager(self, info_width, self.session_obj)
         self.plot_manager = PlotManager(self, dlg_width - info_width, self.session_obj)
         self.prop_manager = PropManager(self, info_width, self.session_obj)
+        self.bombcell_dlg = None
 
         # boolean class fields
         self.can_close = False
@@ -424,7 +426,7 @@ class MainWindow(QMainWindow):
             channel_tab.reset_data_types(task_name, pp_data_flds)
 
             # updates the post-processing menu item blocks
-            self.menu_bar.set_menu_enabled_blocks('post-process')
+            self.menu_bar.set_menu_enabled_blocks('post-preprocess')
 
         # updates the trace views
         self.plot_manager.reset_trace_views()
@@ -489,7 +491,7 @@ class MainWindow(QMainWindow):
 
         # updates the trace views
         self.plot_manager.reset_trace_views()
-        self.menu_bar.set_menu_enabled_blocks('post-process')
+        self.menu_bar.set_menu_enabled_blocks('post-preprocess')
 
     def setup_preprocessing_worker(self, prep_task, prep_opt=None, delay_start=False):
 
@@ -648,6 +650,7 @@ class MenuBar(QObject):
         h_menu_file = self.add_main_menu_item('File')
         h_menu_prep = self.add_main_menu_item('Preprocessing')
         h_menu_sort = self.add_main_menu_item('Spike Sorting', 'sorting')
+        h_menu_posp = self.add_main_menu_item('Postprocessing', 'postprocess')
 
         # ---------------------------------------------------------------------------
         # Toolbar Setup
@@ -752,7 +755,7 @@ class MenuBar(QObject):
         self.add_menu_items(h_menu_prep, p_lbl, cb_fcn, p_str, False)
 
         # ---------------------------------------------------------------------------
-        # Preprocessing Menubar Item Setup
+        # Spike Sorting Menubar Item Setup
         # ---------------------------------------------------------------------------
 
         # initialisations
@@ -762,6 +765,18 @@ class MenuBar(QObject):
 
         # adds the preprocessing menu items
         self.add_menu_items(h_menu_sort, p_lbl, cb_fcn, p_str, False)
+
+        # ---------------------------------------------------------------------------
+        # Post Processing Menubar Item Setup
+        # ---------------------------------------------------------------------------
+
+        # initialisations
+        p_str = ['run_bombcell', 'clear_bombcell']
+        p_lbl = ['Run BombCell', 'Clear BombCell Calculations']
+        cb_fcn = [self.run_bomb_cell, self.clear_bomb_cell]
+
+        # adds the preprocessing menu items
+        self.add_menu_items(h_menu_posp, p_lbl, cb_fcn, p_str, False)
 
         # ---------------------------------------------------------------------------
         # House-Keeping Exercises
@@ -850,6 +865,9 @@ class MenuBar(QObject):
         DefaultDir(self.main_obj).show()
 
     def close_window(self):
+
+        if self.main_obj.bombcell_dlg is not None:
+            self.main_obj.bombcell_dlg.close_window(True)
 
         # closes the window
         self.main_obj.can_close = True
@@ -1190,6 +1208,29 @@ class MenuBar(QObject):
         self.main_obj.info_manager.prog_widget.update_message_label()
 
     # ---------------------------------------------------------------------------
+    # Spike Sorting Menubar Functions
+    # ---------------------------------------------------------------------------
+
+    def run_bomb_cell(self):
+
+        if self.main_obj.bombcell_dlg is None:
+            # sets up the experiment base directory
+            p_comp = self.main_obj.session_obj.session._s_props['subject_path'].split('/')
+            base_dir = '/'.join(p_comp[:-2])
+
+            # runs the bombcell solver
+            self.main_obj.bombcell_dlg = BombCellSolver(self.main_obj, base_dir)
+            self.main_obj.bombcell_dlg.show()
+
+        else:
+            # if already setup, then reshow the window
+            self.main_obj.bombcell_dlg.show_window()
+
+    def clear_bomb_cell(self):
+
+        pass
+
+    # ---------------------------------------------------------------------------
     # Miscellaneous Functions
     # ---------------------------------------------------------------------------
 
@@ -1273,16 +1314,17 @@ class MenuBar(QObject):
                 # case is initialising
                 tool_off = ['save']
                 menu_off = ['save', 'clear', 'preprocessing', 'save_preprocessed', 'sorting',
-                            'clear_prep', 'clear_sort', 'load_trigger', 'load_config']
+                            'clear_prep', 'clear_sort', 'load_trigger', 'load_config', 'postprocess',
+                            'clear_bombcell']
 
             case 'session-open':
                 # case is post session opening
                 tool_on = ['save']
                 menu_on = ['save', 'clear', 'preprocessing', 'load_trigger', 'load_config']
 
-            case 'post-process':
+            case 'post-preprocess':
                 # case is post preprocessing
-                menu_on = ['sorting', 'clear_prep', 'save_preprocessed']
+                menu_on = ['sorting', 'postprocess', 'clear_prep', 'save_preprocessed']
 
             case 'post-sorting':
                 # case is post preprocessing

@@ -31,12 +31,17 @@ class BombCellInfoTab(InfoWidgetPara):
     # parameter field lists
     p_str_d = ['ephys_sample_rate', 'nChannels', 'nSyncChannels', 'ephysMetaFile', 'rawFile']
 
+    # removal parameters
+    p_rmv = {
+        'verbose': False,
+    }
+
     def __init__(self, t_str, main_obj, p_tab):
         super(BombCellInfoTab, self).__init__(t_str, main_obj, layout=QFormLayout)
 
         # sets the input arguments
-        self.main_obj = main_obj
         self.p_tab = p_tab
+        self.main_obj = main_obj
 
         # initialises the major widget groups
         self.setup_prop_fields()
@@ -74,6 +79,11 @@ class BombCellInfoTab(InfoWidgetPara):
 
             # sets up the properties for each parameter in the group
             for _ps in ps:
+                # removes the parameter from the list (if required)
+                if _ps in self.p_rmv:
+                    self.main_obj.bc_pkg.BombCellFcn('setParaValue', _ps, self.p_rmv[_ps])
+                    continue
+
                 # creates the parameter field
                 p_info = self.main_obj.bc_pkg.BombCellFcn('getParaInfo', _ps)
                 p_value = self.main_obj.bc_pkg.BombCellFcn('getParaValue', _ps)
@@ -154,6 +164,65 @@ class BombCellInfoTab(InfoWidgetPara):
 # ----------------------------------------------------------------------------------------------------------------------
 
 """
+    BombCellSoln:  class for storing BombCell calculated data 
+"""
+
+class BombCellSoln(object):
+    def __init__(self, bc_pkg_fcn):
+        super(BombCellSoln, self).__init__()
+
+        # data field retrieval
+        self.meta_data = bc_pkg_fcn('getClassField','metaData')
+        self.ephys_data = bc_pkg_fcn('getClassField','ephysData')
+        self.raw_form = bc_pkg_fcn('getClassField','rawForm')
+        self.pca_data = bc_pkg_fcn('getClassField','pcaData')
+        self.gui_data = bc_pkg_fcn('getClassField','guiData')
+
+        # self.spk_cluster = bc_pkg_fcn('getClassField','spkCluster')
+        # self.t_spike = bc_pkg_fcn('getClassField','tSpike')
+        # self.t_wform = bc_pkg_fcn('getClassField','tWForm')
+        # self.t_amp = bc_pkg_fcn('getClassField','tAmp')
+        # self.pc_feat = bc_pkg_fcn('getClassField','pcFeat')
+        # self.pc_feat_idx = bc_pkg_fcn('getClassField','pcFeatIdx')
+        # self.ch_pos = bc_pkg_fcn('getClassField','chPos')
+
+        # metric/unit-type information
+        self.q_metric = bc_pkg_fcn('getClassField','qMetric')
+        self.unit_type = bc_pkg_fcn('getClassField','unitType')
+
+    def get_meta_data(self):
+        return self.meta_data
+
+    def get_spike_clusters(self):
+        return self.ephys_data.spk_cluster
+
+    def get_spike_template(self):
+        return self.ephys_data.t_spike
+
+    def get_waveform_template(self):
+        return self.ephys_data.t_wform
+
+    def get_amplitude_template(self):
+        return self.ephys_data.t_amp
+
+    def get_channel_pos(self):
+        return self.ephys_data.ch_pos
+
+    def get_pca_feature(self):
+        return self.pca_data.feat
+
+    def get_pca_feature_indices(self):
+        return self.pca_data.idx
+
+    def get_qual_metric(self):
+        return self.q_metric
+
+    def get_unit_type(self):
+        return self.unit_type
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+"""
     BombCellSolver: dialog window for running the BombCell solver
 """
 
@@ -161,7 +230,7 @@ class BombCellSolver(QDialog):
     # widget dimensions
     x_gap = 5
     width_dlg = 400
-    hght_fspec = 50
+    hght_fspec = 60
     hght_para = 480
     hght_button = 40
 
@@ -182,19 +251,22 @@ class BombCellSolver(QDialog):
         }
     """
 
-    def __init__(self, main_obj):
+    def __init__(self, main_obj, expt_dir=None):
         super(BombCellSolver, self).__init__(main_obj)
 
         # input arguments
         self.main_obj = main_obj
+        self.expt_dir = expt_dir
 
         # class widgets
         self.h_tab_para = []
         self.cont_button = []
-        self.fspec_group = cw.QFileSpec(None, "EXPERIMENT PARENT FOLDER", "")
+        self.fspec_group = QGroupBox("EXPERIMENT PARENT FOLDER")
         self.para_group = QGroupBox("SOLVER PARAMETERS")
         self.progress_frame = QFrame()
         self.button_frame = QFrame()
+
+        #
         self.para_tab = cw.create_tab_group(None)
         self.prog_bar = cw.QDialogProgress(font=cw.font_lbl, is_task=True, timer_lbl=True)
 
@@ -216,17 +288,20 @@ class BombCellSolver(QDialog):
 
         # other class fields
         self.i_tab = 0
+        self.i_run = 1
         self.bc_para_c = None
         self.solver_flag = None
         self.hght_dlg = 6 * self.x_gap + (self.hght_fspec + self.hght_para + self.hght_button)
 
         # initialises the class fields
-        self.init_bomb_cell()
         self.init_class_fields()
         self.init_fspec_group()
         self.init_para_group()
         self.init_progress_frame()
         self.init_cont_buttons()
+
+        # initialises the bombcell fields
+        self.init_bomb_cell()
 
         # sets the widget style sheets
         self.set_style_sheets()
@@ -235,17 +310,6 @@ class BombCellSolver(QDialog):
     # Class Property Widget Setup Functions
     # ---------------------------------------------------------------------------
 
-    def init_bomb_cell(self):
-
-        # initialises the bombcell package
-        self.bc_pkg = BombCellPkg.initialize()
-        self.bc_pkg.BombCellFcn('initBombCell')
-
-        # retrieves the parameter information/groupings
-        self.p_map = self.bc_pkg.BombCellFcn('getParaField', 'pMap')
-        self.p_grp = self.bc_pkg.BombCellFcn('getParaField', 'pGrp')
-        self.p_fld = self.bc_pkg.BombCellFcn('getClassField', 'pFld')
-
     def init_class_fields(self):
 
         # sets the dialog window properties
@@ -253,10 +317,25 @@ class BombCellSolver(QDialog):
         self.setWindowTitle('BombCell Solver')
         self.setLayout(self.main_layout)
 
+        # adds the main group widgets to the dialog
         self.main_layout.addWidget(self.fspec_group)
         self.main_layout.addWidget(self.para_group)
         self.main_layout.addWidget(self.progress_frame)
         self.main_layout.addWidget(self.button_frame)
+
+    def init_bomb_cell(self):
+
+        # updates the progressbar
+        self.prog_bar.set_label("Initialising BombCell")
+        self.prog_bar.set_progbar_state(True)
+        time.sleep(0.1)
+
+        # creates the threadworker object
+        self.t_worker = ThreadWorker(self, self.init_bombcell_solver, None)
+        self.t_worker.work_finished.connect(self.bombcell_init_complete)
+
+        # starts the worker object
+        self.t_worker.start()
 
     def init_fspec_group(self):
 
@@ -266,7 +345,11 @@ class BombCellSolver(QDialog):
         self.fspec_group.setFixedHeight(self.hght_fspec)
 
         # sets up the slot functions
-        self.fspec_group.connect(self.button_file_spec)
+        self.fspec_edit = cw.create_line_edit(None, "", align='right')
+        self.fspec_layout.addWidget(self.fspec_edit)
+        self.fspec_edit.setFixedHeight(cf.but_height)
+        self.fspec_edit.setEnabled(False)
+        self.fspec_edit.setReadOnly(True)
 
     def init_para_group(self):
 
@@ -281,16 +364,16 @@ class BombCellSolver(QDialog):
         tab_style = cw.CheckBoxStyle(self.para_tab.style())
         self.para_tab.setStyle(tab_style)
 
+    def setup_para_group(self):
+
         # creates the tab objects
         for ts, p_tab in self.p_grp.items():
-            #
             tab_widget = BombCellInfoTab(ts, self, p_tab)
             self.para_tab.addTab(tab_widget, ts)
             self.h_tab_para.append(tab_widget)
 
         # tab change callback function
         self.para_tab.currentChanged.connect(self.on_tab_changed)
-        self.para_group.setEnabled(False)
 
     def init_progress_frame(self):
 
@@ -349,6 +432,151 @@ class BombCellSolver(QDialog):
     # BombCell Solver Functions
     # ---------------------------------------------------------------------------
 
+    def init_bombcell_solver(self, _):
+
+        # initialises the bombcell package
+        self.bc_pkg = BombCellPkg.initialize()
+        self.bc_pkg_fcn = self.bc_pkg.BombCellFcn
+
+        # creates the bombcell matlab object
+        self.bc_pkg_fcn('initBombCell')
+
+        # retrieves the parameter information/groupings
+        self.p_map = self.bc_pkg_fcn('getParaField', 'pMap')
+        self.p_grp = self.bc_pkg_fcn('getParaField', 'pGrp')
+        self.p_fld = self.bc_pkg_fcn('getClassField', 'pFld')
+
+    def bombcell_init_complete(self):
+
+        # deermines if the experiment is feasible for analysis (exit if not)
+        if not self.check_expt_dir():
+            # if not, then close the window
+            self.close_window(True)
+            return
+
+        # case is the experiment is feasible
+        self.fspec_edit.setEnabled(True)
+        self.fspec_edit.setText(self.expt_dir)
+        self.fspec_edit.setToolTip(self.expt_dir)
+
+        # sets up the memory map file
+        self.mmap_file = self.expt_dir + "/" + self.mmap_name
+        self.create_solver_mmap()
+
+        # intiialises the parameter groups
+        self.setup_para_group()
+        self.cont_button[0].setEnabled(True)
+
+        # stops and updates the progressbar
+        self.prog_bar.set_progbar_state(False)
+
+    def run_bombcell_solver(self, _):
+
+        # field retrieval
+        is_concat = self.main_obj.session_obj.is_concat_run()
+        is_per_shank = self.main_obj.session_obj.is_per_shank()
+        n_shank_s = self.main_obj.session_obj.get_shank_count() if is_per_shank else 1
+
+        # memory allocation
+        bc_data_nw = np.empty((self.n_run, n_shank_s), dtype=object)
+        s_info = {
+            "iRun": 1,
+            "iShank": 1,
+            "isConcat": is_concat,
+        }
+
+        for i_run in range(self.n_run):
+            # updates the run index
+            s_info['iRun'] = i_run + 1
+            for i_shank in range(n_shank_s):
+                # updates the shank index
+                s_info['iShank'] = i_shank + 1
+
+                # runs the bombcell solver
+                self.bc_pkg_fcn('runCalc', s_info)
+                if self.solver_flag[0]:
+                    # if successful, stores the results from the solver
+                    bc_data_nw[i_run, i_shank] = BombCellSoln(self.bc_pkg_fcn)
+
+                else:
+                    # otherwise, exit the loop
+                    return
+
+        # stores the data struct within the class
+        self.bc_data = bc_data_nw
+
+    def bombcell_solver_complete(self):
+
+        # stops and updates the progressbar
+        self.prog_bar.stop_timer()
+        self.prog_bar.set_label('Solver Complete')
+        self.prog_bar.set_full_prog()
+
+        # resets the button text
+        self.cont_button[0].setChecked(False)
+        self.cont_button[0].setText('Run Solver')
+
+        # updates the boolean flags
+        self.has_bc = True
+        self.bc_para_c = deepcopy(self.bc_pkg_fcn('getClassField', 'bcPara'))
+        self.set_button_props(True)
+
+    # ---------------------------------------------------------------------------
+    # Memory Map Functions
+    # ---------------------------------------------------------------------------
+
+    def create_solver_mmap(self):
+
+        # creates the memory mapping file
+        if not os.path.exists(self.mmap_file):
+            with open(self.mmap_file, 'wb') as f:
+                f.truncate(1)
+
+        # sets up the memory map
+        with open(self.mmap_file, 'r+b') as f:
+            self.mmap = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_WRITE)
+            self.solver_flag = np.frombuffer(self.mmap, dtype=np.uint8)
+            self.solver_flag[0] = np.uint8(0)
+
+    def delete_solver_mmap(self):
+
+        # deletes the file (if it exists)
+        if os.path.exists(self.mmap_file):
+            os.remove(self.mmap_file)
+
+    # ---------------------------------------------------------------------------
+    # Class Widget Event Functions
+    # ---------------------------------------------------------------------------
+
+    def on_tab_changed(self):
+
+        self.i_tab = self.para_tab.currentIndex()
+        self.h_tab_para[self.i_tab].repaint()
+
+    def check_expt_dir(self):
+
+        # field retrieval
+        self.n_run = self.main_obj.session_obj.session.get_run_count()
+        s_props = self.main_obj.session_obj.session.get_session_props()
+
+        # experimental information dictionary
+        exp_info = {
+            "exDir": self.expt_dir,
+            "nRun": self.n_run,
+            "nShank": self.main_obj.session_obj.get_shank_count(),
+            "isConcat": self.main_obj.session_obj.is_concat_run(),
+            "isPerShank": self.main_obj.session_obj.is_per_shank(),
+            "subName": os.path.split(s_props['subject_path'])[1],
+            "sesName": s_props["session_name"],
+        }
+
+        # runs the experiment folder diagnosis
+        expt_ok = self.bc_pkg_fcn('checkExptDir', exp_info)
+        if not expt_ok:
+            cf.show_error('The specified folder is not a feasible experiment', 'Error!')
+
+        return expt_ok
+
     def run_solver(self):
 
         # resets the button state
@@ -356,7 +584,7 @@ class BombCellSolver(QDialog):
         time.sleep(0.05)
 
         if self.is_running:
-            if not self.check_sort_overwrite():
+            if not self.check_solver_overwrite():
                 # if the user cancelled, then exit the function
                 self.is_updating = True
                 self.cont_button[0].setChecked(False)
@@ -375,8 +603,11 @@ class BombCellSolver(QDialog):
             self.prog_bar.set_progbar_state(True)
             time.sleep(0.1)
 
-            # creates the memory map file
-            self.create_solver_mmap()
+            # flag that the solver is running
+            self.solver_flag[0] = np.uint8(1)
+
+            # # creates the memory map file
+            # self.create_solver_mmap()
 
             # creates the threadworker object
             self.t_worker = ThreadWorker(self, self.run_bombcell_solver, None)
@@ -414,111 +645,20 @@ class BombCellSolver(QDialog):
         # sets the close window button
         self.cont_button[2].setEnabled(state)
 
-    def run_bombcell_solver(self, _):
-
-        # starts running the bombcell solver
-        self.bc_pkg.BombCellFcn('runCalc')
-
-    def bombcell_solver_complete(self):
-
-        # stops and updates the progressbar
-        self.prog_bar.stop_timer()
-        self.prog_bar.set_label('Solver Complete')
-        self.prog_bar.set_full_prog()
-
-        # resets the button text
-        self.cont_button[0].setChecked(False)
-        self.cont_button[0].setText('Run Solver')
-
-        # updates the boolean flags
-        self.has_bc = True
-        self.bc_para_c = deepcopy(self.bc_pkg.BombCellFcn('getClassField', 'bcPara'))
-        self.set_button_props(True)
-
-    # ---------------------------------------------------------------------------
-    # Memory Map Functions
-    # ---------------------------------------------------------------------------
-
-    def create_solver_mmap(self):
-
-        # creates the memory mapping file
-        if not os.path.exists(self.mmap_file):
-            with open(self.mmap_file, 'wb') as f:
-                f.truncate(1)
-
-        # sets up the memory map
-        with open(self.mmap_file, 'r+b') as f:
-            self.mmap = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_WRITE)
-            self.solver_flag = np.frombuffer(self.mmap, dtype=np.uint8)
-            self.solver_flag[0] = np.uint8(1)
-
-    def delete_solver_mmap(self):
-
-        # deletes the file (if it exists)
-        if os.path.exists(self.mmap_file):
-            os.remove(self.mmap_file)
-
-    # ---------------------------------------------------------------------------
-    # Class Widget Event Functions
-    # ---------------------------------------------------------------------------
-
-    def on_tab_changed(self):
-
-        self.i_tab = self.para_tab.currentIndex()
-        self.h_tab_para[self.i_tab].repaint()
-
-    def button_file_spec(self, h_fspec):
-
-        # file dialog properties
-        f_path = str(cw.get_def_dir("data"))
-        caption = 'Set Experimental Data Folder'
-
-        # runs the file dialog
-        file_dlg = cw.FileDialogModal(caption=caption, f_directory=f_path, dir_only=True)
-        if file_dlg.exec() == QDialog.DialogCode.Accepted:
-            # if the user accepted, then check the experiment folder is valid
-            def_path_new = file_dlg.selectedFiles()[0].replace('\\', '/')
-            expt_ok = self.bc_pkg.BombCellFcn('setExptDir', def_path_new)
-
-            if expt_ok:
-                # case is the folder is feasible
-                self.fspec_group.h_edit.setText(def_path_new)
-                self.fspec_group.h_edit.setToolTip(def_path_new)
-                self.cont_button[0].setEnabled(expt_ok)
-
-                for ps in self.p_str_u:
-                    h_obj = self.para_group.findChild(QLineEdit, name=ps)
-                    f_file = self.bc_pkg.BombCellFcn('getParaValue', ps)
-                    f_name = os.path.split(f_file)[1]
-
-                    h_obj.setText(f_name)
-                    h_obj.setToolTip(f_file)
-
-                # other field/object updates
-                self.para_group.setEnabled(True)
-                self.mmap_file = def_path_new + "/" + self.mmap_name
-
-            else:
-                # if not, then output an error to screen
-                cf.show_error('The specified folder is not a feasible experiment', 'Error!')
-
-        # removes selection from the button
-        h_fspec.h_but.setDefault(False)
-
     def reset_para(self):
 
         # flag that manual updating is taking place
         self.is_updating = True
 
         # field retrieval
-        bc_para = self.bc_pkg.BombCellFcn('getClassField', 'bcPara')
-        bc_para0 = self.bc_pkg.BombCellFcn('getClassField', 'bcPara0')
+        bc_para = self.bc_pkg_fcn('getClassField', 'bcPara')
+        bc_para0 = self.bc_pkg_fcn('getClassField', 'bcPara0')
 
         for pf, pv0 in bc_para0.items():
             pv = bc_para[pf]
             if (pv0 != pv) and (not np.isnan(pv)):
                 # resets the class object parameter values
-                self.bc_pkg.BombCellFcn('setParaValue', pf, pv0)
+                self.bc_pkg_fcn('setParaValue', pf, pv0)
 
                 # resets the parameter field
                 h_obj = self.para_tab.findChild(QWidget, name=pf)
@@ -528,7 +668,7 @@ class BombCellSolver(QDialog):
 
                 elif isinstance(h_obj, QLineEdit):
                     # case is an editbox
-                    p_info = self.bc_pkg.BombCellFcn('getParaInfo', pf)
+                    p_info = self.bc_pkg_fcn('getParaInfo', pf)
                     if p_info['pType'] == 'EditS':
                         # case is a string editbox
                         h_obj.setText(pv0)
@@ -580,8 +720,13 @@ class BombCellSolver(QDialog):
 
     def close_window(self, force_close=False):
 
-        if (self.main_obj is None) or force_close:
+        if force_close:
+            # terminates the package
+            if self.bc_pkg is not None:
+                self.bc_pkg.terminate()
+
             # closes the dialog window
+            self.main_obj.bombcell_dlg = None
             self.can_close = True
             self.close()
 
@@ -593,7 +738,7 @@ class BombCellSolver(QDialog):
     # Miscellaneous Functions
     # ---------------------------------------------------------------------------
 
-    def check_sort_overwrite(self):
+    def check_solver_overwrite(self, chk_para=True):
 
         if (not self.has_bc):
             # if there is no solution, then continue
@@ -601,9 +746,10 @@ class BombCellSolver(QDialog):
 
         else:
             # case is there is a solution
-            if self.check_para_change(self.bc_para_c):
+            if chk_para:
                 # if the parameters have changed, then continue
-                return True
+                if self.check_para_change(self.bc_para_c):
+                    return True
 
             # otherwise, prompt the user to overwrite
             q_str = 'BombCell solution already calculated. Do you want to overwrite?'
@@ -619,10 +765,10 @@ class BombCellSolver(QDialog):
 
         # retrieves the comparison parameter struct (if not provided)
         if bc_para0 is None:
-            bc_para0 = self.bc_pkg.BombCellFcn('getClassField', 'bcPara0')
+            bc_para0 = self.bc_pkg_fcn('getClassField', 'bcPara0')
 
         # checks all current/comparison fields
-        bc_para = self.bc_pkg.BombCellFcn('getClassField', 'bcPara')
+        bc_para = self.bc_pkg_fcn('getClassField', 'bcPara')
         for pf, pv in bc_para0.items():
             if (isinstance(pv,float) and np.isnan(pv)):
                 continue
