@@ -994,11 +994,6 @@ class InfoWidgetPara(InfoWidget, SearchMixin):
 
         # resizes the columns to fit, then resets to fixed size
         tree_header = self.tree_prop.header()
-
-        # if platform.system() == "Windows":
-        #     tree_header.updateSection(0)
-        #     tree_header.updateSection(1)
-
         tree_header.setDefaultAlignment(cf.align_type['center'])
         tree_header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
         tree_header.setSectionResizeMode(1, QHeaderView.ResizeMode.Fixed)
