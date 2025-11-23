@@ -4,6 +4,7 @@ import os
 import time
 import docker
 import shutil
+import platform
 import numpy as np
 import pandas as pd
 from copy import deepcopy
@@ -34,6 +35,7 @@ x_gap = 5
     Common Functions:  
 """
 
+
 def convert_string(p_val_str, isint):
     if isint:
         # case is an integer string
@@ -48,6 +50,7 @@ def convert_string(p_val_str, isint):
             return float(p_val_str)
         except:
             return np.nan
+
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -303,14 +306,14 @@ class SpikeSortingDialog(QMainWindow):
                 case 'ironclust':
                     # case is Ironcluster
                     s_name = 'IronClust'
-                    s_desc =("Ironclust is a density-based spike sorter designed for high-density probes \n"
-                             "(e.g. Neuropixels). It uses features and spike location estimates for clustering, and \n"
-                             "it performs a drift correction. For more information see https://doi.org/10.1101/101030")
+                    s_desc = ("Ironclust is a density-based spike sorter designed for high-density probes \n"
+                              "(e.g. Neuropixels). It uses features and spike location estimates for clustering, and \n"
+                              "it performs a drift correction. For more information see https://doi.org/10.1101/101030")
 
                 case 'simple':
                     # case is simple
                     s_name = 'Simple'
-                    s_desc =  ("Implementation of a very simple sorter usefull for teaching.\n\n"
+                    s_desc = ("Implementation of a very simple sorter usefull for teaching.\n\n"
                               " * detect peaks\n"
                               " * project waveforms with SVD or PCA\n"
                               " * apply a well known clustering algos from scikit-learn\n\n"
@@ -745,7 +748,7 @@ class SpikeSortingDialog(QMainWindow):
     def get_sorter_tab_props(self, s_name):
 
         s_props = self.s_prop_flds[s_name]
-        s_list = getattr(self.ss_obj,'{0}_s'.format(s_props['grp']))
+        s_list = getattr(self.ss_obj, '{0}_s'.format(s_props['grp']))
         return s_props['grp'], s_list.index(s_name)
 
     def update_sort_para_changes(self):
@@ -888,6 +891,7 @@ class SpikeSortingDialog(QMainWindow):
         for op in out_path:
             shutil.rmtree(op, ignore_errors=True)
 
+
 # ----------------------------------------------------------------------------------------------------------------------
 
 """
@@ -912,7 +916,6 @@ class RunSpikeSorting(QObject):
         self.run_sorter_method = False
 
     def sort(self, ss_config, per_shank, concat_runs, run_sorter_method):
-
         # sets the input arguments
         self.per_shank = per_shank
         self.concat_runs = concat_runs
@@ -928,7 +931,6 @@ class RunSpikeSorting(QObject):
         )
 
     def get_info(self, ss_obj, p_name):
-
         # initialises the progressbar
         self.update_prog.emit(0, None)
 
@@ -937,6 +939,7 @@ class RunSpikeSorting(QObject):
 
         # initialises the progressbar
         self.update_prog.emit(1, s_props)
+
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -988,13 +991,13 @@ class SpikeSorterTab(QTabWidget):
         QTreeWidget::item {
             height: 23px;
         }        
-        
+
         QTreeWidget::item:has-children {
             background: #A0A0A0;
             padding-left: 5px;
             color: white;
         }
- 
+
     """
 
     def __init__(self, main_dlg, s_name):
@@ -1048,7 +1051,7 @@ class SpikeSorterTab(QTabWidget):
         self.tree_prop.setHeaderLabels(self.tree_hdr)
         self.tree_prop.setFrameStyle(QFrame.Shape.WinPanel | QFrame.Shadow.Plain)
         self.tree_prop.setAlternatingRowColors(True)
-        self.tree_prop.setItemDelegateForColumn(0, cw.HTMLDelegate())
+        # self.tree_prop.setItemDelegateForColumn(0, cw.HTMLDelegate())
 
         # determines the unique parameter class indices
         p_fld = np.array(list(self.s_props.keys()))
@@ -1110,11 +1113,14 @@ class SpikeSorterTab(QTabWidget):
 
         # resizes the columns to fit, then resets to fixed size
         tree_header = self.tree_prop.header()
+
+        # if platform.system() == "Windows":
+        #     tree_header.updateSection(0)
+        #     tree_header.updateSection(1)
+
         tree_header.setDefaultAlignment(cf.align_type['center'])
-        tree_header.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
-        tree_header.updateSection(0)
-        tree_header.updateSection(1)
-        tree_header.setSectionResizeMode(QHeaderView.ResizeMode.Fixed)
+        tree_header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
+        tree_header.setSectionResizeMode(1, QHeaderView.ResizeMode.Fixed)
 
         # updates the initialisation flag
         self.is_init = True
@@ -1492,7 +1498,7 @@ class SpikeSorterTab(QTabWidget):
 
         # otherwise, determine the points to place a carriage return
         p_desc_sp = np.array(p_desc0.split())
-        n_desc_s = np.cumsum([len(x)+1 for x in p_desc_sp])
+        n_desc_s = np.cumsum([len(x) + 1 for x in p_desc_sp])
 
         # inserts carriage returns at the necessary locations
         while np.any(n_desc_s > n_col_sp):
@@ -1505,6 +1511,7 @@ class SpikeSorterTab(QTabWidget):
 
         # recombines the string
         return ' '.join(p_desc_sp)
+
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -1553,6 +1560,7 @@ class SpikeSortPara(object):
 
         else:
             return self.ctype.strip()
+
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -1652,7 +1660,7 @@ class SpikeSortInfo(QObject):
         # sets up the fields for all common parameters in the sorter
         for pf0 in p_fld:
             # skip any parameters that are being ignored
-            if pf0 in self.ig_para:
+            if (pf0 in self.ig_para) or (pf0 not in self.ss_info):
                 continue
 
             # special parameter
@@ -1793,7 +1801,7 @@ class SpikeSortInfo(QObject):
 
             case 'ftype':
                 # case is the filtering function type (spykingcircus2)
-                return ['bessel']                       # QUESTION: Any more filtering functions?!
+                return ['bessel']  # QUESTION: Any more filtering functions?!
 
             case 'loop_mode':
                 # case is the loop mode (hdsort)
@@ -1811,7 +1819,7 @@ class SpikeSortInfo(QObject):
 
                             case 'simple':
                                 # case is the simple sorter
-                                return ['hdbscan']              # QUESTION: Any more filtering functions?!
+                                return ['hdbscan']  # QUESTION: Any more filtering functions?!
 
                     case 'detection':
                         # case is the detection dictionary

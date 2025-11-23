@@ -10,7 +10,7 @@ dependencies:
   - pyqt=6
   - pyqtgraph  
   - bigtree
-  - scikit-image
+  - scikit-imagef
   - pandas
   - docker
   - torch

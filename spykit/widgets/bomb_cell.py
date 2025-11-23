@@ -289,6 +289,7 @@ class BombCellSolver(QDialog):
         # other class fields
         self.i_tab = 0
         self.i_run = 1
+        self.bc_pkg = None
         self.bc_para_c = None
         self.solver_flag = None
         self.hght_dlg = 6 * self.x_gap + (self.hght_fspec + self.hght_para + self.hght_button)
@@ -336,6 +337,7 @@ class BombCellSolver(QDialog):
 
         # starts the worker object
         self.t_worker.start()
+        # self.t_worker.run()
 
     def init_fspec_group(self):
 
@@ -614,6 +616,7 @@ class BombCellSolver(QDialog):
             self.t_worker.work_finished.connect(self.bombcell_solver_complete)
 
             # starts the worker object
+            # self.t_worker.run()
             self.t_worker.start()
 
         else:
@@ -724,6 +727,7 @@ class BombCellSolver(QDialog):
             # terminates the package
             if self.bc_pkg is not None:
                 self.bc_pkg.terminate()
+                self.bc_pkg = None
 
             # closes the dialog window
             self.main_obj.bombcell_dlg = None

@@ -5,6 +5,7 @@ import time
 import glob
 import pickle
 import shutil
+import platform
 import numpy as np
 import pyqtgraph as pg
 from pathlib import Path
@@ -92,8 +93,9 @@ class MainWindow(QMainWindow):
         self.set_styles()
 
         # REMOVE ME LATER
-        if os.environ['COMPUTERNAME'] == "DESKTOP-NLLEH0V":
-            self.testing()
+        if platform.system() == "Windows":
+            if os.environ['COMPUTERNAME'] == "DESKTOP-NLLEH0V":
+                self.testing()
 
     # ---------------------------------------------------------------------------
     # Class Widget Setup Functions

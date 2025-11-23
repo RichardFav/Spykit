@@ -1224,6 +1224,16 @@ class RunPreProcessing(QObject):
                     #                if the data is uint16, then covert before running
                     preprocessed_rec = self.pp_funcs[pp_name](pp_data[prev_name].astype('float32'), **pp_opt)
 
+                elif (pp_name == 'remove_channels') and ('channel_ids' in pp_opt):
+                    ch_ids = pp_data[prev_name].channel_ids
+                    if np.all([x in ch_ids for x in pp_opt['channel_ids']]):
+                        # runs the spikewrap function as per normal
+                        preprocessed_rec = self.pp_funcs[pp_name](pp_data[prev_name], **pp_opt)
+
+                    else:
+                        # otherwise, skip the step
+                        preprocessed_rec = pp_data[prev_name]
+
                 else:
                     # otherwise, run the spikewrap function as per normal
                     preprocessed_rec = self.pp_funcs[pp_name](pp_data[prev_name], **pp_opt)

@@ -1,12 +1,12 @@
 # package import
 import numpy as np
-# import os
+import os
 # import sys
 # from importlib import reload
 
-# pyqt6 module import
-from PyQt6.QtWidgets import QDialog, QVBoxLayout, QMainWindow, QWidget, QHBoxLayout, QTableWidget
-from PyQt6.QtCore import Qt
+# Spike only
+# os.environ['LD_LIBRARY_PATH'] = '/opt/MATLAB/R2024b/runting/glnxa64:/lib/x86_64-linux-gnu'
+os.environ['LD_LIBRARY_PATH'] = '/opt/MATLAB/R2024b/runtime/glnxa64'
 
 # other imports
 # import spykit.common.misc_func as mf
@@ -18,6 +18,9 @@ from spykit.widgets.bomb_cell import BombCellSolver
 from spykit.info.preprocess import PreprocessInfoTab, PreprocessSetup
 from spykit.widgets.spike_sorting import SpikeSortingDialog, SpikeSortPara
 import spykit.info.utils as ui
+
+# pyqt6 module import
+from PyQt6.QtWidgets import QDialog, QVBoxLayout, QMainWindow, QWidget, QHBoxLayout, QTableWidget
 
 import spikewrap as sw
 # from spikeinterface.widgets import
