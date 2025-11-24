@@ -448,6 +448,9 @@ class BombCellSolver(QDialog):
         self.p_grp = self.bc_pkg_fcn('getParaField', 'pGrp')
         self.p_fld = self.bc_pkg_fcn('getClassField', 'pFld')
 
+        # other class field initialisations
+        self.bc_pkg_fcn('setClassField', 'useSpykit', True)
+
     def bombcell_init_complete(self):
 
         # deermines if the experiment is feasible for analysis (exit if not)
