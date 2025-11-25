@@ -47,12 +47,21 @@ class SavePrep(QDialog):
         self.para_layout = QGridLayout()
         self.button_layout = QHBoxLayout()
 
-        # other class fields
+        # field retrieval
         self.pp_steps = self.main_obj.session_obj.get_preprocessing_steps()
         self.pp_data_flds = self.main_obj.session_obj.get_current_prep_data_names()
-        self.i_sel_pp = len(self.pp_steps)
-        self.user_dir = self.pp_steps[-1]
+        self.out_run = self.main_obj.session_obj.get_current_run_index()
+        self.run_names = self.main_obj.session_obj.session.get_run_names()
+        self.n_shank = self.main_obj.session_obj.get_shank_count()
+
+        # boolean class fields
+        self.is_per_shank = self.main_obj.session_obj.is_per_shank
+        self.is_concat_run = self.main_obj.session_obj.is_concat_run()
+
+        # other class fields
         self.n_worker = 10
+        self.user_dir = self.pp_steps[-1]
+        self.i_sel_pp = len(self.pp_steps)
 
         # initialises the class fields
         self.init_class_fields()
@@ -96,7 +105,7 @@ class SavePrep(QDialog):
     def init_para_group(self):
 
         # creates the groupbox object
-        self.para_group = QGroupBox("Completed Preprocessing Steps")
+        self.para_group = QGroupBox("Output Parameters")
         self.para_group.setLayout(self.para_layout)
         self.para_group.setFont(cw.font_panel)
         self.main_layout.addWidget(self.para_group)
@@ -178,22 +187,76 @@ class SavePrep(QDialog):
 
     def save_prep_data(self):
 
-        # sets up the output folder name
-        s_props = self.main_obj.session_obj.session._s_props
-        p_comp = s_props['subject_path'].split('/')
-        sub_dir = p_comp[-1]
-        ses_dir = s_props['session_name']
-        base_dir = '/'.join(p_comp[:-2])
-        out_folder = Path(base_dir) / "preprocessed" / sub_dir / ses_dir / self.user_dir
+        if self.is_concat_run:
+            # case is a concatenated run
+            i_run = [0]
 
-        # retrieves the recording object
-        pp_rec = self.main_obj.session_obj.session.get_session_runs(
-                    0, "grouped", pp_type=self.pp_data_flds[self.i_sel_pp])
+        else:
+            # case is outputting all runs
+            i_run = list(range(len(self.run_names)))
 
-        # outputs the binary file
-        pp_rec.save(format="binary", folder=out_folder, n_jobs=self.n_worker, progres_bar=True)
+        # outputs the preprocessed data for all specified experimental runs
+        for _i_run in i_run:
+            if self.is_per_shank:
+                for _i_shank in range(self.n_shank):
+                    # sets up the output folder
+                    out_folder = self.setup_output_folder_path(_i_run, _i_shank)
+
+                    # retrieves the recording object
+                    run_type = "shank_{0}".format(_i_shank)
+                    pp_rec = self.main_obj.session_obj.session.get_session_runs(
+                        _i_run, run_type, pp_type=self.pp_data_flds[self.i_sel_pp])
+
+                    # outputs the binary file
+                    pp_rec.save(format="binary", folder=out_folder, n_jobs=self.n_worker, progres_bar=True)
+
+            else:
+                # sets up the output folder
+                out_folder = self.setup_output_folder_path(_i_run)
+
+                # retrieves the recording object
+                pp_rec = self.main_obj.session_obj.session.get_session_runs(
+                            _i_run, "grouped", pp_type=self.pp_data_flds[self.i_sel_pp])
+
+                # outputs the binary file
+                pp_rec.save(format="binary", folder=out_folder, n_jobs=self.n_worker, progres_bar=True)
 
     def close_window(self):
 
         # closes the dialog window
         self.close()
+
+    def setup_output_folder_path(self, i_run=None, i_shank=None):
+
+        # field retrieval
+        s_props = self.main_obj.session_obj.session._s_props
+
+        # sets the base folder path
+        p_comp = s_props['subject_path'].split('/')
+        base_dir = '/'.join(p_comp[:-2])
+
+        # sets run folder name
+        if self.is_concat_run:
+            # case is a concatenated run
+            run_dir = 'concat_run'
+
+        elif (i_run is None):
+            # case is using the current run index
+            run_dir = self.main_obj.session_obj.current_run
+
+        else:
+            # case is outputting a specific run
+            run_dir = self.run_names[i_run]
+
+        # other path folder names
+        sub_dir = p_comp[-1]
+        ses_dir = s_props['session_name']
+
+        # sets the full output directory folder
+        out_dir = Path(base_dir) / "derivatives" / sub_dir / ses_dir / "ephys" / run_dir / "preprocessing"
+        if i_shank is not None:
+            # case is separating by shank
+            out_dir /= "shank_{0}".format(i_shank)
+
+        # returns the full path
+        return out_dir

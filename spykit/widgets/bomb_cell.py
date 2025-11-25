@@ -229,7 +229,7 @@ class BombCellSoln(object):
 class BombCellSolver(QDialog):
     # widget dimensions
     x_gap = 5
-    width_dlg = 400
+    width_dlg = 425
     hght_fspec = 60
     hght_para = 480
     hght_button = 40

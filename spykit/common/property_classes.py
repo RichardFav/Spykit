@@ -317,14 +317,14 @@ class SessionWorkBook(QObject):
         else:
             return None
 
+    def get_shank_count(self):
+
+        return self.session.get_session_runs(0,'grouped').get_probe().get_shank_count()
+
     def get_shank_ids(self):
 
         ch_info = self.get_channel_info()
         return ch_info['shank_ids']
-
-    def get_shank_count(self):
-
-        return self.session.get_session_runs(0,'grouped').get_probe().get_shank_count()
 
     def get_shank_names(self, per_shank=None):
 
