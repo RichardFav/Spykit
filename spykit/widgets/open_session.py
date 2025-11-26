@@ -397,18 +397,6 @@ class SessionFile(QWidget):
     p_list_type = ['int8', 'int16', 'int32']
     col_hdr = ['Run #', 'Analyse Run?', 'Session Run Name']
 
-    # widget stylesheets
-    table_style = """
-        QTableWidget {
-            font: Arial 6px;
-            border: 1px solid;
-        }
-        QHeaderView {
-            font: Arial 6px;
-            font-weight: 1000;
-        }
-    """
-
     table_font = cw.create_font_obj(size=8)
     table_hdr_font = cw.create_font_obj(size=8, is_bold=True, font_weight=QFont.Weight.Bold)
     chk_flag = Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsSelectable
@@ -564,12 +552,12 @@ class SessionFile(QWidget):
         self.run_table.resizeColumnToContents(1)
         self.run_table.horizontalHeader().setStretchLastSection(True)
         self.run_table.setSizePolicy(QSizePolicy(cf.q_exp, cf.q_exp))
-        self.run_table.setStyleSheet(self.table_style)
+        self.run_table.setStyleSheet(cw.table_style)
         self.run_table.itemChanged.connect(self.check_run_table)
 
         # resets the channel table style
-        table_style = cw.CheckBoxStyle(self.run_table.style())
-        self.run_table.setStyle(table_style)
+        table_style_chk = cw.CheckBoxStyle(self.run_table.style())
+        self.run_table.setStyle(table_style_chk)
 
         # updates the dialog properties
         self.is_updating = False
@@ -1034,18 +1022,6 @@ class SessionProbe(QWidget):
                 'Duration', 'Shank Count']
     # combo_lbl = ['Current Run', 'Current Shank']
 
-    # widget stylesheets
-    table_style = """
-        QTableView {
-            font: Arial 6px;        
-            border : 1px solid;
-        }    
-        QHeaderView {
-            font: Arial 6px;
-            font-weight: 1000;
-        }
-    """
-
     def __init__(self, parent=None):
         super(SessionProbe, self).__init__(parent)
 
@@ -1188,7 +1164,7 @@ class SessionProbe(QWidget):
         self.channel_layout.addWidget(self.channel_table)
 
         # sets the table column event function
-        self.channel_table.setStyleSheet(self.table_style)
+        self.channel_table.setStyleSheet(cw.table_style)
         self.table_col.item_clicked.connect(self.check_table_header)
 
     def setup_plot_frame(self):

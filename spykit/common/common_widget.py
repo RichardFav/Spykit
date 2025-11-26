@@ -33,13 +33,9 @@ from PyQt6.QtGui import (QFont, QDrag, QCursor, QStandardItemModel, QStandardIte
 # ----------------------------------------------------------------------------------------------------------------------
 
 # style sheets
+font_base = "Arial" if cf.is_win else "Arial Narrow"
 
-
-# subject/session model flags
-sub_flag = QItemSelectionModel.SelectionFlag.ClearAndSelect | QItemSelectionModel.SelectionFlag.Rows
-ses_flag = QItemSelectionModel.SelectionFlag.Select | QItemSelectionModel.SelectionFlag.Rows
-
-# widget stylesheets
+# toolbar stylesheets
 toolbar_style = """
     QToolBar {
         background-color: white;
@@ -50,11 +46,46 @@ toolbar_style = """
         font-size : 14px;
     }
 """
+
+# tree widget stylesheets
+tree_style = """    
+    QTreeWidget {{
+        font: {font} 8px;
+    }}
+    QTreeWidget::item {{
+        height: 23px;
+    }}
+    QTreeWidget::item:has-children {{
+        background: #A0A0A0;
+        padding-left: 5px;
+        color: white;
+    }}
+""".format(font=font_base)
+
+# table style sheet
+table_style = """
+    QTableWidget {{
+        font: {font} 6px;
+        border: 1px solid;
+    }}
+    QHeaderView {{
+        font: {font} 6px;
+        font-weight: 1000;
+    }}
+""".format(font=font_base)
+
+# editbox style sheet
 edit_style_sheet = """
     border: 1px solid; 
     border-radius: 2px; 
     padding-left: 5px;
 """
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+# subject/session model flags
+sub_flag = QItemSelectionModel.SelectionFlag.ClearAndSelect | QItemSelectionModel.SelectionFlag.Rows
+ses_flag = QItemSelectionModel.SelectionFlag.Select | QItemSelectionModel.SelectionFlag.Rows
 
 # alignment flags
 align_flag = {
@@ -170,17 +201,6 @@ cmap = {
     ],
 }
 
-table_style = """
-    QTableWidget {
-        font: Arial 6px;
-        border: 1px solid;
-    }
-    QHeaderView {
-        font: Arial 6px;
-        font-weight: 1000;
-    }
-"""
-
 # widget dimensions
 x_gap = 5
 row_height = 16.5
@@ -192,7 +212,7 @@ t_span_max = 0.5
 
 def create_font_obj(size=9, is_bold=False, font_weight=QFont.Weight.Normal):
     # creates the font object
-    font = QFont()
+    font = QFont(font_base)
 
     # sets the font properties
     font.setPointSize(size)
@@ -891,19 +911,11 @@ class QTraceTree(QWidget):
     node_deleted = pyqtSignal()
 
     # widget stylesheets
-    tree_style = """
-        QTreeView {
-            font: Arial 8px;
-        }
-
-        QTreeView::item {
-
-        }    
-
-        QTreeView::branch:open:has-children:has-siblings {
-
-        }        
-    """
+    trace_tree_style = """
+        QTreeView {{
+            font: {font} 8px;
+        }}
+    """.format(font=font_base)
 
     def __init__(self, parent=None, font=None):
         super(QTraceTree, self).__init__(parent)
@@ -943,7 +955,7 @@ class QTraceTree(QWidget):
 
         # sets the tree-view properties
         self.obj_tview.setModel(self.t_model)
-        self.obj_tview.setStyleSheet(self.tree_style)
+        self.obj_tview.setStyleSheet(self.trace_tree_style)
         self.obj_tview.setItemsExpandable(False)
         self.obj_tview.setIndentation(10)
         self.obj_tview.setHeaderHidden(True)
@@ -1059,15 +1071,15 @@ class QFolderTree(QWidget):
     subject_changed = pyqtSignal(QStandardItem)
 
     # widget stylesheets
-    tree_style = """
-        QTreeView {
-            font: Arial 8px;
-        }
-        QTreeView::item:selected {
+    folder_tree_style = """
+        QTreeView {{
+            font: {font} 8px;
+        }}
+        QTreeView::item:selected {{
             color: red;
             background-color: #9fedab;
-        }    
-    """
+        }}
+    """.format(font=font_base)
 
     def __init__(self, parent=None, data_dict=None, is_feas_tree=False):
         super(QFolderTree, self).__init__(parent)
@@ -1100,7 +1112,7 @@ class QFolderTree(QWidget):
 
         # sets the tree-view properties
         self.obj_tview.setModel(self.t_model)
-        self.obj_tview.setStyleSheet(self.tree_style)
+        self.obj_tview.setStyleSheet(self.folder_tree_style)
         self.obj_tview.setIndentation(10)
         self.obj_tview.setHeaderHidden(True)
         self.obj_tview.setFrameStyle(QFrame.Shape.WinPanel | QFrame.Shadow.Sunken)
@@ -1591,23 +1603,6 @@ class QColorMapChooser(QFrame):
     # pyqtsignal functions
     colour_selected = pyqtSignal(str)
 
-    # widget stylesheets
-    tree_style = """    
-        QTreeWidget {
-            font: Arial 8px;
-        }
-
-        QTreeWidget::item {
-            height: 23px;
-        }        
-
-        QTreeWidget::item:has-children {
-            background: #A0A0A0;
-            padding-left: 5px;
-            color: white;
-        }
-    """
-
     # parameters
     col_wid = 105
     lbl_width = 85
@@ -1687,7 +1682,7 @@ class QColorMapChooser(QFrame):
         self.tree_prop.setColumnCount(2)
         self.tree_prop.setIndentation(10)
         self.tree_prop.setHeaderHidden(True)
-        self.tree_prop.setStyleSheet(self.tree_style)
+        self.tree_prop.setStyleSheet(tree_style)
         self.tree_prop.setFrameStyle(QFrame.Shape.Box | QFrame.Shadow.Plain)
         self.tree_prop.setAlternatingRowColors(False)
         self.tree_prop.setItemDelegateForColumn(0, HTMLDelegate())
@@ -1809,7 +1804,7 @@ class SearchMixin:
         search_pixmap = QIcon(icon_path['search']).pixmap(QSize(cf.but_height, cf.but_height))
 
         # creates the pixmap object
-        filter_obj = QLabelEdit(None, '', '')
+        filter_obj = QLabelEdit(None, '', '', y_ofs=0)
 
         # filter label properties
         filter_obj.obj_lbl.setPixmap(search_pixmap)
@@ -1933,7 +1928,7 @@ class QLabelText(QWidget):
 
 
 class QLabelEdit(QWidget):
-    def __init__(self, parent=None, lbl_str=None, edit_str=None, font_lbl=None, name=None):
+    def __init__(self, parent=None, lbl_str=None, edit_str=None, font_lbl=None, name=None, y_ofs=4):
         super(QLabelEdit, self).__init__(parent)
 
         # creates the layout widget
@@ -1950,7 +1945,8 @@ class QLabelEdit(QWidget):
 
         # sets up the label properties
         self.obj_lbl.adjustSize()
-        self.obj_lbl.setStyleSheet('padding-top: 4px;')
+        self.obj_lbl.setContentsMargins(0, y_ofs, 0, 0)
+        # self.obj_lbl.setStyleSheet('padding-top: 2px;')
 
         # sets up the editbox properties
         self.obj_edit.setFixedHeight(cf.edit_height)
@@ -2083,7 +2079,8 @@ class QLabelCombo(QWidget):
 
         # sets up the label properties
         self.obj_lbl.adjustSize()
-        self.obj_lbl.setStyleSheet('padding-top: 3 px;')
+        self.obj_lbl.setContentsMargins(0, 4, 0, 0)
+        # self.obj_lbl.setStyleSheet('padding-top: 3 px;')
 
         # sets up the slot function
         self.obj_cbox.setFixedHeight(cf.combo_height)
@@ -2305,7 +2302,8 @@ class QLabelCheckCombo(QWidget):
 
         # creates the label object
         self.h_lbl = create_text_label(None, lbl, font, align='right')
-        self.h_lbl.setStyleSheet('padding-top: 3px;')
+        self.h_lbl.setContentsMargins(0, 4, 0, 0)
+        # self.h_lbl.setStyleSheet('padding-top: 3px;')
         self.h_lbl.adjustSize()
 
         # sets the widget model and event functions
@@ -2455,7 +2453,7 @@ class QProgressWidget(QWidget):
         self.layout.addWidget(self.prog_bar)
 
         # sets the label properties
-        self.lbl_obj.setContentsMargins(0, x_gap, 0, 0)
+        self.lbl_obj.setContentsMargins(0, x_gap + 2, 0, 0)
         self.lbl_obj.setFixedWidth(self.lbl_width)
         self.lbl_obj.setToolTip(self.get_next_task())
 
@@ -2687,7 +2685,7 @@ class QDialogProgress(QWidget):
         self.layout.addWidget(self.prog_bar)
 
         # sets the label properties
-        self.lbl_obj.setContentsMargins(0, x_gap, 0, 0)
+        self.lbl_obj.setContentsMargins(0, x_gap+2, 0, 0)
         self.lbl_obj.setFixedWidth(self.lbl_width)
 
         # sets the progressbar properties

@@ -808,21 +808,9 @@ class InfoManager(QWidget):
 
 
 class InfoWidget(QWidget):
-    #
+    # widget dimensions
     x_gap = 5
     hght_row = 25
-
-    # widget stylesheets
-    table_style = """
-        QTableWidget {
-            font: Arial 6px;
-            border: 1px solid;
-        }
-        QHeaderView {
-            font: Arial 6px;
-            font-weight: 1000;
-        }
-    """
 
     def __init__(self, t_lbl, main_obj, layout=QVBoxLayout):
         super(InfoWidget, self).__init__()
@@ -846,7 +834,7 @@ class InfoWidget(QWidget):
         self.table.setRowCount(0)
         self.table.setColumnCount(0)
         self.table.setObjectName(self.t_lbl)
-        self.table.setStyleSheet(self.table_style)
+        self.table.setStyleSheet(cw.table_style)
 
         # resets the header properties
         v_header = self.table.verticalHeader()
@@ -858,8 +846,8 @@ class InfoWidget(QWidget):
         self.tab_layout.addWidget(self.table)
 
         # resets the channel table style
-        table_style = cw.CheckBoxStyle(self.table.style())
-        self.table.setStyle(table_style)
+        table_style_chk = cw.CheckBoxStyle(self.table.style())
+        self.table.setStyle(table_style_chk)
 
         # table header setup
         table_header = cw.CheckTableHeader(self.table)
@@ -888,26 +876,6 @@ class InfoWidgetPara(InfoWidget, SearchMixin):
     gray_col = QColor(160, 160, 160, 255)
     item_font = cw.create_font_obj(9, True, QFont.Weight.Bold)
     item_child_font = cw.create_font_obj(8)
-
-    # widget stylesheets
-    tree_style = """    
-        QTreeWidget {
-            font: Arial 8px;
-        }
-
-        QTreeWidget::item {
-            height: 23px;
-            background: #FFFFFF;
-            color: black;            
-        }        
-
-        QTreeWidget::item:has-children {
-            background: #A0A0A0;
-            padding-left: 5px;
-            color: white;
-        }
-        
-    """
 
     def __init__(self, t_lbl, main_obj, layout=QVBoxLayout):
         super(InfoWidgetPara, self).__init__(t_lbl, main_obj, layout)
@@ -953,7 +921,7 @@ class InfoWidgetPara(InfoWidget, SearchMixin):
         self.tree_prop.setColumnCount(2)
         self.tree_prop.setIndentation(12)
         self.tree_prop.setItemsExpandable(True)
-        self.tree_prop.setStyleSheet(self.tree_style)
+        self.tree_prop.setStyleSheet(cw.tree_style)
         self.tree_prop.setHeaderLabels(self.tree_hdr)
         self.tree_prop.setFrameStyle(QFrame.Shape.WinPanel | QFrame.Shadow.Plain)
         self.tree_prop.setAlternatingRowColors(True)

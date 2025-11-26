@@ -999,12 +999,12 @@ class SpikeSorterTab(QTabWidget):
         }
     """
     tree_style_win = """
-        QTreeWidget {
-            font: Arial 8px;
+        QTreeWidget {{
+            font: {font} 8px;
             hover-background-color: transparent; 
             selection-background-color: transparent; 
-        }                        
-    """
+        }}           
+    """.format(font=cw.font_base)
 
     def __init__(self, main_dlg, s_name):
         super(SpikeSorterTab, self).__init__(main_dlg)

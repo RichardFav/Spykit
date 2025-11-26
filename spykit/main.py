@@ -9,26 +9,13 @@ from spykit.widgets.main_window import MainWindow
 
 # pyqt6 module import
 from PyQt6.QtWidgets import QApplication, QTreeWidget, QTreeWidgetItem, QTreeView, QProxyStyle, QStyleFactory, QWidget
-# from PyQt6.QtCore import QStringListModel, QStringConverter, QAbstractItemModel
-# from PyQt6.QtGui import QStandardItemModel, QStandardItem
+from PyQt6.QtGui import QFont
 
 # debugging parameters
 is_testing = False
 test_type = 15
 
-data = {"Project A": ["file_a.py", "file_a.txt", "something.xls"],
-        "Project B": ["file_b.csv", "photo.jpg"],
-        "Project C": []}
-
-# widget stylesheets
-tree_style = """
-    QTreeView {
-        font: Arial 10px;
-    }
-    QTreeView::branch:open:has-children:has-siblings {
-        
-    }        
-"""
+########################################################################################################################
 
 if __name__ == '__main__':
 
