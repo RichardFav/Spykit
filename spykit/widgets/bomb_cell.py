@@ -263,12 +263,10 @@ class BombCellSolver(QDialog):
         self.cont_button = []
         self.fspec_group = QGroupBox("EXPERIMENT PARENT FOLDER")
         self.para_group = QGroupBox("SOLVER PARAMETERS")
-        self.progress_frame = QFrame()
-        self.button_frame = QFrame()
-
-        #
         self.para_tab = cw.create_tab_group(None)
         self.prog_bar = cw.QDialogProgress(font=cw.font_lbl, is_task=True, timer_lbl=True)
+        self.progress_frame = QFrame()
+        self.button_frame = QFrame()
 
         # class layouts
         self.main_layout = QVBoxLayout()
@@ -279,6 +277,7 @@ class BombCellSolver(QDialog):
 
         # boolean class fields
         self.has_bc = False
+        self.init_complete = False
         self.is_updating = False
         self.is_running = False
         self.can_close = False
@@ -336,8 +335,8 @@ class BombCellSolver(QDialog):
         self.t_worker.work_finished.connect(self.bombcell_init_complete)
 
         # starts the worker object
+        self.is_running = True
         self.t_worker.start()
-        # self.t_worker.run()
 
     def init_fspec_group(self):
 
@@ -473,6 +472,8 @@ class BombCellSolver(QDialog):
         self.cont_button[0].setEnabled(True)
 
         # stops and updates the progressbar
+        self.is_running = False
+        self.init_complete = True
         self.prog_bar.set_progbar_state(False)
 
     def run_bombcell_solver(self, _):
@@ -619,7 +620,6 @@ class BombCellSolver(QDialog):
             self.t_worker.work_finished.connect(self.bombcell_solver_complete)
 
             # starts the worker object
-            # self.t_worker.run()
             self.t_worker.start()
 
         else:
@@ -629,17 +629,17 @@ class BombCellSolver(QDialog):
 
             # deletes the memory map file
             self.solver_flag[0] = np.uint8(0)
-            self.set_button_props(True)
+            self.set_button_props(True, chk_para=True)
 
             # disables the progressbar fields
             self.prog_bar.set_progbar_state(False)
             self.cont_button[0].setText('Run Solver')
 
-    def set_button_props(self, state):
+    def set_button_props(self, state, chk_para=False):
 
         if state:
             # resets the button properties
-            if self.has_bc:
+            if self.has_bc or chk_para:
                 self.check_para_reset(self.bc_para_c)
             else:
                 self.check_para_reset()
@@ -721,10 +721,22 @@ class BombCellSolver(QDialog):
 
     def show_window(self):
 
+        # restarts initialisation (if not complete)
+        if not self.init_complete:
+            self.init_bomb_cell()
+
         # makes the window visible
         self.setVisible(True)
 
     def close_window(self, force_close=False):
+
+        if self.is_running:
+            # resets the boolean flags
+            self.is_running = False
+
+            # stops the progressbar and thread worker
+            self.prog_bar.set_progbar_state(False)
+            self.t_worker.force_quit()
 
         if force_close:
             # terminates the package
@@ -778,6 +790,9 @@ class BombCellSolver(QDialog):
         bc_para = self.bc_pkg_fcn('getClassField', 'bcPara')
         for pf, pv in bc_para0.items():
             if (isinstance(pv,float) and np.isnan(pv)):
+                continue
+
+            elif (pf in self.p_str_u):
                 continue
 
             elif (pv != bc_para[pf]):

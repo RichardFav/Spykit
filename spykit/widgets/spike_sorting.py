@@ -8,6 +8,7 @@ import platform
 import numpy as np
 import pandas as pd
 from copy import deepcopy
+from textwrap import dedent
 from functools import partial as pfcn
 
 # spykit module imports
@@ -982,22 +983,21 @@ class SpikeSorterTab(QTabWidget):
 
     # widget stylesheets
     tree_style = """    
-        QTreeWidget {
-            font: Arial 8px;
-            hover-background-color: transparent; /* Used on Windows */
-            selection-background-color: transparent; /* Used on Windows */            
-        }
-
         QTreeWidget::item {
             height: 23px;
         }        
-
         QTreeWidget::item:has-children {
             background: #A0A0A0;
             padding-left: 5px;
             color: white;
         }
-
+    """
+    tree_style_win = """
+        QTreeWidget {
+            font: Arial 8px;
+            hover-background-color: transparent; 
+            selection-background-color: transparent; 
+        }                        
     """
 
     def __init__(self, main_dlg, s_name):
@@ -1006,6 +1006,9 @@ class SpikeSorterTab(QTabWidget):
         # sets the input arguments
         self.s_name = s_name
         self.main_dlg = main_dlg
+
+        if platform.system() == "Windows":
+            self.tree_style += self.tree_style_win
 
         # field retrieval
         self.tree_prop = QTreeWidget(self)
