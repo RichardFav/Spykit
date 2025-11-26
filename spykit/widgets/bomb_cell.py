@@ -741,6 +741,8 @@ class BombCellSolver(QDialog):
         if force_close:
             # terminates the package
             if self.bc_pkg is not None:
+                # clears/terminates the bombcell matlab object
+                self.bc_pkg_fcn('closeBombCell')
                 self.bc_pkg.terminate()
                 self.bc_pkg = None
 

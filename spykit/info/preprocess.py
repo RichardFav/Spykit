@@ -317,7 +317,7 @@ class PreprocessSetup(QMainWindow):
         self.main_widget = QWidget(self)
 
         # class layouts
-        self.list_layout = QGridLayout(self)
+        self.list_layout = QGridLayout()
         self.checkbox_layout = QHBoxLayout()
         self.button_layout = QVBoxLayout()
         self.task_layout = QGridLayout()
@@ -576,7 +576,7 @@ class PreprocessSetup(QMainWindow):
         self.list_layout.setHorizontalSpacing(x_gap)
         self.list_layout.setVerticalSpacing(x_gap)
         self.list_layout.setContentsMargins(2 * x_gap, x_gap, 2 * x_gap, 2 * x_gap)
-        self.setLayout(self.list_layout)
+        # self.setLayout(self.list_layout)
 
         if self.is_auto:
             # adds the main widgets to the main layout

@@ -181,7 +181,7 @@ class SpikeSortingDialog(QMainWindow):
         self.setWindowTitle("Spike Sorting Parameters")
         self.setFixedSize(self.dlg_width, self.dlg_height)
         self.setWindowModality(Qt.WindowModality(1))
-        self.setLayout(self.main_layout)
+        # self.setLayout(self.main_layout)
         # self.setModal(True)
 
         # sets the main widget properties
@@ -388,7 +388,7 @@ class SpikeSortingDialog(QMainWindow):
         self.main_layout.setHorizontalSpacing(x_gap)
         self.main_layout.setVerticalSpacing(x_gap)
         self.main_layout.setContentsMargins(2 * x_gap, x_gap, 2 * x_gap, 2 * x_gap)
-        self.setLayout(self.main_layout)
+        # self.setLayout(self.main_layout)
 
         # adds the main widgets to the main layout
         self.main_layout.addWidget(self.sort_frame, 0, 0, 1, 1)
@@ -1013,12 +1013,12 @@ class SpikeSorterTab(QTabWidget):
         self.s_name = s_name
         self.main_dlg = main_dlg
 
-        if platform.system() == "Windows":
+        if cf.is_win:
             self.tree_style += self.tree_style_win
 
         # field retrieval
         self.tree_prop = QTreeWidget(self)
-        self.tab_layout = QVBoxLayout(self)
+        self.tab_layout = QVBoxLayout()
 
         # other class fields
         self.s_props = None

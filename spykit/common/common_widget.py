@@ -1631,8 +1631,8 @@ class QColorMapChooser(QFrame):
         # initialisations
         self.n_grp, self.n_para = 0, 0
         self.h_grp, self.h_para = {}, []
-        self.para_grp, self.grp_name = [], []
         self.para_name0, self.para_name = [], []
+        self.para_grp, self.grp_name = [], []
 
         # property sorting group widgets
         self.main_layout = QVBoxLayout()

@@ -15,9 +15,6 @@ from PyQt6.QtWidgets import (QMessageBox, QSizePolicy)
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QColor
 
-# operating system flag
-is_linux = sys.platform == 'linux'
-
 # other initialisations
 q_fix = QSizePolicy.Policy.Fixed
 q_exp = QSizePolicy.Policy.Expanding
@@ -34,6 +31,9 @@ q_cancel = QMessageBox.StandardButton.Cancel
 # combined messagebox flags
 q_yes_no = q_yes | q_no
 q_yes_no_cancel = q_yes_no | q_cancel
+
+# boolean flags
+is_win = platform.system() == 'Windows'
 
 # common parameters
 align_type = {
@@ -75,7 +75,6 @@ combo_height = 22
 n_dp = 4
 n_col_max = 20
 Cls = TypeVar('Cls')
-is_linux = platform.system() == 'Linux'
 
 # ----------------------------------------------------------------------------------------------------------------------
 
