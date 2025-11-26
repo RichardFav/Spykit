@@ -975,11 +975,17 @@ class SpikeSorterTab(QTabWidget):
         'pos': 1,
     }
 
+    # solver ignored parameter groups
+    ig_para_grp = {
+        'kilosort4': ['Fixed']
+    }
+
     # font objects
     gray_col = QColor(160, 160, 160, 255)
     item_child_font = cw.create_font_obj(8)
     item_font = cw.create_font_obj(9, True, QFont.Weight.Bold)
-    lbl_align = cw.align_flag['right'] | cw.align_flag['vcenter']
+    lbl_align_r = cw.align_flag['right'] | cw.align_flag['vcenter']
+    lbl_align_l = cw.align_flag['left'] | cw.align_flag['vcenter']
 
     # widget stylesheets
     tree_style = """    
@@ -1069,12 +1075,17 @@ class SpikeSorterTab(QTabWidget):
 
             # determine if there are any feasible parameters
             is_ok_grp = is_ok[j_grp]
-            if np.any(is_ok_grp):
-                # sets the reduced parameter group
-                p_fld_grp = p_fld[j_grp]
-            else:
-                # otherwise, continue to the next grouping
+            if not np.any(is_ok_grp):
+                # if not, then continue
                 continue
+
+            elif (self.s_name in self.ig_para_grp) and (pg in self.ig_para_grp[self.s_name]):
+                # if the parameter group is to be ignored, then continue
+                continue
+
+            else:
+                # otherwise, get the reduced parameter group
+                p_fld_grp = p_fld[j_grp]
 
             # creates the parent item
             item = QTreeWidgetItem(self.tree_prop)
@@ -1103,7 +1114,7 @@ class SpikeSorterTab(QTabWidget):
 
                 # sets the item properties
                 if item_ch is not None:
-                    item_ch.setTextAlignment(0, self.lbl_align)
+                    self.set_item_align(item_ch, ps)
                     item.addChild(item_ch)
 
                 # adds the child tree widget item
@@ -1215,7 +1226,7 @@ class SpikeSorterTab(QTabWidget):
                     item_ch_d, h_obj_d = self.create_child_tree_item(item_ch, p_fld, i_edit)
 
                     # sets the item properties
-                    item_ch_d.setTextAlignment(0, self.lbl_align)
+                    item_ch_d.setTextAlignment(0, self.lbl_align_r)
                     item_ch.addChild(item_ch_d)
 
                     # adds the child tree widget item
@@ -1253,7 +1264,7 @@ class SpikeSorterTab(QTabWidget):
 
                     # sets the item properties
                     if item_ch_d is not None:
-                        item_ch_d.setTextAlignment(0, self.lbl_align)
+                        self.set_item_align(item_ch_d, k)
                         item_ch.addChild(item_ch_d)
 
                     if obj_prop_d is not None:
@@ -1390,6 +1401,15 @@ class SpikeSorterTab(QTabWidget):
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
     # ---------------------------------------------------------------------------
+
+    def set_item_align(self, item, p_fld):
+
+        # sets the text alignment
+        p_type_ch = self.s_props[p_fld].get('type').strip()
+        if p_type_ch == 'dict':
+            item.setTextAlignment(0, self.lbl_align_l)
+        else:
+            item.setTextAlignment(0, self.lbl_align_r)
 
     def convert_combo_value(self, p_value, p_fld):
 
