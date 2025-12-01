@@ -353,10 +353,6 @@ class SessionWorkBook(QObject):
         else:
             return self.session._s._pp_runs
 
-    def get_post_data(self):
-
-        return self.post_data
-
     def get_sorting_folder_paths(self, f_type=''):
 
         # field retrieval
@@ -429,34 +425,23 @@ class SessionWorkBook(QObject):
         # returns the base session path
         return Path('/'.join(s_path_split[:-2]))
 
-    # ---------------------------------------------------------------------------
-    # Boolean Inspection Functions
-    # ---------------------------------------------------------------------------
+    def get_mem_map_files(self):
 
-    def has_pp_runs(self):
+        # field retrieval
+        mmap_files = []
+        bc_dir = self.get_sorting_folder_paths('bombcell').flatten()
 
-        pp_runs = self.get_pp_runs()
-        if pp_runs is None:
-            return 0
+        # finds all the bombcell memory mapping files
+        for bc in bc_dir:
+            if os.path.exists(bc):
+                # case is the bombcell directory exists
+                mmap_files_new = glob.glob(os.path.join(bc, '*.dat'))
+                if len(mmap_files_new):
+                    # appends the found memory mapped files
+                    mmap_files += mmap_files_new
 
-        else:
-            return len(self.get_pp_runs()) > 0
-
-    def is_channel_removed(self):
-
-        ch_run = self.get_avail_channel(use_last_rec=True)
-        ch_full = self.channel_data.channel_ids
-        ch_intersect = np.intersect1d(ch_full, ch_run, return_indices=True)
-
-        is_rmv = np.ones(len(ch_full), dtype=bool)
-        is_rmv[ch_intersect[1]] = False
-
-        return is_rmv
-
-    def is_session_sorted(self):
-
-        f_path = self.get_sorting_folder_paths()
-        return np.all([os.path.exists(x) for x in f_path.flatten()])
+        # returns the memory map file
+        return mmap_files
 
     # ---------------------------------------------------------------------------
     # Setter Functions
@@ -487,9 +472,34 @@ class SessionWorkBook(QObject):
 
         self.session.sort_obj.s_props = new_sort_props
 
-    def set_post_data(self, new_post_data):
+    # ---------------------------------------------------------------------------
+    # Boolean Inspection Functions
+    # ---------------------------------------------------------------------------
 
-        self.post_data = new_post_data
+    def has_pp_runs(self):
+
+        pp_runs = self.get_pp_runs()
+        if pp_runs is None:
+            return 0
+
+        else:
+            return len(self.get_pp_runs()) > 0
+
+    def is_channel_removed(self):
+
+        ch_run = self.get_avail_channel(use_last_rec=True)
+        ch_full = self.channel_data.channel_ids
+        ch_intersect = np.intersect1d(ch_full, ch_run, return_indices=True)
+
+        is_rmv = np.ones(len(ch_full), dtype=bool)
+        is_rmv[ch_intersect[1]] = False
+
+        return is_rmv
+
+    def is_session_sorted(self):
+
+        f_path = self.get_sorting_folder_paths()
+        return np.all([os.path.exists(x) for x in f_path.flatten()])
 
     # ---------------------------------------------------------------------------
     # Session wrapper functions
@@ -611,7 +621,6 @@ class SessionWorkBook(QObject):
 
         # resets the preprocessing type/postpressing data fields
         _self.prep_type = None
-        _self.post_data = None
         has_session = _self.session is not None
 
         # resets the current run/session names
@@ -624,6 +633,7 @@ class SessionWorkBook(QObject):
             _probe_current = _self.get_current_recording_probe()
             _self.channel_data = ChannelData(_probe_current)
             _self.session_props = SessionProps(_probe_current)
+            _self.post_data = PostProcessData()
             _self.session.load_sorting_para(_self)
 
         else:
@@ -633,6 +643,7 @@ class SessionWorkBook(QObject):
             _self.current_ses = None
             _self.channel_data = None
             _self.session_props = None
+            _self.post_data = None
 
         # runs the session change signal function
         if _self.has_init:
@@ -1172,3 +1183,71 @@ class SessionProps:
 
     def get_value(self, p_str):
         return getattr(self, p_str)
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+"""
+    PostProcessData: class to store the post-processing memory map files/objects
+"""
+
+class PostProcessData:
+    def __init__(self):
+
+        # field initialisation
+        self.mmap = []
+        self.mmap_file = []
+        self.mmap_name = []
+        self.is_saved = []
+        self.i_mmap = None
+
+    def add_post_process(self, mmap_file_new, mmap_new):
+
+        # appends the new mmap file and other properties
+        self.mmap.append(mmap_new)
+        self.mmap_file.append(mmap_file_new)
+        self.mmap_name.append(os.path.split(mmap_file_new[0, 0])[1])
+
+        # sets saved flag
+        self.is_saved.append(False)
+        self.i_mmap = len(self.mmap) - 1
+
+    def remove_post_process(self, i_mmap_rmv):
+
+        # appends the new mmap file
+        self.mmap.pop(i_mmap_rmv)
+        self.mmap_file.pop(i_mmap_rmv)
+        self.mmap_name.pop(i_mmap_rmv)
+        self.is_saved.pop(i_mmap_rmv)
+
+        # decrements the memory index
+        if i_mmap_rmv > self.i_mmap:
+            self.i_mmap -= 1
+
+    def rename_post_process(self, mmap_file_new):
+
+        # field retrieval
+        n_run, n_shank = mmap_file_new.shape
+
+        # renames the temporary file names
+        for i_run in range(n_run):
+            for i_shank in range(n_shank):
+                # field retrieval
+                dt = self.mmap[self.i_mmap][i_run, i_shank].dtype
+
+                # flushes and deletes the memory map
+                self.mmap[self.i_mmap][i_run, i_shank].flush()
+                self.mmap[self.i_mmap][i_run, i_shank] = None
+
+                # recreates the memory mapped file
+                os.rename(self.mmap_file[self.i_mmap][i_run, i_shank], mmap_file_new[i_run, i_shank])
+                self.mmap[self.i_mmap] = np.memmap(mmap_file_new[i_run, i_shank], dtype=dt, mode='r', shape=(1,))
+
+        # resets the other fields
+        self.is_saved[self.i_mmap] = True
+        self.mmap_file[self.i_mmap] = mmap_file_new
+        self.mmap_name[self.i_mmap] = os.path.split(mmap_file_new[0, 0])[1]
+
+    def set_mmap_index(self, i_mmap_new):
+
+        self.i_mmap = i_mmap_new

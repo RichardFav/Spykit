@@ -4,6 +4,7 @@ import re
 import sys
 import math
 import string
+import random
 import platform
 import colorsys
 import threading
@@ -496,3 +497,8 @@ def has_special_char(txt):
 
     pat = r'[^a-zA-Z0-9_]'
     return re.search(pat, txt) is not None
+
+def gen_random_string(str_len):
+
+    char_list = string.ascii_lowercase + string.ascii_uppercase + string.digits
+    return ''.join(random.choice(char_list) for _ in range(str_len))

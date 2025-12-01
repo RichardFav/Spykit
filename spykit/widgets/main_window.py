@@ -456,7 +456,11 @@ class MainWindow(QMainWindow):
     # Postprocessing Functions
     # ---------------------------------------------------------------------------
 
-    def setup_postprocessing_worker(self, mm_file):
+    def setup_postprocessing_worker(self, bc_data, return_worker=False):
+
+        # sets the temporary memory map file path
+        mm_name = 'Temp_{}'.format(cf.gen_random_string(10))
+        mm_file = self.session_obj.setup_mmap_files(mm_name)
 
         # creates the memory map object
         pmm_obj = PostMemMap()
@@ -464,19 +468,26 @@ class MainWindow(QMainWindow):
 
         # array dimensioning
         self.n_run_pp, self.n_shank_pp = mm_file.shape
+        pp_obj = (pmm_obj, bc_data, mm_file)
 
         # pauses for things to catch up...
-        t_worker = ThreadWorker(self, self.run_postprocessing_worker, (pmm_obj, mm_file))
+        t_worker = ThreadWorker(self, self.run_postprocessing_worker, pp_obj)
         t_worker.work_finished.connect(self.postprocessing_complete)
 
-        # starts the thread worker
-        t_worker.start()
+        if return_worker:
+            # returns the thread worker
+            return t_worker
+
+        else:
+            # otherwise, start the thread worker
+            t_worker.start()
 
     def run_postprocessing_worker(self, pp_obj):
 
-        # sets the input arguments
-        pmm_obj, mm_file = pp_obj
+        # initialisation and memory allocation
+        pmm_obj, bc_data, mm_file = pp_obj
         self.n_pp = self.n_run_pp * self.n_shank_pp
+        mmap_pp = np.empty((self.n_run_pp, self.n_shank_pp), dtype=object)
 
         # sets up the memory mapped file names
         for i_run in range(self.n_run_pp):
@@ -485,14 +496,17 @@ class MainWindow(QMainWindow):
                 self.pr_ofs = i_run * self.n_shank_pp + i_shank
                 pmm_obj.set_mmap_file(mm_file[i_run, i_shank])
 
-                # creates the memory map file
-                bc_data = self.session_obj.post_data[i_run, i_shank]
-                pmm_obj.write_mem_map(bc_data)
+                # creates the memory map
+                mmap_pp[i_run, i_shank] = pmm_obj.write_mem_map(bc_data[i_run, i_shank])
+
+        # adds the memory mapping information to the session
+        self.session_obj.post_data.add_post_process(mm_file, mmap_pp)
+        self.menu_bar.set_menu_enabled_blocks('post-postprocess')
 
     def postprocessing_progress(self, i_fld, n_fld):
 
         # sets the progressbar message/value
-        pr_msg = 'Task {0}/{1}'.format(i_fld + 1, n_fld)
+        pr_msg = 'Memory Mapping Field {0}/{1}'.format(i_fld + 1, n_fld)
         pr_val = (self.pr_ofs + (i_fld / n_fld)) / self.n_pp
 
         # updates the progressbar objects
@@ -752,7 +766,7 @@ class MenuBar(QObject):
         h_file_open = self.get_menu_item('open')
         p_str = ['load_session', 'load_trigger', 'load_config']
         p_lbl = ['Session...', 'Trigger File', 'Config File']
-        cb_fcn = [self.load_session, self.load_trigger, self.load_config]
+        cb_fcn = [None, self.load_trigger, self.load_config]
         has_ch = [True, False, False]
 
         # adds the file menu items
@@ -768,12 +782,15 @@ class MenuBar(QObject):
 
         # field retrieval
         h_session_load = self.get_menu_item('load_session')
-        p_str = ['load_spykit', 'load_preprocessed']
-        p_lbl = ['Spykit Session', 'Pre-Processed']
-        cb_fcn = [self.load_session, self.load_preprocessed]
+        p_str = ['load_spykit', 'load_preprocessed', 'load_postprocessed']
+        p_lbl = ['Spykit Session', 'Pre-Processed', 'Post-Processed']
+        cb_fcn = [self.load_session, self.load_preprocessed, self.load_postprocessed]
 
         # adds the file menu items
         self.add_menu_items(h_session_load, p_lbl, cb_fcn, p_str, False)
+
+        # disables the load post processed data files
+        self.set_menu_enabled('load_postprocessed', False)
 
         # ---------------------------------------------------------------------------
         # Save Menubar Item Setup
@@ -979,9 +996,9 @@ class MenuBar(QObject):
             prop_tab = self.main_obj.prop_manager.get_prop_tab(pt)
             prop_tab.p_props.reset_prop_para(prop_tab.p_info['ch_fld'], n_run)
 
-        if 'post_data' in ses_data:
-            # updates the post-prorcessing data (if available)
-            self.main_obj.session_obj.set_post_data(ses_data['post_data'])
+        # if 'post_data' in ses_data:
+        #     # updates the post-prorcessing data (if available)
+        #     self.main_obj.session_obj.set_post_data(ses_data['post_data'])
 
         # resets the property/information panel fields
         self.main_obj.prop_manager.set_prop_para(ses_data['prop_para'])
@@ -991,9 +1008,8 @@ class MenuBar(QObject):
         time.sleep(0.1)
         if ses_data['configs'] is not None:
             # determines if the spike sorting has been completed
-            if self.main_obj.session_obj.is_session_sorted():
-                # if so, automatically run the preprocessing
-                pass
+            mm_file = self.main_obj.session_obj.get_mem_map_files()
+            self.set_menu_enabled('load_postprocessed', len(mm_file) > 0)
 
             # resets the preprocessing configuration fields
             prep_info = self.main_obj.info_manager.get_info_tab('preprocess')
@@ -1019,6 +1035,10 @@ class MenuBar(QObject):
         self.main_obj.info_manager.prog_widget.update_message_label()
 
     def load_preprocessed(self):
+
+        pass
+
+    def load_postprocessed(self):
 
         pass
 
@@ -1131,7 +1151,6 @@ class MenuBar(QObject):
             'sorting_props': ses_obj.session.sort_obj.s_props,
             'prop_para': self.main_obj.prop_manager.get_prop_para(prop_list),
             'info_para': self.main_obj.info_manager.get_info_para(info_list),
-            'post_data': ses_obj.get_post_data(),
             'channel_data': {
                 'bad': ses_obj.session.bad_ch,
                 'sync': ses_obj.session.sync_ch,
@@ -1226,8 +1245,13 @@ class MenuBar(QObject):
                     # if the user cancelled, then exit
                     return
 
+                # deletes all existing files
+                for mm_f in mm_file.flatten():
+                    if os.path.exists(mm_f):
+                        os.remove(mm_f)
+
             # runs the postprocessing output thread worker
-            self.main_obj.setup_postprocessing_worker(mm_file)
+            self.main_obj.session_obj.post_data.rename_post_process(mm_file)
 
     def save_config(self):
 
@@ -1502,3 +1526,8 @@ class MenuBar(QObject):
             # case is the directory is infeasible
             cf.show_error(err_str, 'Invalid Trigger File Directory')
             return False
+
+    @staticmethod
+    def gen_random_string(str_len):
+        char_list = string.ascii_lowercase + string.ascii_uppercase + string.digits
+        return ''.join(random.choice(char_list) for _ in range(str_len))

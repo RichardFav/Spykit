@@ -788,6 +788,9 @@ class BombCellSolver(QDialog):
             self.close()
 
         else:
+            # initialisations
+            t_worker = None
+
             # check if a new solution has been calculated
             if self.is_new_soln:
                 # prompt the user if they want to keep the new data
@@ -795,14 +798,17 @@ class BombCellSolver(QDialog):
                 u_choice = QMessageBox.question(self, 'Update Post-Processing Data?', q_str, cf.q_yes_no, cf.q_yes)
                 if u_choice == cf.q_yes:
                     # if so, then update the post processing data
-                    self.main_obj.session_obj.set_post_data(self.bc_data)
-                    self.main_obj.menu_bar.set_menu_enabled_blocks('post-postprocess')
+                    t_worker = self.main_obj.setup_postprocessing_worker(self.bc_data, True)
 
                 # resets the new solution flag
                 self.is_new_soln = False
 
             # makes the window invisible again
             self.setVisible(False)
+
+            # starts the memory map output thread worker
+            if t_worker is not None:
+                t_worker.start()
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions

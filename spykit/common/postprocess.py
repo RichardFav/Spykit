@@ -66,7 +66,7 @@ class PostMemMap(QObject):
 
         # flushes data to disk
         m_map.flush()
-        del m_map
+        return m_map
 
     def read_mem_map(self):
 
