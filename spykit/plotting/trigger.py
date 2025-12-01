@@ -18,14 +18,14 @@ from pyqtgraph.Qt.QtWidgets import QGraphicsPathItem
 from pyqtgraph.Qt import QtGui
 
 # pyqt6 module import
-from PyQt6.QtWidgets import (QWidget)
+from PyQt6.QtWidgets import QWidget
 from PyQt6.QtCore import pyqtSignal, Qt, QObject
 from PyQt6.QtGui import QPainterPath
 
 # plot button fields
 b_icon = ['save', 'close']
 b_type = ['button', 'button']
-tt_lbl = ['Save Figure', 'Close TriggerView']
+tt_lbl = ['Save Figure', 'Close View']
 
 # ----------------------------------------------------------------------------------------------------------------------
 

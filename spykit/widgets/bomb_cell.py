@@ -168,57 +168,89 @@ class BombCellInfoTab(InfoWidgetPara):
 """
 
 class BombCellSoln(object):
+    # parameter mapping dictionary
+    p_map = {
+        # array dimensions
+        'n_unit': 'nUnit',
+        'n_pts': 'nPts',
+        'n_ch': 'nCh',
+        'n_ch_full': 'nChFull',
+        'n_spike': 'nSpike',
+        'n_qual_met': 'nQualMet',
+        'n_hdr_max': 'nHdrMax',
+
+        # ephys data metrics
+        'i_spike': 'iSpike',
+        'spk_cluster': 'spkCluster',
+        't_wform': 'tWForm',
+        't_amp': 'tAmp',
+        'ch_pos': 'chPos',
+        's_rate': 'sRate',
+        'T_wform': 'TWForm',
+        't_spike': 'tSpike',
+
+        # quality metrics
+        'q_hdr': 'Hdr',
+        'q_met': 'Met',
+
+        # raw waveform metrics
+        'avg_sig': 'average',
+        'pk_ch': 'peakChan',
+
+        # miscellaneous metrics
+        'unit_type': 'unitType',
+        't_unique': 'tUnique',
+    }
+
+    # character/integer parameters
+    int_para = ['spk_cluster', 's_rate', 'unit_type', 't_unique']
+
     def __init__(self, bc_pkg_fcn):
         super(BombCellSoln, self).__init__()
 
-        # data field retrieval
-        self.meta_data = bc_pkg_fcn('getClassField','metaData')
+        # ephys data metrics
+        self.array_dim = bc_pkg_fcn('getClassField','arrDim')
         self.ephys_data = bc_pkg_fcn('getClassField','ephysData')
+        self.q_metric = bc_pkg_fcn('getClassField','qMetric')
         self.raw_form = bc_pkg_fcn('getClassField','rawForm')
-        self.pca_data = bc_pkg_fcn('getClassField','pcaData')
+        self.unit_type = bc_pkg_fcn('getClassField','unitType')
+        self.t_unique = bc_pkg_fcn('getClassField', 'tUnique')
+
+        # other fields
+        self.meta_data = bc_pkg_fcn('getClassField','metaData')
         self.gui_data = bc_pkg_fcn('getClassField','guiData')
 
-        # self.spk_cluster = bc_pkg_fcn('getClassField','spkCluster')
-        # self.t_spike = bc_pkg_fcn('getClassField','tSpike')
-        # self.t_wform = bc_pkg_fcn('getClassField','tWForm')
-        # self.t_amp = bc_pkg_fcn('getClassField','tAmp')
-        # self.pc_feat = bc_pkg_fcn('getClassField','pcFeat')
-        # self.pc_feat_idx = bc_pkg_fcn('getClassField','pcFeatIdx')
-        # self.ch_pos = bc_pkg_fcn('getClassField','chPos')
+    def get_para_value(self, p_fld_bc):
 
-        # metric/unit-type information
-        self.q_metric = bc_pkg_fcn('getClassField','qMetric')
-        self.unit_type = bc_pkg_fcn('getClassField','unitType')
+        if hasattr(self, p_fld_bc):
+            p_val = getattr(self, p_fld_bc)
 
-    def get_meta_data(self):
-        return self.meta_data
+        else:
+            if p_fld_bc in self.p_map:
+                p_fld = self.p_map[p_fld_bc]
+            else:
+                return None
 
-    def get_spike_clusters(self):
-        return self.ephys_data.spk_cluster
+            if p_fld in self.array_dim:
+                p_val = self.array_dim[p_fld]
 
-    def get_spike_template(self):
-        return self.ephys_data.t_spike
+            elif p_fld in self.ephys_data:
+                p_val = self.ephys_data[p_fld]
 
-    def get_waveform_template(self):
-        return self.ephys_data.t_wform
+            elif p_fld in self.q_metric:
+                p_val = self.q_metric[p_fld]
 
-    def get_amplitude_template(self):
-        return self.ephys_data.t_amp
+            elif p_fld in self.raw_form:
+                p_val = self.raw_form[p_fld]
 
-    def get_channel_pos(self):
-        return self.ephys_data.ch_pos
+        # converts and returns the final values
+        if p_fld_bc in self.int_para:
+            # case is int32 type
+            return np.int32(p_val)
 
-    def get_pca_feature(self):
-        return self.pca_data.feat
-
-    def get_pca_feature_indices(self):
-        return self.pca_data.idx
-
-    def get_qual_metric(self):
-        return self.q_metric
-
-    def get_unit_type(self):
-        return self.unit_type
+        else:
+            # case is float64 type
+            return p_val
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -281,6 +313,7 @@ class BombCellSolver(QDialog):
         self.is_updating = False
         self.is_running = False
         self.can_close = False
+        self.is_new_soln = False
 
         # folder/file path fields
         self.mmap_file = None
@@ -522,8 +555,11 @@ class BombCellSolver(QDialog):
         self.cont_button[0].setChecked(False)
         self.cont_button[0].setText('Run Solver')
 
-        # updates the boolean flags
+        # resets the new solution flag
         self.has_bc = True
+        self.is_new_soln = True
+
+        # updates the boolean flags
         self.bc_para_c = deepcopy(self.bc_pkg_fcn('getClassField', 'bcPara'))
         self.set_button_props(True)
 
@@ -752,6 +788,19 @@ class BombCellSolver(QDialog):
             self.close()
 
         else:
+            # check if a new solution has been calculated
+            if self.is_new_soln:
+                # prompt the user if they want to keep the new data
+                q_str = 'Do you want to keep the calculated post-processing data?'
+                u_choice = QMessageBox.question(self, 'Update Post-Processing Data?', q_str, cf.q_yes_no, cf.q_yes)
+                if u_choice == cf.q_yes:
+                    # if so, then update the post processing data
+                    self.main_obj.session_obj.set_post_data(self.bc_data)
+                    self.main_obj.menu_bar.set_menu_enabled_blocks('post-postprocess')
+
+                # resets the new solution flag
+                self.is_new_soln = False
+
             # makes the window invisible again
             self.setVisible(False)
 

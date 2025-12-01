@@ -491,3 +491,8 @@ def disp_nested_dict(d, p_gap='', show_dict=True, d_str=''):
 
     if not show_dict:
         return d_str
+
+def has_special_char(txt):
+
+    pat = r'[^a-zA-Z0-9_]'
+    return re.search(pat, txt) is not None

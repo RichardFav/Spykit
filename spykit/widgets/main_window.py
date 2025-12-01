@@ -13,8 +13,8 @@ from copy import deepcopy
 from functools import partial as pfcn
 
 # pyqt6 module import
-from PyQt6.QtWidgets import (QMainWindow, QHBoxLayout, QFormLayout, QWidget, QGridLayout,
-                             QScrollArea, QMessageBox, QDialog, QMenuBar, QToolBar, QMenu)
+from PyQt6.QtWidgets import (QMainWindow, QHBoxLayout, QFormLayout, QWidget, QGridLayout, QScrollArea,
+                             QMessageBox, QInputDialog, QDialog, QMenuBar, QToolBar, QMenu)
 from PyQt6.QtCore import Qt, QSize, QRect, pyqtSignal, QObject, QTimer
 from PyQt6.QtGui import QFont, QIcon, QAction
 
@@ -25,6 +25,7 @@ from spykit.info.utils import InfoManager
 from spykit.plotting.utils import PlotManager
 from spykit.props.utils import PropManager
 from spykit.common.property_classes import SessionWorkBook
+from spykit.common.postprocess import PostMemMap
 from spykit.info.preprocess import PreprocessSetup, pp_flds
 from spykit.widgets.bomb_cell import BombCellSolver
 
@@ -131,7 +132,7 @@ class MainWindow(QMainWindow):
         self.plot_manager.probe_inset_button.connect(self.update_inset_channel)
         self.prop_manager.config_update.connect(self.update_config)
 
-        # connects workbook sig\nal functions
+        # connects workbook signal functions
         self.session_obj.session_change.connect(self.new_session)
         self.session_obj.bad_channel_change.connect(self.bad_channel_change)
         self.session_obj.sync_channel_change.connect(self.sync_channel_change)
@@ -452,6 +453,66 @@ class MainWindow(QMainWindow):
             pass
 
     # ---------------------------------------------------------------------------
+    # Postprocessing Functions
+    # ---------------------------------------------------------------------------
+
+    def setup_postprocessing_worker(self, mm_file):
+
+        # creates the memory map object
+        pmm_obj = PostMemMap()
+        pmm_obj.progress_fcn.connect(self.postprocessing_progress)
+
+        # array dimensioning
+        self.n_run_pp, self.n_shank_pp = mm_file.shape
+
+        # pauses for things to catch up...
+        t_worker = ThreadWorker(self, self.run_postprocessing_worker, (pmm_obj, mm_file))
+        t_worker.work_finished.connect(self.postprocessing_complete)
+
+        # starts the thread worker
+        t_worker.start()
+
+    def run_postprocessing_worker(self, pp_obj):
+
+        # sets the input arguments
+        pmm_obj, mm_file = pp_obj
+        self.n_pp = self.n_run_pp * self.n_shank_pp
+
+        # sets up the memory mapped file names
+        for i_run in range(self.n_run_pp):
+            for i_shank in range(self.n_shank_pp):
+                # sets the memory mapping file name
+                self.pr_ofs = i_run * self.n_shank_pp + i_shank
+                pmm_obj.set_mmap_file(mm_file[i_run, i_shank])
+
+                # creates the memory map file
+                bc_data = self.session_obj.post_data[i_run, i_shank]
+                pmm_obj.write_mem_map(bc_data)
+
+    def postprocessing_progress(self, i_fld, n_fld):
+
+        # sets the progressbar message/value
+        pr_msg = 'Task {0}/{1}'.format(i_fld + 1, n_fld)
+        pr_val = (self.pr_ofs + (i_fld / n_fld)) / self.n_pp
+
+        # updates the progressbar objects
+        h_prog = self.info_manager.prog_widget
+        h_prog.prog_bar.setValue(int(h_prog.p_max * pr_val))
+        h_prog.lbl_obj.setText(pr_msg)
+        h_prog.lbl_obj.setToolTip(pr_msg)
+
+    def postprocessing_complete(self):
+
+        # updates the progressbar objects
+        h_prog = self.info_manager.prog_widget
+        h_prog.prog_bar.setValue(int(h_prog.p_max))
+        h_prog.lbl_obj.setText("File Output Complete")
+        h_prog.lbl_obj.setToolTip("")
+
+        # resets the progressbar
+        h_prog.set_progbar_state(False)
+
+    # ---------------------------------------------------------------------------
     # Obsolete Preprocessing Functions
     # ---------------------------------------------------------------------------
 
@@ -606,9 +667,9 @@ class MainWindow(QMainWindow):
 
         # f_file = "C:/Work/Other Projects/EPhys Project/Code/spykit/spykit/resources/session/tiny_session.ssf"
         # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/tiny_example.ssf"
-        f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/tiny_example (preprocessed).ssf"
+        # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/tiny_example (preprocessed).ssf"
         # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/tiny_example (sorting - SK2).ssf"
-        # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/large_example.ssf"
+        f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/large_example.ssf"
 
         self.menu_bar.load_session(f_file)
 
@@ -722,7 +783,7 @@ class MenuBar(QObject):
         h_file_save = self.get_menu_item('save')
         p_str = ['save_session', 'save_trigger', 'save_config']
         p_lbl = ['Session...', 'Trigger File', 'Config File']
-        cb_fcn = [self.save_session, self.save_trigger, self.save_config]
+        cb_fcn = [None, self.save_trigger, self.save_config]
         has_ch = [True, False, False]
 
         # adds the file menu items
@@ -734,15 +795,16 @@ class MenuBar(QObject):
 
         # field retrieval
         h_session_save = self.get_menu_item('save_session')
-        p_str = ['save_spykit', 'save_preprocessed']
-        p_lbl = ['Spykit Session', 'Pre-Processed']
-        cb_fcn = [self.save_session, self.save_preprocessed]
+        p_str = ['save_spykit', 'save_preprocessed', 'save_postprocessed']
+        p_lbl = ['Spykit Session', 'Pre-Processed', 'Post-Processed']
+        cb_fcn = [self.save_session, self.save_preprocessed, self.save_postprocessed]
 
         # adds the file menu items
         self.add_menu_items(h_session_save, p_lbl, cb_fcn, p_str, False)
 
         # disables the save preprocessed data files menu item
         self.set_menu_enabled('save_preprocessed', False)
+        self.set_menu_enabled('save_postprocessed', False)
 
         # ---------------------------------------------------------------------------
         # Preprocessing Menubar Item Setup
@@ -917,6 +979,10 @@ class MenuBar(QObject):
             prop_tab = self.main_obj.prop_manager.get_prop_tab(pt)
             prop_tab.p_props.reset_prop_para(prop_tab.p_info['ch_fld'], n_run)
 
+        if 'post_data' in ses_data:
+            # updates the post-prorcessing data (if available)
+            self.main_obj.session_obj.set_post_data(ses_data['post_data'])
+
         # resets the property/information panel fields
         self.main_obj.prop_manager.set_prop_para(ses_data['prop_para'])
         self.main_obj.info_manager.set_info_para(ses_data['info_para'])
@@ -924,6 +990,11 @@ class MenuBar(QObject):
         # sets/runs the config field/routines
         time.sleep(0.1)
         if ses_data['configs'] is not None:
+            # determines if the spike sorting has been completed
+            if self.main_obj.session_obj.is_session_sorted():
+                # if so, automatically run the preprocessing
+                pass
+
             # resets the preprocessing configuration fields
             prep_info = self.main_obj.info_manager.get_info_tab('preprocess')
             prep_info.configs.clear()
@@ -1060,6 +1131,7 @@ class MenuBar(QObject):
             'sorting_props': ses_obj.session.sort_obj.s_props,
             'prop_para': self.main_obj.prop_manager.get_prop_para(prop_list),
             'info_para': self.main_obj.info_manager.get_info_para(info_list),
+            'post_data': ses_obj.get_post_data(),
             'channel_data': {
                 'bad': ses_obj.session.bad_ch,
                 'sync': ses_obj.session.sync_ch,
@@ -1128,6 +1200,34 @@ class MenuBar(QObject):
             # creates the sync channel folder and outputs the file
             sync_dir.mkdir(parents=True, exist_ok=True)
             np.save(sync_dir / self.sync_file_name, sync_ch[i_run])
+
+    def save_postprocessed(self):
+
+        # prompts the user for the file name
+        t_str = "Post-Processing Data Output"
+        q_str = "Enter post-processing data file name:"
+        mm_name, ok = QInputDialog.getText(None, t_str, q_str)
+
+        if mm_name and ok:
+            # determines if the filename is feasible
+            if cf.has_special_char(mm_name):
+                # if not, then output an error and exit
+                e_str = 'File name can\'t contain special characters.'
+                cf.show_error(e_str, 'Invalid Filename')
+                return
+
+            # check if the file already exists in the bombcell directories
+            mm_file = self.main_obj.session_obj.setup_mmap_files(mm_name)
+            if np.any([os.path.exists(x) for x in mm_file.flatten()]):
+                # if so, then prompt the user if they want to overwrite the files
+                q_str = 'The entered file already exists. Do you want to overwrite the files?'
+                u_choice = QMessageBox.question(None, 'Overwrite File?', q_str, cf.q_yes_no, cf.q_yes)
+                if u_choice == cf.q_no:
+                    # if the user cancelled, then exit
+                    return
+
+            # runs the postprocessing output thread worker
+            self.main_obj.setup_postprocessing_worker(mm_file)
 
     def save_config(self):
 
@@ -1205,6 +1305,9 @@ class MenuBar(QObject):
             # exit if the user cancelled
             return
 
+        # clears the session data field
+        self.main_obj.session_obj.set_post_data(None)
+
         # disable menu item
         self.set_menu_enabled('clear_sort', False)
         self.main_obj.info_manager.prog_widget.update_message_label()
@@ -1231,6 +1334,14 @@ class MenuBar(QObject):
     def clear_bomb_cell(self):
 
         pass
+
+    # ---------------------------------------------------------------------------
+    # PyqtSignal Slot Functions
+    # ---------------------------------------------------------------------------
+
+    def output_prog(self, i_item, n_item):
+
+        print('{0} of {1} complete'.format(i_item, n_item))
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
@@ -1331,6 +1442,10 @@ class MenuBar(QObject):
             case 'post-sorting':
                 # case is post preprocessing
                 menu_on = ['clear_sort']
+
+            case 'post-postprocess':
+                # case is post preprocessing
+                menu_on = ['save_postprocessed', 'clear_bombcell']
 
         # resets the menu enabled properties
         [self.set_menu_enabled(m_on, True) for m_on in menu_on]

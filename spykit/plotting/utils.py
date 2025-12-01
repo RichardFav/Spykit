@@ -39,7 +39,7 @@ class PlotManager(QWidget):
     probe_inset_button = pyqtSignal(object)
 
     # array class fields
-    prop_views = ['trace', 'trigger']
+    prop_views = ['trace', 'trigger', 'post']
 
     # parameters
     eps = 1e-6

@@ -1,9 +1,11 @@
 # module import
-import copy
 import os
-from functools import partial as pfcn
+import copy
 import time
+import glob
 import numpy as np
+from pathlib import Path
+from functools import partial as pfcn
 
 # pyqt6 module imports
 from PyQt6.QtWidgets import (QMainWindow, QHBoxLayout, QFormLayout, QWidget,
@@ -53,7 +55,7 @@ class SessionWorkBook(QObject):
         # main class widgets
         self.session = None
         self.channel_data = None
-        self.calculated_data = None
+        self.post_data = None
         self.session_props = None
 
         # other class field
@@ -351,6 +353,86 @@ class SessionWorkBook(QObject):
         else:
             return self.session._s._pp_runs
 
+    def get_post_data(self):
+
+        return self.post_data
+
+    def get_sorting_folder_paths(self, f_type=''):
+
+        # field retrieval
+        is_concat_run = self.is_concat_run()
+        n_shank = self.get_shank_count if self.is_per_shank() else 1
+        n_run = 1 if is_concat_run else self.session.get_run_count()
+
+        # determines path of sorting output directory exists
+        s_props = self.session.get_session_props()
+        s_path_split = s_props['subject_path'].split('/')
+        base_dir = Path('/'.join(s_path_split[:-2]))
+
+        # retrieves the run names
+        if is_concat_run:
+            # case is a concatenated run
+            run_names = ['concat_run']
+
+        elif (s_props['run_names'] == 'all'):
+            # case is using all runs
+            run_names = self.session.get_run_names()
+
+        else:
+            # case is using specific runs
+            run_names= s_props['run_names']
+
+        # other session properties
+        sub_name = s_path_split[-1]
+        ses_name = s_props['session_name']
+        base_path = os.path.join("derivatives", sub_name, ses_name, "ephys")
+
+        # sets folder suffix path
+        match f_type.lower():
+            case 'bombcell':
+                # case is bombcell
+                suf_path = os.path.join('sorter_output', 'BombCell')
+            case _:
+                # default case
+                suf_path = None
+
+        # determines if all runs/shanks have
+        f_path = np.empty((n_run, n_shank), dtype=object)
+        for i_run, r_name in enumerate(run_names):
+            # appends the run name to the path
+            f_path_nw = os.path.join(str(base_dir), base_path, r_name, 'sorting')
+
+            # case specific folder path update
+            if self.is_per_shank():
+                # case is a multi-shank session
+                for i_shank in range(n_shank):
+                    # if there is a match, then exit the inner loop
+                    f_path[i_run, i_shank] = os.path.join(f_path_nw, f'shank_{i_shank}')
+                    if suf_path is not None:
+                        f_path[i_run, i_shank] = os.path.join(f_path[i_run, i_shank], suf_path)
+
+            else:
+                # case is a grouped/single shank session
+                f_path[i_run, 0] = f_path_nw
+                if suf_path is not None:
+                    f_path[i_run, 0] = os.path.join(f_path[i_run, 0], suf_path)
+
+        # return the overall search match results
+        return f_path
+
+    def get_session_base_path(self):
+
+        # splits the subject path
+        s_props = self.session.get_session_props()
+        s_path_split = s_props['subject_path'].split('/')
+
+        # returns the base session path
+        return Path('/'.join(s_path_split[:-2]))
+
+    # ---------------------------------------------------------------------------
+    # Boolean Inspection Functions
+    # ---------------------------------------------------------------------------
+
     def has_pp_runs(self):
 
         pp_runs = self.get_pp_runs()
@@ -370,6 +452,11 @@ class SessionWorkBook(QObject):
         is_rmv[ch_intersect[1]] = False
 
         return is_rmv
+
+    def is_session_sorted(self):
+
+        f_path = self.get_sorting_folder_paths()
+        return np.all([os.path.exists(x) for x in f_path.flatten()])
 
     # ---------------------------------------------------------------------------
     # Setter Functions
@@ -399,6 +486,10 @@ class SessionWorkBook(QObject):
     def set_sorting_props(self, new_sort_props):
 
         self.session.sort_obj.s_props = new_sort_props
+
+    def set_post_data(self, new_post_data):
+
+        self.post_data = new_post_data
 
     # ---------------------------------------------------------------------------
     # Session wrapper functions
@@ -452,6 +543,20 @@ class SessionWorkBook(QObject):
     # Miscellaneous Functions
     # ---------------------------------------------------------------------------
 
+    def setup_mmap_files(self, mm_name):
+
+        # sets up the memory mapped file names
+        pp_file = f"{mm_name}.dat"
+        mm_file = self.get_sorting_folder_paths('bombcell')
+        bc_mod = np.nditer(mm_file, flags=['refs_ok'], op_flags=['readwrite'])
+
+        # sets up the memory mapped file names
+        with bc_mod:
+            for x in bc_mod:
+                x[...] = os.path.join(str(x), pp_file)
+
+        return mm_file
+
     def toggle_channel_flag(self, i_channel, state=1, is_keep=False):
 
         if is_keep:
@@ -504,8 +609,9 @@ class SessionWorkBook(QObject):
     @staticmethod
     def update_session(_self):
 
-        # resets the preprocessing data type
+        # resets the preprocessing type/postpressing data fields
         _self.prep_type = None
+        _self.post_data = None
         has_session = _self.session is not None
 
         # resets the current run/session names
