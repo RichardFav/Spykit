@@ -612,6 +612,11 @@ class SessionWorkBook(QObject):
         self.reset_current_session()
         self.session._s._pp_runs = []
 
+    def clear_postprocessing(self):
+
+        if self.post_data is not None:
+            self.post_data.clear_post_process()
+
     # ---------------------------------------------------------------------------
     # Static Methods
     # ---------------------------------------------------------------------------
@@ -1223,6 +1228,28 @@ class PostProcessData:
         # decrements the memory index
         if i_mmap_rmv > self.i_mmap:
             self.i_mmap -= 1
+
+    def clear_post_process(self):
+
+        # clears and deletes the temporary memory mapped files
+        for i_map in range(len(self.mmap)):
+            # field retrieval
+            if i_map == 0:
+                n_run, n_shank = self.mmap[i_map].shape
+
+            for i_run in range(n_run):
+                for i_shank in range(n_shank):
+                    # clears the memory maps
+                    self.mmap[i_map][i_run, i_shank].flush()
+                    self.mmap[i_map][i_run, i_shank] = None
+                    time.sleep(0.1)
+
+                    # deletes the temporary file
+                    if not self.is_saved[i_map]:
+                        try:
+                            os.remove(self.mmap_file[i_map][i_run, i_shank])
+                        except:
+                            pass
 
     def rename_post_process(self, mmap_file_new):
 

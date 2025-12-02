@@ -502,3 +502,11 @@ def gen_random_string(str_len):
 
     char_list = string.ascii_lowercase + string.ascii_uppercase + string.digits
     return ''.join(random.choice(char_list) for _ in range(str_len))
+
+def wildcard_to_regex(pattern):
+
+    """Converts a wildcard pattern to a regular expression pattern."""
+    regex_pattern = re.escape(pattern)
+    regex_pattern = regex_pattern.replace(r'\*', '.*')
+    regex_pattern = regex_pattern.replace(r'\?', '.')
+    return '^' + regex_pattern + '$'

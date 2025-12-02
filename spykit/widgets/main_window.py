@@ -1,5 +1,6 @@
 # module import
 import os
+import re
 # import functools
 import time
 import glob
@@ -947,6 +948,10 @@ class MenuBar(QObject):
 
     def close_window(self):
 
+        # clears the post-processing memory map/temporary files
+        self.main_obj.session_obj.clear_postprocessing()
+
+        # closes the post-proessing dialog window (if open)
         if self.main_obj.bombcell_dlg is not None:
             self.main_obj.bombcell_dlg.close_window(True)
 
@@ -965,6 +970,9 @@ class MenuBar(QObject):
         file_info = self.load_file(file_info, 'session', def_dir=session_dir)
         if file_info is None:
             return
+
+        # clears the post-processing memory map/temporary files
+        self.main_obj.session_obj.clear_postprocessing()
 
         # loads data from the file
         with open(file_info, 'rb') as f:
@@ -996,10 +1004,6 @@ class MenuBar(QObject):
             prop_tab = self.main_obj.prop_manager.get_prop_tab(pt)
             prop_tab.p_props.reset_prop_para(prop_tab.p_info['ch_fld'], n_run)
 
-        # if 'post_data' in ses_data:
-        #     # updates the post-prorcessing data (if available)
-        #     self.main_obj.session_obj.set_post_data(ses_data['post_data'])
-
         # resets the property/information panel fields
         self.main_obj.prop_manager.set_prop_para(ses_data['prop_para'])
         self.main_obj.info_manager.set_info_para(ses_data['info_para'])
@@ -1010,6 +1014,12 @@ class MenuBar(QObject):
             # determines if the spike sorting has been completed
             mm_file = self.main_obj.session_obj.get_mem_map_files()
             self.set_menu_enabled('load_postprocessed', len(mm_file) > 0)
+
+            # deletes any existing temporary memmap files
+            pat = cf.wildcard_to_regex('Temp_*.dat')
+            for mm_f in mm_file:
+                if re.fullmatch(pat, os.path.split(mm_f)[1]):
+                    os.remove(mm_f)
 
             # resets the preprocessing configuration fields
             prep_info = self.main_obj.info_manager.get_info_tab('preprocess')
