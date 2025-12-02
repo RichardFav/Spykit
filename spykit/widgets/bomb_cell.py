@@ -18,7 +18,7 @@ from spykit.threads.utils import ThreadWorker
 from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QWidget, QMessageBox, QGroupBox,
                              QTabWidget, QFormLayout, QSizePolicy, QTreeWidget, QFrame, QLineEdit,
                              QCheckBox, QComboBox)
-from PyQt6.QtCore import (Qt)
+from PyQt6.QtCore import (Qt, QTimer)
 from PyQt6.QtGui import (QFont)
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -265,6 +265,7 @@ class BombCellSolver(QDialog):
     hght_fspec = 60
     hght_para = 480
     hght_button = 40
+    t_timer_per = 250
 
     # string class fields
     mmap_name = 'mMapProg.bin'
@@ -296,9 +297,10 @@ class BombCellSolver(QDialog):
         self.fspec_group = QGroupBox("EXPERIMENT PARENT FOLDER")
         self.para_group = QGroupBox("SOLVER PARAMETERS")
         self.para_tab = cw.create_tab_group(None)
-        self.prog_bar = cw.QDialogProgress(font=cw.font_lbl, is_task=True, timer_lbl=True)
+        self.prog_bar = cw.QDialogProgress(font=cw.font_lbl, is_task=True)
         self.progress_frame = QFrame()
         self.button_frame = QFrame()
+        self.solver_timer = QTimer()
 
         # class layouts
         self.main_layout = QVBoxLayout()
@@ -321,9 +323,9 @@ class BombCellSolver(QDialog):
         # other class fields
         self.i_tab = 0
         self.i_run = 1
+        self.i_unit = 0
         self.bc_pkg = None
         self.bc_para_c = None
-        self.solver_flag = None
         self.hght_dlg = 6 * self.x_gap + (self.hght_fspec + self.hght_para + self.hght_button)
 
         # initialises the class fields
@@ -356,6 +358,9 @@ class BombCellSolver(QDialog):
         self.main_layout.addWidget(self.progress_frame)
         self.main_layout.addWidget(self.button_frame)
 
+        # solver timer callback function
+        self.solver_timer.timeout.connect(self.solver_timer_fcn)
+
     def init_bomb_cell(self):
 
         # updates the progressbar
@@ -368,6 +373,8 @@ class BombCellSolver(QDialog):
         self.t_worker.work_finished.connect(self.bombcell_init_complete)
 
         # starts the worker object
+        self.prog_bar.is_task = True
+        self.prog_bar.timer_lbl = True
         self.is_running = True
         self.t_worker.start()
 
@@ -497,7 +504,8 @@ class BombCellSolver(QDialog):
         self.fspec_edit.setToolTip(self.expt_dir)
 
         # sets up the memory map file
-        self.mmap_file = self.expt_dir + "/" + self.mmap_name
+        sort_dir = self.main_obj.session_obj.get_sorting_folder_paths()[0, 0]
+        self.mmap_file = os.path.join(str(sort_dir), self.mmap_name)
         self.create_solver_mmap()
 
         # intiialises the parameter groups
@@ -533,7 +541,7 @@ class BombCellSolver(QDialog):
 
                 # runs the bombcell solver
                 self.bc_pkg_fcn('runCalc', s_info)
-                if self.solver_flag[0]:
+                if self.mmap['s_flag']:
                     # if successful, stores the results from the solver
                     bc_data_nw[i_run, i_shank] = BombCellSoln(self.bc_pkg_fcn)
 
@@ -545,6 +553,9 @@ class BombCellSolver(QDialog):
         self.bc_data = bc_data_nw
 
     def bombcell_solver_complete(self):
+
+        # stops the solver timer
+        self.solver_timer.stop()
 
         # stops and updates the progressbar
         self.prog_bar.stop_timer()
@@ -569,16 +580,28 @@ class BombCellSolver(QDialog):
 
     def create_solver_mmap(self):
 
-        # creates the memory mapping file
-        if not os.path.exists(self.mmap_file):
-            with open(self.mmap_file, 'wb') as f:
-                f.truncate(1)
+        # initialisations
+        n_fld = 3
 
-        # sets up the memory map
-        with open(self.mmap_file, 'r+b') as f:
-            self.mmap = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_WRITE)
-            self.solver_flag = np.frombuffer(self.mmap, dtype=np.uint8)
-            self.solver_flag[0] = np.uint8(0)
+        # sets the memory map data type
+        dt = np.dtype([
+            ('s_flag', 'i2'),
+            ('i_unit', 'i2'),
+            ('n_unit', 'i2'),
+        ])
+
+        # deletes any previous memory mapping file
+        if os.path.exists(self.mmap_file):
+            try:
+                os.remove(self.mmap_file)
+            except:
+                pass
+
+        # creates the memory map file
+        self.mmap = np.memmap(self.mmap_file, dtype=dt, mode='w+', shape=(1,))
+        self.mmap['s_flag'] = np.int16(0)
+        self.mmap['i_unit'] = np.int16(0)
+        self.mmap['n_unit'] = np.int16(0)
 
     def delete_solver_mmap(self):
 
@@ -641,15 +664,15 @@ class BombCellSolver(QDialog):
             self.cont_button[0].setText('Cancel Solver')
 
             # updates the progressbar
-            self.prog_bar.set_label("Running Solver")
-            self.prog_bar.set_progbar_state(True)
+            self.prog_bar.is_task = False
+            self.prog_bar.timer_lbl = False
+            self.prog_bar.set_label("Initialising Solver")
+            self.prog_bar.set_enabled(True)
             time.sleep(0.1)
 
             # flag that the solver is running
-            self.solver_flag[0] = np.uint8(1)
-
-            # # creates the memory map file
-            # self.create_solver_mmap()
+            self.mmap['i_unit'] = np.int16(0)
+            self.mmap['s_flag'] = np.int16(1)
 
             # creates the threadworker object
             self.t_worker = ThreadWorker(self, self.run_bombcell_solver, None)
@@ -657,19 +680,45 @@ class BombCellSolver(QDialog):
 
             # starts the worker object
             self.t_worker.start()
+            self.solver_timer.start(self.t_timer_per)
 
         else:
             # stops the worker
             self.t_worker.force_quit()
+            self.solver_timer.stop()
             time.sleep(0.01)
 
             # deletes the memory map file
-            self.solver_flag[0] = np.uint8(0)
+            self.mmap['s_flag'] = np.int16(0)
             self.set_button_props(True, chk_para=True)
 
             # disables the progressbar fields
             self.prog_bar.set_progbar_state(False)
             self.cont_button[0].setText('Run Solver')
+
+    def solver_timer_fcn(self):
+
+        if (self.i_unit != self.mmap['i_unit'][0]):
+            # updates the unit index
+            self.i_unit = self.mmap['i_unit'][0]
+
+            # unit/progress value fields
+            i_unit_pr = self.i_unit
+            pr_val = float(self.i_unit) / (2 * float(self.mmap['n_unit'][0]))
+
+            # solver procedure specific updates
+            if (self.i_unit <= self.mmap['n_unit'][0]):
+                # case is extracting waveforms
+                pr_pref = 'Extracting Waveforms'
+
+            else:
+                # case is quality metric calculations
+                pr_pref = 'Calculating Metrics'
+                i_unit_pr -= self.mmap['n_unit'][0]
+
+            # updates the progressbar
+            pr_str = '{0} ({1}/{2})'.format(pr_pref, i_unit_pr, self.mmap['n_unit'][0])
+            self.prog_bar.update_prog_fields(pr_str, pr_val)
 
     def set_button_props(self, state, chk_para=False):
 
