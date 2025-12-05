@@ -19,7 +19,8 @@ from PyQt6.QtWidgets import (QMainWindow, QHBoxLayout, QFormLayout, QWidget, QGr
 from PyQt6.QtCore import Qt, QSize, QRect, pyqtSignal, QObject, QTimer
 from PyQt6.QtGui import QFont, QIcon, QAction
 
-# custom module import
+# spykit module import
+import spykit.props.prop_type as ppt
 import spykit.common.common_func as cf
 import spykit.common.common_widget as cw
 from spykit.info.utils import InfoManager
@@ -29,8 +30,6 @@ from spykit.common.property_classes import SessionWorkBook
 from spykit.common.postprocess import PostMemMap
 from spykit.info.preprocess import PreprocessSetup, pp_flds
 from spykit.widgets.bomb_cell import BombCellSolver
-
-#
 from spykit.threads.utils import ThreadWorker
 from spykit.widgets.open_session import OpenSession
 from spykit.widgets.default_dir import DefaultDir
@@ -523,6 +522,9 @@ class MainWindow(QMainWindow):
         h_prog.prog_bar.setValue(int(h_prog.p_max))
         h_prog.lbl_obj.setText("File Output Complete")
         h_prog.lbl_obj.setToolTip("")
+
+        # adds the postprocessing tab
+        self.prop_manager.add_prop_tabs('postprocess')
 
         # resets the progressbar
         h_prog.set_progbar_state(False)
@@ -1017,9 +1019,19 @@ class MenuBar(QObject):
 
             # deletes any existing temporary memmap files
             pat = cf.wildcard_to_regex('Temp_*.dat')
-            for mm_f in mm_file:
+            for imm_f, mm_f in enumerate(reversed(mm_file)):
                 if re.fullmatch(pat, os.path.split(mm_f)[1]):
                     os.remove(mm_f)
+                    mm_file.pop(imm_f)
+
+            # resets the property/plot tab fields
+            post_fld = ['postprocess']
+            if mm_file:
+                # case is there are memory map file available
+                self.main_obj.prop_manager.add_prop_tabs(post_fld)
+            else:
+                # case is no memory map data is available
+                pass
 
             # resets the preprocessing configuration fields
             prep_info = self.main_obj.info_manager.get_info_tab('preprocess')

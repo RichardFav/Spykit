@@ -389,7 +389,7 @@ class PlotManager(QWidget):
             p_types = [k for k, v in self.types.items() if (v in i_plot)]
             for pt, i_ad in zip(p_types, is_add):
                 plt_view = self.plots[self.types[pt] - 1]
-                plt_view.show_view() if is_add else plt_view.hide_view()
+                plt_view.show_view() if i_ad else plt_view.hide_view()
 
     @staticmethod
     def det_diff_plot_ids(g_id, c_id):

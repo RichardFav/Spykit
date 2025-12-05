@@ -133,6 +133,15 @@ class PropManager(QWidget):
                     # sets the region configuration slot function
                     tab_widget.obj_rconfig.config_reset.connect(self.update_config)
 
+                case 'postprocess':
+                    # sets the plot views
+                    for pf in tab_widget.plot_views:
+                        self.main_obj.prop_manager.add_config_view(pt.prop_names[pf])
+                        self.main_obj.plot_manager.add_plot_view(pf, show_plot=False)
+
+                    # resets the plot configuration
+                    self.update_config()
+
     # ---------------------------------------------------------------------------
     # Special Widget Event Functions
     # ---------------------------------------------------------------------------
@@ -434,6 +443,10 @@ class PropWidget(QWidget):
         self.main_obj = main_obj
         self.f_layout = f_layout
 
+        # common class widgets
+        self.outer_layout = QVBoxLayout()
+        self.outer_box = QGroupBox(self)
+
         # other class fields
         self.n_para = 0
         self.p_props = None
@@ -443,7 +456,18 @@ class PropWidget(QWidget):
         self.is_updating = False
 
         # initialises the class fields
+        self.init_main_fields()
         self.init_class_fields()
+
+    def init_main_fields(self):
+
+        # main widget properties
+        self.setLayout(self.outer_layout)
+
+        # outer layout properties
+        self.outer_layout.setSpacing(0)
+        self.outer_layout.setContentsMargins(x_gap_h, x_gap_h, x_gap_h, x_gap_h)
+        self.outer_layout.addWidget(self.outer_box)
 
     def init_class_fields(self):
 
@@ -470,7 +494,7 @@ class PropWidget(QWidget):
             self.n_para += 1
 
         # adds the widget to the table
-        self.setLayout(self.f_layout)
+        self.outer_box.setLayout(self.f_layout)
 
     # ---------------------------------------------------------------------------
     # Widget Event Functions

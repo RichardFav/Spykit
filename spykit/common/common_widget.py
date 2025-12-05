@@ -81,6 +81,15 @@ edit_style_sheet = """
     padding-left: 5px;
 """
 
+# Apply stylesheet to the QListView::item to add left padding
+combo_style_sheet = """
+    QComboBox {
+        padding-left: 5px;     
+        border-radius: 2px; 
+        border: 1px solid;
+    }
+"""
+
 # ----------------------------------------------------------------------------------------------------------------------
 
 # subject/session model flags
@@ -2085,7 +2094,7 @@ class QLabelCombo(QWidget):
 
         # sets up the slot function
         self.obj_cbox.setFixedHeight(cf.combo_height)
-        self.obj_cbox.setStyleSheet('border-radius: 2px; border: 1px solid')
+        self.obj_cbox.setStyleSheet(combo_style_sheet)
 
         # if p_col is not None:
         #     cb_model = self.obj_cbox.model()
@@ -2176,11 +2185,11 @@ class QCheckCombo(QComboBox):
 
         # sets the widget model and event functions
         self.combo_model = QStandardItemModel(self)
+        self.combo_model.setFont()
 
         # creates the checkbox object
         self.setFixedHeight(cf.combo_height)
-        self.setStyleSheet('border-radius: 2px; border: 1px solid;')
-
+        self.setStyleSheet(combo_style_sheet)
         self.setModel(self.combo_model)
 
     def item_click(self, index):
@@ -2313,6 +2322,7 @@ class QLabelCheckCombo(QWidget):
         # creates the checkbox object
         self.h_combo = QCheckCombo(self)
         self.h_combo.item_clicked.connect(self.check_update)
+        self.h_combo.setStyleSheet(combo_style_sheet)
 
         # adds the widgets to the layout
         self.layout.addWidget(self.h_lbl)
