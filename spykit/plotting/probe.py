@@ -213,7 +213,7 @@ class ProbePlot(PlotWidget):
 
             if len(i_sel) == 1:
                 is_sel_ch = self.session_info.channel_data.is_selected[i_sel[0]]
-                self.reset_highlight.emit(is_sel_ch, i_sel[0])
+                self.reset_highlight.emit(bool(is_sel_ch), i_sel[0])
 
     # ---------------------------------------------------------------------------
     # Plot Button Event Functions

@@ -81,12 +81,19 @@ edit_style_sheet = """
     padding-left: 5px;
 """
 
-# Apply stylesheet to the QListView::item to add left padding
+# combobox style sheet
 combo_style_sheet = """
     QComboBox {
         padding-left: 5px;     
         border-radius: 2px; 
         border: 1px solid;
+    }
+"""
+
+# tab widget style sheet
+tab_widget_style_sheet = """
+    QTabBar::tab:selected { 
+        font-weight: bold; 
     }
 """
 
@@ -2185,7 +2192,6 @@ class QCheckCombo(QComboBox):
 
         # sets the widget model and event functions
         self.combo_model = QStandardItemModel(self)
-        self.combo_model.setFont()
 
         # creates the checkbox object
         self.setFixedHeight(cf.combo_height)
@@ -3404,6 +3410,7 @@ def create_tab_group(parent, font=None, name=None):
 
     # sets the tab group  properties
     h_tab_grp.setFont(font)
+    h_tab_grp.setStyleSheet(tab_widget_style_sheet)
 
     # sets the object name string
     if name is not None:
