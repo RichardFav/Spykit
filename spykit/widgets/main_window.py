@@ -688,7 +688,19 @@ class MainWindow(QMainWindow):
         # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/tiny_example (sorting - SK2).ssf"
         f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/large_example.ssf"
 
-        self.menu_bar.load_session(f_file)
+        # loads the session
+        self.menu_bar.load_session(f_file, True)
+
+        # retrieves the configuration tab object
+        config_tab = self.prop_manager.get_prop_tab('config')
+
+        # fixed plot view
+        c_id = config_tab.obj_rconfig.c_id
+        c_id[:] = self.plot_manager.get_plot_index('upset')
+
+        # updates the grid plots
+        self.plot_manager.update_plot_config(c_id)
+        self.prop_manager.set_region_config(c_id)
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -965,7 +977,7 @@ class MenuBar(QObject):
     # Load Menubar Functions
     # ---------------------------------------------------------------------------
 
-    def load_session(self, file_info=None):
+    def load_session(self, file_info=None, ignore_pp=False):
 
         # prompts the user for the file name (exit if the user cancels)
         session_dir = cw.get_def_dir("session")
@@ -1040,7 +1052,7 @@ class MenuBar(QObject):
 
             # runs the preprocessing (if data in config field)
             prep_task = prep_info.configs.task_name
-            if len(prep_task):
+            if len(prep_task) and (not ignore_pp):
                 # if there is preprocessed data, prompt the user if they would like to re-run the calculations
                 t_str = 'Re-run Preprocessing?'
                 q_str = 'The loaded session has preprocessed tasks. Would you like to re-run these tasks?'

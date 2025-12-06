@@ -214,7 +214,7 @@ class PreprocessInfoTab(InfoWidgetPara):
 
         # determines if there are any channels to remove
         rmv_channels = self.get_remove_channels()
-        if len(rmv_channels):
+        if len(rmv_channels) and ('Remove Bad Channels' not in prep_task):
             # if so, then append the remove channels step
             prep_task = ['Remove Bad Channels'] + prep_task
 
