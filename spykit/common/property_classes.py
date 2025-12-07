@@ -21,6 +21,7 @@ from spikeinterface.core import order_channels_by_depth
 # spykit module imports
 import spykit.common.common_func as cf
 from spykit.threads.utils import ThreadWorker
+from spykit.common.postprocess import PostMemMap
 from spykit.info.preprocess import pp_flds, RunPreProcessing
 from spykit.info.preprocess import prep_task_map as pp_map
 from spykit.widgets.spike_sorting import RunSpikeSorting, SpikeSortInfo
@@ -416,6 +417,12 @@ class SessionWorkBook(QObject):
         # return the overall search match results
         return f_path
 
+    def get_current_mem_map(self):
+
+        i_run = self.get_current_run_index()
+        i_shank = 0 if (self.current_shank is None) else self.current_shank
+        return self.post_data.get_mem_map(i_run, i_shank)
+
     def get_session_base_path(self):
 
         # splits the subject path
@@ -425,20 +432,44 @@ class SessionWorkBook(QObject):
         # returns the base session path
         return Path('/'.join(s_path_split[:-2]))
 
-    def get_mem_map_files(self):
+    def get_mem_map_files(self, is_flat=True):
 
         # field retrieval
-        mmap_files = []
-        bc_dir = self.get_sorting_folder_paths('bombcell').flatten()
+        bc_dir = self.get_sorting_folder_paths('bombcell')
 
         # finds all the bombcell memory mapping files
-        for bc in bc_dir:
-            if os.path.exists(bc):
-                # case is the bombcell directory exists
-                mmap_files_new = glob.glob(os.path.join(bc, '*.dat'))
-                if len(mmap_files_new):
-                    # appends the found memory mapped files
-                    mmap_files += mmap_files_new
+        if is_flat:
+            mmap_files = []
+            for bc in bc_dir.flatten():
+                if os.path.exists(bc):
+                    # case is the bombcell directory exists
+                    mmap_files_new = glob.glob(os.path.join(bc, '*.dat'))
+                    if len(mmap_files_new):
+                        # appends the found memory mapped files
+                        mmap_files += mmap_files_new
+
+        else:
+            # memory allocation
+            n_run_pp, n_shank_pp = bc_dir.shape
+
+            for i_run in range(n_run_pp):
+                for i_shank in range(n_shank_pp):
+                    # search bombcell folder for .dat files
+                    mmap_files_new = glob.glob(os.path.join(bc_dir[i_run, i_shank], '*.dat'))
+                    if (i_run == 0) and (i_shank == 0):
+                        n_file_pp = len(mmap_files_new)
+                        if n_file_pp:
+                            # memory allocation
+                            mmap_files = np.empty((n_run_pp, n_shank_pp, n_file_pp), dtype=object)
+                        else:
+                            # if no match, then exit
+                            return None
+
+                    if len(mmap_files_new) == n_file_pp:
+                        for i_file in range(n_file_pp):
+                            mmap_files[i_run, i_shank, i_file] = mmap_files_new[i_file]
+                    else:
+                        return None
 
         # returns the memory map file
         return mmap_files
@@ -1206,7 +1237,27 @@ class PostProcessData:
         self.is_saved = []
         self.i_mmap = None
 
-    def add_post_process(self, mmap_file_new, mmap_new):
+    def read_post_process(self, mm_file):
+
+        # creates the memory map object
+        pmm_obj = PostMemMap()
+        n_run_pp, n_shank_pp, n_file_pp = mm_file.shape
+
+        # reads the stored memory maps
+        for i_file in range(n_file_pp):
+            # memory allocation
+            mmap_tmp = np.empty((n_run_pp, n_shank_pp), dtype=object)
+
+            # reads the memory mapped files (for each run/shank)
+            for i_run in range(n_run_pp):
+                for i_shank in range(n_shank_pp):
+                    pmm_obj.set_mmap_file(mm_file[i_run, i_shank, i_file])
+                    mmap_tmp[i_run, i_shank] = pmm_obj.read_mem_map()
+
+            # appends the memory map to the class fields
+            self.add_post_process(mm_file[:, :, i_file], mmap_tmp, True)
+
+    def add_post_process(self, mmap_file_new, mmap_new, is_save=False):
 
         # appends the new mmap file and other properties
         self.mmap.append(mmap_new)
@@ -1214,7 +1265,7 @@ class PostProcessData:
         self.mmap_name.append(os.path.split(mmap_file_new[0, 0])[1])
 
         # sets saved flag
-        self.is_saved.append(False)
+        self.is_saved.append(is_save)
         self.i_mmap = len(self.mmap) - 1
 
     def remove_post_process(self, i_mmap_rmv):
@@ -1278,3 +1329,7 @@ class PostProcessData:
     def set_mmap_index(self, i_mmap_new):
 
         self.i_mmap = i_mmap_new
+
+    def get_mem_map(self, i_run, i_shank):
+
+        return self.mmap[self.i_mmap][i_run, i_shank]

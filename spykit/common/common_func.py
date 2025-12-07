@@ -124,7 +124,12 @@ class ObservableProperty:
         return self._value
 
     def __set__(self, instance, new_value):
-        if new_value != self._value:
+        if isinstance(new_value, np.memmap):
+            is_update = True
+        else:
+            is_update = new_value != self._value
+
+        if is_update:
             self._value = new_value
             if self._callback:
                 self._callback(instance)

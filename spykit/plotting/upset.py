@@ -31,6 +31,10 @@ class UpSetPlot(PlotWidget):
     hide_plot = pyqtSignal()
     reset_highlight = pyqtSignal(object)
 
+    # parameters
+    p_row = 60
+    p_col = 30
+
     def __init__(self, session_info):
         super(UpSetPlot, self).__init__('upset', b_icon=b_icon, b_type=b_type, tt_lbl=tt_lbl)
 
@@ -38,8 +42,21 @@ class UpSetPlot(PlotWidget):
         self.session_info = session_info
         s_props = self.session_info.session_props
 
+        # sets up the plot regions
+        self.setup_subplots(n_r=2, n_c=2)
+        self.plot_set = self.h_plot[0, 1].getPlotItem()
+        self.plot_interact = self.h_plot[0, 1].getPlotItem()
+        self.plot_details = self.h_plot[1, 1].getPlotItem()
+
         # initialises the other class fields
         self.init_class_fields()
+        self.reset_mmap()
+
+    def reset_mmap(self):
+
+        # updates the current memory map
+        print('Initialising Complete!')
+        self.mmap = self.session_info.get_current_mem_map()
 
     # ---------------------------------------------------------------------------
     # Class Widget Setup Functions
@@ -47,10 +64,27 @@ class UpSetPlot(PlotWidget):
 
     def init_class_fields(self):
 
+        # resets the row stretch
+        self.plot_layout.setRowStretch(0, self.p_row)
+        self.plot_layout.setRowStretch(1, 100 - self.p_row)
+        self.plot_layout.setColumnStretch(0, self.p_col)
+        self.plot_layout.setColumnStretch(1, 100 - self.p_col)
+
+        # hides the top-left plot region
+        self.h_plot[0, 0].hide()
+
         # sets the plot button callback functions
         for pb in self.plot_but:
             cb_fcn = functools.partial(self.plot_button_clicked, pb.objectName())
             pb.clicked.connect(cb_fcn)
+
+    # ---------------------------------------------------------------------------
+    # PLot View Methods
+    # ---------------------------------------------------------------------------
+
+    def update_plot(self):
+
+        print('Updating UpSet Plot')
 
     # ---------------------------------------------------------------------------
     # Plot Button Event Functions
@@ -86,3 +120,14 @@ class UpSetPlot(PlotWidget):
     def hide_view(self):
 
         pass
+
+    # ---------------------------------------------------------------------------
+    # Static Methods
+    # ---------------------------------------------------------------------------
+
+    @staticmethod
+    def update_mmap(_self):
+        _self.update_plot()
+
+    # trace property observer properties
+    mmap = cf.ObservableProperty(update_mmap)

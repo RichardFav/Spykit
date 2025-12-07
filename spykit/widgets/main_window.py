@@ -93,10 +93,10 @@ class MainWindow(QMainWindow):
         # sets the widget style sheets
         self.set_styles()
 
-        # # REMOVE ME LATER
-        # if platform.system() == "Windows":
-        #     if os.environ['COMPUTERNAME'] == "DESKTOP-NLLEH0V":
-        #         self.testing()
+        # REMOVE ME LATER
+        if platform.system() == "Windows":
+            if os.environ['COMPUTERNAME'] == "DESKTOP-NLLEH0V":
+                self.testing()
 
     # ---------------------------------------------------------------------------
     # Class Widget Setup Functions
@@ -529,6 +529,18 @@ class MainWindow(QMainWindow):
         # resets the progressbar
         h_prog.set_progbar_state(False)
 
+    def remove_temp_mem_maps(self):
+
+        # determines all memory map files in the expt directory
+        mm_file = self.session_obj.get_mem_map_files()
+
+        # deletes any existing temporary memmap files
+        pat = cf.wildcard_to_regex('Temp_*.dat')
+        for imm_f, mm_f in enumerate(reversed(mm_file)):
+            if re.fullmatch(pat, os.path.split(mm_f)[1]):
+                os.remove(mm_f)
+                mm_file.pop(imm_f)
+
     # ---------------------------------------------------------------------------
     # Obsolete Preprocessing Functions
     # ---------------------------------------------------------------------------
@@ -697,6 +709,9 @@ class MainWindow(QMainWindow):
         # fixed plot view
         c_id = config_tab.obj_rconfig.c_id
         c_id[:] = self.plot_manager.get_plot_index('upset')
+        # c_id[:] = self.plot_manager.get_plot_index('unithist')
+        # c_id[:] = self.plot_manager.get_plot_index('unitmet')
+        # c_id[:] = self.plot_manager.get_plot_index('waveform')
 
         # updates the grid plots
         self.plot_manager.update_plot_config(c_id)
@@ -1025,25 +1040,15 @@ class MenuBar(QObject):
         # sets/runs the config field/routines
         time.sleep(0.1)
         if ses_data['configs'] is not None:
-            # determines if the spike sorting has been completed
-            mm_file = self.main_obj.session_obj.get_mem_map_files()
-            self.set_menu_enabled('load_postprocessed', len(mm_file) > 0)
+            # removes any temporary memory map files
+            self.main_obj.remove_temp_mem_maps()
 
-            # deletes any existing temporary memmap files
-            pat = cf.wildcard_to_regex('Temp_*.dat')
-            for imm_f, mm_f in enumerate(reversed(mm_file)):
-                if re.fullmatch(pat, os.path.split(mm_f)[1]):
-                    os.remove(mm_f)
-                    mm_file.pop(imm_f)
-
-            # resets the property/plot tab fields
-            post_fld = ['postprocess']
-            if mm_file:
-                # case is there are memory map file available
-                self.main_obj.prop_manager.add_prop_tabs(post_fld)
-            else:
-                # case is no memory map data is available
-                pass
+            # determines if there are any available memory maps
+            mm_file = self.main_obj.session_obj.get_mem_map_files(False)
+            self.set_menu_enabled('load_postprocessed', mm_file is not None)
+            if mm_file is not None:
+                self.main_obj.session_obj.post_data.read_post_process(mm_file)
+                self.main_obj.prop_manager.add_prop_tabs(['postprocess'])
 
             # resets the preprocessing configuration fields
             prep_info = self.main_obj.info_manager.get_info_tab('preprocess')

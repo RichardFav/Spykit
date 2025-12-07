@@ -44,6 +44,9 @@ class WaveFormPlot(PlotWidget):
 
     def init_class_fields(self):
 
+        # sets up the plot regions
+        self.setup_subplots(n_r=2, n_c=2)
+
         # sets the plot button callback functions
         for pb in self.plot_but:
             cb_fcn = functools.partial(self.plot_button_clicked, pb.objectName())

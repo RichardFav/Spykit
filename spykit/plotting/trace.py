@@ -516,8 +516,6 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.reset_trace_view()
         self.update_trace_props()
 
-
-
         # resets the x-axis linear item transform
         tr_x = QtGui.QTransform()
         tr_x.scale(self.t_dur / self.n_col_img, 1.0)
