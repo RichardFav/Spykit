@@ -216,6 +216,12 @@ class BombCellSoln(object):
         self.unit_type = bc_pkg_fcn('getClassField','unitType')
         self.t_unique = bc_pkg_fcn('getClassField', 'tUnique')
 
+        # bombcell parameter setup
+        self.bc_para = bc_pkg_fcn('getClassField', 'bcPara')
+        for k, v in self.bc_para.items():
+            if not isinstance(v, str):
+                self.p_map[k] = k
+
         # other fields
         self.meta_data = bc_pkg_fcn('getClassField','metaData')
         self.gui_data = bc_pkg_fcn('getClassField','guiData')
@@ -242,6 +248,9 @@ class BombCellSoln(object):
 
             elif p_fld in self.raw_form:
                 p_val = self.raw_form[p_fld]
+
+            elif p_fld in self.bc_para:
+                p_val = self.bc_para[p_fld]
 
         # converts and returns the final values
         if p_fld_bc in self.int_para:

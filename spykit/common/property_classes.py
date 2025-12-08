@@ -4,6 +4,7 @@ import copy
 import time
 import glob
 import numpy as np
+import pandas as pd
 from pathlib import Path
 from functools import partial as pfcn
 
@@ -417,11 +418,17 @@ class SessionWorkBook(QObject):
         # return the overall search match results
         return f_path
 
-    def get_current_mem_map(self):
+    def get_mem_map_field(self, p_fld):
 
         i_run = self.get_current_run_index()
         i_shank = 0 if (self.current_shank is None) else self.current_shank
-        return self.post_data.get_mem_map(i_run, i_shank)
+        return self.post_data.get_mem_map_field(i_run, i_shank, p_fld)
+
+    def get_metric_table(self):
+
+        q_hdr = self.get_mem_map_field('q_hdr')[0]
+        q_met = self.get_mem_map_field('q_met')
+        return pd.DataFrame(q_met, columns=q_hdr)
 
     def get_session_base_path(self):
 
@@ -1316,10 +1323,11 @@ class PostProcessData:
                 # flushes and deletes the memory map
                 self.mmap[self.i_mmap][i_run, i_shank].flush()
                 self.mmap[self.i_mmap][i_run, i_shank] = None
+                time.sleep(0.25)
 
                 # recreates the memory mapped file
                 os.rename(self.mmap_file[self.i_mmap][i_run, i_shank], mmap_file_new[i_run, i_shank])
-                self.mmap[self.i_mmap] = np.memmap(mmap_file_new[i_run, i_shank], dtype=dt, mode='r', shape=(1,))
+                self.mmap[self.i_mmap][i_run, i_shank] = np.memmap(mmap_file_new[i_run, i_shank], dtype=dt, mode='r', shape=(1,))
 
         # resets the other fields
         self.is_saved[self.i_mmap] = True
@@ -1330,6 +1338,6 @@ class PostProcessData:
 
         self.i_mmap = i_mmap_new
 
-    def get_mem_map(self, i_run, i_shank):
+    def get_mem_map_field(self, i_run, i_shank, p_fld):
 
-        return self.mmap[self.i_mmap][i_run, i_shank]
+        return self.mmap[self.i_mmap][i_run, i_shank][p_fld][0]

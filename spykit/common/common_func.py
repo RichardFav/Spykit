@@ -7,6 +7,7 @@ import string
 import random
 import platform
 import colorsys
+import itertools
 import threading
 from typing import TypeVar
 
@@ -515,3 +516,9 @@ def wildcard_to_regex(pattern):
     regex_pattern = regex_pattern.replace(r'\*', '.*')
     regex_pattern = regex_pattern.replace(r'\?', '.')
     return '^' + regex_pattern + '$'
+
+def bool_perm_array(n):
+    """Creates a n-bit boolean permutation array"""
+
+    perm_iterator = itertools.product([False, True], repeat=n)
+    return np.array(list(perm_iterator), dtype=bool)

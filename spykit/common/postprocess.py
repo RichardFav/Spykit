@@ -17,6 +17,9 @@ class PostMemMap(QObject):
     progress_fcn = pyqtSignal(int, int)
 
     # dimension fields
+    n_hdr_mua = 4
+    n_hdr_noise = 6
+    n_hdr_nonsoma = 2
     n_dim_para = 7
 
     def __init__(self):
@@ -122,6 +125,75 @@ class PostMemMap(QObject):
             # case is miscellaneous field
             ('unit_type', 'i4', (n_unit, 1)),
             ('t_unique', 'i4', (n_unit, 1)),
+
+            # case is the bombcell parameters
+            ("plotDetails", "f4"),
+            ("plotGlobal", "f4"),
+            ("verbose", "bool"),
+            ("reextractRaw", "f4"),
+            ("saveAsTSV", "f4"),
+            ("unitType_for_phy", "f4"),
+            ("saveMatFileForGUI", "f4"),
+            ("removeDuplicateSpikes", "f4"),
+            ("saveSpikes_withoutDuplicates", "f4"),
+            ("recomputeDuplicateSpikes", "f4"),
+            ("duplicateSpikeWindow_s", "f4"),
+            ("detrendWaveform", "f4"),
+            ("nRawSpikesToExtract", "f4"),
+            ("saveMultipleRaw", "f4"),
+            ("decompressData", "f4"),
+            ("spikeWidth", "f4"),
+            ("extractRaw", "f4"),
+            ("probeType", "f4"),
+            ("computeSpatialDecay", "f4"),
+            ("waveformBaselineNoiseWindow", "f4"),
+            ("tauR_valuesMin", "f4"),
+            ("tauR_valuesStep", "f4"),
+            ("tauR_valuesMax", "f4"),
+            ("tauC", "f4"),
+            ("hillOrLlobetMethod", "f4"),
+            ("computeTimeChunks", "f4"),
+            ("deltaTimeChunk", "f4"),
+            ("presenceRatioBinSize", "f4"),
+            ("driftBinSize", "f4"),
+            ("computeDrift", "f4"),
+            ("waveformBaselineWindowStart", "f4"),
+            ("waveformBaselineWindowStop", "f4"),
+            ("minThreshDetectPeaksTroughs", "f4"),
+            ("normalizeSpDecay", "f4"),
+            ("spDecayLinFit", "f4"),
+            ("ephys_sample_rate", "f4"),
+            ("nChannels", "f4"),
+            ("nSyncChannels", "f4"),
+            ("gain_to_uV", "f4"),
+            ("computeDistanceMetrics", "f4"),
+            ("nChannelsIsoDist", "f4"),
+            ("splitGoodAndMua_NonSomatic", "f4"),
+            ("maxNPeaks", "f4"),
+            ("maxNTroughs", "f4"),
+            ("somatic", "f4"),
+            ("minWvDuration", "f4"),
+            ("maxWvDuration", "f4"),
+            ("minSpatialDecaySlope", "f4"),
+            ("minSpatialDecaySlopeExp", "f4"),
+            ("maxSpatialDecaySlopeExp", "f4"),
+            ("maxWvBaselineFraction", "f4"),
+            ("maxScndPeakToTroughRatio_noise", "f4"),
+            ("maxPeak1ToPeak2Ratio_nonSomatic", "f4"),
+            ("maxMainPeakToTroughRatio_nonSomatic", "f4"),
+            ("minWidthFirstPeak_nonSomatic", "f4"),
+            ("minWidthMainTrough_nonSomatic", "f4"),
+            ("minTroughToPeak2Ratio_nonSomatic", "f4"),
+            ("isoDmin", "f4"),
+            ("lratioMax", "f4"),
+            ("ssMin", "f4"),
+            ("minAmplitude", "f4"),
+            ("maxRPVviolations", "f4"),
+            ("maxPercSpikesMissing", "f4"),
+            ("minNumSpikes", "f4"),
+            ("maxDrift", "f4"),
+            ("minPresenceRatio", "f4"),
+            ("minSNR", "f4"),
         ])
 
         return dt_type
