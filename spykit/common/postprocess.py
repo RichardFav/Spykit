@@ -20,7 +20,7 @@ class PostMemMap(QObject):
     n_hdr_mua = 4
     n_hdr_noise = 6
     n_hdr_nonsoma = 2
-    n_dim_para = 7
+    n_dim_para = 11
 
     def __init__(self):
         super(PostMemMap, self).__init__()
@@ -46,9 +46,14 @@ class PostMemMap(QObject):
         n_spike = int(bc_data.array_dim['nSpike'])
         n_qual_met = int(bc_data.array_dim['nQualMet'])
         n_hdr_max = int(bc_data.array_dim['nHdrMax'])
+        n_peak_max = int(bc_data.array_dim['nPeakMax'])
+        n_trough_max = int(bc_data.array_dim['nTroughMax'])
+        n_hist_max = int(bc_data.array_dim['nHistMax'])
+        n_decay_loc = int(bc_data.array_dim['nDecayLoc'])
 
         # structure dtype
-        dt = self.get_dtype(n_unit, n_pts, n_ch, n_ch_full, n_spike, n_qual_met, n_hdr_max)
+        dt = self.get_dtype((n_unit, n_pts, n_ch, n_ch_full, n_spike, n_qual_met,
+                             n_hdr_max, n_peak_max, n_trough_max, n_hist_max, n_decay_loc))
         m_map = np.memmap(self.mmap_file, dtype=dt, mode='w+', shape=(1,))
 
         # sets the memory map fields
@@ -78,12 +83,8 @@ class PostMemMap(QObject):
             data_bytes = f.read(4 * self.n_dim_para)
             dim_vals = struct.unpack(f'{self.n_dim_para}i', data_bytes)
 
-            # sets up the memory map data type
-            n_unit, n_pts, n_ch, n_ch_full, n_spike, n_qual_met, n_hdr_max = self.get_array_dim()
-            dt = self.get_dtype(n_unit, n_pts, n_ch, n_ch_full, n_spike, n_qual_met, n_hdr_max)
-
             # returns the memory map
-            return np.memmap(self.mmap_file, dtype=dt, mode='r', shape=(1,))
+            return np.memmap(self.mmap_file, dtype=self.get_dtype(), mode='r', shape=(1,))
 
     def get_array_dim(self):
 
@@ -92,7 +93,15 @@ class PostMemMap(QObject):
             data_bytes = f.read(4 * self.n_dim_para)
             return struct.unpack(f'{self.n_dim_para}i', data_bytes)
 
-    def get_dtype(self, n_unit, n_pts, n_ch, n_ch_full, n_spike, n_qual_met, n_hdr_max):
+    def get_dtype(self, dim_arr=None):
+
+        # sets up the data type struct
+        if dim_arr is None:
+            (n_unit, n_pts, n_ch, n_ch_full, n_spike, n_qual_met, n_hdr_max,
+             n_peak_max, n_trough_max, n_hist_max, n_decay_loc) = self.get_array_dim()
+        else:
+            (n_unit, n_pts, n_ch, n_ch_full, n_spike, n_qual_met, n_hdr_max,
+             n_peak_max, n_trough_max, n_hist_max, n_decay_loc) = dim_arr
 
         dt_type = np.dtype([
             # case is array dimensions
@@ -103,6 +112,10 @@ class PostMemMap(QObject):
             ('n_spike', 'i4'),
             ('n_qual_met', 'i4'),
             ('n_hdr_max', 'i4'),
+            ('n_peak_max', 'i4'),
+            ('n_trough_max', 'i4'),
+            ('n_hist_max', 'i4'),
+            ('n_decay_loc', 'i4'),
 
             # case is ephys data
             ('i_spike', 'f4', (n_spike, 1)),
@@ -121,6 +134,17 @@ class PostMemMap(QObject):
             # case is raw waveforms
             ('avg_sig', 'f4', (n_unit, n_ch_full, n_pts)),
             ('pk_ch', 'f4', (n_unit, 1)),
+
+            # case is other gui data fields
+            ('x_bin_amp', 'f4', (n_unit, n_hist_max)),
+            ('y_bin_amp', 'f4', (n_unit, n_hist_max)),
+            ('y_gauss_amp', 'f4', (n_unit, n_hist_max)),
+            ('x_peak', 'f4', (n_unit, n_peak_max)),
+            ('x_trough', 'f4', (n_unit, n_trough_max)),
+            ('x_decay_sp', 'f4', (n_unit, n_decay_loc)),
+            ('y_decay_sp', 'f4', (n_unit, n_decay_loc)),
+            ('k_decay_sp', 'f4', (n_unit, 1)),
+            ('y_spike_unit', 'f4', (n_unit, n_pts)),
 
             # case is miscellaneous field
             ('unit_type', 'i4', (n_unit, 1)),

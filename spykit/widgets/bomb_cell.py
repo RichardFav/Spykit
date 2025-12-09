@@ -178,6 +178,10 @@ class BombCellSoln(object):
         'n_spike': 'nSpike',
         'n_qual_met': 'nQualMet',
         'n_hdr_max': 'nHdrMax',
+        'n_peak_max': 'nPeakMax',
+        'n_trough_max': 'nTroughMax',
+        'n_hist_max': 'nHistMax',
+        'n_decay_loc': 'nDecayLoc',
 
         # ephys data metrics
         'i_spike': 'iSpike',
@@ -197,6 +201,17 @@ class BombCellSoln(object):
         'avg_sig': 'average',
         'pk_ch': 'peakChan',
 
+        # gui data fields
+        'x_bin_amp': 'ampliBinCenters',
+        'y_bin_amp': 'ampliBinCounts',
+        'y_gauss_amp': 'ampliGaussianFit',
+        'x_peak': 'peakLocs',
+        'x_trough': 'troughLocs',
+        'x_decay_sp': 'spatialDecayPoints',
+        'y_decay_sp': 'spatialDecayPoints_loc',
+        'k_decay_sp': 'spatialDecayFit',
+        'y_spike_unit': 'tempWv',
+
         # miscellaneous metrics
         'unit_type': 'unitType',
         't_unique': 'tUnique',
@@ -211,6 +226,7 @@ class BombCellSoln(object):
         # ephys data metrics
         self.array_dim = bc_pkg_fcn('getClassField','arrDim')
         self.ephys_data = bc_pkg_fcn('getClassField','ephysData')
+        self.gui_data = bc_pkg_fcn('getClassField','guiData')
         self.q_metric = bc_pkg_fcn('getClassField','qMetric')
         self.raw_form = bc_pkg_fcn('getClassField','rawForm')
         self.unit_type = bc_pkg_fcn('getClassField','unitType')
@@ -224,7 +240,6 @@ class BombCellSoln(object):
 
         # other fields
         self.meta_data = bc_pkg_fcn('getClassField','metaData')
-        self.gui_data = bc_pkg_fcn('getClassField','guiData')
 
     def get_para_value(self, p_fld_bc):
 
@@ -242,6 +257,9 @@ class BombCellSoln(object):
 
             elif p_fld in self.ephys_data:
                 p_val = self.ephys_data[p_fld]
+
+            elif p_fld in self.gui_data:
+                p_val = self.gui_data[p_fld]
 
             elif p_fld in self.q_metric:
                 p_val = self.q_metric[p_fld]

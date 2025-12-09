@@ -74,8 +74,8 @@ class UpSetPlot(PlotWidget):
 
         # other class fields
         # self.unit_type = 'MUA'
-        # self.unit_type = 'Noise'
-        self.unit_type = 'NonSoma'
+        self.unit_type = 'Noise'
+        # self.unit_type = 'NonSoma'
 
     # ---------------------------------------------------------------------------
     # Class Widget Setup Functions
