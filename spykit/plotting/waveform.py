@@ -1,6 +1,7 @@
 # module import
 import os
 import time
+import math
 import colorsys
 import functools
 import numpy as np
@@ -13,6 +14,10 @@ from spykit.plotting.utils import PlotWidget
 
 # pyqt6 module import
 from PyQt6.QtCore import pyqtSignal
+
+# pyqtgraph modules
+from pyqtgraph import (arrayToQPath, mkBrush, mkPen, plot)
+from pyqtgraph.Qt.QtWidgets import QGraphicsPathItem
 
 # plot button fields
 b_icon = ['save', 'close']
@@ -35,8 +40,12 @@ class WaveFormPlot(PlotWidget):
         self.session_info = session_info
         s_props = self.session_info.session_props
 
+        # other class fields
+        self.has_plot = False
+
         # initialises the other class fields
         self.init_class_fields()
+        self.update_plot()
 
     # ---------------------------------------------------------------------------
     # Class Widget Setup Functions
@@ -44,13 +53,82 @@ class WaveFormPlot(PlotWidget):
 
     def init_class_fields(self):
 
+        # sets up the unit type fields
+        if self.get_field('splitGoodAndMua_NonSomatic'):
+            self.unit_lbl = ['Noise', 'Somatic Good', 'Somatic MUA', 'Non-somatic Good', 'Non-somatic MUA']
+        else:
+            self.unit_lbl = ['Noise', 'Good', 'MUA', 'Non-Somatic']
+
         # sets up the plot regions
-        self.setup_subplots(n_r=2, n_c=2)
+        self.n_plt = len(self.unit_lbl)
+        self.show_plt = np.ones(self.n_plt, dtype=bool)
 
         # sets the plot button callback functions
         for pb in self.plot_but:
             cb_fcn = functools.partial(self.plot_button_clicked, pb.objectName())
             pb.clicked.connect(cb_fcn)
+
+    # ---------------------------------------------------------------------------
+    # PLot View Methods
+    # ---------------------------------------------------------------------------
+
+    def update_plot(self):
+
+        # field retrieval
+        t0 = np.array(range(self.get_field('n_pts')))
+        unit_type = np.array(self.get_field('unit_type'))
+        y_spike = np.array(self.get_field('y_spike_unit'))
+
+        # determines the unit configuration
+        i_unit = np.where(self.show_plt)[0]
+        n_unit = len(i_unit)
+        n_row, n_col = 2, 2
+        # n_row, n_col = self.get_plot_config(n_plt)
+
+        # deletes any existing plots
+        if not len(self.h_plot):
+            self.clear_current_plot()
+
+        # sets up the subplot regions
+        self.setup_subplots(n_r=n_row, n_c=n_col)
+
+        #
+        for i_sub, i_type in enumerate(i_unit):
+            # row/column indices
+            i_row, i_col = i_sub // n_col, i_sub % n_col
+
+            # trace plotting
+            is_unit = unit_type[:, 0] == i_type
+
+            # sets the waveform plot points
+            t_plt = np.matlib.repmat(t0, sum(is_unit), 1).flatten()
+            y_plt = y_spike[is_unit, :].flatten()
+
+            # sets up the connectivity array
+            c_arr = np.ones((sum(is_unit), len(t0)), dtype=np.ubyte)
+            c_arr[:, -1] = 0
+
+            # creates the unit traces
+            h_unit = arrayToQPath(t_plt, y_plt, c_arr.flatten())
+            h_item = QGraphicsPathItem(h_unit)
+            h_item.setPen(mkPen('g', width=1))
+
+            # plot title
+            t_str = '{0} Unit Waveforms'.format(self.unit_lbl[i_type])
+            self.h_plot[i_row, i_col].setTitle(t_str, size='20pt', bold=True)
+            self.h_plot[i_row, i_col].addItem(h_item)
+
+            # # zero plot line (optional?)
+            # self.h_plot[i_row, i_col].plot(t0[[0, -1]], np.zeros(2), pen='r')
+
+            # hides the plot axis
+            h_plt_item = self.h_plot[i_row, i_col].getPlotItem()
+            h_plt_item.hideAxis('left')
+            h_plt_item.hideAxis('bottom')
+
+    def clear_current_plot(self):
+
+        pass
 
     # ---------------------------------------------------------------------------
     # Plot Button Event Functions
@@ -84,5 +162,22 @@ class WaveFormPlot(PlotWidget):
         pass
 
     def hide_view(self):
+
+        pass
+
+    # ---------------------------------------------------------------------------
+    # Miscellaneous Methods
+    # ---------------------------------------------------------------------------
+
+    def get_field(self, p_fld):
+
+        return self.session_info.get_mem_map_field(p_fld)
+
+    # ---------------------------------------------------------------------------
+    # Static Methods
+    # ---------------------------------------------------------------------------
+
+    @staticmethod
+    def get_plot_config(n_plt):
 
         pass

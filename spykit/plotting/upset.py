@@ -387,7 +387,7 @@ class UpSetPlot(PlotWidget):
         pass
 
     # ---------------------------------------------------------------------------
-    # Static Methods
+    # Miscellaneous Methods
     # ---------------------------------------------------------------------------
 
     def get_field(self, p_fld):

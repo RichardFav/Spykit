@@ -708,10 +708,10 @@ class MainWindow(QMainWindow):
 
         # fixed plot view
         c_id = config_tab.obj_rconfig.c_id
-        c_id[:] = self.plot_manager.get_plot_index('upset')
+        # c_id[:] = self.plot_manager.get_plot_index('upset')
         # c_id[:] = self.plot_manager.get_plot_index('unithist')
         # c_id[:] = self.plot_manager.get_plot_index('unitmet')
-        # c_id[:] = self.plot_manager.get_plot_index('waveform')
+        c_id[:] = self.plot_manager.get_plot_index('waveform')
 
         # updates the grid plots
         self.plot_manager.update_plot_config(c_id)
