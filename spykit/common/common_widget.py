@@ -13,7 +13,7 @@ from pathlib import PosixPath
 from skimage.measure import label, regionprops
 
 #
-from pyqtgraph import ViewBox, RectROI, InfiniteLine, ColorMap, colormap
+from pyqtgraph import (ViewBox, RectROI, InfiniteLine, ColorMap, colormap, TextItem)
 
 # custom module import
 import spykit.common.common_func as cf
@@ -26,7 +26,7 @@ from PyQt6.QtWidgets import (QWidget, QHBoxLayout, QGridLayout, QVBoxLayout, QPu
                              QHeaderView, QStyleOptionButton, QTableWidgetItem, QProgressBar, QSpacerItem,
                              QStyledItemDelegate)
 from PyQt6.QtCore import (Qt, QRect, QRectF, QMimeData, pyqtSignal, QItemSelectionModel, QAbstractTableModel,
-                          QSizeF, QSize, QObject, QVariant, QTimeLine, QEvent)
+                          QSizeF, QSize, QObject, QVariant, QTimeLine, QEvent, QPoint, QPointF)
 from PyQt6.QtGui import (QFont, QDrag, QCursor, QStandardItemModel, QStandardItem, QPalette, QPixmap,
                          QTextDocument, QAbstractTextDocumentLayout, QIcon, QColor, QImage, QMouseEvent)
 
@@ -274,6 +274,7 @@ class QRegionConfig(QWidget):
         self.n_row = 1
         self.n_col = 1
         self.is_sel = None
+        self.is_show_lbl = False
         self.gbox_height = gbox_height
         self.tr_col = cf.get_colour_value('w')
 
@@ -337,7 +338,6 @@ class QRegionConfig(QWidget):
 
         # sets the label properties
         self.obj_lbl_combo.obj_lbl.setFixedWidth(80)
-        # self.obj_lbl_combo.obj_lbl.setStyleSheet("padding-top: 5px;")
         self.obj_lbl_combo.connect(self.combo_update_trace)
 
         # region config widget setup
@@ -472,6 +472,7 @@ class QRegionConfig(QWidget):
 
         if is_feas:
             # if feasible, then update the parameter fields and other properties
+            g_name = self.get_group_names()
             ind_sel = np.where(self.is_sel)
             for i_r, i_c in zip(ind_sel[0], ind_sel[1]):
                 # updates the id flags and
@@ -481,6 +482,9 @@ class QRegionConfig(QWidget):
                 # updates the widget stylesheet
                 g_col = self.p_col[self.c_id[i_r, i_c]]
                 self.set_grid_style_sheet(self.h_rgrid[i_reg], g_col)
+
+                # updates the tooltip string
+                self.h_rgrid[i_reg].setToolTip(g_name[self.i_trace])
 
             # flag that the plot widgets need updating
             self.config_reset.emit()
@@ -568,6 +572,11 @@ class QRegionConfig(QWidget):
 
     # MISCELLANEOUS FUNCTIONS -------------------------------------------------
 
+    def get_group_names(self):
+
+        c_box = self.obj_lbl_combo.obj_cbox
+        return np.array([c_box.itemText(i) for i in range(c_box.count())])
+
     def add_trace_item(self, p_item):
 
         a = 1
@@ -598,6 +607,7 @@ class QRegionConfig(QWidget):
         # retrieves the
         self.g_id[:] = 0
         self.h_rgrid = []
+        g_name = self.get_group_names()
         obj_ch = self.obj_gbox.findChildren(ClickableRegion)
         n_ch, n_reg = len(obj_ch), self.n_row * self.n_col
 
@@ -620,13 +630,15 @@ class QRegionConfig(QWidget):
                     # case is the grid needs to be created
                     h_grid = ClickableRegion(self, i_row, i_col)
                     h_grid.clicked.connect(self.mouse_clicked)
-                    h_grid.release.connect(self.mouse_released)
                     h_grid.leaving.connect(self.mouse_leaving)
+                    h_grid.release.connect(self.mouse_released)
                     h_grid.setSizePolicy(QSizePolicy(cf.q_exp, cf.q_exp))
 
                 # updates the widget stylesheet
-                g_col = self.p_col[self.c_id[i_row, i_col]]
+                c_id_g = self.c_id[i_row, i_col]
+                g_col = self.p_col[c_id_g]
                 self.set_grid_style_sheet(h_grid, g_col)
+                h_grid.setToolTip(g_name[c_id_g])
 
                 # appends the widget to the parent widget
                 self.gb_layout.addWidget(h_grid, i_row, i_col)
@@ -648,6 +660,7 @@ class QRegionConfig(QWidget):
             i_sel_add = np.logical_and(np.logical_not(self.is_sel), i_sel_nw)
 
             # updates the object names for the new regions
+            g_name = self.get_group_names()
             ind_rmv = np.where(i_sel_add)
             for i_row, i_col in zip(ind_rmv[0], ind_rmv[1]):
                 i_reg = self.get_region_index(i_row, i_col)
@@ -1431,6 +1444,7 @@ class FileDialogModal(QFileDialog):
 
 
 class ClickableRegion(QLabel):
+    # pyqtsignal functions
     clicked = pyqtSignal(int, int, bool)
     leaving = pyqtSignal(int, int)
     release = pyqtSignal()
@@ -1443,6 +1457,7 @@ class ClickableRegion(QLabel):
 
         self.setObjectName('normal')
         self.setAcceptDrops(True)
+        self.setMouseTracking(True)
         self.dragstart = None
 
     # MOUSE EVENT FUNCTIONS ---------------------------------------------------
@@ -1458,9 +1473,10 @@ class ClickableRegion(QLabel):
 
     def mouseMoveEvent(self, event):
 
+        m_pos = event.pos()
         if (self.dragstart is not None and
                 event.buttons() & Qt.MouseButton.LeftButton and
-                (event.pos() - self.dragstart).manhattanLength() >
+                (m_pos - self.dragstart).manhattanLength() >
                 QApplication.startDragDistance()):
             self.dragstart = None
             drag = QDrag(self)
@@ -1470,11 +1486,13 @@ class ClickableRegion(QLabel):
             self.release.emit()
 
     def dragEnterEvent(self, event):
+
         event.acceptProposedAction()
         if event.source() is not self:
             self.clicked.emit(self.i_row, self.i_col, False)
 
     def dragLeaveEvent(self, event):
+
         self.leaving.emit(self.i_row, self.i_col)
 
     # MISCELLANEOUS FUNCTIONS -------------------------------------------------

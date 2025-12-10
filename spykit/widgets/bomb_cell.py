@@ -192,6 +192,7 @@ class BombCellSoln(object):
         's_rate': 'sRate',
         'T_wform': 'TWForm',
         't_spike': 'tSpike',
+        'p_unit': 'pUnit',
 
         # quality metrics
         'q_hdr': 'Hdr',
@@ -734,17 +735,24 @@ class BombCellSolver(QDialog):
             pr_val = float(self.i_unit) / (2 * float(self.mmap['n_unit'][0]))
 
             # solver procedure specific updates
-            if (self.i_unit <= self.mmap['n_unit'][0]):
-                # case is extracting waveforms
-                pr_pref = 'Extracting Waveforms'
+            if (self.i_unit == 2 * self.mmap['n_unit'][0]):
+                # case is the solver has finished
+                pr_str = 'Finalising Solver Results...'
 
             else:
-                # case is quality metric calculations
-                pr_pref = 'Calculating Metrics'
-                i_unit_pr -= self.mmap['n_unit'][0]
+                if (self.i_unit <= self.mmap['n_unit'][0]):
+                    # case is extracting waveforms
+                    pr_pref = 'Extracting Waveforms'
 
-            # updates the progressbar
-            pr_str = '{0} ({1}/{2})'.format(pr_pref, i_unit_pr, self.mmap['n_unit'][0])
+                else:
+                    # case is quality metric calculations
+                    pr_pref = 'Calculating Metrics'
+                    i_unit_pr -= self.mmap['n_unit'][0]
+
+                # updates the progressbar
+                pr_str = '{0} ({1}/{2})'.format(pr_pref, i_unit_pr, self.mmap['n_unit'][0])
+
+            # updates the progressbar string/value
             self.prog_bar.update_prog_fields(pr_str, pr_val)
 
     def set_button_props(self, state, chk_para=False):

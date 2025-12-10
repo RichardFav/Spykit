@@ -126,6 +126,7 @@ class PostMemMap(QObject):
             ('s_rate', 'i4'),
             ('T_wform', 'f4', (1, n_pts)),
             ('t_spike', 'f4', (n_spike, 1)),
+            ('p_unit', 'f4', (n_unit, 2)),
 
             # case is quality metrics
             ('q_hdr', f'U{n_hdr_max}', (1, n_qual_met)),

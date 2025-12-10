@@ -50,6 +50,7 @@ class PostProcProps(PropWidget):
         self.tab_group_pp = cw.create_tab_group(self)
 
         # initialises the property tabs
+        self.init_class_fields()
         self.init_pp_fields()
         self.init_pp_group()
         self.init_pp_tabs()
@@ -57,6 +58,20 @@ class PostProcProps(PropWidget):
     # ---------------------------------------------------------------------------
     # Class Widget Setup Functions
     # ---------------------------------------------------------------------------
+
+    def init_class_fields(self):
+
+        # retrieves the memory mapped file names
+        m_files = self.main_obj.session_obj.get_mem_map_files(False)
+        self.m_name = [os.path.split(m_files[0, 0, x])[1] for x in range(m_files.shape[2])]
+
+        # creates the combobox
+        self.soln_combo = cw.QLabelCombo(
+            None, 'Solution Name: ', self.m_name, self.m_name[0], font_lbl=cw.font_lbl)
+        self.soln_combo.connect(self.combo_soln_name)
+        self.soln_combo.setEnabled(len(self.m_name) > 1)
+        self.soln_combo.setSizePolicy(QSizePolicy(cf.q_min, cf.q_max))
+        self.soln_combo.setContentsMargins(0, 5, 5, 5)
 
     def init_pp_fields(self):
 
@@ -72,6 +87,7 @@ class PostProcProps(PropWidget):
         # sets the property tab group properties
         self.pp_layout.setSpacing(0)
         self.pp_layout.setContentsMargins(x_gap_h, x_gap_h, x_gap_h, x_gap_h)
+        self.pp_layout.addWidget(self.soln_combo)
         self.pp_layout.addWidget(self.tab_group_pp)
 
         # sets up the slot function
@@ -97,5 +113,9 @@ class PostProcProps(PropWidget):
     # ---------------------------------------------------------------------------
 
     def tab_change_pp(self):
+
+        pass
+
+    def combo_soln_name(self):
 
         pass

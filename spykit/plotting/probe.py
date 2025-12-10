@@ -992,12 +992,12 @@ class ProbeView(GraphicsObject):
             self.out_line = PlotCurveItem(pen=self.l_pen_out)
             self.main_obj.addItem(self.out_line)
 
-            # sets the label properties
+            # sets the outline label properties
             self.out_label = TextItem(color=(0, 0, 0, 255), fill=(255, 255, 255, 255), ensureInBounds=True)
             self.out_label.setVisible(False)
             self.main_obj.addItem(self.out_label)
 
-            # sets the label properties
+            # sets the channel label properties
             self.ch_label = TextItem(color=(0, 0, 0, 255), fill=(255, 255, 255, 255), ensureInBounds=True)
             self.ch_label.setVisible(False)
             self.main_obj.addItem(self.ch_label)
