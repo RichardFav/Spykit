@@ -43,6 +43,7 @@ class SessionWorkBook(QObject):
     worker_job_started = pyqtSignal(str)
     worker_job_finished = pyqtSignal(str)
     prep_progress_update = pyqtSignal(str, float)
+    added_post_process = pyqtSignal(str)
 
     # array class fields
     c_hdr = ['', 'Keep?', 'Status', 'Channel ID', 'Contact ID', 'Channel Index', 'X-Coord', 'Y-Coord', 'Shank ID']
@@ -591,6 +592,10 @@ class SessionWorkBook(QObject):
     # Miscellaneous Functions
     # ---------------------------------------------------------------------------
 
+    def added_post_proc(self, mm_name):
+
+        self.added_post_process.emit(mm_name)
+
     def setup_mmap_files(self, mm_name):
 
         # sets up the memory mapped file names
@@ -678,6 +683,9 @@ class SessionWorkBook(QObject):
             _self.session_props = SessionProps(_probe_current)
             _self.post_data = PostProcessData()
             _self.session.load_sorting_para(_self)
+
+            # connects the signal functions
+            _self.post_data.added_pp.connect(_self.added_post_proc)
 
         else:
             # case is there is no session set (clearing session)
@@ -1234,8 +1242,13 @@ class SessionProps:
     PostProcessData: class to store the post-processing memory map files/objects
 """
 
-class PostProcessData:
+class PostProcessData(QObject):
+    # pyqtsignal functions
+    added_pp = pyqtSignal(str)
+
     def __init__(self):
+        # initialises the property widget
+        super(PostProcessData, self).__init__()
 
         # field initialisation
         self.mmap = []
@@ -1274,6 +1287,10 @@ class PostProcessData:
         # sets saved flag
         self.is_saved.append(is_save)
         self.i_mmap = len(self.mmap) - 1
+
+        # flag that a new process has been added
+        if not is_save:
+            self.added_pp.emit(self.mmap_name[-1])
 
     def remove_post_process(self, i_mmap_rmv):
 

@@ -43,11 +43,15 @@ class PostProcProps(PropWidget):
         self.main_obj = main_obj
 
         # widget layout setup
-        self.tabs = []
         self.pp_layout = QVBoxLayout()
 
         # tab class widget setup
         self.tab_group_pp = cw.create_tab_group(self)
+
+        # other class fields
+        self.tabs = []
+        self.mm_name = []
+        self.is_updating = False
 
         # initialises the property tabs
         self.init_class_fields()
@@ -61,17 +65,13 @@ class PostProcProps(PropWidget):
 
     def init_class_fields(self):
 
-        # retrieves the memory mapped file names
-        m_files = self.main_obj.session_obj.get_mem_map_files(False)
-        self.m_name = [os.path.split(m_files[0, 0, x])[1] for x in range(m_files.shape[2])]
+        # creates the combobox group
+        self.soln_combo = cw.QLabelCombo(None, 'Solution Name: ', None, None, font_lbl=cw.font_lbl)
 
         # creates the combobox
-        self.soln_combo = cw.QLabelCombo(
-            None, 'Solution Name: ', self.m_name, self.m_name[0], font_lbl=cw.font_lbl)
-        self.soln_combo.connect(self.combo_soln_name)
-        self.soln_combo.setEnabled(len(self.m_name) > 1)
         self.soln_combo.setSizePolicy(QSizePolicy(cf.q_min, cf.q_max))
         self.soln_combo.setContentsMargins(0, 5, 5, 5)
+        self.soln_combo.connect(self.combo_soln_name)
 
     def init_pp_fields(self):
 
@@ -108,6 +108,19 @@ class PostProcProps(PropWidget):
             # adds the tab to the tab group
             self.tab_group_pp.addTab(tab_widget, t_lbl)
 
+    def add_soln_file(self, mm_name_new):
+
+        # adds the solver solution file name
+        self.mm_name.append(mm_name_new)
+
+        # adds the new field to the combobox
+        self.is_updating = True
+        self.soln_combo.obj_cbox.addItem(mm_name_new)
+        self.is_updating = False
+
+        # updates the other properties
+        self.soln_combo.set_enabled(len(self.mm_name) > 1)
+
     # ---------------------------------------------------------------------------
     # Special Widget Event Functions
     # ---------------------------------------------------------------------------
@@ -116,6 +129,9 @@ class PostProcProps(PropWidget):
 
         pass
 
-    def combo_soln_name(self):
+    def combo_soln_name(self, h_edit):
 
-        pass
+        if self.is_updating:
+            return
+
+        a = 1

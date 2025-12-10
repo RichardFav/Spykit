@@ -140,6 +140,7 @@ class MainWindow(QMainWindow):
         self.session_obj.worker_job_started.connect(self.worker_job_started)
         self.session_obj.worker_job_finished.connect(self.worker_job_finished)
         self.session_obj.prep_progress_update.connect(self.prep_progress_update)
+        self.session_obj.added_post_process.connect(self.added_post_process)
 
     # ---------------------------------------------------------------------------
     # Calculation Signal Slot Functions
@@ -337,6 +338,12 @@ class MainWindow(QMainWindow):
         # stops the timeline widget
         self.info_manager.prog_widget.update_prog_message(m_str, pr_val)
 
+    def added_post_process(self, mm_name_new):
+
+        # retrieves the configuration tab object
+        post_tab = self.prop_manager.get_prop_tab('postprocess')
+        post_tab.add_soln_file(mm_name_new)
+
     # ---------------------------------------------------------------------------
     # Signal Slot Functions
     # ---------------------------------------------------------------------------
@@ -485,23 +492,19 @@ class MainWindow(QMainWindow):
     def run_postprocessing_worker(self, pp_obj):
 
         # initialisation and memory allocation
-        pmm_obj, bc_data, mm_file = pp_obj
+        pmm_obj, bc_data, self.mm_file_tmp = pp_obj
         self.n_pp = self.n_run_pp * self.n_shank_pp
-        mmap_pp = np.empty((self.n_run_pp, self.n_shank_pp), dtype=object)
+        self.mmap_pp_tmp = np.empty((self.n_run_pp, self.n_shank_pp), dtype=object)
 
         # sets up the memory mapped file names
         for i_run in range(self.n_run_pp):
             for i_shank in range(self.n_shank_pp):
                 # sets the memory mapping file name
                 self.pr_ofs = i_run * self.n_shank_pp + i_shank
-                pmm_obj.set_mmap_file(mm_file[i_run, i_shank])
+                pmm_obj.set_mmap_file(self.mm_file_tmp[i_run, i_shank])
 
                 # creates the memory map
-                mmap_pp[i_run, i_shank] = pmm_obj.write_mem_map(bc_data[i_run, i_shank])
-
-        # adds the memory mapping information to the session
-        self.session_obj.post_data.add_post_process(mm_file, mmap_pp)
-        self.menu_bar.set_menu_enabled_blocks('post-postprocess')
+                self.mmap_pp_tmp[i_run, i_shank] = pmm_obj.write_mem_map(bc_data[i_run, i_shank])
 
     def postprocessing_progress(self, i_fld, n_fld):
 
@@ -523,11 +526,14 @@ class MainWindow(QMainWindow):
         h_prog.lbl_obj.setText("File Output Complete")
         h_prog.lbl_obj.setToolTip("")
 
-        # adds the postprocessing tab
-        self.prop_manager.add_prop_tabs('postprocess')
-
         # resets the progressbar
         h_prog.set_progbar_state(False)
+        self.menu_bar.set_menu_enabled_blocks('post-postprocess')
+
+        # adds the postprocessing tab
+        self.prop_manager.add_prop_tabs('postprocess')
+        self.session_obj.post_data.add_post_process(self.mm_file_tmp, self.mmap_pp_tmp)
+        self.mm_file_tmp, self.mmap_pp_tmp = None, None
 
     def remove_temp_mem_maps(self):
 
@@ -1049,6 +1055,10 @@ class MenuBar(QObject):
             if mm_file is not None:
                 self.main_obj.session_obj.post_data.read_post_process(mm_file)
                 self.main_obj.prop_manager.add_prop_tabs(['postprocess'])
+
+                for i_mm in range(mm_file.shape[2]):
+                    mm_name = os.path.split(mm_file[0, 0, i_mm])[1]
+                    self.main_obj.added_post_process(mm_name)
 
             # resets the preprocessing configuration fields
             prep_info = self.main_obj.info_manager.get_info_tab('preprocess')
