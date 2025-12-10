@@ -82,15 +82,22 @@ class WaveFormPlot(PlotWidget):
         # determines the unit configuration
         i_unit = np.where(self.show_plt)[0]
         n_unit = len(i_unit)
-        n_row, n_col = 2, 2
-        # n_row, n_col = self.get_plot_config(n_plt)
+        n_row, n_col = self.get_plot_config(n_unit)
 
-        # deletes any existing plots
-        if not len(self.h_plot):
-            self.clear_current_plot()
+        # sets/clears the subplot regions
+        if len(self.h_plot):
+            # clears the subplots
+            if (n_row, n_col) == self.h_plot.shape:
+                # case is the configuration is the same (clear plots only)
+                self.clear_subplots()
+            else:
+                # case is config has changed (delete/re-setup plot vlews)
+                self.delete_subplots()
+                self.setup_subplots(n_r=n_row, n_c=n_col)
 
-        # sets up the subplot regions
-        self.setup_subplots(n_r=n_row, n_c=n_col)
+        else:
+            # sets up the subplots
+            self.setup_subplots(n_r=n_row, n_c=n_col)
 
         #
         for i_sub, i_type in enumerate(i_unit):
@@ -180,4 +187,11 @@ class WaveFormPlot(PlotWidget):
     @staticmethod
     def get_plot_config(n_plt):
 
-        pass
+        match n_plt:
+            case 1:
+                return 1, 1
+            case 2:
+                return 1, 2
+            case _:
+                return 2, int(np.ceil(n_plt / 2))
+

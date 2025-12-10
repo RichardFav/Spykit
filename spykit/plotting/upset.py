@@ -73,6 +73,7 @@ class UpSetPlot(PlotWidget):
         self.init_class_fields()
 
         # other class fields
+        self.has_plot = False
         # self.unit_type = 'MUA'
         self.unit_type = 'Noise'
         # self.unit_type = 'NonSoma'
@@ -106,6 +107,9 @@ class UpSetPlot(PlotWidget):
         # -----------------------------------------------------------------------
         # Pre-Calculations
         # -----------------------------------------------------------------------
+
+        # clears the plot data
+        self.clear_subplots()
 
         # field retrieval
         q_hdr = np.array(self.get_data_labels())
@@ -141,6 +145,7 @@ class UpSetPlot(PlotWidget):
         self.h_plot[0, 1].addItem(bar_int)
         self.h_plot[0, 1].setTitle(t_str, size='20pt', bold=True)
         self.v_box[0, 1].setYRange(0, n_count[0], padding=self.x_pad)
+        self.v_box[0, 1].setXRange(0, len(n_count))
 
         # sets the x-axis properties
         x_axis_int = self.plot_interact.getAxis('bottom')

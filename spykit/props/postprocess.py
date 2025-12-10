@@ -125,13 +125,12 @@ class PostProcProps(PropWidget):
     # Special Widget Event Functions
     # ---------------------------------------------------------------------------
 
-    def tab_change_pp(self):
+    def tab_change_pp(self, h_tab):
 
         pass
 
-    def combo_soln_name(self, h_edit):
+    def combo_soln_name(self, h_combo):
 
-        if self.is_updating:
-            return
-
-        a = 1
+        # resets the post-processing tabs/views
+        if not self.is_updating:
+            self.main_obj.post_process_change(h_combo.currentIndex())

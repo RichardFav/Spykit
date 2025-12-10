@@ -1255,7 +1255,7 @@ class PostProcessData(QObject):
         self.mmap_file = []
         self.mmap_name = []
         self.is_saved = []
-        self.i_mmap = None
+        self.i_mmap = 0
 
     def read_post_process(self, mm_file):
 
@@ -1286,7 +1286,6 @@ class PostProcessData(QObject):
 
         # sets saved flag
         self.is_saved.append(is_save)
-        self.i_mmap = len(self.mmap) - 1
 
         # flag that a new process has been added
         if not is_save:

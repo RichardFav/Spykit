@@ -176,6 +176,27 @@ class PropManager(QWidget):
 
         pass
 
+    def post_process_change(self, i_mmap):
+
+        # field retrieval
+        p_manager = self.main_obj.plot_manager
+
+        # updates the memory map index
+        self.main_obj.session_obj.post_data.set_mmap_index(i_mmap)
+
+        # updates the plot views (if being shown)
+        type_r = cf.reverse_dict(p_manager.types)
+        c_id = np.unique(self.get_prop_tab('config').obj_rconfig.c_id)
+        for id in c_id:
+            # updates the post-processing views (if currently views)
+            if (id in type_r) and (type_r[id] in p_manager.pp_views):
+                h_view = self.main_obj.plot_manager.get_plot_view(type_r[id])
+                h_view.update_plot()
+
+        # resets the parameter tab
+
+
+
     # ---------------------------------------------------------------------------
     # Property Parameter Get/Set Functions
     # --------------------------------------------------------------------------

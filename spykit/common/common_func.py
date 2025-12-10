@@ -522,3 +522,8 @@ def bool_perm_array(n):
 
     perm_iterator = itertools.product([False, True], repeat=n)
     return np.array(list(perm_iterator), dtype=bool)
+
+def reverse_dict(d):
+    """Reverses the key/values in the dictionary, d"""
+
+    return {v: k for k, v in d.items()}

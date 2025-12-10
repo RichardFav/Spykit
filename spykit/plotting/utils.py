@@ -40,6 +40,7 @@ class PlotManager(QWidget):
 
     # array class fields
     prop_views = ['trace', 'trigger', 'post']
+    pp_views = ['unitmet', 'unithist', 'waveform', 'upset']
 
     # parameters
     eps = 1e-6
@@ -630,7 +631,17 @@ class PlotWidget(QWidget):
             self.v_box = self.v_box[0, 0]
             self.h_plot = self.h_plot[0, 0]
 
-    # ---------------------------------------------------------------------------
+    def clear_subplots(self):
+
+        for hp in self.h_plot.flatten():
+            hp.clear()
+
+    def delete_subplots(self):
+
+        for hp in self.h_plot.flatten():
+            hp.deleteLater()
+
+                # ---------------------------------------------------------------------------
     # Widget Event Functions
     # ---------------------------------------------------------------------------
 
