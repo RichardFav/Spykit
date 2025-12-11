@@ -12,6 +12,7 @@ import spykit.common.common_widget as cw
 from PyQt6.QtWidgets import (QWidget, QLineEdit, QComboBox, QCheckBox, QPushButton, QSizePolicy, QVBoxLayout, QGroupBox,
                              QHBoxLayout, QFormLayout, QGridLayout, QColorDialog, QTableWidget, QTableWidgetItem)
 from PyQt6.QtCore import Qt, QObject, pyqtSignal
+from PyQt6.QtGui import QStandardItem
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -135,9 +136,14 @@ class PropManager(QWidget):
 
                 case 'postprocess':
                     # sets the plot views
+                    pp_tab = self.main_obj.prop_manager.get_prop_tab('postprocess')
                     for pf in tab_widget.plot_views:
                         self.main_obj.prop_manager.add_config_view(pt.prop_names[pf])
                         self.main_obj.plot_manager.add_plot_view(pf, show_plot=False)
+
+                        # sets the property tab plot views
+                        p_view = self.main_obj.plot_manager.get_plot_view(pf)
+                        pp_tab.set_plot_view(pf, p_view)
 
                     # resets the plot configuration
                     self.update_config()
@@ -180,6 +186,7 @@ class PropManager(QWidget):
 
         # field retrieval
         p_manager = self.main_obj.plot_manager
+        pp_prop = self.main_obj.prop_manager.get_prop_tab('postprocess')
 
         # updates the memory map index
         self.main_obj.session_obj.post_data.set_mmap_index(i_mmap)
@@ -192,6 +199,11 @@ class PropManager(QWidget):
             if (id in type_r) and (type_r[id] in p_manager.pp_views):
                 h_view = self.main_obj.plot_manager.get_plot_view(type_r[id])
                 h_view.update_plot()
+
+                match type_r[id]:
+                    case 'waveform':
+                        # case is the waveform plot
+                        pp_prop.get_tab_view(type_r[id]).post_process_change()
 
         # resets the parameter tab
 
@@ -356,6 +368,10 @@ class PropManager(QWidget):
                 # case is a combobox parameter
                 p_tab.findChild(QComboBox, name=p_name).setCurrentText(p_val)
 
+            case 'checklist':
+                # case is a checlist parameter
+                p_tab.findChild(QComboBox, name=p_name).setCurrentText(p_val)
+
             case 'edit':
                 # case is a line edit parameter
                 para_obj = p_tab.findChild(QLineEdit, name=p_name)
@@ -453,7 +469,7 @@ class PropPara(QObject):
 
 class PropWidget(QWidget):
     # widget dimensions
-    lbl_width = 160
+    lbl_width = 150
 
     def __init__(self, main_obj, p_type, p_info, f_layout=None):
         super(PropWidget, self).__init__()
@@ -526,6 +542,9 @@ class PropWidget(QWidget):
         # case is a widget type is not provided
         if isinstance(h_widget, QLineEdit):
             self.edit_para_update(h_widget)
+
+        elif isinstance(h_widget, cw.QCheckCombo):
+            self.checkcombo_para_update(h_widget)
 
         elif isinstance(h_widget, QComboBox):
             self.combobox_para_update(h_widget)
@@ -606,6 +625,19 @@ class PropWidget(QWidget):
         # field retrieval
         p_str = h_button.objectName()
         nw_val = (getattr(self.p_props, p_str) + 1) % 2
+
+        # updates the parameter field
+        self.set(p_str, nw_val)
+
+    def checkcombo_para_update(self, h_combo):
+
+        # if manually updating elsewhere, then exit
+        if self.is_updating:
+            return
+
+        # field retrieval
+        p_str = h_combo.objectName()
+        nw_val = h_combo.get_selected_states()
 
         # updates the parameter field
         self.set(p_str, nw_val)
@@ -716,6 +748,29 @@ class PropWidget(QWidget):
                     # case is another layout type
                     obj_lblcombo.obj_lbl.setFixedWidth(self.lbl_width)
                     layout.addRow(obj_lblcombo)
+
+            case 'checklist':
+                # case is a checklist combobox
+
+                # creates the label/combobox widget combo
+                lbl_str = '{0}: '.format(ps['name'])
+                obj_chklist = cw.QLabelCheckCombo(None, lbl_str, ps['p_list'], index_on=ps['value'],
+                                                  name=p_name, font=cw.font_lbl)
+
+                for lbl, is_on in zip(ps['p_list'], ps['value']):
+                    obj_chklist.add_item(lbl, is_on)
+
+                obj_chklist.checklist_change.connect(cb_fcn)
+
+                if isinstance(layout, QGridLayout):
+                    # case is adding to a QGridlayout
+                    layout.addWidget(obj_chklist.h_lbl, i_row, 0, 1, 1)
+                    layout.addWidget(obj_chklist.h_combo, i_row, 1, 1, 2)
+
+                else:
+                    # case is another layout type
+                    obj_chklist.h_lbl.setFixedWidth(self.lbl_width)
+                    layout.addRow(obj_chklist)
 
             case 'checkbox':
                 # case is a checkbox

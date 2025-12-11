@@ -82,9 +82,14 @@ class WaveFormPlot(PlotWidget):
         # determines the unit configuration
         i_unit = np.where(self.show_plt)[0]
         n_unit = len(i_unit)
-        n_row, n_col = self.get_plot_config(n_unit)
+
+        # if no units are selected, then delete the subplots and exit
+        if n_unit == 0:
+            self.delete_subplots()
+            return
 
         # sets/clears the subplot regions
+        n_row, n_col = self.get_plot_config(n_unit)
         if len(self.h_plot):
             # clears the subplots
             if (n_row, n_col) == self.h_plot.shape:
@@ -99,10 +104,19 @@ class WaveFormPlot(PlotWidget):
             # sets up the subplots
             self.setup_subplots(n_r=n_row, n_c=n_col)
 
-        #
+        if not isinstance(self.h_plot, np.ndarray):
+            self.h_plot = np.array(self.h_plot).reshape(1, -1)
+
+        # hides the extransoue subplots
+        for i_sub in range(len(i_unit), n_row * n_col):
+            i_row, i_col = i_sub // n_col, i_sub % n_col
+            self.h_plot[i_row, i_col].hide()
+
+        # creates the waveform subplots
         for i_sub, i_type in enumerate(i_unit):
             # row/column indices
             i_row, i_col = i_sub // n_col, i_sub % n_col
+            self.h_plot[i_row, i_col].show()
 
             # trace plotting
             is_unit = unit_type[:, 0] == i_type
@@ -121,9 +135,12 @@ class WaveFormPlot(PlotWidget):
             h_item.setPen(mkPen('g', width=1))
 
             # plot title
-            t_str = '{0} Unit Waveforms'.format(self.unit_lbl[i_type])
-            self.h_plot[i_row, i_col].setTitle(t_str, size='20pt', bold=True)
-            self.h_plot[i_row, i_col].addItem(h_item)
+            try:
+                t_str = '{0} Unit Waveforms'.format(self.unit_lbl[i_type])
+                self.h_plot[i_row, i_col].setTitle(t_str, size='20pt', bold=True)
+                self.h_plot[i_row, i_col].addItem(h_item)
+            except:
+                a = 1
 
             # # zero plot line (optional?)
             # self.h_plot[i_row, i_col].plot(t0[[0, -1]], np.zeros(2), pen='r')
@@ -195,3 +212,13 @@ class WaveFormPlot(PlotWidget):
             case _:
                 return 2, int(np.ceil(n_plt / 2))
 
+    # ---------------------------------------------------------------------------
+    # Static Methods
+    # ---------------------------------------------------------------------------
+
+    @staticmethod
+    def update_para(_self):
+        _self.update_plot()
+
+    # trace property observer properties
+    show_plt = cf.ObservableProperty(update_para)

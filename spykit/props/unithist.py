@@ -77,3 +77,11 @@ class UnitHistProps(PropWidget):
 
         # updates the class field
         self.p_info = {'name': 'Histograms', 'type': 'v_panel', 'ch_fld': p_tmp}
+
+   # ---------------------------------------------------------------------------
+    # Miscellaneous Functions
+    # ---------------------------------------------------------------------------
+
+    def set_plot_view(self, plot_view_new):
+
+        self.plot_view = plot_view_new

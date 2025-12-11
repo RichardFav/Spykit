@@ -127,6 +127,8 @@ class ObservableProperty:
     def __set__(self, instance, new_value):
         if isinstance(new_value, np.memmap):
             is_update = True
+        elif isinstance(new_value, np.ndarray):
+            is_update = not np.array_equal(new_value, self._value)
         else:
             is_update = new_value != self._value
 

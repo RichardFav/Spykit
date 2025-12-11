@@ -635,6 +635,7 @@ class PlotWidget(QWidget):
 
         for hp in self.h_plot.flatten():
             hp.clear()
+            hp.setTitle(None)
 
     def delete_subplots(self):
 

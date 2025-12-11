@@ -104,6 +104,7 @@ class PostProcProps(PropWidget):
             t_lbl = pt.prop_names[pf]
             tab_constructor = pt.prop_types[pf]
             tab_widget = tab_constructor(self)
+            self.tabs.append(tab_widget)
 
             # adds the tab to the tab group
             self.tab_group_pp.addTab(tab_widget, t_lbl)
@@ -122,6 +123,14 @@ class PostProcProps(PropWidget):
         self.soln_combo.set_enabled(len(self.mm_name) > 1)
 
     # ---------------------------------------------------------------------------
+    # View Specific Functions
+    # ---------------------------------------------------------------------------
+
+    def reset_waveform_info(self):
+
+        a = 1
+
+    # ---------------------------------------------------------------------------
     # Special Widget Event Functions
     # ---------------------------------------------------------------------------
 
@@ -134,3 +143,20 @@ class PostProcProps(PropWidget):
         # resets the post-processing tabs/views
         if not self.is_updating:
             self.main_obj.post_process_change(h_combo.currentIndex())
+
+    # ---------------------------------------------------------------------------
+    # Miscellaneous Functions
+    # ---------------------------------------------------------------------------
+
+    def set_plot_view(self, p_type, p_view):
+
+        p_tab = self.tabs[self.plot_views.index(p_type)]
+        p_tab.set_plot_view(p_view)
+
+    def get_tab_view(self, p_type):
+
+        return self.tabs[self.plot_views.index(p_type)]
+
+    def get_field(self, p_fld):
+
+        return self.main_obj.main_obj.session_obj.get_mem_map_field(p_fld)

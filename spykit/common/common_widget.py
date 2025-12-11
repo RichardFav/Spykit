@@ -2185,6 +2185,117 @@ class QLabelCombo(QWidget):
         for t in items:
             self.addItem(t)
 
+# ----------------------------------------------------------------------------------------------------------------------
+
+"""
+    QLabelChecklist:
+"""
+
+
+class QLabelChecklist(QWidget):
+    def __init__(self, parent=None, lbl_str=None, list_str=None, index_on=None, font_lbl=None, name=None):
+        super(QLabelChecklist, self).__init__(parent)
+
+        if name is not None:
+            self.setObjectName(name)
+
+        # boolean class fields
+        self.is_connected = False
+
+        # creates the layout widget
+        self.layout = QHBoxLayout()
+        self.layout.setSpacing(1)
+        self.layout.setContentsMargins(0, 0, 0, 0)
+        self.setLayout(self.layout)
+
+        # creates the label/combobox widget combo
+        self.obj_lbl = create_text_label(None, lbl_str, font=font_lbl)
+        self.obj_cbox = QCheckListCombo(None, list_str, index_on, name=name)
+
+        self.layout.addWidget(self.obj_lbl)
+        self.layout.addWidget(self.obj_cbox)
+
+        # sets up the label properties
+        self.obj_lbl.adjustSize()
+        self.obj_lbl.setContentsMargins(0, 4, 0, 0)
+
+        # sets up the slot function
+        self.obj_cbox.setFixedHeight(cf.combo_height)
+        self.obj_cbox.setStyleSheet(combo_style_sheet)
+
+    def connect(self, cb_fcn, add_widget=True):
+
+        if self.is_connected:
+            return
+
+        elif add_widget:
+            cb_fcn = functools.partial(cb_fcn, self.obj_cbox)
+
+        self.is_connected = True
+        self.obj_cbox.currentIndexChanged.connect(cb_fcn)
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+"""
+    QCheckListCombo:
+"""
+
+class QCheckListCombo(QComboBox):
+    # pyqtsignal functions
+    item_clicked = pyqtSignal(QStandardItem)
+
+    def __init__(self, parent=None, list_str=None, index_on=None, name=None):
+        super(QCheckListCombo, self).__init__(parent)
+
+        if name is not None:
+            self.setObjectName(name)
+
+        # sets the combobox properties
+        self.setEditable(True)
+        self.lineEdit().setReadOnly(True)
+
+        # sets up the combobox model
+        self.combo_model = QStandardItemModel(self)
+        self.combo_model.itemChanged.connect(self.item_click)
+
+        #
+        self.setModel(self.combo_model)
+        self.setFixedHeight(cf.combo_height)
+        self.setStyleSheet(combo_style_sheet)
+
+        if (list_str is not None) and (index_on is not None):
+            for lbl, is_on in zip(list_str, index_on):
+                self.add_item(lbl, is_on)
+
+    def add_item(self, text, state=False):
+
+        # creates the combobox item
+        item = QStandardItem(text)
+        item.setFlags(Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
+        item.setData(Qt.CheckState.Checked if state else Qt.CheckState.Unchecked, Qt.ItemDataRole.CheckStateRole)
+
+        # item.setCheckState(Qt.CheckState.Unchecked)
+        item.setCheckState(Qt.CheckState.Checked if state else Qt.CheckState.Unchecked)
+
+        # appends the row to the model
+        self.combo_model.appendRow(item)
+
+    def get_checked(self):
+
+        # memory allocation
+        ind_checked = []
+
+        # stores the indices of the checked items
+        for i in range(self.combo_model.rowCount()):
+            if self.combo_model.item(i).checkState() == Qt.Checked:
+                ind_checked.append(i)
+
+        # returns the index array
+        return ind_checked
+
+    def item_click(self):
+
+        self.item_clicked.emit()
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -2260,6 +2371,16 @@ class QCheckCombo(QComboBox):
 
         return s_list
 
+    def get_selected_states(self):
+
+        s_list = np.zeros(self.n_item, dtype=bool)
+
+        for i in range(self.n_item):
+            item = self.combo_model.item(i)
+            s_list[i] = item.checkState() == Qt.CheckState.Checked
+
+        return s_list
+
     def add_item(self, t, state=False):
 
         # adds the item to the combobox
@@ -2320,6 +2441,7 @@ class QCheckCombo(QComboBox):
 class QLabelCheckCombo(QWidget):
     # pyqtsignal functions
     item_clicked = pyqtSignal(QStandardItem)
+    checklist_change = pyqtSignal(QCheckCombo)
 
     def __init__(self, parent=None, lbl=None, text=None, index_on=None, font=None, name=None):
         super(QLabelCheckCombo, self).__init__(parent)
@@ -2346,7 +2468,9 @@ class QLabelCheckCombo(QWidget):
         # creates the checkbox object
         self.h_combo = QCheckCombo(self)
         self.h_combo.item_clicked.connect(self.check_update)
-        self.h_combo.setStyleSheet(combo_style_sheet)
+
+        if name is not None:
+            self.h_combo.setObjectName(name)
 
         # adds the widgets to the layout
         self.layout.addWidget(self.h_lbl)
@@ -2360,6 +2484,7 @@ class QLabelCheckCombo(QWidget):
 
     def check_update(self, item):
         self.item_clicked.emit(item)
+        self.checklist_change.emit(self.h_combo)
 
     def setEnabled(self, state):
         self.h_lbl.setEnabled(state)

@@ -399,6 +399,10 @@ class UpSetPlot(PlotWidget):
 
         return self.session_info.get_mem_map_field(p_fld)
 
+    def set_plot_view(self, plot_view_new):
+
+        self.plot_view = plot_view_new
+
     # ---------------------------------------------------------------------------
     # Static Methods
     # ---------------------------------------------------------------------------
