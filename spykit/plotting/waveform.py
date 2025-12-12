@@ -41,15 +41,15 @@ class WaveFormPlot(PlotWidget):
         s_props = self.session_info.session_props
 
         # other class fields
-        self.has_plot = False
         self.is_init = True
+        self.has_plot = False
         self.tr_col = cf.get_colour_value('g')
 
         # initialises the other class fields
         self.init_class_fields()
         self.update_plot()
 
-        # resets the
+        # resets the initialisation flag
         self.is_init = False
 
     # ---------------------------------------------------------------------------
@@ -199,10 +199,6 @@ class WaveFormPlot(PlotWidget):
 
         return self.session_info.get_mem_map_field(p_fld)
 
-    # ---------------------------------------------------------------------------
-    # Static Methods
-    # ---------------------------------------------------------------------------
-
     @staticmethod
     def get_plot_config(n_plt):
 
@@ -215,7 +211,7 @@ class WaveFormPlot(PlotWidget):
                 return 2, int(np.ceil(n_plt / 2))
 
     # ---------------------------------------------------------------------------
-    # Static Methods
+    # Parameter Field Update Methods
     # ---------------------------------------------------------------------------
 
     @staticmethod

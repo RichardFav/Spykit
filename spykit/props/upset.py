@@ -104,7 +104,7 @@ class UpSetProps(PropWidget):
 
         # sets up the subgroup fields
         p_tmp = {
-            'unit_type': self.create_para_field('Unit Type', 'combobox', unit_lbl[0], p_list=unit_lbl),
+            'unit_type': self.create_para_field('Display Unit Type', 'combobox', unit_lbl[0], p_list=unit_lbl),
             'show_grid': self.create_para_field('Show Plot Gridlines', 'checkbox', True),
             # 'sig_type': self.create_para_field('Signal Type', 'combobox', self.sig_list[0], p_list=self.sig_list),
             # 't_start': self.create_para_field('Start Time (s)', 'edit', 0),

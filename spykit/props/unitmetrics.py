@@ -40,7 +40,14 @@ class UnitMetricPara(PropPara):
     # Observable Property Event Callbacks
     # ---------------------------------------------------------------------------
 
+    @staticmethod
+    def _check_update(p_str, _self):
 
+        if not _self.is_updating:
+            _self.check_update.emit(p_str)
+
+    # trace property observer properties
+    show_grid = cf.ObservableProperty(pfcn(_check_update, 'show_grid'))
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -51,7 +58,7 @@ class UnitMetricPara(PropPara):
 
 class UnitMetricProps(PropWidget):
     # field properties
-    type = 'unit'
+    type = 'unitmet'
 
     def __init__(self, main_obj):
         # sets the input arguments
@@ -68,15 +75,19 @@ class UnitMetricProps(PropWidget):
 
         # sets up the subgroup fields
         p_tmp = {
-
-            # 'sig_type': self.create_para_field('Signal Type', 'combobox', self.sig_list[0], p_list=self.sig_list),
-            # 't_start': self.create_para_field('Start Time (s)', 'edit', 0),
-            # 'scale_signal': self.create_para_field('Scale Signals', 'checkbox', True),
-            # 'c_map': self.create_para_field('Colormap', 'colormapchooser', 'RdBu'),
+            'show_grid': self.create_para_field('Show Plot Gridlines', 'checkbox', True),
         }
 
         # updates the class field
         self.p_info = {'name': 'Metrics', 'type': 'v_panel', 'ch_fld': p_tmp}
+
+    # ---------------------------------------------------------------------------
+    # Parameter Update Event Functions
+    # ---------------------------------------------------------------------------
+
+    def check_update(self, p_str):
+
+        pass
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions

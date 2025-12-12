@@ -35,8 +35,16 @@ class UnitHistPlot(PlotWidget):
         self.session_info = session_info
         s_props = self.session_info.session_props
 
+        # other class fields
+        self.is_init = True
+        self.show_met = True
+
         # initialises the other class fields
         self.init_class_fields()
+        self.update_plot()
+
+        # resets the initialisation flag
+        self.is_init = False
 
     # ---------------------------------------------------------------------------
     # Class Widget Setup Functions
@@ -96,6 +104,20 @@ class UnitHistPlot(PlotWidget):
     # Miscellaneous Functions
     # ---------------------------------------------------------------------------
 
-    def set_plot_view(self, plot_view_new):
+    def get_field(self, p_fld):
 
-        self.plot_view = plot_view_new
+        return self.session_info.get_mem_map_field(p_fld)
+
+    # ---------------------------------------------------------------------------
+    # Parameter Field Update Methods
+    # ---------------------------------------------------------------------------
+
+    @staticmethod
+    def update_para(_self):
+        if _self.is_init:
+            return
+
+        _self.update_plot()
+
+    # trace property observer properties
+    hist_type = cf.ObservableProperty(update_para)

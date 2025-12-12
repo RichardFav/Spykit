@@ -110,15 +110,15 @@ class WaveFormProps(PropWidget):
     def setup_prop_fields(self):
 
         # field retrieval
-        tr_col0 = cf.get_colour_value('g')
         unit_lbl = self.get_unit_label()
+        tr_col0 = cf.get_colour_value('g')
         show_unit = np.ones(len(unit_lbl), dtype=bool)
 
         # sets up the subgroup fields
         p_tmp = {
-            'unit_type': self.create_para_field('Unit Type', 'checklist', show_unit, p_list=unit_lbl),
+            'unit_type': self.create_para_field('Waveform Unit Type', 'checklist', show_unit, p_list=unit_lbl),
+            'tr_col': self.create_para_field('Plot Trace Colour', 'colorpick', tr_col0),
             'show_grid': self.create_para_field('Show Plot Gridlines', 'checkbox', True),
-            'tr_col': self.create_para_field('Trace Colour', 'colorpick', tr_col0),
             # 'sig_type': self.create_para_field('Signal Type', 'combobox', self.sig_list[0], p_list=self.sig_list),
             # 't_start': self.create_para_field('Start Time (s)', 'edit', 0),
             # 'scale_signal': self.create_para_field('Scale Signals', 'checkbox', True),

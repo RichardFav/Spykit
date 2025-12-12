@@ -218,6 +218,30 @@ cmap = {
     ],
 }
 
+# histogram metric types
+hist_map = {
+    'nPeaks': 'Peak Count',
+    'nTroughs': 'Trough Count',
+    'scndPeakToTroughRatio': '2nd Peak/Trough Ratio',
+    'peak1ToPeak2Ratio': 'Peak-to-Peak Ratio',
+    'mainPeakToTroughRatio': 'Main Peak/Trough Ratio',
+    'fractionRPVs_estimatedTauR': '% Estimated RPV',
+    'RPV_tauR_estimate': 'RPV tauR Estimate',
+    'percentageSpikesMissing_gaussian': '% Spike Missing (Gauss)',
+    'percentageSpikesMissing_symmetric': '% Spike Missing (Sym)',
+    'nSpikes': 'Spike Count',
+    'rawAmplitude': 'Raw Amplitude',
+    'spatialDecaySlope': 'Spatial Decay',
+    'waveformDuration_peakTrough': 'Duration',
+    'waveformBaselineFlatness': 'Baseline Flatness',
+    'presenceRatio': 'Presence Ratio',
+    'signalToNoiseRatio': 'SNR',
+    'maxDriftEstimate': 'Max Drift',
+    'cumDriftEstimate': 'Cumulative Drift',
+    'isoD': 'Isolation Distance',
+    'Lratio': 'L-Ratio'
+}
+
 # widget dimensions
 x_gap = 5
 row_height = 16.5

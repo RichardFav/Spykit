@@ -30,7 +30,7 @@ x_gap_h = 2
 class PostProcProps(PropWidget):
     # field properties
     type = 'postprocess'
-    plot_views = ['unitmet', 'unithist', 'waveform', 'upset']
+    plot_views = ['waveform', 'upset', 'unitmet', 'unithist']
 
     # widget dimensions
     dx_gap = 15
