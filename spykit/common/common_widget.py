@@ -2026,7 +2026,8 @@ class QLabelButton(QWidget):
 
         # sets up the label properties
         self.obj_lbl.adjustSize()
-        self.obj_lbl.setStyleSheet("padding-top: 3 px;")
+        # self.obj_lbl.setStyleSheet("padding-top: 3 px;")
+        self.obj_lbl.setContentsMargins(0, 4, 0, 0)
 
         # sets up the editbox properties
         self.obj_but.setFixedHeight(cf.but_height)

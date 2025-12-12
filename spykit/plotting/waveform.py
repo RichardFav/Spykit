@@ -42,10 +42,15 @@ class WaveFormPlot(PlotWidget):
 
         # other class fields
         self.has_plot = False
+        self.is_init = True
+        self.tr_col = cf.get_colour_value('g')
 
         # initialises the other class fields
         self.init_class_fields()
         self.update_plot()
+
+        # resets the
+        self.is_init = False
 
     # ---------------------------------------------------------------------------
     # Class Widget Setup Functions
@@ -132,15 +137,12 @@ class WaveFormPlot(PlotWidget):
             # creates the unit traces
             h_unit = arrayToQPath(t_plt, y_plt, c_arr.flatten())
             h_item = QGraphicsPathItem(h_unit)
-            h_item.setPen(mkPen('g', width=1))
+            h_item.setPen(mkPen(self.tr_col, width=1))
 
             # plot title
-            try:
-                t_str = '{0} Unit Waveforms'.format(self.unit_lbl[i_type])
-                self.h_plot[i_row, i_col].setTitle(t_str, size='20pt', bold=True)
-                self.h_plot[i_row, i_col].addItem(h_item)
-            except:
-                a = 1
+            t_str = '{0} Unit Waveforms'.format(self.unit_lbl[i_type])
+            self.h_plot[i_row, i_col].setTitle(t_str, size='20pt', bold=True)
+            self.h_plot[i_row, i_col].addItem(h_item)
 
             # # zero plot line (optional?)
             # self.h_plot[i_row, i_col].plot(t0[[0, -1]], np.zeros(2), pen='r')
@@ -218,7 +220,11 @@ class WaveFormPlot(PlotWidget):
 
     @staticmethod
     def update_para(_self):
+        if _self.is_init:
+            return
+
         _self.update_plot()
 
     # trace property observer properties
     show_plt = cf.ObservableProperty(update_para)
+    tr_col = cf.ObservableProperty(update_para)

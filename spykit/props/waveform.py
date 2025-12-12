@@ -30,6 +30,7 @@ class WaveFormPara(PropPara):
     edit_update = pyqtSignal(str)
     check_update = pyqtSignal(str)
     checklist_update = pyqtSignal(str)
+    colorpick_update = pyqtSignal(str)
 
     def __init__(self, p_info):
 
@@ -49,12 +50,6 @@ class WaveFormPara(PropPara):
             _self.combo_update.emit(p_str)
 
     @staticmethod
-    def _edit_update(p_str, _self):
-
-        if not _self.is_updating:
-            _self.edit_update.emit(p_str)
-
-    @staticmethod
     def _check_update(p_str, _self):
 
         if not _self.is_updating:
@@ -66,9 +61,16 @@ class WaveFormPara(PropPara):
         if not _self.is_updating:
             _self.checklist_update.emit(p_str)
 
+    @staticmethod
+    def _colorpick_update(p_str, _self):
+
+        if not _self.is_updating:
+            _self.colorpick_update.emit(p_str)
+
     # trace property observer properties
     unit_type = cf.ObservableProperty(pfcn(_checklist_update, 'unit_type'))
     show_grid = cf.ObservableProperty(pfcn(_check_update, 'show_grid'))
+    tr_col = cf.ObservableProperty(pfcn(_colorpick_update, 'tr_col'))
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -103,10 +105,12 @@ class WaveFormProps(PropWidget):
         self.p_props.combo_update.connect(self.combo_update)
         self.p_props.check_update.connect(self.check_update)
         self.p_props.checklist_update.connect(self.checklist_update)
+        self.p_props.colorpick_update.connect(self.colorpick_update)
 
     def setup_prop_fields(self):
 
         # field retrieval
+        tr_col0 = cf.get_colour_value('g')
         unit_lbl = self.get_unit_label()
         show_unit = np.ones(len(unit_lbl), dtype=bool)
 
@@ -114,6 +118,7 @@ class WaveFormProps(PropWidget):
         p_tmp = {
             'unit_type': self.create_para_field('Unit Type', 'checklist', show_unit, p_list=unit_lbl),
             'show_grid': self.create_para_field('Show Plot Gridlines', 'checkbox', True),
+            'tr_col': self.create_para_field('Trace Colour', 'colorpick', tr_col0),
             # 'sig_type': self.create_para_field('Signal Type', 'combobox', self.sig_list[0], p_list=self.sig_list),
             # 't_start': self.create_para_field('Start Time (s)', 'edit', 0),
             # 'scale_signal': self.create_para_field('Scale Signals', 'checkbox', True),
@@ -145,6 +150,13 @@ class WaveFormProps(PropWidget):
             case 'unit_type':
                 # case is updating the unit type
                 self.plot_view.show_plt = getattr(self.p_props, p_str)
+
+    def colorpick_update(self, p_str):
+
+        match p_str:
+            case 'tr_col':
+                # case is updating the unit type
+                self.plot_view.tr_col = getattr(self.p_props, p_str)
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Methods
