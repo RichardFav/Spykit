@@ -225,11 +225,17 @@ class MainWindow(QMainWindow):
         # sets up the channel information dataframe
         p_dframe = self.session_obj.get_info_data_frame()
 
+        # sets the table column header (removes last column if single shank)
+        c_hdr_ch = deepcopy(self.session_obj.c_hdr_ch)
+        if self.session_obj.get_shank_count() == 1:
+            c_hdr_ch = c_hdr_ch[:-1]
+            p_dframe = p_dframe.drop(columns=['shank_ids'])
+
         # creates the table model
-        self.info_manager.setup_info_table(p_dframe, 'Channel', self.session_obj.c_hdr_ch)
+        self.info_manager.setup_info_table(p_dframe, 'Channel', c_hdr_ch)
         self.info_manager.init_channel_comboboxes()
 
-        # appends the channel status flags (if available)
+        # appends the channel status\\\\\\\\\\\\\\\\\\ flags (if available)
         if self.session_obj.session.bad_ch is not None:
             if not np.any([x is None for x in self.session_obj.session.bad_ch]):
                 self.bad_channel_change()

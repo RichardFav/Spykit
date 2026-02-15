@@ -540,7 +540,7 @@ class InfoManager(QWidget):
         # sets the table header view
         table_obj.setHorizontalHeaderLabels(c_hdr)
 
-        for i_col in range(data.shape[1]):
+        for i_col in range(len(c_hdr)):
             # updates the table header font
             table_obj.horizontalHeaderItem(i_col).setFont(self.table_hdr_font)
 
@@ -573,7 +573,7 @@ class InfoManager(QWidget):
         table_obj.horizontalHeader().setSortIndicator(3, Qt.SortOrder.AscendingOrder)
         # table_obj.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
         # table_obj.resizeRowsToContents()
-        # table_obj.resizeColumnsToContents()
+        table_obj.resizeColumnsToContents()
 
         # sets the checkbox callback function
         if not self.table_fcn_set:
@@ -832,7 +832,6 @@ class InfoManager(QWidget):
 class InfoWidget(QWidget):
     # widget dimensions
     x_gap = 5
-    hght_row = 25
 
     def __init__(self, t_lbl, main_obj, layout=QVBoxLayout):
         super(InfoWidget, self).__init__()
@@ -842,6 +841,7 @@ class InfoWidget(QWidget):
         self.undock_obj = None
         self.t_lbl = t_lbl
         self.main_obj = main_obj
+        self.use_chk = False
 
         # field retrieval
         self.tab_layout = layout(self)
@@ -850,32 +850,12 @@ class InfoWidget(QWidget):
 
     def create_table_widget(self, use_chk=True):
 
-        # creates the table object
-        self.table = QTableWidget(None)
-
-        # sets the table properties
-        self.table.setRowCount(0)
-        self.table.setColumnCount(0)
-        self.table.setObjectName(self.t_lbl)
-        self.table.setStyleSheet(cw.table_style)
-
-        # resets the header properties
-        v_header = self.table.verticalHeader()
-        v_header.setVisible(False)
-        v_header.setDefaultSectionSize(self.hght_row)
-        v_header.setSectionResizeMode(v_header.ResizeMode.Fixed)
+        # creates the table widget
+        self.use_chk = use_chk
+        self.table = cw.QInfoTable(None, self.t_lbl, use_chk)
 
         # adds the table to the layout
         self.tab_layout.addWidget(self.table)
-
-        # resets the channel table style
-        table_style_chk = cw.CheckBoxStyle(self.table.style())
-        self.table.setStyle(table_style_chk)
-
-        # sets table checkbox header (if required)
-        if use_chk:
-            table_header = cw.CheckTableHeader(self.table)
-            self.table.setHorizontalHeader(table_header)
 
         # table undocking button
         self.undock_obj = cw.create_push_button(None, "")
@@ -887,7 +867,9 @@ class InfoWidget(QWidget):
 
     def undock_table(self):
 
-        print('Undocking Table')
+        table_copy = cw.copy_table(self.table)
+        h_app = cw.QTableUndock(table_copy, None, 'Title String')
+        h_app.exec()
 
 # ----------------------------------------------------------------------------------------------------------------------
 

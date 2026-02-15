@@ -32,7 +32,7 @@ class ChannelInfoTab(InfoWidget):
         'good': cf.get_colour_value('g', 128),
         'dead': cf.get_colour_value('r', 128),
         'noise': cf.get_colour_value('y', 128),
-        'out': cf.get_colour_value('b', 128),
+        'out': cf.get_colour_value('c', 128),
         'rejected': cf.get_colour_value('dg', 128),
         'removed': cf.get_colour_value('k', 128),
     }

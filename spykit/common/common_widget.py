@@ -24,11 +24,11 @@ from PyQt6.QtWidgets import (QWidget, QHBoxLayout, QGridLayout, QVBoxLayout, QPu
                              QApplication, QTreeView, QFrame, QRadioButton, QAbstractItemView, QStylePainter,
                              QStyleOptionComboBox, QStyle, QProxyStyle, QItemDelegate, QTreeWidget, QTreeWidgetItem,
                              QHeaderView, QStyleOptionButton, QTableWidgetItem, QProgressBar, QSpacerItem,
-                             QStyledItemDelegate)
+                             QStyledItemDelegate, QDialog, QTableWidget)
 from PyQt6.QtCore import (Qt, QRect, QRectF, QMimeData, pyqtSignal, QItemSelectionModel, QAbstractTableModel,
                           QSizeF, QSize, QObject, QVariant, QTimeLine, QEvent, QPoint, QPointF)
-from PyQt6.QtGui import (QFont, QDrag, QCursor, QStandardItemModel, QStandardItem, QPalette, QPixmap,
-                         QTextDocument, QAbstractTextDocumentLayout, QIcon, QColor, QImage, QMouseEvent)
+from PyQt6.QtGui import (QFont, QDrag, QCursor, QStandardItemModel, QStandardItem, QPalette, QPixmap, QImage,
+                         QTextDocument, QAbstractTextDocumentLayout, QIcon, QColor, QMouseEvent, QGuiApplication)
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -1461,6 +1461,7 @@ class FileDialogModal(QFileDialog):
         if is_multi:
             self.setFileMode(self.FileMode.ExistingFiles)
 
+
 # ----------------------------------------------------------------------------------------------------------------------
 
 """
@@ -1576,7 +1577,7 @@ class QFileSpec(QGroupBox):
 # ----------------------------------------------------------------------------------------------------------------------
 
 """
-    QFileSpec:
+    QEditButton:
 """
 
 
@@ -1655,7 +1656,7 @@ class QColorLabel(QLabel):
 # ----------------------------------------------------------------------------------------------------------------------
 
 """
-    HTMLDelegate:
+    QColorMapChooser:
 """
 
 
@@ -1940,6 +1941,91 @@ class SearchMixin:
 
         return '{0}{1}{2}'.format(s[0:i0], cf.set_text_background_colour(s[i0:(i0 + n)], 'yellow'), s[(i0 + n):])
 
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+"""
+    QInfoTable:
+"""
+
+class QInfoTable(QTableWidget):
+    # widget dimensions
+    hght_row = 25
+
+    def __init__(self, parent, t_lbl, use_chk):
+        super(QInfoTable, self).__init__(parent)
+
+        # input variables
+        self.t_lbl = t_lbl
+        self.use_chk = use_chk
+
+        # sets the table properties
+        self.setRowCount(0)
+        self.setColumnCount(0)
+        self.setObjectName(t_lbl)
+        self.setStyleSheet(table_style)
+
+        # resets the header properties
+        v_header = self.verticalHeader()
+        v_header.setVisible(False)
+        v_header.setDefaultSectionSize(self.hght_row)
+        v_header.setSectionResizeMode(v_header.ResizeMode.Fixed)
+
+        # resets the channel table style
+        table_style_chk = CheckBoxStyle(self.style())
+        self.setStyle(table_style_chk)
+
+        # sets table checkbox header (if required)
+        if use_chk:
+            table_header = CheckTableHeader(self)
+            self.setHorizontalHeader(table_header)
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+"""
+    QTableUndock:
+"""
+
+class QTableUndock(QDialog):
+    # widget dimensions
+    dX = 50
+    start_width_max = 1200
+    start_height_max = 800
+
+    def __init__(self, table_obj, parent=None, title_str=None):
+        super(QTableUndock, self).__init__(parent)
+
+        # creates the dialog layout
+        self.main_layout = QVBoxLayout()
+        self.setLayout(self.main_layout)
+
+        # initialisations
+        scr_width, scr_height = get_screen_dim()
+        table_width, table_height = self.get_table_dimensions(table_obj)
+        start_width = np.min([self.start_width_max, table_width])
+        start_height = np.min([self.start_height_max, table_height])
+
+        # adds the widget to the layout
+        self.main_layout.addWidget(table_obj)
+        self.resize(start_width, start_height)
+        self.setMaximumWidth(np.min([scr_width - self.dX, table_width]))
+        self.setMaximumHeight(np.min([scr_height - self.dX, table_height]))
+
+        # dialog window
+        if title_str is not None:
+            self.setWindowTitle(title_str)
+
+    def get_table_dimensions(self, table_obj):
+
+        # initalisations
+        table_height = table_obj.rowCount() * table_obj.hght_row
+        table_width = 2 * (1 + self.main_layout.spacing() + self.main_layout.getContentsMargins()[0])
+
+        # calculates the table width
+        for i in range(table_obj.columnCount()):
+            table_width += table_obj.columnWidth(i)
+
+        return table_width, table_height
 
 # ----------------------------------------------------------------------------------------------------------------------
 # BASE WIDGET COMBINATIONS
@@ -2256,6 +2342,7 @@ class QLabelChecklist(QWidget):
         self.is_connected = True
         self.obj_cbox.currentIndexChanged.connect(cb_fcn)
 
+
 # ----------------------------------------------------------------------------------------------------------------------
 
 """
@@ -2318,6 +2405,7 @@ class QCheckListCombo(QComboBox):
     def item_click(self):
 
         self.item_clicked.emit()
+
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -3583,7 +3671,6 @@ def create_tab_group(parent, font=None, name=None):
 
 
 def create_icon_button(icon_name, but_dim):
-
     # filter label properties
     icon_but = create_text_label(None, '')
     icon_but.setPixmap(QIcon(icon_path[icon_name]).pixmap(QSize(but_dim, but_dim)))
@@ -3592,6 +3679,41 @@ def create_icon_button(icon_name, but_dim):
 
     return icon_but
 
+
+def copy_table(table_orig):
+    # precalculations
+    c_ofs = 2 * table_orig.use_chk
+
+    # creates the table object
+    table_copy = QInfoTable(None, table_orig.t_lbl, False)
+
+    # sets the table dimensions
+    table_copy.setRowCount(table_orig.rowCount())
+    table_copy.setColumnCount(table_orig.columnCount() - c_ofs)
+    table_copy.setStyleSheet(table_style)
+    table_copy.setSortingEnabled(True)
+
+    col_hdr = []
+    for col in range(c_ofs, table_orig.columnCount()):
+        # retrieves the column header
+        col_hdr.append(table_orig.horizontalHeaderItem(col).text())
+
+        # copies the table items
+        for row in range(table_orig.rowCount()):
+            # retrieves the original table item
+            orig_item = table_orig.item(row, col)
+
+            # creates the copied table item
+            copy_item = QTableWidgetItemSortable(orig_item.text())
+            copy_item.setTextAlignment(align_flag['center'])
+            copy_item.setBackground(orig_item.background())
+            table_copy.setItem(row, col - c_ofs, copy_item)
+
+    # sets the copied table column headers
+    table_copy.setHorizontalHeaderLabels(col_hdr)
+    table_copy.resizeColumnsToContents()
+
+    return table_copy
 
 def setup_colour_map(n_lvl):
 
@@ -3602,6 +3724,11 @@ def setup_colour_map(n_lvl):
 
     return ColorMap(pos=np.linspace(0.0, 1.0, n_lvl), color=p_rgb)
 
+
+def get_screen_dim():
+
+    scr_dim = QGuiApplication.primaryScreen().geometry()
+    return scr_dim.width(), scr_dim.height()
 
 def get_def_dir(d_type):
     # data directory retrieval

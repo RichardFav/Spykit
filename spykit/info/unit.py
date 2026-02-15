@@ -22,7 +22,7 @@ bc_var_map = cw.hist_map | {
     'mainPeak_before_width': 'Pre-Meain Peak Width',
     'mainTrough_width': 'Main Trough Width',
     'maxChannels': 'Max Channel',
-    'phy_clusterID': 'Phy Cluster ID#',
+    # 'phy_clusterID': 'Phy Cluster ID#',
     'troughToPeak2Ratio': 'Trough/2nd Peak Ratio',
 }
 
@@ -219,8 +219,9 @@ class UnitInfoTab(InfoWidget):
 
         # sets the dtype of specific columns
         for i_ch in int_col:
-            p_fld = bc_var_map[i_ch]
-            self.df_unit[p_fld] = self.df_unit[p_fld].astype(float).astype(int)
+            if i_ch in bc_var_map:
+                p_fld = bc_var_map[i_ch]
+                self.df_unit[p_fld] = self.df_unit[p_fld].astype(float).astype(int)
 
         # sets the table data/row colours
         self.main_obj.info_manager.setup_info_table(self.df_unit, 'unit', c_hdr)
