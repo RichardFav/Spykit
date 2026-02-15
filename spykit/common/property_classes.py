@@ -46,7 +46,7 @@ class SessionWorkBook(QObject):
     added_post_process = pyqtSignal(str)
 
     # array class fields
-    c_hdr = ['', 'Keep?', 'Status', 'Channel ID', 'Contact ID', 'Channel Index', 'X-Coord', 'Y-Coord', 'Shank ID']
+    c_hdr_ch = ['', 'Keep?', 'Status', 'Channel ID', 'Contact ID', 'Channel Index', 'X-Coord', 'Y-Coord', 'Shank ID']
 
     def __init__(self):
         super(SessionWorkBook, self).__init__()

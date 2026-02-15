@@ -226,7 +226,7 @@ class MainWindow(QMainWindow):
         p_dframe = self.session_obj.get_info_data_frame()
 
         # creates the table model
-        self.info_manager.setup_info_table(p_dframe, 'Channel', self.session_obj.c_hdr)
+        self.info_manager.setup_info_table(p_dframe, 'Channel', self.session_obj.c_hdr_ch)
         self.info_manager.init_channel_comboboxes()
 
         # appends the channel status flags (if available)
@@ -717,11 +717,15 @@ class MainWindow(QMainWindow):
         # c_id[:] = self.plot_manager.get_plot_index('upset')
         # c_id[:] = self.plot_manager.get_plot_index('unithist')
         # c_id[:] = self.plot_manager.get_plot_index('unitmet')
-        c_id[:] = self.plot_manager.get_plot_index('waveform')
+        # c_id[:] = self.plot_manager.get_plot_index('waveform')
+        # c_id[:] = self.plot_manager.get_plot_index('probe')
 
-        # updates the grid plots
-        self.plot_manager.update_plot_config(c_id)
-        self.prop_manager.set_region_config(c_id)
+        # # updates the grid plots
+        # self.plot_manager.update_plot_config(c_id, True)
+        # self.prop_manager.set_region_config(c_id)
+
+        # updates the probe view
+        self.plot_manager.plots[self.plot_manager.types['probe'] - 1].show_view()
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -1053,12 +1057,19 @@ class MenuBar(QObject):
             mm_file = self.main_obj.session_obj.get_mem_map_files(False)
             self.set_menu_enabled('load_postprocessed', mm_file is not None)
             if mm_file is not None:
+                # updates the other tabs
                 self.main_obj.session_obj.post_data.read_post_process(mm_file)
                 self.main_obj.prop_manager.add_prop_tabs(['postprocess'])
+                self.main_obj.info_manager.set_tab_enabled('unit', True)
 
                 for i_mm in range(mm_file.shape[2]):
                     mm_name = os.path.split(mm_file[0, 0, i_mm])[1]
                     self.main_obj.added_post_process(mm_name)
+
+                # updates the unit information tab
+                unit_tab = self.main_obj.info_manager.get_info_tab('unit')
+                unit_tab.setup_unit_table()
+                unit_tab.update_unit_status()
 
             # resets the preprocessing configuration fields
             prep_info = self.main_obj.info_manager.get_info_tab('preprocess')

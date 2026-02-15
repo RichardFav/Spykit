@@ -16,8 +16,8 @@ from spykit.common.common_widget import SearchMixin, QProgressWidget
 from PyQt6.QtWidgets import (QWidget, QTreeWidget, QFrame, QCheckBox, QPushButton, QSizePolicy, QVBoxLayout, QGroupBox,
                              QHeaderView, QTreeWidgetItem, QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox,
                              QTableWidget, QFormLayout)
-from PyQt6.QtCore import Qt, QPointF, pyqtSignal
-from PyQt6.QtGui import QFont, QColor
+from PyQt6.QtCore import Qt, QPointF, QSize, pyqtSignal
+from PyQt6.QtGui import QFont, QColor, QIcon
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -153,13 +153,12 @@ class InfoManager(QWidget):
             self.t_types.append(t_type)
             match t_type:
                 case t_type if t_type in ['channel', 'unit']:
-                    # connects the
-                    cb_fcn = pfcn(self.header_check_update, t_lbl)
-                    # tab_widget.set_check_update(cb_fcn)
-                    tab_widget.table.horizontalHeader().check_update.connect(cb_fcn)
-
                     # performs tab specific updates
                     if t_type == 'channel':
+                        # connects the
+                        cb_fcn = pfcn(self.header_check_update, t_lbl)
+                        tab_widget.table.horizontalHeader().check_update.connect(cb_fcn)
+
                         # case is the channel tab
                         tab_widget.data_change.connect(pfcn(self.channel_combobox_update, 'data'))
                         tab_widget.run_change.connect(pfcn(self.channel_combobox_update, 'run'))
@@ -170,6 +169,13 @@ class InfoManager(QWidget):
                         tab_widget.mouse_leave.connect(self.channel_mouse_leave)
                         tab_widget.force_reset_flags.connect(self.force_reset_flags)
                         tab_widget.get_avail_channel_fcn = self.get_avail_channel
+
+                    elif t_type == 'unit':
+                        # case us the unit tab
+                        # tab_widget.data_change.connect(self.unit_status_update)
+                        tab_widget.mouse_move.connect(self.unit_mouse_move)
+                        tab_widget.mouse_leave.connect(self.unit_mouse_leave)
+                        tab_widget.set_update_flag.connect(self.update_flag_change)
 
                 case 'status':
                     tab_widget.start_recalc.connect(self.start_recalc)
@@ -191,7 +197,7 @@ class InfoManager(QWidget):
         # self.main_layout.addWidget(self.status_lbl)
 
     # ---------------------------------------------------------------------------
-    # Channel Tab Event Functions
+    # Channel Tab Functions
     # ---------------------------------------------------------------------------
 
     def channel_combobox_update(self, d_type, tab_obj):
@@ -497,6 +503,22 @@ class InfoManager(QWidget):
 
         # resets the update flag
         self.is_updating = False
+
+    # ---------------------------------------------------------------------------
+    # Unit Tab Functions
+    # ---------------------------------------------------------------------------
+
+    def unit_status_update(self):
+
+        pass
+
+    def unit_mouse_move(self):
+
+        pass
+
+    def unit_mouse_leave(self):
+
+        pass
 
     # ---------------------------------------------------------------------------
     # Class Property Widget Setup Functions
@@ -817,6 +839,7 @@ class InfoWidget(QWidget):
 
         # field initialisations
         self.table = None
+        self.undock_obj = None
         self.t_lbl = t_lbl
         self.main_obj = main_obj
 
@@ -825,7 +848,7 @@ class InfoWidget(QWidget):
         self.tab_layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(self.tab_layout)
 
-    def create_table_widget(self):
+    def create_table_widget(self, use_chk=True):
 
         # creates the table object
         self.table = QTableWidget(None)
@@ -849,9 +872,22 @@ class InfoWidget(QWidget):
         table_style_chk = cw.CheckBoxStyle(self.table.style())
         self.table.setStyle(table_style_chk)
 
-        # table header setup
-        table_header = cw.CheckTableHeader(self.table)
-        self.table.setHorizontalHeader(table_header)
+        # sets table checkbox header (if required)
+        if use_chk:
+            table_header = cw.CheckTableHeader(self.table)
+            self.table.setHorizontalHeader(table_header)
+
+        # table undocking button
+        self.undock_obj = cw.create_push_button(None, "")
+        self.undock_obj.setIcon(QIcon(cw.icon_path['undock']))
+        self.undock_obj.setIconSize(QSize(self.but_height - 1, self.but_height - 1))
+        self.undock_obj.setFixedSize(self.but_height, self.but_height)
+        self.undock_obj.clicked.connect(self.undock_table)
+        self.undock_obj.setToolTip('Undock Table')
+
+    def undock_table(self):
+
+        print('Undocking Table')
 
 # ----------------------------------------------------------------------------------------------------------------------
 

@@ -5,12 +5,13 @@ from copy import deepcopy
 
 # spykit module imports
 import spykit.common.common_func as cf
+import spykit.common.common_widget as cw
 from spykit.info.utils import InfoWidget
 from spykit.common.common_widget import QLabelCombo, QLabelCheckCombo, font_lbl
 
 # pyqt imports
 from PyQt6.QtWidgets import QWidget, QGridLayout
-from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtCore import (Qt, QSize, pyqtSignal)
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -47,6 +48,9 @@ class ChannelInfoTab(InfoWidget):
     i_keep_col = 1
     i_status_col = 2
     i_channel_col = 3
+
+    # object dimensions
+    but_height = 16
 
     def __init__(self, t_str, main_obj):
         super(ChannelInfoTab, self).__init__(t_str, main_obj)
@@ -95,8 +99,9 @@ class ChannelInfoTab(InfoWidget):
         self.opt_layout.addWidget(self.status_filter.h_combo, 3, 1, 1, 1)
 
         # sets the option combobox layout properties
-        self.opt_layout.setColumnStretch(0, 1)
-        self.opt_layout.setColumnStretch(1, 2)
+        self.opt_layout.setColumnStretch(0, 10)
+        self.opt_layout.setColumnStretch(1, 20)
+        self.opt_layout.setColumnStretch(2, 1)
 
         # adds status filter check combobox
         self.status_filter.item_clicked.connect(self.check_filter_item)
@@ -107,6 +112,7 @@ class ChannelInfoTab(InfoWidget):
         # creates the table widget
         self.create_table_widget()
         self.get_filtered_items()
+        self.opt_layout.addWidget(self.undock_obj, 3, 2, 1, 1, alignment=cw.align_flag['right'])
 
         # resets the table mouse move event
         self.table.setMouseTracking(True)
@@ -207,7 +213,6 @@ class ChannelInfoTab(InfoWidget):
         if self.main_obj.session_obj.is_per_shank():
             ch_name_0 = self.main_obj.session_obj.get_channel_ids()[0]
             ch_name_sh = self.main_obj.session_obj.get_avail_channel()
-
             i_shank_sel = self.shank_type.current_index()
             ch_id_shank = np.intersect1d(ch_name_0, ch_name_sh, return_indices=True)[1]
 

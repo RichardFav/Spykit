@@ -145,6 +145,7 @@ icon_path = {
     'remove': os.path.join(icon_dir, 'remove_icon.png'),
     'save': os.path.join(icon_dir, 'save_icon.png'),
     'toggle': os.path.join(icon_dir, 'toggle_icon.png'),
+    'undock': os.path.join(icon_dir, 'undock_icon.png'),
     'checked_wide': os.path.join(icon_dir, 'checked_wide_icon.png'),
     'unchecked_wide': os.path.join(icon_dir, 'unchecked_wide_icon.png'),
     'datatip_on': os.path.join(icon_dir, 'datatip_on_icon.png'),
@@ -218,7 +219,7 @@ cmap = {
     ],
 }
 
-# histogram metric types
+# bombcell variable-name mapping dictionary
 hist_map = {
     'nPeaks': 'Peak Count',
     'nTroughs': 'Trough Count',
@@ -232,7 +233,7 @@ hist_map = {
     'nSpikes': 'Spike Count',
     'rawAmplitude': 'Raw Amplitude',
     'spatialDecaySlope': 'Spatial Decay',
-    'waveformDuration_peakTrough': 'Duration',
+    'waveformDuration_peakTrough': 'Waveform Duration',
     'waveformBaselineFlatness': 'Baseline Flatness',
     'presenceRatio': 'Presence Ratio',
     'signalToNoiseRatio': 'SNR',
@@ -1859,7 +1860,6 @@ class SearchMixin:
     def init_search_widgets(self):
 
         # initialisations
-        close_pixmap = QIcon(icon_path['close']).pixmap(QSize(cf.but_height, cf.but_height))
         search_pixmap = QIcon(icon_path['search']).pixmap(QSize(cf.but_height, cf.but_height))
 
         # creates the pixmap object
@@ -1871,10 +1871,7 @@ class SearchMixin:
         filter_obj.obj_lbl.setSizePolicy(QSizePolicy(cf.q_fix, cf.q_fix))
 
         # filter label properties
-        close_obj = create_text_label(None, '')
-        close_obj.setPixmap(close_pixmap)
-        close_obj.setFixedHeight(cf.but_height)
-        close_obj.setSizePolicy(QSizePolicy(cf.q_fix, cf.q_fix))
+        close_obj = create_icon_button('close', cf.but_height)
         close_obj.mouseReleaseEvent = self.label_clear_search
         filter_obj.layout.addWidget(close_obj)
 
@@ -3147,15 +3144,12 @@ class InfoTableModel(QAbstractTableModel):
 
         if np.all(self.ch_select):
             self.header_icon = icon_path['new']
-            # self.header_icon = 'checked.png'
 
         elif not np.any(self.ch_select):
             self.header_icon = icon_path['close']
-            # self.header_icon = 'unchecked.png'
 
         else:
             self.header_icon = icon_path['restart']
-            # self.header_icon = 'intermediate.png'
 
         self.headerDataChanged.emit(Qt.Orientation.Horizontal, self.chk_col, 3)
 
@@ -3586,6 +3580,17 @@ def create_tab_group(parent, font=None, name=None):
 
     # returns the tab object
     return h_tab_grp
+
+
+def create_icon_button(icon_name, but_dim):
+
+    # filter label properties
+    icon_but = create_text_label(None, '')
+    icon_but.setPixmap(QIcon(icon_path[icon_name]).pixmap(QSize(but_dim, but_dim)))
+    icon_but.setFixedHeight(but_dim)
+    icon_but.setSizePolicy(QSizePolicy(cf.q_fix, cf.q_fix))
+
+    return icon_but
 
 
 def setup_colour_map(n_lvl):

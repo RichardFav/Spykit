@@ -13,7 +13,7 @@ import spykit.common.common_widget as cw
 from spykit.plotting.utils import PlotWidget, PlotPara
 
 # pyqtgraph modules
-from pyqtgraph import PlotCurveItem, GraphicsObject, ROI, RectROI, TextItem, mkPen, mkBrush, exporters
+from pyqtgraph import PlotCurveItem, GraphicsObject, ROI, RectROI, CircleROI, TextItem, mkPen, mkBrush, exporters
 
 # plot button fields
 b_icon = ['tick', 'star', 'toggle', 'save', 'close']
@@ -41,6 +41,7 @@ class ProbePlot(PlotWidget):
     pw_x = 1.05
     p_zoom0 = 0.2
     y_out_dist = 20
+    unit_radius = 10
 
     # list class fields
     add_lbl = ['remove', 'toggle', 'add']
@@ -523,10 +524,26 @@ class ProbePlot(PlotWidget):
             self.get_new_inset_id()
             self.probe_roi_moved.emit(self.inset_id)
 
+        # adds in the probe locations (if calculated)
+        if len(self.session_info.post_data.mmap):
+            self.setup_unit_markers()
+
     def hide_view(self):
 
         # clears the inset id flags
         self.probe_roi_moved.emit(None)
+
+    # ---------------------------------------------------------------------------
+    # Unit Marker Functions
+    # ---------------------------------------------------------------------------
+
+    def setup_unit_markers(self):
+
+        # USE "ch_pos" to set unit locations
+        a = 1
+
+        # FINISH ME!
+        pass
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
@@ -696,6 +713,8 @@ class ProbeView(GraphicsObject):
         self.out_label = None
         self.ch_label = None
         self.ch_highlight = None
+        self.unit_label = None
+        self.unit_highlight = None
         self.show_out = False
         self.is_updating = False
 
@@ -748,7 +767,7 @@ class ProbeView(GraphicsObject):
         if self.ch_highlight is not None:
             return
 
-        # pre-calculations
+        # pre-calculations\
         bb_rect = self.c_poly[0].boundingRect()
         sz_rect = QPointF(bb_rect.width(), bb_rect.height())
 
@@ -829,13 +848,26 @@ class ProbeView(GraphicsObject):
         self.p.end()
         self.update()
 
+    def create_unit_objects(self):
+
+        a = 1
+
+    # ---------------------------------------------------------------------------
+    # Unit Location Functions
+    # ---------------------------------------------------------------------------
+
+
+
     # ---------------------------------------------------------------------------
     # Channel Highlight Functions
     # ---------------------------------------------------------------------------
 
-    def reset_highlight_pos(self, p_pos):
+    def reset_highlight_pos(self, p_pos, h_type='channel'):
 
-        self.ch_highlight.setPos(p_pos)
+        if h_type == 'channel':
+            self.ch_highlight.setPos(p_pos)
+        else:
+            self.unit_highlight.setPos(p_pos)
 
     # ---------------------------------------------------------------------------
     # ROI Functions
@@ -975,6 +1007,10 @@ class ProbeView(GraphicsObject):
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
     # ---------------------------------------------------------------------------
+
+    def get_field(self, p_fld):
+
+        return self.session_info.get_mem_map_field(p_fld)
 
     def set_out_line_visible(self, is_show):
 
