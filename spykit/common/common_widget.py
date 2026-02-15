@@ -2018,7 +2018,7 @@ class QTableUndock(QDialog):
     def get_table_dimensions(self, table_obj):
 
         # initalisations
-        table_height = table_obj.rowCount() * table_obj.hght_row
+        table_height = (table_obj.rowCount() + 2) * table_obj.hght_row
         table_width = 2 * (1 + self.main_layout.spacing() + self.main_layout.getContentsMargins()[0])
 
         # calculates the table width
@@ -3680,38 +3680,43 @@ def create_icon_button(icon_name, but_dim):
     return icon_but
 
 
-def copy_table(table_orig):
-    # precalculations
+def copy_table(table_orig, is_filt):
+    # precalculations and initialisations
+    col_hdr = []
+    n_row_copy = np.sum(is_filt)
     c_ofs = 2 * table_orig.use_chk
+    i_row_filt = np.where(is_filt)[0]
 
     # creates the table object
     table_copy = QInfoTable(None, table_orig.t_lbl, False)
 
     # sets the table dimensions
-    table_copy.setRowCount(table_orig.rowCount())
+    table_copy.setRowCount(n_row_copy)
     table_copy.setColumnCount(table_orig.columnCount() - c_ofs)
     table_copy.setStyleSheet(table_style)
     table_copy.setSortingEnabled(True)
 
-    col_hdr = []
     for col in range(c_ofs, table_orig.columnCount()):
         # retrieves the column header
         col_hdr.append(table_orig.horizontalHeaderItem(col).text())
 
         # copies the table items
-        for row in range(table_orig.rowCount()):
+        for row_copy, row_orig in enumerate(i_row_filt):
             # retrieves the original table item
-            orig_item = table_orig.item(row, col)
+            orig_item = table_orig.item(row_orig, col)
 
             # creates the copied table item
             copy_item = QTableWidgetItemSortable(orig_item.text())
             copy_item.setTextAlignment(align_flag['center'])
             copy_item.setBackground(orig_item.background())
-            table_copy.setItem(row, col - c_ofs, copy_item)
+            table_copy.setItem(row_copy, col - c_ofs, copy_item)
 
     # sets the copied table column headers
     table_copy.setHorizontalHeaderLabels(col_hdr)
     table_copy.resizeColumnsToContents()
+
+    h_header = table_copy.horizontalHeader()
+    h_header.setSectionResizeMode(h_header.ResizeMode.Fixed)
 
     return table_copy
 

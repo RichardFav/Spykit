@@ -172,7 +172,7 @@ class InfoManager(QWidget):
 
                     elif t_type == 'unit':
                         # case us the unit tab
-                        # tab_widget.data_change.connect(self.unit_status_update)
+                        tab_widget.data_change.connect(self.unit_status_update)
                         tab_widget.mouse_move.connect(self.unit_mouse_move)
                         tab_widget.mouse_leave.connect(self.unit_mouse_leave)
                         tab_widget.set_update_flag.connect(self.update_flag_change)
@@ -508,9 +508,10 @@ class InfoManager(QWidget):
     # Unit Tab Functions
     # ---------------------------------------------------------------------------
 
-    def unit_status_update(self):
+    def unit_status_update(self, tab_obj):
 
-        pass
+        # resets the table rows based on the selection
+        tab_obj.reset_table_rows()
 
     def unit_mouse_move(self):
 
@@ -867,9 +868,12 @@ class InfoWidget(QWidget):
 
     def undock_table(self):
 
-        table_copy = cw.copy_table(self.table)
-        h_app = cw.QTableUndock(table_copy, None, 'Title String')
-        h_app.exec()
+        # initialisations
+        table_copy = cw.copy_table(self.table, self.is_filt)
+        title_str = '{0} Table Information'.format(self.t_lbl)
+
+        # creates and opens the table dialog
+        cw.QTableUndock(table_copy, None, title_str).exec()
 
 # ----------------------------------------------------------------------------------------------------------------------
 
