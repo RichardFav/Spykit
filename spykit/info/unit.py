@@ -7,10 +7,10 @@ from copy import deepcopy
 import spykit.common.common_func as cf
 import spykit.common.common_widget as cw
 from spykit.info.utils import InfoWidget
-from spykit.common.common_widget import QLabelCombo, QLabelCheckCombo, font_lbl
+from spykit.common.common_widget import QLabelCombo, QLabelCheckCombo, QLabelText, font_lbl
 
 # pyqt imports
-from PyQt6.QtWidgets import QWidget, QGridLayout
+from PyQt6.QtWidgets import QWidget, QGridLayout, QAbstractItemView
 from PyQt6.QtCore import (Qt, QSize, pyqtSignal)
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -55,6 +55,7 @@ class UnitInfoTab(InfoWidget):
         'non-somatic': cf.get_colour_value('y', 128),
         'non-somatic good': cf.get_colour_value('y', 128),
         'non-somatic mua': cf.get_colour_value('m', 128),
+        'selected': cf.get_colour_value([217, 255, 251], 128),
     }
 
     # table cell item flags
@@ -65,6 +66,7 @@ class UnitInfoTab(InfoWidget):
 
     # object dimensions
     but_height = 16
+    i_col_unit = 2
 
     def __init__(self, t_str, main_obj):
         super(UnitInfoTab, self).__init__(t_str, main_obj)
@@ -75,8 +77,10 @@ class UnitInfoTab(InfoWidget):
         # field initialisations
         self.df_unit = None
         self.data_flds = None
+        self.i_unit_sel = None
         self.table_move_fcn = None
         self.table_leave_fcn = None
+        self.table_click_fcn = None
 
         # boolean class fields
         self.is_filt = None
@@ -86,6 +90,8 @@ class UnitInfoTab(InfoWidget):
         self.opt_widget = QWidget()
         self.opt_layout = QGridLayout()
         self.status_filter = QLabelCheckCombo(None, lbl="Filter Status:", font=font_lbl)
+        self.unit_label = QLabelText(None, lbl_str="Selected Unit:", text_str='N/A',
+                                     font_lbl=font_lbl, font_txt=font_lbl)
 
         # initialises the other class fields
         self.init_option_fields()
@@ -105,6 +111,8 @@ class UnitInfoTab(InfoWidget):
         # adds the widgets to the layout widget
         self.opt_layout.addWidget(self.status_filter.h_lbl, 0, 0, 1, 1)
         self.opt_layout.addWidget(self.status_filter.h_combo, 0, 1, 1, 1)
+        self.opt_layout.addWidget(self.unit_label.obj_lbl, 1, 0, 1, 1)
+        self.opt_layout.addWidget(self.unit_label.obj_txt, 1, 1, 1, 1)
 
         # sets the option combobox layout properties
         self.opt_layout.setColumnStretch(0, 10)
@@ -121,10 +129,15 @@ class UnitInfoTab(InfoWidget):
         self.create_table_widget(False)
         self.opt_layout.addWidget(self.undock_obj, 0, 2, 1, 1, alignment=cw.align_flag['right'])
 
+        # sets the table selection behaviour
+        self.table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+
         # resets the table mouse move event
         self.table.setMouseTracking(True)
         self.table_leave_fcn = self.table.leaveEvent
         self.table_move_fcn = self.table.mouseMoveEvent
+        self.table.cellClicked.connect(self.table_cell_click)
 
         # resets the event functions
         self.table.leaveEvent = self.table_mouse_leave
@@ -139,15 +152,19 @@ class UnitInfoTab(InfoWidget):
         # initialisations
         ch_info = None
         i_shank_sel = None
+        unit_id = self.get_unit_indices()
         n_row = deepcopy(self.table.rowCount())
 
         # determines which items meet the filter selection
         sel_filt = self.status_filter.get_selected_items()
         self.is_filt = np.zeros(n_row, dtype=bool)
         for i_row in range(n_row):
-            # sets the status filter for the current row
             item = self.table.item(i_row, 0)
-            self.is_filt[i_row] = item.text() in sel_filt
+            self.is_filt[unit_id[i_row] - 1] = item.text() in sel_filt
+
+        # resets the row highlight (based on filter selection - if selected)
+        if self.i_unit_sel is not None:
+            self.reset_row_highlight(self.is_filt[self.i_unit_sel - 1], True)
 
     def get_field(self, p_fld):
 
@@ -165,8 +182,38 @@ class UnitInfoTab(InfoWidget):
     def reset_table_rows(self):
 
         self.get_filtered_items()
+
+        unit_id = self.get_unit_indices()
         for i_row in range(self.table.rowCount()):
-            self.table.setRowHidden(i_row, not self.is_filt[i_row])
+            self.table.setRowHidden(i_row, not self.is_filt[unit_id[i_row] - 1])
+
+    def reset_row_highlight(self, is_highlight_on, reset_lbl=False):
+
+        # retrieves the row index corresponding the unit selection
+        i_row_sel = np.where(self.get_unit_indices() == self.i_unit_sel)[0][0]
+
+        if is_highlight_on:
+            # row highlight is turned on
+            self.set_table_row_colour(i_row_sel, 'selected')
+            self.unit_label.set_label('Unit #{0}'.format(self.i_unit_sel))
+
+        else:
+            # row highlight is turned off
+            c_stat = self.df_unit['Unit Type'].iloc[self.i_unit_sel - 1]
+            self.set_table_row_colour(i_row_sel, c_stat.lower())
+
+            if reset_lbl:
+                self.unit_label.set_label('N/A')
+
+    def get_unit_indices(self):
+
+        # retrieves the unit ID's for each row
+        unit_id = []
+        for i in range(self.table.rowCount()):
+            item = self.table.item(i, self.i_col_unit)
+            unit_id.append(int(item.text()))
+
+        return np.array(unit_id)
 
     # ---------------------------------------------------------------------------
     # Mouse Event Functions
@@ -181,6 +228,22 @@ class UnitInfoTab(InfoWidget):
 
         self.table_leave_fcn(evnt)
         self.mouse_leave.emit(evnt)
+
+    def table_cell_click(self, i_row, i_col):
+
+        # removes any previous row highlights
+        if self.i_unit_sel is not None:
+            self.reset_row_highlight(False)
+
+        # sets the row highlight
+        unit_lbl = self.table.item(i_row, self.i_col_unit).text()
+        self.i_unit_sel = int(unit_lbl)
+
+        # resets the probe unit highlight marker
+        self.reset_row_highlight(True)
+
+        # updates the other fields
+        a = 1
 
     # ---------------------------------------------------------------------------
     # Widget Event Functions

@@ -569,8 +569,6 @@ class InfoManager(QWidget):
         # resizes the table to the contents
         table_obj.setSortingEnabled(True)
         table_obj.horizontalHeader().setSortIndicator(3, Qt.SortOrder.AscendingOrder)
-        # table_obj.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
-        # table_obj.resizeRowsToContents()
         table_obj.resizeColumnsToContents()
 
         # sets the checkbox callback function

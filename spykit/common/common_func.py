@@ -373,11 +373,16 @@ def get_colour_value(col_id, alpha=255, n_col_new=None):
             return QColor(200, 200, 200, alpha)
 
         case _:
-            # case is a number
-            n_col = n_col_max if n_col_new is None else n_col_new
-            p_hsv = (col_id * 1.0 / n_col, 0.5, 0.5)
-            p_rgb = [int(255 * x) for x in list(colorsys.hsv_to_rgb(*p_hsv))]
-            return QColor(p_rgb[0], p_rgb[1], p_rgb[2], alpha)
+            if isinstance(col_id, list):
+                # case is a list
+                return QColor(col_id[0], col_id[1], col_id[2], alpha)
+
+            else:
+                # case is a number
+                n_col = n_col_max if n_col_new is None else n_col_new
+                p_hsv = (col_id * 1.0 / n_col, 0.5, 0.5)
+                p_rgb = [int(255 * x) for x in list(colorsys.hsv_to_rgb(*p_hsv))]
+                return QColor(p_rgb[0], p_rgb[1], p_rgb[2], alpha)
 
 
 def lcm(a, b):
