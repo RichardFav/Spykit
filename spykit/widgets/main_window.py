@@ -235,7 +235,7 @@ class MainWindow(QMainWindow):
         self.info_manager.setup_info_table(p_dframe, 'Channel', c_hdr_ch)
         self.info_manager.init_channel_comboboxes()
 
-        # appends the channel status\\\\\\\\\\\\\\\\\\ flags (if available)
+        # appends the channel status flags (if available)
         if self.session_obj.session.bad_ch is not None:
             if not np.any([x is None for x in self.session_obj.session.bad_ch]):
                 self.bad_channel_change()

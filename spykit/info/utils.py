@@ -868,6 +868,9 @@ class InfoWidget(QWidget):
 
     def undock_table(self):
 
+        # retrieves the filtered items
+        self.get_filtered_items()
+
         # initialisations
         table_copy = cw.copy_table(self.table, self.is_filt)
         title_str = '{0} Table Information'.format(self.t_lbl)

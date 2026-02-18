@@ -1971,14 +1971,14 @@ class QInfoTable(QTableWidget):
         v_header.setDefaultSectionSize(self.hght_row)
         v_header.setSectionResizeMode(v_header.ResizeMode.Fixed)
 
-        # resets the channel table style
-        table_style_chk = CheckBoxStyle(self.style())
-        self.setStyle(table_style_chk)
-
         # sets table checkbox header (if required)
         if use_chk:
             table_header = CheckTableHeader(self)
             self.setHorizontalHeader(table_header)
+
+        # resets the channel table style
+        table_style_chk = CheckBoxStyle(self.style())
+        # self.setStyle(table_style_chk)
 
 # ----------------------------------------------------------------------------------------------------------------------
 
