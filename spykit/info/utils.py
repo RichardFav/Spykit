@@ -97,9 +97,6 @@ class InfoManager(QWidget):
         self.init_class_fields()
         self.init_table_group()
 
-        # sets the class stylesheets
-        self.set_styles()
-
     # ---------------------------------------------------------------------------
     # Class Widget Setup Functions
     # ---------------------------------------------------------------------------
@@ -786,16 +783,6 @@ class InfoManager(QWidget):
     def get_info_tab(self, tab_type):
 
         return self.tabs[self.t_types.index(tab_type)]
-
-    def set_styles(self):
-
-        # widget stylesheets
-        info_groupbox_style = """
-            background-color: rgba(240, 240, 255, 255);
-        """
-
-        # sets the group style sheets
-        self.group_table.setStyleSheet(info_groupbox_style)
 
     def get_probe_plot_view(self):
 
