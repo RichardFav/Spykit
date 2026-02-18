@@ -1978,7 +1978,7 @@ class QInfoTable(QTableWidget):
 
         # resets the channel table style
         table_style_chk = CheckBoxStyle(self.style())
-        # self.setStyle(table_style_chk)
+        self.setStyle(table_style_chk)
 
 # ----------------------------------------------------------------------------------------------------------------------
 
