@@ -136,6 +136,7 @@ class PlotManager(QWidget):
                 plot_new.reset_highlight.connect(self.trace_highlight)
                 plot_new.reset_inset_traces.connect(self.inset_highlight)
                 plot_new.probe_roi_moved.connect(self.probe_roi_moved)
+                plot_new.create_unit_markers.connect(self.create_unit_markers)
                 plot_new.show_view()
 
             case 'trace':
@@ -209,6 +210,13 @@ class PlotManager(QWidget):
         if 'trace' in self.types:
             plt_trace = self.plots[self.types['trace'] - 1]
             plt_trace.reset_inset_highlight(ch_id)
+
+    def create_unit_markers(self):
+
+        # field retrieval
+        plt_probe = self.plots[self.types['probe'] - 1]
+        unit_tab = self.main_obj.info_manager.get_info_tab('unit')
+        plt_probe.setup_unit_markers(unit_tab)
 
     def probe_highlight(self, i_contact):
 

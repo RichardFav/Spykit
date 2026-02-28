@@ -5,7 +5,7 @@ from functools import partial as pfcn
 
 # pyqt6 module import
 from PyQt6.QtCore import QRectF, QPointF, pyqtSignal, Qt
-from PyQt6.QtGui import QPolygonF, QPicture, QPainter, QIcon
+from PyQt6.QtGui import QPolygonF, QPicture, QPainter, QIcon, QBrush, QColor, QPen
 
 # spike pipeline imports
 import spykit.common.common_func as cf
@@ -13,6 +13,7 @@ import spykit.common.common_widget as cw
 from spykit.plotting.utils import PlotWidget, PlotPara
 
 # pyqtgraph modules
+import pyqtgraph as pg
 from pyqtgraph import PlotCurveItem, GraphicsObject, ROI, RectROI, CircleROI, TextItem, mkPen, mkBrush, exporters
 
 # plot button fields
@@ -35,13 +36,14 @@ class ProbePlot(PlotWidget):
     probe_clicked = pyqtSignal(object)
     reset_highlight = pyqtSignal(bool, object)
     reset_inset_traces = pyqtSignal(object)
+    create_unit_markers = pyqtSignal()
 
     # parameters
     pw_y = 1.05
     pw_x = 1.05
     p_zoom0 = 0.2
     y_out_dist = 20
-    unit_radius = 10
+    unit_rad = 10
 
     # list class fields
     add_lbl = ['remove', 'toggle', 'add']
@@ -67,8 +69,12 @@ class ProbePlot(PlotWidget):
         self.sub_xhair = None
         self.inset_id = None
         self.i_shank_pr = None
-        # self.sub_label = None
-        # self.out_label = None
+
+        # unit marker objects
+        self.l_unit_pen = None
+        self.l_unit_brush = None
+        self.units = []
+        self.unit_init = False
 
         # other class fields
         self.i_status = 1
@@ -526,7 +532,8 @@ class ProbePlot(PlotWidget):
 
         # adds in the probe locations (if calculated)
         if len(self.session_info.post_data.mmap):
-            self.setup_unit_markers()
+            if not self.unit_init:
+                self.create_unit_markers.emit()
 
     def hide_view(self):
 
@@ -537,13 +544,72 @@ class ProbePlot(PlotWidget):
     # Unit Marker Functions
     # ---------------------------------------------------------------------------
 
-    def setup_unit_markers(self):
+    def clear_unit_markers(self):
 
-        # USE "ch_pos" to set unit locations
-        a = 1
+        # updates the unit tab objects
+        self.units = None
 
-        # FINISH ME!
-        pass
+        # other field updates
+        self.unit_init = False
+
+    def setup_unit_markers(self, unit_tab):
+
+        # field retrieval
+        unit_col = {}
+        pk_ch = unit_tab.get_field('pk_ch')
+        ch_pos = unit_tab.get_field('ch_pos')
+        unit_types = unit_tab.get_unit_type_labels()
+
+        # retrieves the unique peak channel counts
+        i_pk_ch, i_pk_grp, n_pk_grp = (
+            np.unique(pk_ch, return_counts=True, return_inverse=True))
+        i_pk_grp = i_pk_grp.flatten()
+        self.units = np.empty(len(i_pk_ch), dtype=object)
+
+        for i, i_pk in enumerate(i_pk_ch):
+            # determines the types of units common to the current channel
+            ind_pk = np.where(i_pk_grp == i)[0]
+            ch_unit = ch_pos[int(i_pk), :] - self.unit_rad / 2
+            unit_types_pk = unit_types[ind_pk]
+
+            # determines the unique unit types
+            self.units[i] = {}
+            unit_types_uniq = np.unique(unit_types_pk)
+            n_unit_types = len(unit_types_uniq)
+
+            for i_ut, ut in enumerate(unit_types_uniq):
+                # memory allocation
+                ut_new = ut.lower()
+                if ut_new not in unit_col:
+                    unit_col[ut_new] = unit_tab.row_col[ut_new]
+                    unit_col[ut_new].setAlpha(255)
+
+                # sets the unit indices
+                self.units[i][ut_new] = ind_pk[unit_types_pk == ut]
+
+                # sets the offset coordinates
+                ch_new = ch_unit + self.calc_unit_offset(i_ut, n_unit_types)
+
+                # draws the unit marker
+                unit_roi = pg.QtWidgets.QGraphicsEllipseItem(ch_new[0], ch_new[1], self.unit_rad, self.unit_rad)
+                unit_roi.setBrush(QBrush(unit_col[ut_new]))
+                self.h_plot[1, 0].addItem(unit_roi)
+
+        # other field updates
+        self.units_init = True
+
+    def calc_unit_offset(self, i_unit, n_unit):
+
+        if n_unit == 1:
+            return np.zeros(2, dtype=float)
+
+        elif n_unit == 2:
+            phi_unit = i_unit * np.pi
+            return (self.unit_rad / 2) * np.array([np.cos(phi_unit), np.sin(phi_unit)])
+
+        else:
+            phi_unit = np.pi * (1 / 2 + i_unit * 2 / n_unit)
+            return (self.unit_rad / 2) * np.array([np.cos(phi_unit), np.sin(phi_unit)])
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
@@ -663,6 +729,7 @@ class ProbeView(GraphicsObject):
     n_ar = 10
     p_gap = 0.05
     p_exp_shank = 0.2
+    unit_rad = 10
 
     # plot pen widgets
     pen = mkPen(width=2, color='b')
@@ -691,6 +758,7 @@ class ProbeView(GraphicsObject):
 
         # field initialisation
         self.p = None
+        self.p_unit = None
         self.roi = None
         self.width = None
         self.height = None
@@ -702,6 +770,8 @@ class ProbeView(GraphicsObject):
         self.i_sel_trace = None
         self.x_lim_shank = None
         self.y_lim_shank = None
+
+        self.unit_tab = None
         self.session_info = session_info
 
         # plot widgets
@@ -837,6 +907,9 @@ class ProbeView(GraphicsObject):
             # case is a normal polygon
             self.p.drawPolygon(c_p)
 
+        # # sets up the unit-markers
+        # self.setup_unit_markers()
+
         # ends the drawing
         self.p.end()
         self.update()
@@ -848,15 +921,58 @@ class ProbeView(GraphicsObject):
         self.p.end()
         self.update()
 
-    def create_unit_objects(self):
-
-        a = 1
-
     # ---------------------------------------------------------------------------
-    # Unit Location Functions
+    # Unit Marker Functions
     # ---------------------------------------------------------------------------
 
-
+    # def setup_unit_markers(self):
+    #
+    #     if self.unit_tab is None:
+    #         return
+    #
+    #     # field retrieval
+    #     self.unit_marker = {}
+    #     pk_ch = self.unit_tab.get_field('pk_ch')
+    #     ch_pos = self.unit_tab.get_field('ch_pos')
+    #     unit_types = self.unit_tab.get_unit_type_labels()
+    #
+    #     # creates the unit markers for each type
+    #     u_type, n_unit = np.unique(unit_types, return_counts=True)
+    #     for ut, nt in zip(u_type, n_unit):
+    #         # memory allocation
+    #         ut_new = ut.lower()
+    #         self.unit_marker[ut_new] = np.empty((nt, 2), dtype=object)
+    #
+    #         # updates the painter properties
+    #         self.reset_painter_unit(self.unit_tab.row_col[ut_new])
+    #
+    #         # sets up the markers for the current unit type
+    #         i_unit = np.where(unit_types == ut)[0]
+    #         for i, iu in enumerate(i_unit):
+    #             # sets the marker index
+    #             self.unit_marker[ut_new][i, 0] = iu
+    #
+    #             # draws the unit marker
+    #             ch_point = ch_pos[int(pk_ch[iu]), :] - self.unit_rad / 2
+    #             ch_point_u = QPointF(ch_point[0], ch_point[1])
+    #             self.p.drawEllipse(ch_point_u, self.unit_rad, self.unit_rad)
+    #
+    # def reset_painter_unit(self, unit_col):
+    #
+    #     # resets the unit colour alpha
+    #     unit_col.setAlpha(255)
+    #
+    #     # updates the unit pen/brushes
+    #     self.p.setPen(mkPen(color=unit_col))
+    #     self.p.setBrush(mkBrush(color=unit_col))
+    #
+    # def create_unit_marker(self):
+    #
+    #     a = 1
+    #
+    # def reset_unit_marker(self):
+    #
+    #     a = 1
 
     # ---------------------------------------------------------------------------
     # Channel Highlight Functions
@@ -1123,7 +1239,6 @@ class ProbeView(GraphicsObject):
         y = y_lim[np.array([0, 1, 1, 0])] + p[1]
 
         return QPolygonF([QPointF(X, Y) for X, Y in zip(x, y)])
-
 
     @staticmethod
     def has_point(cp, m_pos):

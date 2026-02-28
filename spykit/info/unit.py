@@ -235,14 +235,14 @@ class UnitInfoTab(InfoWidget):
         if self.i_unit_sel is not None:
             self.reset_row_highlight(False)
 
-        # sets the row highlight
+        # resets the selected unit index
         unit_lbl = self.table.item(i_row, self.i_col_unit).text()
         self.i_unit_sel = int(unit_lbl)
 
-        # resets the probe unit highlight marker
+        # sets the row highlight
         self.reset_row_highlight(True)
 
-        # updates the other fields
+        # resets the probe unit highlight marker
         a = 1
 
     # ---------------------------------------------------------------------------
@@ -276,7 +276,7 @@ class UnitInfoTab(InfoWidget):
         c_hdr = np.array(['Unit Type'] + [bc_var_map[x] for x in q_hdr[is_ok]])
 
         # sets the unit metrics dataframe
-        unit_type = np.array([self.unit_lbl[x[0]] for x in self.get_field('unit_type')])
+        unit_type = self.get_unit_type_labels()
         q_met = self.main_obj.session_obj.get_mem_map_field('q_met')[:, is_ok]
         self.df_unit = pd.DataFrame(np.hstack((unit_type.reshape(-1, 1), q_met)), columns=c_hdr)
 
@@ -306,3 +306,7 @@ class UnitInfoTab(InfoWidget):
         # resets the update flag
         self.is_updating = False
         self.set_update_flag.emit(False)
+
+    def get_unit_type_labels(self):
+
+        return np.array([self.unit_lbl[x[0]] for x in self.get_field('unit_type')])
