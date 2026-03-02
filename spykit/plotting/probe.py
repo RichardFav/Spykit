@@ -73,8 +73,8 @@ class ProbePlot(PlotWidget):
         # unit marker objects
         self.l_unit_pen = None
         self.l_unit_brush = None
+        self.showing_units = False
         self.units = []
-        self.unit_init = False
 
         # other class fields
         self.i_status = 1
@@ -317,7 +317,8 @@ class ProbePlot(PlotWidget):
                     self.reset_highlight.emit(True, i_contact)
 
                 # updates the label properties
-                if p_view.ch_label is not None:
+                if ((p_view.ch_label is not None) and
+                        (is_main_view or (not self.showing_units))):
                     p_view.ch_label.setVisible(True)
                     p_view.ch_label.setText(self.setup_label_text(i_contact))
                     p_view.ch_label.update()
@@ -339,6 +340,8 @@ class ProbePlot(PlotWidget):
             # resets the label position
             if p_view.ch_label is not None:
                 p_view.ch_label.setPos(m_pos + QPointF(-dx_pos, dy_pos))
+
+
 
         else:
             # otherwise, remove the contact highlight
@@ -532,7 +535,7 @@ class ProbePlot(PlotWidget):
 
         # adds in the probe locations (if calculated)
         if len(self.session_info.post_data.mmap):
-            if not self.unit_init:
+            if not self.showing_units:
                 self.create_unit_markers.emit()
 
     def hide_view(self):
@@ -550,66 +553,15 @@ class ProbePlot(PlotWidget):
         self.units = None
 
         # other field updates
-        self.unit_init = False
+        self.showing_units = False
 
     def setup_unit_markers(self, unit_tab):
 
-        # field retrieval
-        unit_col = {}
-        pk_ch = unit_tab.get_field('pk_ch')
-        ch_pos = unit_tab.get_field('ch_pos')
-        unit_types = unit_tab.get_unit_type_labels()
-
-        # retrieves the unique peak channel counts
-        i_pk_ch, i_pk_grp, n_pk_grp = (
-            np.unique(pk_ch, return_counts=True, return_inverse=True))
-        i_pk_grp = i_pk_grp.flatten()
-        self.units = np.empty(len(i_pk_ch), dtype=object)
-
-        for i, i_pk in enumerate(i_pk_ch):
-            # determines the types of units common to the current channel
-            ind_pk = np.where(i_pk_grp == i)[0]
-            ch_unit = ch_pos[int(i_pk), :] - self.unit_rad / 2
-            unit_types_pk = unit_types[ind_pk]
-
-            # determines the unique unit types
-            self.units[i] = {}
-            unit_types_uniq = np.unique(unit_types_pk)
-            n_unit_types = len(unit_types_uniq)
-
-            for i_ut, ut in enumerate(unit_types_uniq):
-                # memory allocation
-                ut_new = ut.lower()
-                if ut_new not in unit_col:
-                    unit_col[ut_new] = unit_tab.row_col[ut_new]
-                    unit_col[ut_new].setAlpha(255)
-
-                # sets the unit indices
-                self.units[i][ut_new] = ind_pk[unit_types_pk == ut]
-
-                # sets the offset coordinates
-                ch_new = ch_unit + self.calc_unit_offset(i_ut, n_unit_types)
-
-                # draws the unit marker
-                unit_roi = pg.QtWidgets.QGraphicsEllipseItem(ch_new[0], ch_new[1], self.unit_rad, self.unit_rad)
-                unit_roi.setBrush(QBrush(unit_col[ut_new]))
-                self.h_plot[1, 0].addItem(unit_roi)
+        # sets up the sub-view unit markers
+        self.sub_view.setup_view_unit_markers(unit_tab)
 
         # other field updates
-        self.units_init = True
-
-    def calc_unit_offset(self, i_unit, n_unit):
-
-        if n_unit == 1:
-            return np.zeros(2, dtype=float)
-
-        elif n_unit == 2:
-            phi_unit = i_unit * np.pi
-            return (self.unit_rad / 2) * np.array([np.cos(phi_unit), np.sin(phi_unit)])
-
-        else:
-            phi_unit = np.pi * (1 / 2 + i_unit * 2 / n_unit)
-            return (self.unit_rad / 2) * np.array([np.cos(phi_unit), np.sin(phi_unit)])
+        self.showing_units = True
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
@@ -729,7 +681,6 @@ class ProbeView(GraphicsObject):
     n_ar = 10
     p_gap = 0.05
     p_exp_shank = 0.2
-    unit_rad = 10
 
     # plot pen widgets
     pen = mkPen(width=2, color='b')
@@ -762,6 +713,7 @@ class ProbeView(GraphicsObject):
         self.roi = None
         self.width = None
         self.height = None
+        self.unit_rad = None
         self.x_lim = None
         self.y_lim = None
         self.y_lim_full = None
@@ -771,6 +723,7 @@ class ProbeView(GraphicsObject):
         self.x_lim_shank = None
         self.y_lim_shank = None
 
+        #
         self.unit_tab = None
         self.session_info = session_info
 
@@ -925,54 +878,69 @@ class ProbeView(GraphicsObject):
     # Unit Marker Functions
     # ---------------------------------------------------------------------------
 
-    # def setup_unit_markers(self):
-    #
-    #     if self.unit_tab is None:
-    #         return
-    #
-    #     # field retrieval
-    #     self.unit_marker = {}
-    #     pk_ch = self.unit_tab.get_field('pk_ch')
-    #     ch_pos = self.unit_tab.get_field('ch_pos')
-    #     unit_types = self.unit_tab.get_unit_type_labels()
-    #
-    #     # creates the unit markers for each type
-    #     u_type, n_unit = np.unique(unit_types, return_counts=True)
-    #     for ut, nt in zip(u_type, n_unit):
-    #         # memory allocation
-    #         ut_new = ut.lower()
-    #         self.unit_marker[ut_new] = np.empty((nt, 2), dtype=object)
-    #
-    #         # updates the painter properties
-    #         self.reset_painter_unit(self.unit_tab.row_col[ut_new])
-    #
-    #         # sets up the markers for the current unit type
-    #         i_unit = np.where(unit_types == ut)[0]
-    #         for i, iu in enumerate(i_unit):
-    #             # sets the marker index
-    #             self.unit_marker[ut_new][i, 0] = iu
-    #
-    #             # draws the unit marker
-    #             ch_point = ch_pos[int(pk_ch[iu]), :] - self.unit_rad / 2
-    #             ch_point_u = QPointF(ch_point[0], ch_point[1])
-    #             self.p.drawEllipse(ch_point_u, self.unit_rad, self.unit_rad)
-    #
-    # def reset_painter_unit(self, unit_col):
-    #
-    #     # resets the unit colour alpha
-    #     unit_col.setAlpha(255)
-    #
-    #     # updates the unit pen/brushes
-    #     self.p.setPen(mkPen(color=unit_col))
-    #     self.p.setBrush(mkBrush(color=unit_col))
-    #
-    # def create_unit_marker(self):
-    #
-    #     a = 1
-    #
-    # def reset_unit_marker(self):
-    #
-    #     a = 1
+    def setup_view_unit_markers(self, unit_tab):
+
+        # field retrieval
+        pk_ch = unit_tab.get_field('pk_ch')
+        ch_pos = unit_tab.get_field('ch_pos')
+        unit_types = unit_tab.get_unit_type_labels()
+
+        # retrieves the unique peak channel counts
+        i_pk_ch, i_pk_grp, n_pk_grp = (
+            np.unique(pk_ch, return_counts=True, return_inverse=True))
+        i_pk_grp = i_pk_grp.flatten()
+
+        # other initialisations
+        unit_col = {}
+        self.calc_unit_radius()
+        self.units = np.empty(len(i_pk_ch), dtype=object)
+
+        for i, i_pk in enumerate(i_pk_ch):
+            # determines the types of units common to the current channel
+            ind_pk = np.where(i_pk_grp == i)[0]
+            ch_unit = ch_pos[int(i_pk), :] - self.unit_rad / 2
+            unit_types_pk = unit_types[ind_pk]
+
+            # determines the unique unit types
+            self.units[i] = {}
+            unit_types_uniq = np.unique(unit_types_pk)
+            n_unit_types = len(unit_types_uniq)
+
+            for i_ut, ut in enumerate(unit_types_uniq):
+                # memory allocation
+                ut_new = ut.lower()
+                if ut_new not in unit_col:
+                    unit_col[ut_new] = unit_tab.row_col[ut_new]
+                    unit_col[ut_new].setAlpha(255)
+
+                # sets the offset coordinates
+                ind_new = ind_pk[unit_types_pk == ut]
+                ch_new = ch_unit + self.calc_unit_offset(i_ut, n_unit_types)
+
+                # sets the unit indices
+                self.units[i][ut_new] = UnitMarker(
+                    self, ch_new, self.unit_rad, i_pk, ut, ind_new, unit_col[ut_new])
+                self.main_obj.addItem(self.units[i][ut_new])
+
+    def calc_unit_radius(self):
+
+        if self.c_poly is not None:
+            bb_rect = self.c_poly[0].boundingRect()
+            bb_wid, bb_hght = bb_rect.width(), bb_rect.height()
+            self.unit_rad = np.min([bb_wid, bb_hght])
+
+    def calc_unit_offset(self, i_unit, n_unit):
+
+        if n_unit == 1:
+            return np.zeros(2, dtype=float)
+
+        elif n_unit == 2:
+            phi_unit = i_unit * np.pi
+            return (self.unit_rad / 2) * np.array([np.cos(phi_unit), np.sin(phi_unit)])
+
+        else:
+            phi_unit = np.pi * (1 / 2 + i_unit * 2 / n_unit)
+            return (self.unit_rad / 2) * np.array([np.cos(phi_unit), np.sin(phi_unit)])
 
     # ---------------------------------------------------------------------------
     # Channel Highlight Functions
@@ -1154,6 +1122,12 @@ class ProbeView(GraphicsObject):
             self.ch_label.setVisible(False)
             self.main_obj.addItem(self.ch_label)
 
+            # sets the channel label properties
+            self.unit_label = TextItem(color=(0, 0, 0, 255), fill=(255, 255, 255, 255), ensureInBounds=True)
+            self.unit_label.setVisible(False)
+            self.unit_label.setZValue(30)
+            self.main_obj.addItem(self.unit_label)
+
         # updates the line location
         self.out_line.clear()
         if self.y_out is not None:
@@ -1244,3 +1218,99 @@ class ProbeView(GraphicsObject):
     def has_point(cp, m_pos):
 
         return cp.containsPoint(m_pos, Qt.FillRule.OddEvenFill)
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+"""
+    UnitMarker:
+"""
+
+class UnitMarker(pg.QtWidgets.QGraphicsEllipseItem):
+    # marker dimensions
+    pw_y = 1.05
+    pw_x = 1.05
+    p_wid = 1
+
+    def __init__(self, view_obj, p, r, i_ch, u_type, i_unit, u_col):
+        super().__init__(p[0] + self.p_wid / 2, p[1] + self.p_wid / 2, r - self.p_wid, r - self.p_wid)
+
+        # field initialisations
+        self.p0 = QPointF(p[0] + r / 2, p[1] + r / 2)
+        self.i_ch = i_ch
+        self.i_unit = i_unit
+        self.u_type = u_type
+
+        self.view_obj = view_obj
+        self.h_lbl = view_obj.unit_label
+        self.v_box = view_obj.main_obj.getViewBox()
+        self.u_pen = QPen(u_col, self.p_wid)
+        self.u_pen_sel = QPen(cf.get_colour_value('k'), self.p_wid)
+
+        # sets widget property fields
+        self.setAcceptHoverEvents(True)
+        self.setBrush(QBrush(u_col))
+        self.setPen(QPen(self.u_pen))
+
+        # other widget properties
+        self.setup_label_text()
+
+    def setup_label_text(self):
+
+        # pre-calculations
+        unit_str = ", ".join([str(x) for x in self.i_unit])
+
+        # sets the label string
+        self.lbl_txt = '\n'.join([
+            'Unit Type: {0}'.format(self.u_type),
+            'Channel Index: {0}'.format(int(self.i_ch)),
+            'Count: {0}'.format(len(self.i_unit)),
+            'Indices: {0}'.format(unit_str),
+        ])
+
+    def hoverEnterEvent(self, event):
+        # updates the pen properties
+        self.setPen(self.u_pen_sel)
+
+        # object dimensions
+        m_pos = event.pos()
+        ax_rng = self.v_box.viewRange()
+        dx_pos, dy_pos = self.convert_coords()
+
+        # print(m_pos)
+
+        # resets the y-label offset (if near the top)
+        if (m_pos.y() - (self.pw_y * dy_pos)) > ax_rng[1][0]:
+            dy_pos = 0
+
+        # resets the x-label offset (if near the left-side)
+        if (m_pos.x() + (self.pw_x * dx_pos)) < ax_rng[0][1]:
+            dx_pos = 0
+
+        # updates the unit label
+        self.h_lbl.setText(self.lbl_txt)
+        self.h_lbl.setPos(self.p0)
+        self.h_lbl.setVisible(True)
+        self.h_lbl.setPos(self.p0 + QPointF(-dx_pos, dy_pos))
+
+        self.h_lbl.update()
+        super().hoverEnterEvent(event)
+
+    def hoverLeaveEvent(self, event):
+        # updates the pen properties
+        self.setPen(self.u_pen)
+
+        # updates the unit label
+        self.h_lbl.setVisible(False)
+        super().hoverLeaveEvent(event)
+
+    def mousePressEvent(self, event):
+        super().mousePressEvent(event)
+
+    def convert_coords(self):
+
+        # initialisations
+        lbl_bb = self.h_lbl.boundingRect()
+
+        # retrieves the converted coordinates
+        bb_rect = self.v_box.mapSceneToView(lbl_bb).boundingRect()
+        return bb_rect.width(), bb_rect.height()
