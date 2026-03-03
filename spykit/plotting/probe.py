@@ -549,8 +549,8 @@ class ProbePlot(PlotWidget):
 
     def clear_unit_markers(self):
 
-        # updates the unit tab objects
-        self.units = None
+        # sets up the sub-view unit markers
+        self.sub_view.clear_view_unit_markers()
 
         # other field updates
         self.showing_units = False
@@ -724,6 +724,7 @@ class ProbeView(GraphicsObject):
         self.y_lim_shank = None
 
         #
+        self.units = None
         self.unit_tab = None
         self.session_info = session_info
 
@@ -878,12 +879,29 @@ class ProbeView(GraphicsObject):
     # Unit Marker Functions
     # ---------------------------------------------------------------------------
 
+    def clear_view_unit_markers(self):
+
+        for un in self.units:
+            for un_g in un.values():
+                self.main_obj.removeItem(un_g)
+
+        self.units = None
+
     def setup_view_unit_markers(self, unit_tab):
+
+        if self.units is not None:
+            self.clear_view_unit_markers()
 
         # field retrieval
         pk_ch = unit_tab.get_field('pk_ch')
         ch_pos = unit_tab.get_field('ch_pos')
         unit_types = unit_tab.get_unit_type_labels()
+
+        # removes any filtered imtems
+        is_filt = unit_tab.is_filt
+        if is_filt is not None:
+            pk_ch = pk_ch[is_filt]
+            unit_types = unit_types[is_filt]
 
         # retrieves the unique peak channel counts
         i_pk_ch, i_pk_grp, n_pk_grp = (
@@ -1227,9 +1245,9 @@ class ProbeView(GraphicsObject):
 
 class UnitMarker(pg.QtWidgets.QGraphicsEllipseItem):
     # marker dimensions
+    p_wid = 1
     pw_y = 1.05
     pw_x = 1.05
-    p_wid = 1
 
     def __init__(self, view_obj, p, r, i_ch, u_type, i_unit, u_col):
         super().__init__(p[0] + self.p_wid / 2, p[1] + self.p_wid / 2, r - self.p_wid, r - self.p_wid)
@@ -1272,27 +1290,14 @@ class UnitMarker(pg.QtWidgets.QGraphicsEllipseItem):
         self.setPen(self.u_pen_sel)
 
         # object dimensions
-        m_pos = event.pos()
-        ax_rng = self.v_box.viewRange()
-        dx_pos, dy_pos = self.convert_coords()
-
-        # print(m_pos)
-
-        # resets the y-label offset (if near the top)
-        if (m_pos.y() - (self.pw_y * dy_pos)) > ax_rng[1][0]:
-            dy_pos = 0
-
-        # resets the x-label offset (if near the left-side)
-        if (m_pos.x() + (self.pw_x * dx_pos)) < ax_rng[0][1]:
-            dx_pos = 0
+        dx_pos, dy_pos = self.convert_coords(event.pos())
 
         # updates the unit label
         self.h_lbl.setText(self.lbl_txt)
-        self.h_lbl.setPos(self.p0)
-        self.h_lbl.setVisible(True)
         self.h_lbl.setPos(self.p0 + QPointF(-dx_pos, dy_pos))
-
+        self.h_lbl.setVisible(True)
         self.h_lbl.update()
+
         super().hoverEnterEvent(event)
 
     def hoverLeaveEvent(self, event):
@@ -1306,11 +1311,23 @@ class UnitMarker(pg.QtWidgets.QGraphicsEllipseItem):
     def mousePressEvent(self, event):
         super().mousePressEvent(event)
 
-    def convert_coords(self):
+    def convert_coords(self, m_pos):
 
         # initialisations
         lbl_bb = self.h_lbl.boundingRect()
 
         # retrieves the converted coordinates
         bb_rect = self.v_box.mapSceneToView(lbl_bb).boundingRect()
-        return bb_rect.width(), bb_rect.height()
+        dx_pos, dy_pos = bb_rect.width(), bb_rect.height()
+
+        # resets the y-label offset (if near the top)
+        ax_rng = self.v_box.viewRange()
+        if (m_pos.y() - (self.pw_y * dy_pos)) > ax_rng[1][0]:
+            dy_pos = 0
+
+        # resets the x-label offset (if near the left-side)
+        if (m_pos.x() + (self.pw_x * dx_pos)) < ax_rng[0][1]:
+            dx_pos = 0
+
+        return dx_pos, dy_pos
+

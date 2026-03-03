@@ -510,6 +510,10 @@ class InfoManager(QWidget):
         # resets the table rows based on the selection
         tab_obj.reset_table_rows()
 
+        # updates the unit markers
+        probe_view = self.get_probe_plot_view()
+        probe_view.setup_unit_markers(tab_obj)
+
     def unit_mouse_move(self):
 
         pass
