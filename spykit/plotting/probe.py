@@ -75,6 +75,7 @@ class ProbePlot(PlotWidget):
         self.l_unit_brush = None
         self.showing_units = False
         self.units = []
+        self.unit_sel = None
 
         # other class fields
         self.i_status = 1
@@ -151,7 +152,7 @@ class ProbePlot(PlotWidget):
             self.v_box[1, 0].wheelEvent = self.mouse_wheel_move
 
         else:
-            #
+            # resets the probe sub-view
             self.sub_view.reset_probe_fields(self.probe)
 
         # sets up the probe dataframe
@@ -166,7 +167,7 @@ class ProbePlot(PlotWidget):
         status_ch = self.session_info.get_channel_status(i_channel)
         shank_id = self.session_info.get_shank_id(i_channel)
 
-        lbl_str = "Channel #{0}".format(i_channel)
+        lbl_str = "Channel #{0}".format(i_channel + 1)
         lbl_str += "\nDepth = {0}".format(loc_ch[1])
         lbl_str += "\nStatus = {0}".format(status_ch)
         lbl_str += "\nShank ID = {0}".format(shank_id)
@@ -183,11 +184,19 @@ class ProbePlot(PlotWidget):
 
     def enter_view(self, is_main, *_):
 
-        if is_main and (self.sub_view.ch_label is not None):
-            self.remove_contact_highlight(self.sub_view)
+        if not is_main:
+            if (self.unit_sel is not None):
+                # removes any selected unit highlight
+                self.unit_sel.set_unit_highlight(False)
+                self.unit_sel = None
 
-        elif (self.main_view.ch_label is not None):
-            self.remove_contact_highlight(self.main_view)
+            if (self.main_view.ch_label is not None):
+                # removes contact highlight from main view
+                self.remove_contact_highlight(self.main_view)
+
+        elif (self.sub_view.ch_label is not None):
+            # removes contact highlight from sub view
+            self.remove_contact_highlight(self.sub_view)
 
     def leave_view(self, is_main, *_):
 
@@ -340,8 +349,6 @@ class ProbePlot(PlotWidget):
             # resets the label position
             if p_view.ch_label is not None:
                 p_view.ch_label.setPos(m_pos + QPointF(-dx_pos, dy_pos))
-
-
 
         else:
             # otherwise, remove the contact highlight
@@ -562,6 +569,17 @@ class ProbePlot(PlotWidget):
 
         # other field updates
         self.showing_units = True
+
+    def reset_selected_unit_highlight(self, i_ch_unit, type_lbl):
+
+        # removes any currently selected highlights
+        if self.unit_sel is not None:
+            self.unit_sel.set_unit_highlight(False)
+
+        # resets the unit highlight
+        i_unit = np.where(self.sub_view.i_ch_units == i_ch_unit)[0][0]
+        self.unit_sel = self.sub_view.units[i_unit][type_lbl]
+        self.unit_sel.set_unit_highlight(True)
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
@@ -893,13 +911,15 @@ class ProbeView(GraphicsObject):
             self.clear_view_unit_markers()
 
         # field retrieval
-        pk_ch = unit_tab.get_field('pk_ch')
         ch_pos = unit_tab.get_field('ch_pos')
+        c_id = np.array(unit_tab.df_unit['Cluster ID#'])
+        pk_ch = np.array(unit_tab.df_unit['Max Channel'])
         unit_types = unit_tab.get_unit_type_labels()
 
         # removes any filtered imtems
         is_filt = unit_tab.is_filt
         if is_filt is not None:
+            c_id = c_id[is_filt]
             pk_ch = pk_ch[is_filt]
             unit_types = unit_types[is_filt]
 
@@ -912,15 +932,17 @@ class ProbeView(GraphicsObject):
         unit_col = {}
         self.calc_unit_radius()
         self.units = np.empty(len(i_pk_ch), dtype=object)
+        self.i_ch_units = np.zeros(len(i_pk_ch), dtype=int)
 
         for i, i_pk in enumerate(i_pk_ch):
             # determines the types of units common to the current channel
             ind_pk = np.where(i_pk_grp == i)[0]
-            ch_unit = ch_pos[int(i_pk), :] - self.unit_rad / 2
+            ch_unit = ch_pos[int(i_pk - 1), :] - self.unit_rad / 2
             unit_types_pk = unit_types[ind_pk]
 
             # determines the unique unit types
             self.units[i] = {}
+            self.i_ch_units[i] = i_pk
             unit_types_uniq = np.unique(unit_types_pk)
             n_unit_types = len(unit_types_uniq)
 
@@ -932,12 +954,12 @@ class ProbeView(GraphicsObject):
                     unit_col[ut_new].setAlpha(255)
 
                 # sets the offset coordinates
-                ind_new = ind_pk[unit_types_pk == ut]
+                ind_new = c_id[np.array(ind_pk[unit_types_pk == ut])]
                 ch_new = ch_unit + self.calc_unit_offset(i_ut, n_unit_types)
 
                 # sets the unit indices
                 self.units[i][ut_new] = UnitMarker(
-                    self, ch_new, self.unit_rad, i_pk, ut, ind_new, unit_col[ut_new])
+                    self, ch_new, self.unit_rad, i_pk - 1, ut, ind_new, unit_col[ut_new])
                 self.main_obj.addItem(self.units[i][ut_new])
 
     def calc_unit_radius(self):
@@ -1280,14 +1302,18 @@ class UnitMarker(pg.QtWidgets.QGraphicsEllipseItem):
         # sets the label string
         self.lbl_txt = '\n'.join([
             'Unit Type: {0}'.format(self.u_type),
-            'Channel Index: {0}'.format(int(self.i_ch)),
+            'Channel Index: {0}'.format(int(self.i_ch + 1)),
             'Count: {0}'.format(len(self.i_unit)),
-            'Indices: {0}'.format(unit_str),
+            'Unit Indices: {0}'.format(unit_str),
         ])
+
+    def set_unit_highlight(self, is_show):
+
+        self.setPen(self.u_pen_sel if is_show else self.u_pen)
 
     def hoverEnterEvent(self, event):
         # updates the pen properties
-        self.setPen(self.u_pen_sel)
+        self.set_unit_highlight(True)
 
         # object dimensions
         dx_pos, dy_pos = self.convert_coords(event.pos())
@@ -1302,7 +1328,7 @@ class UnitMarker(pg.QtWidgets.QGraphicsEllipseItem):
 
     def hoverLeaveEvent(self, event):
         # updates the pen properties
-        self.setPen(self.u_pen)
+        self.set_unit_highlight(False)
 
         # updates the unit label
         self.h_lbl.setVisible(False)

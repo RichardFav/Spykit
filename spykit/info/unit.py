@@ -66,6 +66,7 @@ class UnitInfoTab(InfoWidget):
 
     # object dimensions
     but_height = 16
+    i_col_type = 0
     i_col_unit = 2
 
     def __init__(self, t_str, main_obj):
@@ -237,13 +238,39 @@ class UnitInfoTab(InfoWidget):
 
         # resets the selected unit index
         unit_lbl = self.table.item(i_row, self.i_col_unit).text()
+        type_lbl = self.table.item(i_row, self.i_col_type).text().lower()
         self.i_unit_sel = int(unit_lbl)
 
         # sets the row highlight
         self.reset_row_highlight(True)
 
+        # channel position/index
+        i_ch_unit = self.df_unit['Max Channel'][self.i_unit_sel - 1]
+        ch_pos = self.get_field('ch_pos')[i_ch_unit - 1, :]
+
         # resets the probe unit highlight marker
-        a = 1
+        probe_view = self.main_obj.plot_manager.get_plot_view('probe')
+        r_pos = probe_view.main_view.roi.pos()
+        r_sz = probe_view.main_view.roi.size()
+        ax_rng = probe_view.h_plot[0, 0].getViewBox().viewRange()
+
+        # resets the ROI position
+        r_pos.setX(self.reset_roi_coord(ch_pos[0], r_sz[0], ax_rng[0]))
+        r_pos.setY(self.reset_roi_coord(ch_pos[1], r_sz[1], ax_rng[1]))
+        probe_view.main_view.roi.setPos(r_pos)
+
+        # removes any currently selected highlights
+        probe_view.reset_selected_unit_highlight(i_ch_unit, type_lbl)
+
+    @staticmethod
+    def reset_roi_coord(p, r_dim, ax_lim):
+
+        if (p - r_dim / 2) < ax_lim[0]:
+            return ax_lim[0]
+        elif (p + r_dim / 2) > ax_lim[1]:
+            return ax_lim[1] - r_dim
+        else:
+            return p - r_dim / 2
 
     # ---------------------------------------------------------------------------
     # Widget Event Functions
