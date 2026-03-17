@@ -2078,6 +2078,7 @@ class QLabelEdit(QWidget):
         self.layout.setSpacing(0)
         self.layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(self.layout)
+        self.setObjectName(name)
 
         # creates the label/editbox widget combo
         self.obj_lbl = create_text_label(None, lbl_str, font=font_lbl)
@@ -2102,6 +2103,10 @@ class QLabelEdit(QWidget):
 
     def set_tooltip(self, tt_str):
         self.obj_lbl.setToolTip(tt_str)
+
+    def set_enabled(self, state):
+        self.obj_lbl.setEnabled(state)
+        self.obj_edit.setEnabled(state)
 
     def connect(self, cb_fcn0):
         cb_fcn = functools.partial(cb_fcn0, self.obj_edit)

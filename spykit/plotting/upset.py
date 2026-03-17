@@ -61,7 +61,6 @@ class UpSetPlot(PlotWidget):
 
         # main class fields
         self.session_info = session_info
-        s_props = self.session_info.session_props
 
         # sets up the plot regions
         self.setup_subplots(n_r=2, n_c=2)
