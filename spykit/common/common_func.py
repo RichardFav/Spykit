@@ -424,11 +424,6 @@ def setup_image_file_name(fig_dir, fig_name):
     return os.path.join(fig_dir, fig_name)
 
 
-def get_dict_key_from_value(d, val):
-
-    return next((k for k, v in d.items() if (v == val)))
-
-
 def normalise_trace(y):
 
     y_min, y_max = np.min(y), np.max(y)
@@ -534,3 +529,8 @@ def reverse_dict(d):
     """Reverses the key/values in the dictionary, d"""
 
     return {v: k for k, v in d.items()}
+
+def get_dict_key(d, v):
+    """Determines the dictionary key for the value, v"""
+
+    return next((key for key, val in d.items() if val == v), None)

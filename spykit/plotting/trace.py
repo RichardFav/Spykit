@@ -183,10 +183,12 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.x_tr = None
         self.y_tr = None
         self.c_tr = None
-        self.gen_props = None
-        self.trace_props = None
         self.inset_id = None
         self.inset_tr = []
+
+        # property class fields
+        self.gen_props = None
+        self.trace_props = None
 
         # axes limits
         self.y_lim = []

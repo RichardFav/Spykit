@@ -67,7 +67,6 @@ class UnitHistPara(PropPara):
     n_row = cf.ObservableProperty(pfcn(_edit_update, 'n_row'))
     n_col = cf.ObservableProperty(pfcn(_edit_update, 'n_col'))
     show_thresh = cf.ObservableProperty(pfcn(_check_update, 'show_thresh'))
-    show_mean = cf.ObservableProperty(pfcn(_check_update, 'show_mean'))
     show_grid = cf.ObservableProperty(pfcn(_check_update, 'show_grid'))
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -91,6 +90,9 @@ class UnitHistProps(PropWidget):
 
         # sets up the parameter fields
         self.p_props = UnitHistPara(self.p_info['ch_fld'])
+
+        # other class fields
+        self.plot_view = None
 
         # initialises the other class fields
         self.init_other_class_fields()
@@ -116,22 +118,23 @@ class UnitHistProps(PropWidget):
         self.get_feasible_metrics()
 
         # field retrieval
-        p_met_fin = self.p_met[self.can_plot]
+        self.p_met_fin = self.p_met[self.can_plot]
 
         # memory allocation
-        n_met = len(p_met_fin)
+        n_bin0 = 40
+        n_met = len(self.p_met_fin)
         n_row = np.floor(math.sqrt(n_met));
         n_col = np.ceil(n_met / n_row);
         show_hist = np.ones(n_met, dtype=bool)
 
         # sets up the subgroup fields
         p_tmp = {
-            'hist_type': self.create_para_field('Metric', 'checklist', show_hist, p_list=p_met_fin),
+            'hist_type': self.create_para_field('Metric', 'checklist', show_hist, p_list=self.p_met_fin),
             'opt_config': self.create_para_field('Use Optimal Configuration?', 'checkbox', True),
             'n_row': self.create_para_field('Row Count', 'edit', n_row),
             'n_col': self.create_para_field('Column Count', 'edit', n_col),
+            'n_bin': self.create_para_field('Max Bin Count', 'edit', n_bin0),
             'show_thresh': self.create_para_field('Show Threshold Markers', 'checkbox', True),
-            'show_mean': self.create_para_field('Show Mean Line', 'checkbox', True),
             'show_grid': self.create_para_field('Show Plot Gridlines', 'checkbox', True),
         }
 
@@ -150,24 +153,24 @@ class UnitHistProps(PropWidget):
                 case 'RPV tauR Estimate':
                     # case is the RPV tau estimate
                     self.can_plot[i] = (
-                            self.get_para_value('tauR_valuesMin') != self.get_para_value('tauR_valuesMax'))
+                            self.get_mem_map_field('tauR_valuesMin') != self.get_mem_map_field('tauR_valuesMax'))
 
                 case 'Spatial Decay':
                     # case is spatial decay
-                    self.can_plot[i] = self.get_para_value('computeSpatialDecay') == 1
+                    self.can_plot[i] = self.get_mem_map_field('computeSpatialDecay') == 1
 
                 case pm if pm in ['Raw Amplitude', 'SNR']:
                     # case is the raw signal metrics
-                    self.can_plot[i] = bool(self.get_para_value('extractRaw'))
+                    self.can_plot[i] = bool(self.get_mem_map_field('extractRaw'))
 
                 case pm if pm in ['Max Drift', 'Cumulative Drift']:
                     # case is the drift metrics
-                    self.can_plot[i] = bool(self.get_para_value('computeDrift'))
+                    self.can_plot[i] = bool(self.get_mem_map_field('computeDrift'))
 
                 case pm if pm in ['Isolation Distance', 'L-Ratio']:
                     # case is the distance metrics
-                    self.can_plot[i] = (bool(self.get_para_value('computeDistanceMetrics'))
-                                   and not np.isnan(self.get_para_value('isoDmin')))
+                    self.can_plot[i] = (bool(self.get_mem_map_field('computeDistanceMetrics'))
+                                   and not np.isnan(self.get_mem_map_field('isoDmin')))
 
                 case '% Spike Missing (Sym)':
                     # redundant fields?
@@ -199,6 +202,9 @@ class UnitHistProps(PropWidget):
             h_edit_c = self.findChild(cw.QLineEdit,name=p_str_c)
             h_edit_c.setText('%g' % p_dim_nw)
 
+            # updates the histogram view
+            self.update_hist_view()
+
         else:
             # otherwise, reset the previous value
             h_edit.setText('%g' % getattr(self, p_str))
@@ -206,24 +212,40 @@ class UnitHistProps(PropWidget):
     def check_update(self, p_str):
 
         # field retrieval
+        reset_config = False
         h_chk = self.findChild(cw.QCheckBox, name=p_str)
 
         match p_str:
             case 'opt_config':
                 # updates the line-edit properties
+                reset_config = True
                 is_chk = h_chk.checkState() == cf.chk_state[False]
                 for pn in ['n_row', 'n_col']:
                     h_ledit = self.findChild(cw.QLabelEdit, name=pn)
                     h_ledit.set_enabled(is_chk)
 
+        # updates the histogram view
+        self.update_hist_view(reset_config)
+
     def checklist_update(self, p_str):
 
-        match p_str:
-            case 'hist_type':
-                # case is updating the unit type
-                self.plot_view.hist_type = getattr(self.p_props, p_str)
+        # case is updating the unit type
+        if self.plot_view is not None:
+            setattr(self.plot_view, p_str, getattr(self.p_props, p_str))
 
-   # ---------------------------------------------------------------------------
+        # updates the histogram view
+        self.update_hist_view()
+
+    # ---------------------------------------------------------------------------
+    # Plot View Update Functions
+    # ---------------------------------------------------------------------------
+
+    def update_hist_view(self, reset_config=True):
+
+        if self.plot_view is not None:
+            self.plot_view.update_hist_view(reset_config)
+
+    # ---------------------------------------------------------------------------
     # Miscellaneous Functions
     # ---------------------------------------------------------------------------
 
@@ -232,5 +254,9 @@ class UnitHistProps(PropWidget):
         self.plot_view = plot_view_new
 
     def get_para_value(self, p_fld):
+
+        return getattr(self.p_props, p_fld)
+
+    def get_mem_map_field(self, p_fld):
 
         return self.main_obj.main_obj.session_obj.get_mem_map_field(p_fld)

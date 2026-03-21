@@ -142,13 +142,18 @@ class PlotManager(QWidget):
             case 'trace':
                 # case is the trace view
                 plot_new.reset_highlight.connect(self.probe_highlight)
-                plot_new.set_gen_props(self.main_obj.prop_manager.get_prop_tab('general'))
-                plot_new.set_trace_props(self.main_obj.prop_manager.get_prop_tab('trace'))
+                plot_new.set_gen_props(self.get_prop_tab('general'))
+                plot_new.set_trace_props(self.get_prop_tab(p_type))
 
             case 'trigger':
                 # case is the trigger view
-                plot_new.set_gen_props(self.main_obj.prop_manager.get_prop_tab('general'))
-                plot_new.set_trig_props(self.main_obj.prop_manager.get_prop_tab('trigger'))
+                plot_new.set_gen_props(self.get_prop_tab('general'))
+                plot_new.set_trig_props(self.get_prop_tab(p_type))
+
+            case 'unithist':
+                # case is the unit quality metric histograms
+                pp_props = self.get_prop_tab('postprocess')
+                plot_new.set_hist_props(pp_props.get_tab_view(p_type))
 
     def get_plot_view(self, p_type, is_add=True, expand_grid=True, show_plot=True):
 
@@ -168,7 +173,7 @@ class PlotManager(QWidget):
     def clear_plot_view(self, p_type):
 
         # retrieves the configuration tab object
-        config_tab = self.main_obj.prop_manager.get_prop_tab('config')
+        config_tab = self.get_prop_tab('config')
 
         # removes the current plot from the configuration id array
         p_id = self.types[p_type]
@@ -184,6 +189,10 @@ class PlotManager(QWidget):
     def get_plot_index(self, p_type):
 
         return self.types[p_type]
+
+    def get_prop_tab(self, p_type):
+
+        return self.main_obj.prop_manager.get_prop_tab(p_type)
 
     # ---------------------------------------------------------------------------
     # Probe-View Specific Functions
@@ -264,7 +273,7 @@ class PlotManager(QWidget):
             plt_trace.is_updating = False
 
             # updates the editbox value
-            gen_props = self.main_obj.prop_manager.get_prop_tab('general')
+            gen_props = self.get_prop_tab('general')
             gen_props.reset_para_field('t_dur', t_dur_new)
 
             # ensures the linear region is within the new bounds

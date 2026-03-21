@@ -219,7 +219,7 @@ class TraceProps(PropWidget):
         self.trace_view = trace_view_new
 
     # ---------------------------------------------------------------------------
-    # Plot View Update Functions
+    # Miscellaneous Functions
     # ---------------------------------------------------------------------------
 
     def reset_trace_props(self, p_str):
