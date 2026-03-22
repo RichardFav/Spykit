@@ -130,13 +130,10 @@ class UnitHistPlot(PlotWidget):
 
                     if i_glob < len(self.i_met):
                         # updates the figure with the plot metric data (if available)
-                        try:
-                            i_met_new = self.i_met[i_glob]
-                            self.hist[i_glob].update_hist_metric(
-                                self.q_met_hist[i_met_new], i_met_new
-                            )
-                        except Exception as e:
-                            pass
+                        i_met_new = self.i_met[i_glob]
+                        self.hist[i_glob].update_hist_metric(
+                            self.q_met_hist[i_met_new], i_met_new
+                        )
 
                     else:
                         # otherwise, hide the subplot
@@ -226,8 +223,8 @@ class UnitHistPlot(PlotWidget):
         self.update_plot_title()
 
         # updates the unit index for each plot
-        for hp in self.hist:
-            hp.update_unit_index(self.i_unit)
+        for i in range(len(self.i_met)):
+            self.hist[i].update_unit_index(self.i_unit)
 
     def update_bin_count(self):
 
@@ -532,9 +529,13 @@ class UnitHist(object):
         self.v_box.setYRange(self.y_lim[0], self.y_lim[1], padding=0)
         self.v_box.setXRange(self.x_lim[0], self.x_lim[1], padding=0)
 
+        ax_bottom = self.h_plot.getAxis('bottom')
         if self.is_fixed_bin:
             x_ticks = [(x + 1, str(x + 1)) for x in range(self.n_bin)]
-            self.h_plot.getAxis('bottom').setTicks([x_ticks])
+            ax_bottom.setTicks([x_ticks])
+
+        else:
+            ax_bottom.setTicks(None)
 
     def update_thresh_markers(self):
 

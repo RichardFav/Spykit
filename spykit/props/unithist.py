@@ -291,7 +291,7 @@ class UnitHistProps(PropWidget):
         # determines if the selection is feasible
         if np.sum(hist_type) > n_plot:
             # if the selected metric exceeds the number of plots then output an error
-            e_str = "The current metric selection exceeds the subplot count ({0})." \ 
+            e_str = "The current metric selection exceeds the subplot count ({0})." \
                     "\nYou will need to expand the subplot count before continuing.".format(n_plot)
             cf.show_error(e_str, "Insuffiction Subplot Count")
 
