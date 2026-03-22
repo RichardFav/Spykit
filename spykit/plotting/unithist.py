@@ -63,10 +63,6 @@ class UnitHistPlot(PlotWidget):
 
     def init_class_fields(self):
 
-        # creates the title widget
-        self.title_lbl = cw.create_text_label(None, 'TEST', font=self.font_title, align='center')
-        self.title_lbl.setStyleSheet("QLabel { color: white; }")
-
         # sets the plot button callback functions
         for pb in self.plot_but:
             cb_fcn = pfcn(self.plot_button_clicked, pb.objectName())
@@ -76,20 +72,37 @@ class UnitHistPlot(PlotWidget):
     # PLot View Methods
     # ---------------------------------------------------------------------------
 
-    def init_plot_view(self):
+    def init_plot_view(self, is_view_init=True):
 
-        # field retrieval
-        n_met = np.sum(self.unit_props.can_plot)
+        # plot view initialisations (only required once)
+        if is_view_init:
+            # field retrieval
+            n_met = np.sum(self.unit_props.can_plot)
+            self.hist = np.empty(n_met, dtype=object)
+            self.q_met_hist = np.empty(n_met, dtype=object)
 
-        # memory allocation
-        self.hist = np.empty(n_met, dtype=object)
-        self.q_met_hist = np.empty(n_met, dtype=object)
+            # memory allocation
+            for i_met in range(n_met):
+                self.q_met_hist[i_met] = self.get_hist_metrics(i_met)
 
         # sets up the plot regions
         self.setup_subplots(n_r=self.n_r + 1, n_c=self.n_c)
 
         # resets the row stretch
         self.plot_layout.setRowStretch(0, self.n_r * self.p_row0)
+        for i_r in range(self.plot_layout.rowCount() - 1):
+            # resets the minimum row height
+            self.plot_layout.setRowMinimumHeight(i_r + 1, 0)
+
+            # updates the grid row stretch
+            if i_r < self.n_r:
+                self.plot_layout.setRowStretch(i_r + 1, 100 - self.p_row0)
+            else:
+                self.plot_layout.setRowStretch(i_r + 1, 0)
+
+        # creates the title widget
+        self.title_lbl = cw.create_text_label(None, 'TEST', font=self.font_title, align='center')
+        self.title_lbl.setStyleSheet("QLabel { color: white; }")
         self.plot_layout.addWidget(self.title_lbl, 0, 0, 1, self.n_c)
 
         # hides the first (title) row
@@ -107,9 +120,8 @@ class UnitHistPlot(PlotWidget):
             # sets up the histogram widget
             for i_col in range(self.n_c):
                 i_glob = i_row * self.n_c + i_col
-                if i_glob < n_met:
+                if i_glob < len(self.hist):
                     # if a valid plot index, then create the histogram object
-                    self.q_met_hist[i_glob] = self.get_hist_metrics(i_glob)
                     self.hist[i_glob] = UnitHist(
                         self.h_plot[i_row + 1, i_col],
                         self.unit_props,
@@ -118,10 +130,13 @@ class UnitHistPlot(PlotWidget):
 
                     if i_glob < len(self.i_met):
                         # updates the figure with the plot metric data (if available)
-                        i_met_new = self.i_met[i_glob]
-                        self.hist[i_glob].update_hist_metric(
-                            self.q_met_hist[i_met_new], i_met_new
-                        )
+                        try:
+                            i_met_new = self.i_met[i_glob]
+                            self.hist[i_glob].update_hist_metric(
+                                self.q_met_hist[i_met_new], i_met_new
+                            )
+                        except Exception as e:
+                            pass
 
                     else:
                         # otherwise, hide the subplot
@@ -167,7 +182,15 @@ class UnitHistPlot(PlotWidget):
 
     def update_hist_config(self):
 
-        pass
+        # if there is no change in configuration, then exit
+        if np.array_equal(self.h_plot.shape, [self.n_r + 1, self.n_c]):
+            return
+
+        # clears and deletes the subplots
+        cf.clear_layout(self.plot_layout)
+
+        # re-initialises the plot view
+        self.init_plot_view(False)
 
     def update_hist_type(self):
 
@@ -184,7 +207,10 @@ class UnitHistPlot(PlotWidget):
 
         # sets the final plot visibility (based on selection)
         if n_new > n_prev:
-            # shows the last plot (from the new configuration)
+            # updates and shows the last plot (from the new configuration)
+            self.hist[n_new - 1].update_hist_metric(
+                self.q_met_hist[i_met_new[n_new - 1]], i_met_new[n_new - 1]
+            )
             self.hist[n_new - 1].set_plot_visibility(True)
 
         else:
@@ -404,6 +430,7 @@ class UnitHist(object):
 
         # metric fields
         self.v_box = self.h_plot.getViewBox()
+        self.v_box.setMouseEnabled(False, False)
 
         # sets the default plot properties
         self.h_plot.getAxis('left').setStyle(tickLength=0)

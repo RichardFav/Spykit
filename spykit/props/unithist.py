@@ -131,9 +131,8 @@ class UnitHistProps(PropWidget):
         # memory allocation
         n_bin0 = 40
         n_met = len(self.p_met_fin)
-        n_row = int(np.floor(math.sqrt(n_met)));
-        n_col = int(np.ceil(n_met / n_row));
         show_hist = np.ones(n_met, dtype=bool)
+        n_row, n_col = self.calc_opt_config()
 
         # sets up the subgroup fields
         p_tmp = {
@@ -191,6 +190,9 @@ class UnitHistProps(PropWidget):
 
     def edit_update(self, p_str):
 
+        if self.is_updating:
+            return
+
         # field retrieval
         h_edit = self.findChild(cw.QLineEdit,name=p_str)
         nw_val = h_edit.text()
@@ -212,19 +214,19 @@ class UnitHistProps(PropWidget):
             # updates the parameter value
             setattr(self, p_str, int(chk_val[0]))
 
-            # calculates the other dimension value
-            if p_str in ['n_c', 'n_r']:
-                # calculates the complementary dimension
-                p_str_c = 'n_c' if (p_str == 'n_r') else n_row
-                p_dim_nw = int(np.ceil(n_met / chk_val[0]))
-
-                # updates the complentary dimension
-                self.reset_para_value(p_str_c, p_dim_nw)
-                self.reset_view_para_value(p_str_c, p_dim_nw)
-
-                # updates the other dimension parameter value
-                h_edit_c = self.findChild(cw.QLineEdit,name=p_str_c)
-                h_edit_c.setText('%g' % p_dim_nw)
+            # # calculates the other dimension value
+            # if p_str in ['n_c', 'n_r']:
+            #     # calculates the complementary dimension
+            #     p_str_c = 'n_c' if (p_str == 'n_r') else 'n_r'
+            #     p_dim_nw = int(np.ceil(n_met / chk_val[0]))
+            #
+            #     # updates the complentary dimension
+            #     self.reset_para_value(p_str_c, p_dim_nw)
+            #     self.reset_view_para_value(p_str_c, p_dim_nw)
+            #
+            #     # updates the other dimension parameter value
+            #     h_edit_c = self.findChild(cw.QLineEdit,name=p_str_c)
+            #     h_edit_c.setText('%g' % p_dim_nw)
 
             # updates the histogram view
             if self.plot_view is not None:
@@ -245,11 +247,30 @@ class UnitHistProps(PropWidget):
         match p_str:
             case 'opt_config':
                 # updates the line-edit properties
-                reset_config = True
                 is_chk = h_chk.checkState() == cf.chk_state[False]
+
+                # determines if the dimensions need updating
+                n_row, n_col = self.calc_opt_config()
+                reset_dim = not np.array_equal([self.n_r, self.n_c], [n_row, n_col])
+
+                # resets the row/column properties
                 for pn in ['n_r', 'n_c']:
+                    # widget handle retrieval
                     h_ledit = self.findChild(cw.QLabelEdit, name=pn)
                     h_ledit.set_enabled(is_chk)
+
+                    if reset_dim:
+                        # retrieves the dimension value
+                        dim_val = n_row if (pn == 'n_r') else n_col
+
+                        # updates the parameter class field
+                        self.reset_para_value(pn, dim_val)
+                        self.reset_view_para_value(pn, dim_val)
+
+                        # updates the editbox
+                        self.is_updating = True
+                        h_ledit.set_text('%g' % dim_val)
+                        self.is_updating = False
 
         # updates the histogram view
         if self.plot_view is not None:
@@ -294,3 +315,10 @@ class UnitHistProps(PropWidget):
     def get_mem_map_field(self, p_fld):
 
         return self.main_obj.main_obj.session_obj.get_mem_map_field(p_fld)
+
+    def calc_opt_config(self):
+
+        n_met = len(self.p_met_fin)
+        n_row = int(np.floor(math.sqrt(n_met)))
+
+        return n_row, int(np.ceil(n_met / n_row))

@@ -547,3 +547,20 @@ def round_up(n, decimals=0):
     """Rounds a number up to a specified number of decimal places."""
     factor = 10 ** decimals
     return math.ceil(n * factor) / factor
+
+def clear_layout(layout):
+    """
+    Recursively removes all widgets and sub-layouts from a given layout.
+    """
+    while layout.count():
+        item = layout.takeAt(0)
+        if item.widget() is not None:
+            # Remove widget from the layout and mark for deletion
+            item.widget().deleteLater()
+
+        elif item.layout() is not None:
+            # Recursively clear sub-layouts
+            clear_layout(item.layout())
+
+        # Delete the layout item itself
+        del item
