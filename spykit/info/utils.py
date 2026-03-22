@@ -512,7 +512,8 @@ class InfoManager(QWidget):
 
         # updates the unit markers
         probe_view = self.get_probe_plot_view()
-        probe_view.setup_unit_markers(tab_obj)
+        if probe_view is not None:
+            probe_view.setup_unit_markers(tab_obj)
 
     def unit_mouse_move(self):
 

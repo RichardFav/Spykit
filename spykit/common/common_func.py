@@ -167,7 +167,7 @@ class ObservableThreadSafe:
 # ----------------------------------------------------------------------------------------------------------------------
 
 
-def check_edit_num(nw_str, is_int=False, min_val=-1e100, max_val=1e10, show_err=True):
+def check_edit_num(nw_str, is_int=False, min_val=None, max_val=None, show_err=True):
 
     # initialisations
     nw_val, e_str = None, None
@@ -202,19 +202,27 @@ def check_edit_num(nw_str, is_int=False, min_val=-1e100, max_val=1e10, show_err=
 
     # determines if the new value meets the min/max value requirements
     if nw_val is not None:
-        if nw_val < min_val:
-            e_str = 'Entered value must be greater than or equal to {0}'.format(min_val)
-        elif nw_val > max_val:
+        if (min_val is not None) and (max_val is not None):
+            if (nw_val < min_val) or (nw_val > max_val):
+                e_str = 'Entered value must be between {0} and {1}'.format(min_val, max_val)
+
+        elif (max_val is not None) and (nw_val > max_val):
             e_str = 'Entered value must be less than or equal to {0}'.format(max_val)
-        else:
-            return nw_val, e_str
 
-    # shows the error message (if required)
-    if show_err:
-        show_error(e_str, 'Error!')
+        elif (min_val is not None) and (nw_val < min_val):
+            e_str = 'Entered value must be greater than or equal to {0}'.format(min_val)
 
-    # shows the error and returns a None value
-    return None, e_str
+    if e_str is None:
+        # case is there is no error
+        return nw_val, None
+
+    else:
+        # shows the error message (if required)
+        if show_err:
+            show_error(e_str, 'Error!')
+
+        # shows the error and returns a None value
+        return None, e_str
 
 
 def check_edit_string(nw_str, use_special=False):
@@ -534,3 +542,8 @@ def get_dict_key(d, v):
     """Determines the dictionary key for the value, v"""
 
     return next((key for key, val in d.items() if val == v), None)
+
+def round_up(n, decimals=0):
+    """Rounds a number up to a specified number of decimal places."""
+    factor = 10 ** decimals
+    return math.ceil(n * factor) / factor

@@ -1,10 +1,11 @@
 # module import
 import os
 import time
+import math
 import colorsys
-import functools
 import numpy as np
 from copy import deepcopy
+from functools import partial as pfcn
 
 # spike pipeline imports
 import spykit.common.common_func as cf
@@ -39,6 +40,7 @@ class UnitHistPlot(PlotWidget):
     font_title = cw.create_font_obj(is_bold=True, font_weight=QFont.Weight.Bold, size=24)
 
     def __init__(self, session_info):
+        self.is_init = True
         super(UnitHistPlot, self).__init__('unithist', b_icon=b_icon, b_type=b_type, tt_lbl=tt_lbl)
 
         # main class fields
@@ -50,17 +52,10 @@ class UnitHistPlot(PlotWidget):
         self.q_hdr = None
         self.q_met = None
         self.unit_props = None
-
-        # other class fields
-        self.is_init = True
-        self.show_met = True
+        self.is_init = False
 
         # initialises the other class fields
         self.init_class_fields()
-        # self.update_plot()
-
-        # resets the initialisation flag
-        self.is_init = False
 
     # ---------------------------------------------------------------------------
     # Class Widget Setup Functions
@@ -74,7 +69,7 @@ class UnitHistPlot(PlotWidget):
 
         # sets the plot button callback functions
         for pb in self.plot_but:
-            cb_fcn = functools.partial(self.plot_button_clicked, pb.objectName())
+            cb_fcn = pfcn(self.plot_button_clicked, pb.objectName())
             pb.clicked.connect(cb_fcn)
 
     # ---------------------------------------------------------------------------
@@ -85,42 +80,52 @@ class UnitHistPlot(PlotWidget):
 
         # field retrieval
         n_met = np.sum(self.unit_props.can_plot)
-        n_row = int(self.unit_props.get_para_value('n_row'))
-        n_col = int(self.unit_props.get_para_value('n_col'))
 
         # memory allocation
         self.hist = np.empty(n_met, dtype=object)
         self.q_met_hist = np.empty(n_met, dtype=object)
-        self.i_hist = -np.ones((n_row, n_col), dtype=int)
 
         # sets up the plot regions
-        self.setup_subplots(n_r=n_row + 1, n_c=n_col)
+        self.setup_subplots(n_r=self.n_r + 1, n_c=self.n_c)
 
         # resets the row stretch
-        self.plot_layout.setRowStretch(0, n_row * self.p_row0)
-        self.plot_layout.addWidget(self.title_lbl, 0, 0, 1, n_col)
+        self.plot_layout.setRowStretch(0, self.n_r * self.p_row0)
+        self.plot_layout.addWidget(self.title_lbl, 0, 0, 1, self.n_c)
 
         # hides the first (title) row
         for hp_0 in self.h_plot[0, :]:
             hp_0.hide()
 
+        # retrieves the initial subplot configuration
+        self.i_met = np.where(self.hist_type)[0]
+
         # creates the subplots for each row
-        for i_row in range(n_row):
+        for i_row in range(self.n_r):
             # resets the row stretch
-            self.plot_layout.setRowStretch(i_row + 1, n_row * (100 - self.p_row0))
+            self.plot_layout.setRowStretch(i_row + 1, self.n_r * (100 - self.p_row0))
 
             # sets up the histogram widget
-            for i_col in range(n_col):
-                i_glob = i_row * n_col + i_col
+            for i_col in range(self.n_c):
+                i_glob = i_row * self.n_c + i_col
                 if i_glob < n_met:
                     # if a valid plot index, then create the histogram object
                     self.q_met_hist[i_glob] = self.get_hist_metrics(i_glob)
                     self.hist[i_glob] = UnitHist(
                         self.h_plot[i_row + 1, i_col],
                         self.unit_props,
-                        self.q_met_hist[i_glob],
-                        i_glob
+                        self.i_unit,
                     )
+
+                    if i_glob < len(self.i_met):
+                        # updates the figure with the plot metric data (if available)
+                        i_met_new = self.i_met[i_glob]
+                        self.hist[i_glob].update_hist_metric(
+                            self.q_met_hist[i_met_new], i_met_new
+                        )
+
+                    else:
+                        # otherwise, hide the subplot
+                        self.hist[i_glob].set_plot_visibility(False)
 
                 else:
                     # otherwise, hide the plot object
@@ -129,25 +134,92 @@ class UnitHistPlot(PlotWidget):
         # updates the plot title
         self.update_plot_title()
 
-    def update_hist_view(self, reset_config=True):
+    # ---------------------------------------------------------------------------
+    # Parameter Update Functions
+    # ---------------------------------------------------------------------------
 
-        # updates the histogram configuration (if required)
-        if reset_config:
-            self.reset_hist_config()
+    def plot_update(self, p_str):
 
-    def update_plot_title(self):
+        match p_str:
+            case p_str if p_str in ['opt_config', 'n_r', 'n_c']:
+                # case is altering a configuration parameter
+                self.update_hist_config()
 
-        # updates the plot super-title
-        t_str_nw = "Unit #{0} Quality Metrics".format(self.i_unit)
-        self.title_lbl.setText(t_str_nw)
+            case 'hist_type':
+                # case is histogram types
+                self.update_hist_type()
 
-    def reset_hist_config(self):
+            case 'i_unit':
+                # case is the unit index
+                self.update_unit_index()
+
+            case 'n_bin':
+                # case is the bin count
+                self.update_bin_count()
+
+            case 'show_thresh':
+                # case is showing the threshold markers
+                self.update_show_thresh()
+
+            case 'show_grid':
+                # case is showing the plot grid
+                self.update_show_grid()
+
+    def update_hist_config(self):
 
         pass
 
-    def update_plot(self):
+    def update_hist_type(self):
 
-        pass
+        # field retrieval
+        i_met_new = np.where(self.hist_type)[0]
+        n_prev, n_new = len(self.i_met), len(i_met_new)
+
+        for i_hist in range(np.min([n_prev, n_new])):
+            # only update if the metric
+            if i_met_new[i_hist] != self.hist[i_hist].i_met:
+                self.hist[i_hist].update_hist_metric(
+                    self.q_met_hist[i_met_new[i_hist]], i_met_new[i_hist]
+                )
+
+        # sets the final plot visibility (based on selection)
+        if n_new > n_prev:
+            # shows the last plot (from the new configuration)
+            self.hist[n_new - 1].set_plot_visibility(True)
+
+        else:
+            # hides the last plot (from the previous configuration)
+            self.hist[n_prev - 1].set_plot_visibility(False)
+
+        # resets the metric fields
+        self.i_met = i_met_new
+
+    def update_unit_index(self):
+
+        # updates the main plot fields
+        self.update_plot_title()
+
+        # updates the unit index for each plot
+        for hp in self.hist:
+            hp.update_unit_index(self.i_unit)
+
+    def update_bin_count(self):
+
+        # updates the bin count for each plot
+        for hp in self.hist:
+            hp.update_bin_count()
+
+    def update_show_thresh(self):
+
+        # updates the threshold marker visibility for each plot
+        for hp in self.hist:
+            hp.update_show_thresh(self.show_thresh)
+
+    def update_show_grid(self):
+
+        # updates the grid visibility for each plot
+        for hp in self.hist:
+            hp.update_axes_grid(self.show_grid)
 
     # ---------------------------------------------------------------------------
     # Plot Button Event Functions
@@ -185,7 +257,7 @@ class UnitHistPlot(PlotWidget):
         pass
 
     # ---------------------------------------------------------------------------
-    # Parameter Object Setter Functions
+    # Class Setter Functions
     # ---------------------------------------------------------------------------
 
     def set_hist_props(self, unit_props_new):
@@ -198,11 +270,23 @@ class UnitHistPlot(PlotWidget):
         self.q_met = self.unit_props.get_mem_map_field('q_met')
         self.q_hdr = self.unit_props.get_mem_map_field('q_hdr')
 
+        # histogram parameter fields
+        self.is_init = True
+        self.hist_type = self.unit_props.get_para_value('hist_type')
+        self.opt_config = bool(self.unit_props.get_para_value('opt_config'))
+        self.n_r = int(self.unit_props.get_para_value('n_r'))
+        self.n_c = int(self.unit_props.get_para_value('n_c'))
+        self.n_bin = int(self.unit_props.get_para_value('n_bin'))
+        self.show_grid = bool(self.unit_props.get_para_value('show_grid'))
+        self.show_thresh = bool(self.unit_props.get_para_value('show_thresh'))
+        self.i_unit = int(self.unit_props.get_para_value('i_unit'))
+        self.is_init = False
+
         # updates the plot view
         self.init_plot_view()
 
     # ---------------------------------------------------------------------------
-    # Miscellaneous Functions
+    # Class Getter Functions
     # ---------------------------------------------------------------------------
 
     def get_hist_metrics(self, i_glob):
@@ -214,19 +298,54 @@ class UnitHistPlot(PlotWidget):
 
         return self.session_info.get_mem_map_field(p_fld)
 
+    def get_subplot_config_id(self):
+
+        # memory allocation
+        i_met = np.where(self.hist_type)[0]
+        c_id = np.nan * np.ones((self.n_r, self.n_c), dtype=int)
+
+        # sets the sub-plot indices into the full array
+        for i, i_m in enumerate(i_met):
+            # i_r, i_c = self.get_grid_indices(i)
+            # c_id[i_r, i_c] = i_m
+            c_id[self.get_grid_indices(i)] = i_m
+
+        return c_id
+
+    def get_grid_indices(self, ind):
+
+        return int(np.floor(ind / self.n_c)), ind % self.n_c
+
     # ---------------------------------------------------------------------------
-    # Parameter Field Update Methods
+    # Miscellaneous Functions
+    # ---------------------------------------------------------------------------
+
+    def update_plot_title(self):
+
+        # updates the plot super-title
+        t_str_nw = "Unit #{0} Quality Metrics".format(self.i_unit)
+        self.title_lbl.setText(t_str_nw)
+
+    # ---------------------------------------------------------------------------
+    # Observable Property Event Callbacks
     # ---------------------------------------------------------------------------
 
     @staticmethod
-    def update_para(_self):
+    def para_update(p_str, _self):
         if _self.is_init:
             return
 
-        _self.update_plot()
+        _self.plot_update(p_str)
 
-    # trace property observer properties
-    hist_type = cf.ObservableProperty(update_para)
+    # property observer properties
+    hist_type = cf.ObservableProperty(pfcn(para_update, 'hist_type'))
+    opt_config = cf.ObservableProperty(pfcn(para_update, 'opt_config'))
+    n_r = cf.ObservableProperty(pfcn(para_update, 'n_r'))
+    n_c = cf.ObservableProperty(pfcn(para_update, 'n_c'))
+    n_bin = cf.ObservableProperty(pfcn(para_update, 'n_bin'))
+    show_grid = cf.ObservableProperty(pfcn(para_update, 'show_grid'))
+    show_thresh = cf.ObservableProperty(pfcn(para_update, 'show_thresh'))
+    i_unit = cf.ObservableProperty(pfcn(para_update, 'i_unit'))
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -238,6 +357,7 @@ class UnitHistPlot(PlotWidget):
 class UnitHist(object):
     # widget dimensions
     py_gap = 0.15
+    px_gap = 0.02
     py_thresh = 0.9
     grid_alpha = 0.25
 
@@ -246,22 +366,20 @@ class UnitHist(object):
     l_pen_unit = pg.mkPen('y', width=3)
     l_pen_thresh = pg.mkPen('k', width=1)
 
-    def __init__(self, h_plot, unit_props, q_met, i_glob, i_unit=0):
+    def __init__(self, h_plot, unit_props, i_unit):
         super(UnitHist, self).__init__()
 
         # field initialisation
         self.is_updating = True
 
         # field initialisations
-        self.i_glob = i_glob
         self.i_unit = i_unit
         self.h_plot = h_plot
         self.unit_props = unit_props
 
-        # metric fields
-        self.v_box = self.h_plot.getViewBox()
-        self.set_quantity_metrics(q_met)
-        self.set_metric_info(self.unit_props.p_met_fin[i_glob])
+        # metric specific fields
+        self.q_met = None
+        self.i_met = None
 
         # histogram property class fields
         self.n_bin = None
@@ -284,6 +402,9 @@ class UnitHist(object):
 
     def init_class_fields(self):
 
+        # metric fields
+        self.v_box = self.h_plot.getViewBox()
+
         # sets the default plot properties
         self.h_plot.getAxis('left').setStyle(tickLength=0)
         self.h_plot.getAxis('bottom').setStyle(tickLength=0)
@@ -293,10 +414,6 @@ class UnitHist(object):
         # creates the metric histogram/markers
         self.create_metric_histogram()
         self.create_threshold_markers()
-
-        # updates the other plot properties
-        self.update_plot_labels()
-        self.update_axes_grid()
 
     # ---------------------------------------------------------------------------
     # Plot/Bar Graph Widget Setup Functions
@@ -329,9 +446,6 @@ class UnitHist(object):
         self.h_plot.addItem(self.thresh_reg)
         self.h_plot.plotItem.showGrid(alpha=self.grid_alpha)
 
-        # updates the threshold markers
-        self.update_thresh_markers()
-
     def create_metric_histogram(self):
 
         # creates the bar-graph object
@@ -346,49 +460,24 @@ class UnitHist(object):
         # updates the plot widget item/title
         self.h_plot.addItem(self.bg_item)
 
-        # updates the histogram range
-        self.update_histogram_values()
-
     # ---------------------------------------------------------------------------
     # Class Object Update Functions
     # ---------------------------------------------------------------------------
 
-    def update_axes_grid(self):
+    def update_hist_metric(self, q_met, i_met):
 
-        show_grid = bool(self.unit_props.get_para_value('show_grid'))
-        self.h_plot.plotItem.showGrid(x=show_grid, y=show_grid)
+        # updates the metric fields
+        self.i_met = i_met
+        self.set_quantity_metrics(q_met)
+        self.set_metric_info(self.unit_props.p_met_fin[i_met])
 
-    def update_thresh_markers(self):
+        # updates the histogram range
+        self.update_histogram_values()
+        self.update_thresh_markers()
 
-        # retrieves the
-        _, y_lim = self.v_box.viewRange()
-        x_lim = [self.x_plt[0], self.x_plt[-1]]
-        rect_hght = [0.025, (-y_lim[0] / np.diff(y_lim)[0] - 0.01)]
-
-        # sets the threshold rectangle y-coordinate
-        dy_lim = np.diff(y_lim)[0]
-        y_rect = y_lim[0] + (rect_hght[0] - 0.005) * dy_lim
-
-        # updates the infeasible threshold marker
-        out_wid = np.diff(x_lim)[0]
-        self.thresh_reg.setBounds(x_lim)
-        self.thresh_reg.setSpan(rect_hght[0], rect_hght[1])
-        self.thresh_rect.setRect(x_lim[0], y_rect, out_wid, np.diff(rect_hght)[0] * dy_lim)
-
-        # resets the marker location
-        x_met = self.q_met[self.i_unit]
-        self.unit_plot.setData([x_met, x_met], [0, y_lim[1]])
-
-        # sets the lower bound limit
-        dx_lim = np.diff(self.x_plt[:2])[0] / 2 if self.is_fixed_bin else 0
-        if not np.isnan(self.p_met[0]):
-            x_lim[0] = np.max([self.p_met[0] - dx_lim, x_lim[0]])
-
-        if not np.isnan(self.p_met[1]):
-            x_lim[1] = np.min([self.p_met[1] + dx_lim, x_lim[1]])
-
-        # resets the axis limits
-        self.thresh_reg.setRegion(x_lim)
+        # updates the other plot properties
+        self.update_plot_labels()
+        self.update_axes_grid(bool(self.unit_props.get_para_value('show_grid')))
 
     def update_histogram_values(self):
 
@@ -407,20 +496,55 @@ class UnitHist(object):
 
     def update_histogram_range(self):
 
-        # retrieves the current subplot axes limits
-        self.v_box.autoRange()
-        y_lim = self.v_box.viewRange()[1]
-
         # sets the y-axes multiplier
         show_thresh = bool(self.unit_props.get_para_value('show_thresh'))
-        py_lim = self.py_gap if show_thresh else -y_lim[0] / y_lim[1]
+        self.y_lim = [self.y_lim_min[show_thresh], self.y_lim_max]
+        self.dx_lim = np.diff(self.x_plt[:2])[0] / 2 if self.is_fixed_bin else 0
 
         # updates the y-axes limits
-        self.v_box.setYRange(-py_lim * y_lim[1], y_lim[1], padding=0)
+        self.v_box.setYRange(self.y_lim[0], self.y_lim[1], padding=0)
+        self.v_box.setXRange(self.x_lim[0], self.x_lim[1], padding=0)
 
         if self.is_fixed_bin:
             x_ticks = [(x + 1, str(x + 1)) for x in range(self.n_bin)]
             self.h_plot.getAxis('bottom').setTicks([x_ticks])
+
+    def update_thresh_markers(self):
+
+        # retrieves the
+        x_lim = [self.x_plt[0], self.x_plt[-1]]
+
+        # sets the threshold rectangle y-coordinate
+        dy_lim = np.diff(self.y_lim)[0]
+        rect_hght = [0.025, (-self.y_lim[0] / dy_lim - 0.01)]
+        y_rect = self.y_lim[0] + (rect_hght[0] - 0.005) * dy_lim
+
+        # updates the infeasible threshold marker
+        out_wid = np.diff(x_lim)[0]
+        self.thresh_reg.setBounds(x_lim)
+        self.thresh_reg.setSpan(rect_hght[0], rect_hght[1])
+        self.thresh_rect.setRect(x_lim[0], y_rect, out_wid, np.diff(rect_hght)[0] * dy_lim)
+
+        # resets the marker location
+        self.update_metric_marker()
+
+        # sets the lower bound limit
+        if not np.isnan(self.p_met[0]):
+            x_lim[0] = np.max([self.p_met[0] - self.dx_lim, x_lim[0]])
+
+        if not np.isnan(self.p_met[1]):
+            x_lim[1] = np.min([self.p_met[1] + self.dx_lim, x_lim[1]])
+
+        # resets the axis limits
+        self.thresh_reg.setRegion(x_lim)
+
+    def update_metric_marker(self):
+
+        # field retrieval
+        x_met = self.q_met[self.i_unit - 1]
+
+        # updates the metric marker location
+        self.unit_plot.setData([x_met, x_met], [0, self.y_lim[1]])
 
     def update_plot_labels(self):
 
@@ -429,9 +553,9 @@ class UnitHist(object):
 
         # sets up the histogram title string
         if self.is_int_met():
-            q_met_str = f"({self.q_met[self.i_unit]:.0f})"
+            q_met_str = f"({self.q_met[self.i_unit - 1]:.0f})"
         else:
-            q_met_str = f"({self.q_met[self.i_unit]:.3f})"
+            q_met_str = f"({self.q_met[self.i_unit - 1]:.3f})"
 
         # resets the title string
         t_str_nw = "{0} {1}".format(self.t_str, q_met_str)
@@ -450,6 +574,35 @@ class UnitHist(object):
             h_ax.setTextPen(h_pen_lbl)
             h_ax.setZValue(-10)
 
+    def update_bin_count(self):
+
+        # updates the unit index
+        self.update_histogram_values()
+        self.update_thresh_markers()
+
+    def update_unit_index(self, i_unit_new):
+
+        # updates the unit index
+        self.i_unit = i_unit_new
+
+        # updates the plot
+        self.update_plot_labels()
+        self.update_metric_marker()
+
+    def update_show_thresh(self, show_thresh):
+
+        # sets the threshold widget visibility flags
+        self.thresh_reg.setVisible(show_thresh)
+        self.thresh_rect.setVisible(show_thresh)
+        self.unit_plot.setVisible(show_thresh)
+
+        # resets the histogram x/y-axes ranges
+        self.update_histogram_range()
+
+    def update_axes_grid(self, show_grid):
+
+        self.h_plot.plotItem.showGrid(x=show_grid, y=show_grid)
+
     # ---------------------------------------------------------------------------
     # Setter Methods
     # ---------------------------------------------------------------------------
@@ -466,6 +619,10 @@ class UnitHist(object):
     def set_quantity_metrics(self, q_met_new):
 
         self.q_met = q_met_new[~np.isnan(q_met_new)]
+
+    def set_plot_visibility(self, state):
+
+        self.h_plot.show() if state else self.h_plot.hide()
 
     # ---------------------------------------------------------------------------
     # Getter Methods
@@ -562,6 +719,18 @@ class UnitHist(object):
         n_count, self.x_plt = np.histogram(self.q_met, bins=self.n_bin, range=self.h_range)
         self.y_plt = n_count / np.sum(n_count)
 
+        # calculates the upper limit
+        y_max = np.max(self.y_plt)
+        y_max_h = np.floor(math.log10(y_max) - 1)
+        self.y_lim_max = cf.round_up(y_max, -y_max_h)
+        self.y_lim_min = [self.get_max_lim_value(0.01),
+                          self.get_max_lim_value(self.py_gap)]
+
+        # calculates the upper limit
+        x_rng = [self.x_plt[0], self.x_plt[-1]]
+        dx_rng = np.diff(x_rng)[0]
+        self.x_lim = np.array(x_rng) + dx_rng * np.array([-1, 1]) * self.px_gap
+
     def get_bin_count(self):
 
         match self.p_str:
@@ -580,8 +749,12 @@ class UnitHist(object):
             case _:
                 # case is the other quality metrics
                 self.h_range = None
-                self.is_fixed_bin = False
                 self.n_bin = int(self.unit_props.get_para_value('n_bin'))
+                self.is_fixed_bin = False
+
+    def get_max_lim_value(self, x):
+
+        return -(x * self.y_lim_max) / (1 - x)
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
@@ -595,7 +768,7 @@ class UnitHist(object):
     def is_met_within_limits(self):
 
         # field retrieval
-        q_val = self.q_met[self.i_unit]
+        q_val = self.q_met[self.i_unit - 1]
         has_lim = ~np.isnan(self.p_met)
 
         if np.all(has_lim):
@@ -613,16 +786,3 @@ class UnitHist(object):
         else:
             # no limit is specified
             return True
-
-    # ---------------------------------------------------------------------------
-    # Observable Property Event Callbacks
-    # ---------------------------------------------------------------------------
-
-    # @staticmethod
-    # def _check_update(_self):
-    #
-    #     if not _self.is_updating:
-    #         _self.check_update.emit()
-
-    # # trace property observer properties
-    # use_full = cf.ObservableProperty(_check_update)
