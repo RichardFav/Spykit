@@ -2389,7 +2389,7 @@ class QCheckListCombo(QComboBox):
         item.setData(Qt.CheckState.Checked if state else Qt.CheckState.Unchecked, Qt.ItemDataRole.CheckStateRole)
 
         # item.setCheckState(Qt.CheckState.Unchecked)
-        item.setCheckState(Qt.CheckState.Checked if state else Qt.CheckState.Unchecked)
+        item.setCheckState(cf.chk_state[state])
 
         # appends the row to the model
         self.combo_model.appendRow(item)
@@ -2515,6 +2515,10 @@ class QCheckCombo(QComboBox):
         # returns the widget
         return item
 
+    def set_checked(self, i_item, state):
+
+        self.combo_model.item(i_item).setCheckState(cf.chk_state[state])
+
     def reset_title(self):
 
         # resets the title
@@ -2565,6 +2569,9 @@ class QLabelCheckCombo(QWidget):
         self._title = 'Finish Me!'
         self.index_on = index_on
 
+        if name is not None:
+            self.setObjectName(name)
+
         # creates the layout widget
         self.layout = QHBoxLayout()
         self.layout.setSpacing(3)
@@ -2608,6 +2615,8 @@ class QLabelCheckCombo(QWidget):
     def clear(self):
         self.h_combo.clear()
 
+    def set_checked(self, i_item, state):
+        self.h_combo.set_checked(i_item, state)
 
 # ----------------------------------------------------------------------------------------------------------------------
 

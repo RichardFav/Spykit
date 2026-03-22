@@ -94,7 +94,7 @@ class UnitHistProps(PropWidget):
         self.p_props = UnitHistPara(self.p_info['ch_fld'])
 
         for ch_k, ch_v in self.p_info['ch_fld'].items():
-            if ch_v['type'] == 'edit':
+            if ch_v['type'] in 'edit':
                 setattr(self, ch_k, self.get_para_value(ch_k))
 
         # other class fields
@@ -190,17 +190,19 @@ class UnitHistProps(PropWidget):
 
     def edit_update(self, p_str):
 
+        # if force updating, then exit the function
         if self.is_updating:
             return
 
         # field retrieval
         h_edit = self.findChild(cw.QLineEdit,name=p_str)
         nw_val = h_edit.text()
-        n_met = np.sum(self.can_plot)
 
         match p_str:
             case p_str if p_str in ['n_r', 'n_c']:
-                min_val, max_val = 1, n_met
+                n_met = np.sum(self.get_para_value('hist_type'))
+                min_val = int(np.ceil(n_met / (self.n_c if (p_str == 'n_r') else self.n_r)))
+                max_val = n_met
 
             case 'n_bin':
                 min_val, max_val = 10, 100
@@ -277,6 +279,35 @@ class UnitHistProps(PropWidget):
             setattr(self.plot_view, p_str, self.get_para_value(p_str))
 
     def checklist_update(self, p_str):
+
+        # if force updating, then exit the function
+        if self.is_updating:
+            return
+
+        # field retrieval
+        hist_type = self.get_para_value('hist_type')
+        n_plot = int(self.get_para_value('n_r') * self.get_para_value('n_c'))
+
+        # determines if the selection is feasible
+        if np.sum(hist_type) > n_plot:
+            # if the selected metric exceeds the number of plots then output an error
+            e_str = "The current metric selection exceeds the subplot count ({0})." \ 
+                    "\nYou will need to expand the subplot count before continuing.".format(n_plot)
+            cf.show_error(e_str, "Insuffiction Subplot Count")
+
+            # determines the index of the
+            i_hist_type = np.where(hist_type)[0]
+            i_met_chg = np.setdiff1d(i_hist_type, self.plot_view.i_met)[0]
+
+            # resets the parameter field
+            hist_type[i_met_chg] = False
+            self.reset_para_value('hist_type', hist_type)
+
+            # resets the checklist marker
+            self.is_updating = True
+            h_chklist = self.findChild(cw.QLabelCheckCombo, name=p_str)
+            h_chklist.set_checked(i_met_chg, False)
+            self.is_updating = False
 
         # case is updating the unit type
         if self.plot_view is not None:
