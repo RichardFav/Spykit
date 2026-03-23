@@ -71,7 +71,7 @@ class ChannelInfoTab(InfoWidget):
         self.data_type = QLabelCombo(None, 'Display Data:', None, font_lbl=font_lbl)
         self.run_type = QLabelCombo(None, 'Session Run:', None, font_lbl=font_lbl)
         self.shank_type = QLabelCombo(None, "Recording Shank:", None, font_lbl=font_lbl)
-        self.status_filter = QLabelCheckCombo(None, lbl="Filter Status:", font=font_lbl)
+        self.status_filter = QLabelCheckCombo(None, lbl="Status Filter:", font=font_lbl)
 
         # initialises the other class fields
         self.init_option_fields()

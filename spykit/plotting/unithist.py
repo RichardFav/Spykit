@@ -10,7 +10,7 @@ from functools import partial as pfcn
 # spike pipeline imports
 import spykit.common.common_func as cf
 import spykit.common.common_widget as cw
-from spykit.plotting.utils import PlotWidget
+from spykit.plotting.utils import PlotWidget, PlotLayout
 
 # pyqt6 module import
 from PyQt6.QtCore import pyqtSignal
@@ -41,7 +41,8 @@ class UnitHistPlot(PlotWidget):
 
     def __init__(self, session_info):
         self.is_init = True
-        super(UnitHistPlot, self).__init__('unithist', b_icon=b_icon, b_type=b_type, tt_lbl=tt_lbl)
+        super(UnitHistPlot, self).__init__(
+            'unithist', b_icon=b_icon, b_type=b_type, tt_lbl=tt_lbl)
 
         # main class fields
         self.session_info = session_info
@@ -425,6 +426,9 @@ class UnitHist(object):
 
     def init_class_fields(self):
 
+        # hides the autoscale button
+        self.h_plot.hideButtons()
+
         # metric fields
         self.v_box = self.h_plot.getViewBox()
         self.v_box.setMouseEnabled(False, False)
@@ -577,13 +581,16 @@ class UnitHist(object):
     def update_plot_labels(self):
 
         # field retrieval
+        q_met_unit = self.q_met[self.i_unit - 1]
         lbl_col = 'w' if self.is_met_within_limits() else 'r'
 
         # sets up the histogram title string
-        if self.is_int_met():
-            q_met_str = f"({self.q_met[self.i_unit - 1]:.0f})"
+        if np.isnan(q_met_unit):
+            q_met_str = '(N/A)'
+        elif self.is_int_met():
+            q_met_str = f"({q_met_unit:.0f})"
         else:
-            q_met_str = f"({self.q_met[self.i_unit - 1]:.3f})"
+            q_met_str = f"({q_met_unit:.3f})"
 
         # resets the title string
         t_str_nw = "{0} {1}".format(self.t_str, q_met_str)
@@ -646,7 +653,7 @@ class UnitHist(object):
 
     def set_quantity_metrics(self, q_met_new):
 
-        self.q_met = q_met_new[~np.isnan(q_met_new)]
+        self.q_met = q_met_new
 
     def set_plot_visibility(self, state):
 
@@ -744,7 +751,8 @@ class UnitHist(object):
         self.get_bin_count()
 
         # calculates the histogram
-        n_count, self.x_plt = np.histogram(self.q_met, bins=self.n_bin, range=self.h_range)
+        q_met_hist = self.q_met[~np.isnan(self.q_met)]
+        n_count, self.x_plt = np.histogram(q_met_hist, bins=self.n_bin, range=self.h_range)
         self.y_plt = n_count / np.sum(n_count)
 
         # calculates the upper limit

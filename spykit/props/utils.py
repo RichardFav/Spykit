@@ -327,7 +327,10 @@ class PropManager(QWidget):
 
     def get_prop_tab(self, tab_type):
 
-        return self.tabs[self.t_types.index(tab_type)]
+        if tab_type in self.t_types:
+            return self.tabs[self.t_types.index(tab_type)]
+        else:
+            return None
 
     def set_tab_enabled(self, i_tab, s_flag):
 

@@ -216,19 +216,12 @@ class UnitHistProps(PropWidget):
             # updates the parameter value
             setattr(self, p_str, int(chk_val[0]))
 
-            # # calculates the other dimension value
-            # if p_str in ['n_c', 'n_r']:
-            #     # calculates the complementary dimension
-            #     p_str_c = 'n_c' if (p_str == 'n_r') else 'n_r'
-            #     p_dim_nw = int(np.ceil(n_met / chk_val[0]))
-            #
-            #     # updates the complentary dimension
-            #     self.reset_para_value(p_str_c, p_dim_nw)
-            #     self.reset_view_para_value(p_str_c, p_dim_nw)
-            #
-            #     # updates the other dimension parameter value
-            #     h_edit_c = self.findChild(cw.QLineEdit,name=p_str_c)
-            #     h_edit_c.setText('%g' % p_dim_nw)
+            # parameter specific updates
+            match p_str:
+                case 'i_unit':
+                    # case is the cluster index
+                    unit_tab = self.main_obj.main_obj.main_obj.info_manager.get_info_tab('unit')
+                    unit_tab.table_cell_click(chk_val[0] - 1, 0)
 
             # updates the histogram view
             if self.plot_view is not None:

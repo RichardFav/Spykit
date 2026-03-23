@@ -473,7 +473,7 @@ class PlotWidget(QWidget):
         }
     """
 
-    def __init__(self, p_type, b_icon=None, b_type=None, tt_lbl=None):
+    def __init__(self, p_type, b_icon=None, b_type=None, tt_lbl=None, p_layout=None):
         super(PlotWidget, self).__init__()
 
         # main class fields
@@ -504,7 +504,7 @@ class PlotWidget(QWidget):
         # class layouts
         self.main_layout = QHBoxLayout()
         self.group_layout = QVBoxLayout()
-        self.plot_layout = QGridLayout()
+        self.plot_layout = QGridLayout() if (p_layout is None) else p_layout
 
         # class widgets
         self.plot_widget = QWidget()
