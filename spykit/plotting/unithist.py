@@ -10,7 +10,7 @@ from functools import partial as pfcn
 # spike pipeline imports
 import spykit.common.common_func as cf
 import spykit.common.common_widget as cw
-from spykit.plotting.utils import PlotWidget, PlotLayout, dlg_width, dlg_height, info_width, x_gap
+from spykit.plotting.utils import PlotWidget, PlotLayout, UnitPlotLayout, dlg_width, dlg_height, info_width, x_gap
 
 # pyqt6 module import
 from PyQt6.QtWidgets import QWidget, QGraphicsRectItem, QLabel
@@ -41,7 +41,8 @@ class UnitHistPlot(PlotWidget):
 
     def __init__(self, session_info):
         # field initialisations
-        self.is_init = True
+        self.is_updating = True
+        self.i_unit = 1
 
         # creates the class object
         sz_layout = QSize(dlg_width - (info_width + x_gap), dlg_height)
@@ -55,11 +56,10 @@ class UnitHistPlot(PlotWidget):
         s_props = self.session_info.session_props
 
         # property class fields
-        self.i_unit = 1
         self.q_hdr = None
         self.q_met = None
         self.unit_props = None
-        self.is_init = False
+        self.is_updating = False
         self.bg_widget = QWidget()
 
         # initialises the other class fields
@@ -78,17 +78,13 @@ class UnitHistPlot(PlotWidget):
         # sets the plot layout properties
         self.plot_layout.setSpacing(10)
         self.plot_layout.setDimOffset(15, 1)
-        self.plot_layout.setRowStretch([0, 0.04])
+        self.plot_layout.setRowStretch([0, 0.05])
 
         # sets the plot button callback functions
         for pb in self.plot_but:
             cb_fcn = pfcn(self.plot_button_clicked, pb.objectName())
             pb.clicked.connect(cb_fcn)
             pb.raise_()
-
-    # ---------------------------------------------------------------------------
-    # PLot View Methods
-    # ---------------------------------------------------------------------------
 
     def init_plot_view(self):
 
@@ -179,34 +175,6 @@ class UnitHistPlot(PlotWidget):
         self.plot_layout.updateID(g_id)
         self.plot_layout.activate()
 
-    # def update_hist_type(self):
-    #
-    #     # field retrieval
-    #     i_met_new = np.where(self.hist_type)[0]
-    #     n_prev, n_new = len(self.i_met), len(i_met_new)
-    #
-    #     for i_hist in range(np.min([n_prev, n_new])):
-    #         # only update if the metric
-    #         if i_met_new[i_hist] != self.hist[i_hist].i_met:
-    #             self.hist[i_hist].update_hist_metric(
-    #                 self.q_met_hist[i_met_new[i_hist]], i_met_new[i_hist]
-    #             )
-    #
-    #     # sets the final plot visibility (based on selection)
-    #     if n_new > n_prev:
-    #         # updates and shows the last plot (from the new configuration)
-    #         self.hist[n_new - 1].update_hist_metric(
-    #             self.q_met_hist[i_met_new[n_new - 1]], i_met_new[n_new - 1]
-    #         )
-    #         self.hist[n_new - 1].set_plot_visibility(True)
-    #
-    #     else:
-    #         # hides the last plot (from the previous configuration)
-    #         self.hist[n_prev - 1].set_plot_visibility(False)
-    #
-    #     # resets the metric fields
-    #     self.i_met = i_met_new
-
     def update_unit_index(self):
 
         # updates the main plot fields
@@ -233,6 +201,13 @@ class UnitHistPlot(PlotWidget):
         # updates the grid visibility for each plot
         for hp in self.hist:
             hp.update_axes_grid(self.show_grid)
+
+    def update_plot_title(self):
+
+        # updates the plot super-title
+        u_type = self.unit_props.get_unit_type(self.i_unit - 1)
+        t_str_nw = "Unit #{0} Quality Metrics ({1})".format(self.i_unit, u_type)
+        self.title_lbl.setText(t_str_nw)
 
     # ---------------------------------------------------------------------------
     # Plot Button Event Functions
@@ -273,7 +248,7 @@ class UnitHistPlot(PlotWidget):
     # Class Setter Functions
     # ---------------------------------------------------------------------------
 
-    def set_hist_props(self, unit_props_new):
+    def set_unit_props(self, unit_props_new):
 
         # sets the histogram property/view tabs
         self.unit_props = unit_props_new
@@ -284,7 +259,7 @@ class UnitHistPlot(PlotWidget):
         self.q_hdr = self.unit_props.get_mem_map_field('q_hdr')
 
         # histogram parameter fields
-        self.is_init = True
+        self.is_updating = True
         self.hist_type = self.unit_props.get_para_value('hist_type')
         self.opt_config = bool(self.unit_props.get_para_value('opt_config'))
         self.n_r = int(self.unit_props.get_para_value('n_r'))
@@ -293,7 +268,7 @@ class UnitHistPlot(PlotWidget):
         self.show_grid = bool(self.unit_props.get_para_value('show_grid'))
         self.show_thresh = bool(self.unit_props.get_para_value('show_thresh'))
         self.i_unit = int(self.unit_props.get_para_value('i_unit'))
-        self.is_init = False
+        self.is_updating = False
 
         # updates the plot view
         self.init_plot_view()
@@ -311,42 +286,13 @@ class UnitHistPlot(PlotWidget):
 
         return self.session_info.get_mem_map_field(p_fld)
 
-    def get_subplot_config_id(self):
-
-        # memory allocation
-        i_met = np.where(self.hist_type)[0]
-        c_id = np.nan * np.ones((self.n_r, self.n_c), dtype=int)
-
-        # sets the sub-plot indices into the full array
-        for i, i_m in enumerate(i_met):
-            # i_r, i_c = self.get_grid_indices(i)
-            # c_id[i_r, i_c] = i_m
-            c_id[self.get_grid_indices(i)] = i_m
-
-        return c_id
-
-    def get_grid_indices(self, ind):
-
-        return int(np.floor(ind / self.n_c)), ind % self.n_c
-
-    # ---------------------------------------------------------------------------
-    # Miscellaneous Functions
-    # ---------------------------------------------------------------------------
-
-    def update_plot_title(self):
-
-        # updates the plot super-title
-        u_type = self.unit_props.get_unit_type(self.i_unit - 1)
-        t_str_nw = "Unit #{0} Quality Metrics ({1})".format(self.i_unit, u_type)
-        self.title_lbl.setText(t_str_nw)
-
     # ---------------------------------------------------------------------------
     # Observable Property Event Callbacks
     # ---------------------------------------------------------------------------
 
     @staticmethod
     def para_update(p_str, _self):
-        if _self.is_init:
+        if _self.is_updating:
             return
 
         _self.plot_update(p_str)
@@ -368,7 +314,7 @@ class UnitHistPlot(PlotWidget):
 """
 
 
-class UnitHist(pg.PlotWidget):
+class UnitHist(UnitPlotLayout):
     # widget dimensions
     py_gap = 0.15
     px_gap = 0.02
@@ -381,14 +327,10 @@ class UnitHist(pg.PlotWidget):
     l_pen_thresh = pg.mkPen('k', width=1)
 
     def __init__(self, unit_props, i_unit):
-        super(UnitHist, self).__init__()
+        super(UnitHist, self).__init__(unit_props, i_unit)
 
         # field initialisation
         self.is_updating = True
-
-        # field initialisations
-        self.i_unit = i_unit
-        self.unit_props = unit_props
 
         # metric specific fields
         self.q_met = None
@@ -407,25 +349,10 @@ class UnitHist(pg.PlotWidget):
         self.thresh_reg = None
 
         # initialises the class fields
-        self.init_class_fields()
         self.init_plot_widgets()
-        self.hide()
 
         # resets the update flag
         self.is_updating = False
-
-    def init_class_fields(self):
-
-        # hides the autoscale button
-        self.hideButtons()
-
-        # metric fields
-        self.v_box = self.getViewBox()
-        self.v_box.setMouseEnabled(False, False)
-
-        # sets the default plot properties
-        self.getAxis('left').setStyle(tickLength=0)
-        self.getAxis('bottom').setStyle(tickLength=0)
 
     def init_plot_widgets(self):
 
@@ -436,6 +363,20 @@ class UnitHist(pg.PlotWidget):
     # ---------------------------------------------------------------------------
     # Plot/Bar Graph Widget Setup Functions
     # ---------------------------------------------------------------------------
+
+    def create_metric_histogram(self):
+
+        # creates the bar-graph object
+        self.bg_item = pg.BarGraphItem(
+            x0=[0],
+            x1=[1],
+            height=[1],
+            pen='w',
+            brush=(0,0,255,150),
+        )
+
+        # updates the plot widget item/title
+        self.addItem(self.bg_item)
 
     def create_threshold_markers(self):
 
@@ -463,20 +404,6 @@ class UnitHist(pg.PlotWidget):
         self.thresh_reg.setZValue(20)
         self.addItem(self.thresh_reg)
         self.plotItem.showGrid(alpha=self.grid_alpha)
-
-    def create_metric_histogram(self):
-
-        # creates the bar-graph object
-        self.bg_item = pg.BarGraphItem(
-            x0=[0],
-            x1=[1],
-            height=[1],
-            pen='w',
-            brush=(0,0,255,150),
-        )
-
-        # updates the plot widget item/title
-        self.addItem(self.bg_item)
 
     # ---------------------------------------------------------------------------
     # Class Object Update Functions

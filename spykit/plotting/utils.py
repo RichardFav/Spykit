@@ -150,10 +150,10 @@ class PlotManager(QWidget):
                 plot_new.set_gen_props(self.get_prop_tab('general'))
                 plot_new.set_trig_props(self.get_prop_tab(p_type))
 
-            case 'unithist':
+            case p_type if p_type in ['unithist','unitmet']:
                 # case is the unit quality metric histograms
                 pp_props = self.get_prop_tab('postprocess')
-                plot_new.set_hist_props(pp_props.get_tab_view(p_type))
+                plot_new.set_unit_props(pp_props.get_tab_view(p_type))
 
     def get_plot_view(self, p_type, is_add=True, expand_grid=True, show_plot=True):
 
@@ -429,6 +429,7 @@ class PlotManager(QWidget):
             id_diff = np.setxor1d(c_id_uniq, g_id_uniq)
             return id_diff, np.array([(id in c_id_uniq) for id in id_diff])
 
+
 # ----------------------------------------------------------------------------------------------------------------------
 
 """
@@ -685,6 +686,37 @@ class PlotWidget(QWidget):
         self.obj_plot_gbox.setObjectName(name_new)
         self.obj_plot_gbox.setStyleSheet(self.obj_plot_gbox.styleSheet())
 
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+"""
+    GridPlotWidget
+"""
+
+class UnitPlotLayout(pg.PlotWidget):
+    def __init__(self, unit_props, i_unit):
+        super(UnitPlotLayout, self).__init__()
+
+        # field initialisations
+        self.i_unit = i_unit
+        self.unit_props = unit_props
+
+        # initialises the class fields
+        self.init_class_fields()
+        self.hide()
+
+    def init_class_fields(self):
+
+        # hides the autoscale button
+        self.hideButtons()
+
+        # metric fields
+        self.v_box = self.getViewBox()
+        self.v_box.setMouseEnabled(False, False)
+
+        # sets the default plot properties
+        self.getAxis('left').setStyle(tickLength=0)
+        self.getAxis('bottom').setStyle(tickLength=0)
 
 # ----------------------------------------------------------------------------------------------------------------------
 

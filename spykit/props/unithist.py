@@ -93,10 +93,6 @@ class UnitHistProps(PropWidget):
         # sets up the parameter fields
         self.p_props = UnitHistPara(self.p_info['ch_fld'])
 
-        for ch_k, ch_v in self.p_info['ch_fld'].items():
-            if ch_v['type'] in 'edit':
-                setattr(self, ch_k, self.get_para_value(ch_k))
-
         # other class fields
         self.plot_view = None
         self.is_updating = False
@@ -105,6 +101,10 @@ class UnitHistProps(PropWidget):
         self.init_other_class_fields()
 
     def init_other_class_fields(self):
+
+        for ch_k, ch_v in self.p_info['ch_fld'].items():
+            if ch_v['type'] in 'edit':
+                setattr(self, ch_k, self.get_para_value(ch_k))
 
         # resets the object sizes
         h_chklist = self.findChild(cw.QLabelCheckCombo)
@@ -154,41 +154,6 @@ class UnitHistProps(PropWidget):
 
         # updates the class field
         self.p_info = {'name': 'Histograms', 'type': 'v_panel', 'ch_fld': p_tmp}
-
-    def get_feasible_metrics(self):
-
-        # field retrieval
-        self.p_met = np.array(list(cw.hist_map.values()))
-        self.can_plot = np.ones(len(self.p_met), dtype=bool)
-
-        # sets the plot feasibility flags
-        for i, pm in enumerate(self.p_met):
-            match pm:
-                case 'RPV tauR Estimate':
-                    # case is the RPV tau estimate
-                    self.can_plot[i] = (
-                            self.get_mem_map_field('tauR_valuesMin') != self.get_mem_map_field('tauR_valuesMax'))
-
-                case 'Spatial Decay':
-                    # case is spatial decay
-                    self.can_plot[i] = self.get_mem_map_field('computeSpatialDecay') == 1
-
-                case pm if pm in ['Raw Amplitude', 'SNR']:
-                    # case is the raw signal metrics
-                    self.can_plot[i] = bool(self.get_mem_map_field('extractRaw'))
-
-                case pm if pm in ['Max Drift', 'Cumulative Drift']:
-                    # case is the drift metrics
-                    self.can_plot[i] = bool(self.get_mem_map_field('computeDrift'))
-
-                case pm if pm in ['Isolation Distance', 'L-Ratio']:
-                    # case is the distance metrics
-                    self.can_plot[i] = (bool(self.get_mem_map_field('computeDistanceMetrics'))
-                                   and not np.isnan(self.get_mem_map_field('isoDmin')))
-
-                case '% Spike Missing (Sym)':
-                    # redundant fields?
-                    self.can_plot[i] = False
 
     # ---------------------------------------------------------------------------
     # Parameter Update Event Functions
@@ -313,7 +278,7 @@ class UnitHistProps(PropWidget):
             setattr(self.plot_view, p_str, self.get_para_value(p_str))
 
     # ---------------------------------------------------------------------------
-    # Miscellaneous Functions
+    # Class Setter Functions
     # ---------------------------------------------------------------------------
 
     def set_plot_view(self, plot_view_new):
@@ -324,9 +289,61 @@ class UnitHistProps(PropWidget):
 
         setattr(self.p_props, p_fld, p_val)
 
+    # ---------------------------------------------------------------------------
+    # Class Getter Functions
+    # ---------------------------------------------------------------------------
+
     def get_para_value(self, p_fld):
 
         return getattr(self.p_props, p_fld)
+
+    def get_feasible_metrics(self):
+
+        # field retrieval
+        self.p_met = np.array(list(cw.hist_map.values()))
+        self.can_plot = np.ones(len(self.p_met), dtype=bool)
+
+        # sets the plot feasibility flags
+        for i, pm in enumerate(self.p_met):
+            match pm:
+                case 'RPV tauR Estimate':
+                    # case is the RPV tau estimate
+                    self.can_plot[i] = (
+                            self.get_mem_map_field('tauR_valuesMin') != self.get_mem_map_field('tauR_valuesMax'))
+
+                case 'Spatial Decay':
+                    # case is spatial decay
+                    self.can_plot[i] = self.get_mem_map_field('computeSpatialDecay') == 1
+
+                case pm if pm in ['Raw Amplitude', 'SNR']:
+                    # case is the raw signal metrics
+                    self.can_plot[i] = bool(self.get_mem_map_field('extractRaw'))
+
+                case pm if pm in ['Max Drift', 'Cumulative Drift']:
+                    # case is the drift metrics
+                    self.can_plot[i] = bool(self.get_mem_map_field('computeDrift'))
+
+                case pm if pm in ['Isolation Distance', 'L-Ratio']:
+                    # case is the distance metrics
+                    self.can_plot[i] = (bool(self.get_mem_map_field('computeDistanceMetrics'))
+                                   and not np.isnan(self.get_mem_map_field('isoDmin')))
+
+                case '% Spike Missing (Sym)':
+                    # redundant fields?
+                    self.can_plot[i] = False
+
+    def get_mem_map_field(self, p_fld):
+
+        return self.main_obj.main_obj.session_obj.get_mem_map_field(p_fld)
+
+    def get_unit_type(self, i_unit):
+
+        i_type = int(self.get_mem_map_field('unit_type')[i_unit])
+        return self.unit_lbl[i_type]
+
+    # ---------------------------------------------------------------------------
+    # Miscellaneous Functions
+    # ---------------------------------------------------------------------------
 
     def reset_para_value(self, p_fld, p_val):
 
@@ -342,18 +359,9 @@ class UnitHistProps(PropWidget):
         setattr(self.plot_view, p_str, p_val)
         self.plot_view.is_init = False
 
-    def get_mem_map_field(self, p_fld):
-
-        return self.main_obj.main_obj.session_obj.get_mem_map_field(p_fld)
-
     def calc_opt_config(self):
 
         n_met = len(self.p_met_fin)
         n_row = int(np.floor(math.sqrt(n_met)))
 
         return n_row, int(np.ceil(n_met / n_row))
-
-    def get_unit_type(self, i_unit):
-
-        i_type = int(self.get_mem_map_field('unit_type')[i_unit])
-        return self.unit_lbl[i_type]

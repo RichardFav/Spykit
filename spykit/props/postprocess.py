@@ -34,6 +34,7 @@ class PostProcProps(PropWidget):
 
     # widget dimensions
     dx_gap = 15
+    info_width = 210
 
     def __init__(self, main_obj):
         # initialises the property widget

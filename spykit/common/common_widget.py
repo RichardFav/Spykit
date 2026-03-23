@@ -549,7 +549,7 @@ class QRegionConfig(QWidget):
         self.h_root.was_reset = True
 
         # determines if the new value is valid
-        chk_val = cf.check_edit_num(nw_val, min_val=1, max_val=5, is_int=True)
+        chk_val = cf.check_edit_num(nw_val, min_val=1, max_val=10, is_int=True)
         if chk_val[1] is None:
             # updates the parameter value
             self.reshape_group_ids(chk_val[0], p_str == 'n_row')
