@@ -10,11 +10,11 @@ from functools import partial as pfcn
 # spike pipeline imports
 import spykit.common.common_func as cf
 import spykit.common.common_widget as cw
-from spykit.plotting.utils import PlotWidget, PlotLayout
+from spykit.plotting.utils import PlotWidget, PlotLayout, dlg_width, dlg_height, info_width, x_gap
 
 # pyqt6 module import
-from PyQt6.QtCore import pyqtSignal
-from PyQt6.QtWidgets import QGraphicsRectItem, QLabel
+from PyQt6.QtWidgets import QWidget, QGraphicsRectItem, QLabel
+from PyQt6.QtCore import pyqtSignal, QSize
 from PyQt6.QtGui import QFont
 
 # pyqtgraph module imports
@@ -36,13 +36,19 @@ class UnitHistPlot(PlotWidget):
     # widget dimensions
     p_row0 = 5
 
-    # font
+    # font objects
     font_title = cw.create_font_obj(is_bold=True, font_weight=QFont.Weight.Bold, size=24)
 
     def __init__(self, session_info):
+        # field initialisations
         self.is_init = True
+
+        # creates the class object
+        sz_layout = QSize(dlg_width - (info_width + x_gap), dlg_height)
+        p_layout = PlotLayout(None, sz_hint=sz_layout)
         super(UnitHistPlot, self).__init__(
-            'unithist', b_icon=b_icon, b_type=b_type, tt_lbl=tt_lbl)
+            'unithist', b_icon=b_icon, b_type=b_type, tt_lbl=tt_lbl, p_layout=p_layout)
+        p_layout.setParent(self)
 
         # main class fields
         self.session_info = session_info
@@ -54,6 +60,7 @@ class UnitHistPlot(PlotWidget):
         self.q_met = None
         self.unit_props = None
         self.is_init = False
+        self.bg_widget = QWidget()
 
         # initialises the other class fields
         self.init_class_fields()
@@ -64,6 +71,11 @@ class UnitHistPlot(PlotWidget):
 
     def init_class_fields(self):
 
+        # creates the background widget
+        self.bg_widget.setStyleSheet("background-color: black;")
+        self.plot_layout.addWidget(self.bg_widget)
+        self.plot_layout.setRowStretch([0, 0.05])
+
         # sets the plot button callback functions
         for pb in self.plot_but:
             cb_fcn = pfcn(self.plot_button_clicked, pb.objectName())
@@ -73,78 +85,45 @@ class UnitHistPlot(PlotWidget):
     # PLot View Methods
     # ---------------------------------------------------------------------------
 
-    def init_plot_view(self, is_view_init=True):
+    def init_plot_view(self):
 
-        # plot view initialisations (only required once)
-        if is_view_init:
-            # field retrieval
-            n_met = np.sum(self.unit_props.can_plot)
-            self.hist = np.empty(n_met, dtype=object)
-            self.q_met_hist = np.empty(n_met, dtype=object)
+        # field retrieval
+        n_met = np.sum(self.unit_props.can_plot)
+        self.hist = np.empty(n_met, dtype=object)
+        self.q_met_hist = np.empty(n_met, dtype=object)
 
-            # memory allocation
-            for i_met in range(n_met):
-                self.q_met_hist[i_met] = self.get_hist_metrics(i_met)
-
-        # sets up the plot regions
-        self.setup_subplots(n_r=self.n_r + 1, n_c=self.n_c)
-
-        # resets the row stretch
-        self.plot_layout.setRowStretch(0, self.n_r * self.p_row0)
-        for i_r in range(self.plot_layout.rowCount() - 1):
-            # resets the minimum row height
-            self.plot_layout.setRowMinimumHeight(i_r + 1, 0)
-
-            # updates the grid row stretch
-            if i_r < self.n_r:
-                self.plot_layout.setRowStretch(i_r + 1, 100 - self.p_row0)
-            else:
-                self.plot_layout.setRowStretch(i_r + 1, 0)
+        # memory allocation
+        for i_met in range(n_met):
+            self.q_met_hist[i_met] = self.get_hist_metrics(i_met)
 
         # creates the title widget
         self.title_lbl = cw.create_text_label(None, 'TEST', font=self.font_title, align='center')
         self.title_lbl.setStyleSheet("QLabel { color: white; }")
-        self.plot_layout.addWidget(self.title_lbl, 0, 0, 1, self.n_c)
-
-        # hides the first (title) row
-        for hp_0 in self.h_plot[0, :]:
-            hp_0.hide()
-
-        # retrieves the initial subplot configuration
-        self.i_met = np.where(self.hist_type)[0]
+        self.plot_layout.addWidget(self.title_lbl)
 
         # creates the subplots for each row
         for i_row in range(self.n_r):
-            # resets the row stretch
-            self.plot_layout.setRowStretch(i_row + 1, self.n_r * (100 - self.p_row0))
-
             # sets up the histogram widget
             for i_col in range(self.n_c):
                 i_glob = i_row * self.n_c + i_col
                 if i_glob < len(self.hist):
                     # if a valid plot index, then create the histogram object
                     self.hist[i_glob] = UnitHist(
-                        self.h_plot[i_row + 1, i_col],
                         self.unit_props,
                         self.i_unit,
                     )
 
-                    if i_glob < len(self.i_met):
-                        # updates the figure with the plot metric data (if available)
-                        i_met_new = self.i_met[i_glob]
+                    # updates the figure with the plot metric data (if available)
+                    if i_glob < n_met:
                         self.hist[i_glob].update_hist_metric(
-                            self.q_met_hist[i_met_new], i_met_new
+                            self.q_met_hist[i_glob], i_glob
                         )
 
-                    else:
-                        # otherwise, hide the subplot
-                        self.hist[i_glob].set_plot_visibility(False)
-
-                else:
-                    # otherwise, hide the plot object
-                    self.h_plot[i_row + 1, i_col].hide()
+                    # adds the widget to the plot layout (initialisation only)
+                    self.plot_layout.addWidget(self.hist[i_glob])
 
         # updates the plot title
+        self.update_hist_config()
         self.update_plot_title()
 
     # ---------------------------------------------------------------------------
@@ -154,13 +133,9 @@ class UnitHistPlot(PlotWidget):
     def plot_update(self, p_str):
 
         match p_str:
-            case p_str if p_str in ['opt_config', 'n_r', 'n_c']:
+            case p_str if p_str in ['opt_config', 'n_r', 'n_c', 'hist_type']:
                 # case is altering a configuration parameter
-                self.update_hist_config()
-
-            case 'hist_type':
-                # case is histogram types
-                self.update_hist_type()
+                self.update_hist_config(p_str != 'hist_type')
 
             case 'i_unit':
                 # case is the unit index
@@ -178,45 +153,54 @@ class UnitHistPlot(PlotWidget):
                 # case is showing the plot grid
                 self.update_show_grid()
 
-    def update_hist_config(self):
+    def update_hist_config(self, check_dim=True):
 
         # if there is no change in configuration, then exit
-        if np.array_equal(self.h_plot.shape, [self.n_r + 1, self.n_c]):
-            return
+        if check_dim and (self.plot_layout.g_id is not None):
+            if np.array_equal(self.plot_layout.g_id.shape, [self.n_r + 1, self.n_c]):
+                return
 
-        # clears and deletes the subplots
-        cf.clear_layout(self.plot_layout)
+        # memory allocation
+        n_plt = (self.n_r + 1) * self.n_c
+        xi_g = np.zeros(n_plt, dtype=int)
+        self.i_met = np.where(self.hist_type)[0]
 
-        # re-initialises the plot view
-        self.init_plot_view(False)
+        # sets up the grid ID array
+        xi_g[self.n_c:(self.n_c + len(self.i_met))] = self.i_met + 2
+        g_id = xi_g.reshape(self.n_r + 1, self.n_c)
+        g_id[0, :] = 1
 
-    def update_hist_type(self):
+        # updates the plot layout
+        self.plot_layout.updateID(g_id)
+        self.plot_layout.activate()
 
-        # field retrieval
-        i_met_new = np.where(self.hist_type)[0]
-        n_prev, n_new = len(self.i_met), len(i_met_new)
-
-        for i_hist in range(np.min([n_prev, n_new])):
-            # only update if the metric
-            if i_met_new[i_hist] != self.hist[i_hist].i_met:
-                self.hist[i_hist].update_hist_metric(
-                    self.q_met_hist[i_met_new[i_hist]], i_met_new[i_hist]
-                )
-
-        # sets the final plot visibility (based on selection)
-        if n_new > n_prev:
-            # updates and shows the last plot (from the new configuration)
-            self.hist[n_new - 1].update_hist_metric(
-                self.q_met_hist[i_met_new[n_new - 1]], i_met_new[n_new - 1]
-            )
-            self.hist[n_new - 1].set_plot_visibility(True)
-
-        else:
-            # hides the last plot (from the previous configuration)
-            self.hist[n_prev - 1].set_plot_visibility(False)
-
-        # resets the metric fields
-        self.i_met = i_met_new
+    # def update_hist_type(self):
+    #
+    #     # field retrieval
+    #     i_met_new = np.where(self.hist_type)[0]
+    #     n_prev, n_new = len(self.i_met), len(i_met_new)
+    #
+    #     for i_hist in range(np.min([n_prev, n_new])):
+    #         # only update if the metric
+    #         if i_met_new[i_hist] != self.hist[i_hist].i_met:
+    #             self.hist[i_hist].update_hist_metric(
+    #                 self.q_met_hist[i_met_new[i_hist]], i_met_new[i_hist]
+    #             )
+    #
+    #     # sets the final plot visibility (based on selection)
+    #     if n_new > n_prev:
+    #         # updates and shows the last plot (from the new configuration)
+    #         self.hist[n_new - 1].update_hist_metric(
+    #             self.q_met_hist[i_met_new[n_new - 1]], i_met_new[n_new - 1]
+    #         )
+    #         self.hist[n_new - 1].set_plot_visibility(True)
+    #
+    #     else:
+    #         # hides the last plot (from the previous configuration)
+    #         self.hist[n_prev - 1].set_plot_visibility(False)
+    #
+    #     # resets the metric fields
+    #     self.i_met = i_met_new
 
     def update_unit_index(self):
 
@@ -378,7 +362,7 @@ class UnitHistPlot(PlotWidget):
 """
 
 
-class UnitHist(object):
+class UnitHist(pg.PlotWidget):
     # widget dimensions
     py_gap = 0.15
     px_gap = 0.02
@@ -390,7 +374,7 @@ class UnitHist(object):
     l_pen_unit = pg.mkPen('y', width=3)
     l_pen_thresh = pg.mkPen('k', width=1)
 
-    def __init__(self, h_plot, unit_props, i_unit):
+    def __init__(self, unit_props, i_unit):
         super(UnitHist, self).__init__()
 
         # field initialisation
@@ -398,7 +382,6 @@ class UnitHist(object):
 
         # field initialisations
         self.i_unit = i_unit
-        self.h_plot = h_plot
         self.unit_props = unit_props
 
         # metric specific fields
@@ -420,6 +403,7 @@ class UnitHist(object):
         # initialises the class fields
         self.init_class_fields()
         self.init_plot_widgets()
+        self.hide()
 
         # resets the update flag
         self.is_updating = False
@@ -427,15 +411,15 @@ class UnitHist(object):
     def init_class_fields(self):
 
         # hides the autoscale button
-        self.h_plot.hideButtons()
+        self.hideButtons()
 
         # metric fields
-        self.v_box = self.h_plot.getViewBox()
+        self.v_box = self.getViewBox()
         self.v_box.setMouseEnabled(False, False)
 
         # sets the default plot properties
-        self.h_plot.getAxis('left').setStyle(tickLength=0)
-        self.h_plot.getAxis('bottom').setStyle(tickLength=0)
+        self.getAxis('left').setStyle(tickLength=0)
+        self.getAxis('bottom').setStyle(tickLength=0)
 
     def init_plot_widgets(self):
 
@@ -450,13 +434,13 @@ class UnitHist(object):
     def create_threshold_markers(self):
 
         # creates the plot line
-        self.unit_plot = self.h_plot.plot([0], [0], pen=self.l_pen_unit)
+        self.unit_plot = self.plot([0], [0], pen=self.l_pen_unit)
 
         # creates the threshold rectangle widget
         self.thresh_rect = QGraphicsRectItem(0, 0, 1, 1)
         self.thresh_rect.setBrush(self.l_brush_thresh);
         self.thresh_rect.setPen(self.l_pen_thresh);
-        self.h_plot.addItem(self.thresh_rect);
+        self.addItem(self.thresh_rect);
 
         # creates the linear region
         self.thresh_reg = pg.LinearRegionItem(
@@ -471,8 +455,8 @@ class UnitHist(object):
 
         # adds the threshold marker to the plot item
         self.thresh_reg.setZValue(20)
-        self.h_plot.addItem(self.thresh_reg)
-        self.h_plot.plotItem.showGrid(alpha=self.grid_alpha)
+        self.addItem(self.thresh_reg)
+        self.plotItem.showGrid(alpha=self.grid_alpha)
 
     def create_metric_histogram(self):
 
@@ -486,7 +470,7 @@ class UnitHist(object):
         )
 
         # updates the plot widget item/title
-        self.h_plot.addItem(self.bg_item)
+        self.addItem(self.bg_item)
 
     # ---------------------------------------------------------------------------
     # Class Object Update Functions
@@ -533,7 +517,7 @@ class UnitHist(object):
         self.v_box.setYRange(self.y_lim[0], self.y_lim[1], padding=0)
         self.v_box.setXRange(self.x_lim[0], self.x_lim[1], padding=0)
 
-        ax_bottom = self.h_plot.getAxis('bottom')
+        ax_bottom = self.getAxis('bottom')
         if self.is_fixed_bin:
             x_ticks = [(x + 1, str(x + 1)) for x in range(self.n_bin)]
             ax_bottom.setTicks([x_ticks])
@@ -594,7 +578,7 @@ class UnitHist(object):
 
         # resets the title string
         t_str_nw = "{0} {1}".format(self.t_str, q_met_str)
-        self.h_plot.plotItem.setTitle(
+        self.plotItem.setTitle(
             t_str_nw,
             bold = True,
             size='10pt',
@@ -604,7 +588,7 @@ class UnitHist(object):
         # updates the axes colour
         h_pen_lbl = pg.mkPen(color=lbl_col)
         for ax_t in ['left', 'bottom']:
-            h_ax = self.h_plot.getAxis(ax_t)
+            h_ax = self.getAxis(ax_t)
             h_ax.setPen(h_pen_lbl)
             h_ax.setTextPen(h_pen_lbl)
             h_ax.setZValue(-10)
@@ -636,7 +620,7 @@ class UnitHist(object):
 
     def update_axes_grid(self, show_grid):
 
-        self.h_plot.plotItem.showGrid(x=show_grid, y=show_grid)
+        self.plotItem.showGrid(x=show_grid, y=show_grid)
 
     # ---------------------------------------------------------------------------
     # Setter Methods
@@ -657,7 +641,7 @@ class UnitHist(object):
 
     def set_plot_visibility(self, state):
 
-        self.h_plot.show() if state else self.h_plot.hide()
+        self.show() if state else self.hide()
 
     # ---------------------------------------------------------------------------
     # Getter Methods

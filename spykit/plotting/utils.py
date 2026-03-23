@@ -659,7 +659,8 @@ class PlotWidget(QWidget):
         for hp in self.h_plot.flatten():
             hp.deleteLater()
 
-                # ---------------------------------------------------------------------------
+
+    # ---------------------------------------------------------------------------
     # Widget Event Functions
     # ---------------------------------------------------------------------------
 
@@ -701,6 +702,8 @@ class PlotLayout(QLayout):
         self.g_id = g_id
         self._items = []
         self._sz_hint = sz_hint
+        self.p_dim = [None, None]
+        self.p_ofs = [0, 0]
 
     def addItem(self, item: QLayoutItem):
         """Adds an item (widget) to the layout."""
@@ -726,8 +729,12 @@ class PlotLayout(QLayout):
     def setGeometry(self, rect: QRect):
         """Arranges the widgets in a grid-like fashion."""
         d = self.spacing()
-        x, y = rect.x() + d, rect.y() + d
-        width, height = rect.width() - 2 * d, rect.height() - 2 * d
+        r_wid0, r_hght0 = rect.width(), rect.height()
+        x_ofs, y_ofs = self.p_ofs[1], self.p_ofs[0]
+
+        # calculates the width/dimensions
+        width, height = r_wid0 - (2 * d + x_ofs), r_hght0 - (2 * d + y_ofs)
+        x, y = rect.x() + (d + x_ofs), rect.y() + (d + y_ofs)
 
         # updates the background widget
         rect.adjust(d, d, -2 * d, -2 * d)
@@ -742,8 +749,8 @@ class PlotLayout(QLayout):
             n_rows, n_cols = self.g_id.shape[0], self.g_id.shape[1]
 
         # Calculate the width and height for each cell in the grid
-        c_wid = width // n_cols
-        c_hght = height // n_rows
+        c_hght = self.calc_rect_dim(height, n_rows, 0)
+        c_wid = self.calc_rect_dim(width, n_cols, 1)
 
         for i, gid in enumerate(np.unique(self.g_id[self.g_id > 0])):
             widget = self._items[gid].widget()
@@ -754,9 +761,13 @@ class PlotLayout(QLayout):
                 i_row, i_col = min(id_plt[0]), min(id_plt[1])
                 n_row, n_col = len(np.unique(id_plt[0])), len(np.unique(id_plt[1]))
 
+                # calculates the rectangular dimensions
+                r_wid = np.sum(c_wid[i_col:(i_col + n_col)])
+                r_hght = np.sum(c_hght[i_row:(i_row + n_row)])
+
                 # Set the geometry of the widget based on the grid's row and column
                 widget.show()
-                widget.setGeometry(x + i_col * c_wid, y + i_row * c_hght, c_wid * n_col, c_hght * n_row)
+                widget.setGeometry(x + np.sum(c_wid[:i_col]), y + np.sum(c_hght[:i_row]), r_wid, r_hght)
 
         super().setGeometry(rect)
 
@@ -775,6 +786,38 @@ class PlotLayout(QLayout):
 
         if force_update:
             self.invalidate()
+
+    def setRowStretch(self, p_dim_nw):
+
+        if self.p_dim[0] is None:
+            self.p_dim[0] = np.array(p_dim_nw).reshape(-1, 2)
+        else:
+            self.p_dim[0] = np.hstack((self.p_dim[0], p_dim_nw))
+
+    def setColumnStretch(self, p_dim_nw):
+
+        if self.p_dim[1] is None:
+            self.p_dim[1] = np.array(p_dim_nw).reshape(-1, 2)
+        else:
+            self.p_dim[1] = np.hstack((self.p_dim[1], p_dim_nw))
+
+    def setDimOffset(self, p_ofs_nw, i_dim):
+
+        self.p_ofs[i_dim] = p_ofs_nw
+
+    def calc_rect_dim(self, r_dim, n_dim, i_dim):
+
+        if self.p_dim[i_dim] is None:
+            return (r_dim // n_dim) * np.ones(n_dim, dtype=int)
+        else:
+            # calculates the dimension weighting array
+            w = np.zeros(n_dim)
+            w[self.p_dim[i_dim][:, 0].astype(int)] = self.p_dim[i_dim][:, 1]
+            ii = w == 0
+            w[ii] = (1 - np.sum(w[~ii])) / np.sum(ii)
+
+            # returns the scaled dimension values
+            return np.array(w * r_dim, dtype=int)
 
     @property
     def items(self):
