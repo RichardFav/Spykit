@@ -72,14 +72,19 @@ class UnitHistPlot(PlotWidget):
     def init_class_fields(self):
 
         # creates the background widget
-        self.bg_widget.setStyleSheet("background-color: black;")
+        self.bg_widget.setStyleSheet("background-color: rgba(0, 0, 0, 0);")
         self.plot_layout.addWidget(self.bg_widget)
-        self.plot_layout.setRowStretch([0, 0.05])
+
+        # sets the plot layout properties
+        self.plot_layout.setSpacing(10)
+        self.plot_layout.setDimOffset(15, 1)
+        self.plot_layout.setRowStretch([0, 0.04])
 
         # sets the plot button callback functions
         for pb in self.plot_but:
             cb_fcn = pfcn(self.plot_button_clicked, pb.objectName())
             pb.clicked.connect(cb_fcn)
+            pb.raise_()
 
     # ---------------------------------------------------------------------------
     # PLot View Methods
@@ -98,7 +103,7 @@ class UnitHistPlot(PlotWidget):
 
         # creates the title widget
         self.title_lbl = cw.create_text_label(None, 'TEST', font=self.font_title, align='center')
-        self.title_lbl.setStyleSheet("QLabel { color: white; }")
+        self.title_lbl.setStyleSheet("QLabel { color: white; background-color: rgba(0, 0, 0, 0);}")
         self.plot_layout.addWidget(self.title_lbl)
 
         # creates the subplots for each row
@@ -331,7 +336,8 @@ class UnitHistPlot(PlotWidget):
     def update_plot_title(self):
 
         # updates the plot super-title
-        t_str_nw = "Unit #{0} Quality Metrics".format(self.i_unit)
+        u_type = self.unit_props.get_unit_type(self.i_unit - 1)
+        t_str_nw = "Unit #{0} Quality Metrics ({1})".format(self.i_unit, u_type)
         self.title_lbl.setText(t_str_nw)
 
     # ---------------------------------------------------------------------------

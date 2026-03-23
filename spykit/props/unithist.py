@@ -119,6 +119,12 @@ class UnitHistProps(PropWidget):
         # other checkbox updates
         self.check_update('opt_config')
 
+        # sets up the unit type fields
+        if bool(self.get_mem_map_field('splitGoodAndMua_NonSomatic')):
+            self.unit_lbl = ['Noise', 'Somatic Good', 'Somatic MUA', 'Non-somatic Good', 'Non-somatic MUA']
+        else:
+            self.unit_lbl = ['Noise', 'Good', 'MUA', 'Non-Somatic']
+
     def setup_prop_fields(self):
 
         # retrieves the feasible metrics
@@ -346,3 +352,8 @@ class UnitHistProps(PropWidget):
         n_row = int(np.floor(math.sqrt(n_met)))
 
         return n_row, int(np.ceil(n_met / n_row))
+
+    def get_unit_type(self, i_unit):
+
+        i_type = int(self.get_mem_map_field('unit_type')[i_unit])
+        return self.unit_lbl[i_type]

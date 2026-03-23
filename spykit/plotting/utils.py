@@ -730,14 +730,14 @@ class PlotLayout(QLayout):
         """Arranges the widgets in a grid-like fashion."""
         d = self.spacing()
         r_wid0, r_hght0 = rect.width(), rect.height()
-        x_ofs, y_ofs = self.p_ofs[1], self.p_ofs[0]
+        x_ofs, y_ofs = self.p_ofs[0], self.p_ofs[1]
 
         # calculates the width/dimensions
         width, height = r_wid0 - (2 * d + x_ofs), r_hght0 - (2 * d + y_ofs)
         x, y = rect.x() + (d + x_ofs), rect.y() + (d + y_ofs)
 
         # updates the background widget
-        rect.adjust(d, d, -2 * d, -2 * d)
+        rect.adjust(d + x_ofs, d + y_ofs, -(2 * d + x_ofs), -(2 * d + y_ofs))
         self._items[0].setGeometry(rect)
 
         # row/column index retrieval
