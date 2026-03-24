@@ -1,6 +1,7 @@
 # module import
 import os
 import time
+import math
 import colorsys
 import numpy as np
 from copy import deepcopy
@@ -23,6 +24,10 @@ import pyqtgraph as pg
 b_icon = ['save', 'close']
 b_type = ['button', 'button']
 tt_lbl = ['Save Figure', 'Close View']
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+xy_pad = 0.02
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -55,6 +60,7 @@ class UnitMetricPlot(PlotWidget):
         s_props = self.session_info.session_props
 
         # property class fields
+        self.m_plot = None
         self.unit_props = None
         self.is_updating = False
         self.bg_widget = QWidget()
@@ -100,7 +106,8 @@ class UnitMetricPlot(PlotWidget):
 
         # adds the plot widgets
         for mp in self.m_plot:
-            mp.setStyleSheet("border: 1px solid white;")
+            mp.update_unit_index(self.i_unit)
+            # mp.setStyleSheet("border: 1px solid white;")
             self.plot_layout.addWidget(mp)
 
         # updates the plot title
@@ -113,7 +120,18 @@ class UnitMetricPlot(PlotWidget):
 
     def plot_update(self, p_str):
 
-        pass
+        match p_str:
+            case 'i_unit':
+                # case is the unit index
+                self.update_unit_index()
+
+            case 'show_thresh':
+                # case is showing the threshold markers
+                self.update_show_thresh()
+
+            case 'show_grid':
+                # case is showing the plot grid
+                self.update_show_grid()
 
     def update_plot_config(self):
 
@@ -131,6 +149,27 @@ class UnitMetricPlot(PlotWidget):
         # updates the plot layout
         self.plot_layout.updateID(g_id)
         self.plot_layout.activate()
+
+    def update_unit_index(self):
+
+        # updates the main plot fields
+        self.update_plot_title()
+
+        # updates the unit index for each plot
+        for mp in self.m_plot:
+            mp.update_unit_index(self.i_unit)
+
+    def update_show_thresh(self):
+
+        # updates the threshold marker visibility for each plot
+        for mp in self.m_plot:
+            hp.update_show_thresh(self.show_thresh)
+
+    def update_show_grid(self):
+
+        # updates the grid visibility for each plot
+        for mp in self.m_plot:
+            mp.update_axes_grid(self.show_grid)
 
     def update_plot_title(self):
 
@@ -185,11 +224,11 @@ class UnitMetricPlot(PlotWidget):
         unit_props_new.set_plot_view(self)
 
         # histogram parameter fields
-        self.is_init = True
+        self.is_updating = True
         self.i_unit = int(self.unit_props.get_para_value('i_unit'))
         self.show_grid = bool(self.unit_props.get_para_value('show_grid'))
         self.show_metric = bool(self.unit_props.get_para_value('show_metric'))
-        self.is_init = False
+        self.is_updating = False
 
         # updates the plot view
         self.init_plot_view()
@@ -198,7 +237,9 @@ class UnitMetricPlot(PlotWidget):
     # Class Getter Functions
     # ---------------------------------------------------------------------------
 
+    def get_field(self, p_fld):
 
+        return self.session_info.get_mem_map_field(p_fld)
 
     # ---------------------------------------------------------------------------
     # Observable Property Event Callbacks
@@ -239,8 +280,38 @@ class TemplateTrace(UnitPlotLayout):
 
     def init_plot_widgets(self):
 
+        # creates the plot axes/metric legend
+        self.create_plot_axes()
+        self.create_metric_legend()
+
+    # ---------------------------------------------------------------------------
+    # PlotWidget Setup Functions
+    # ---------------------------------------------------------------------------
+
+    def create_plot_axes(self):
+
         pass
 
+    def create_metric_legend(self):
+
+        pass
+
+    # ---------------------------------------------------------------------------
+    # Class Object Update Functions
+    # ---------------------------------------------------------------------------
+
+    def update_unit_index(self, i_unit_new):
+
+        # updates the unit index
+        self.i_unit = i_unit_new
+
+    def update_show_metric(self, show_metric):
+
+        pass
+
+    def update_axes_grid(self, show_grid):
+
+        self.plotItem.showGrid(x=show_grid, y=show_grid)
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -249,22 +320,147 @@ class TemplateTrace(UnitPlotLayout):
 """
 
 class SpatialDecayPlot(UnitPlotLayout):
+    # widget dimensions
+    n_fit = 100
+
+    # plot properties
+    sym = 'o'
+    sym_size = 10
+
+    # pen/brush objects
+    l_pen_loc = 'g'
+    l_pen_trend = pg.mkPen('r', width=2)
+    l_brush_loc = (100, 255, 100, 100)
+
     def __init__(self, unit_props, i_unit):
         super(SpatialDecayPlot, self).__init__(unit_props, i_unit)
 
-        # field initialisation
-        self.is_updating = True
+        # plot data fields
+        self.x_plt = None
+        self.y_plt = None
 
         # initialises the plot widgets
+        self.init_other_class_fields()
         self.init_plot_widgets()
 
-        # resets the update flag
-        self.is_updating = False
+    def init_other_class_fields(self):
+
+        # field retrieval
+        i_col_sp = self.unit_props.get_metric_col_index('spatialDecaySlope')
+
+        # field retrieval
+        self.x_decay_sp = self.unit_props.get_mem_map_field('x_decay_sp')
+        self.y_decay_sp = self.unit_props.get_mem_map_field('y_decay_sp')
+        self.k_decay_sp = self.unit_props.get_mem_map_field('k_decay_sp')
+        self.h_decay_sp = self.unit_props.get_mem_map_field('q_met')[:, i_col_sp]
+        self.is_lin_fit = bool(self.unit_props.get_mem_map_field('spDecayLinFit'))
+
+        # memory allocation
+        n_unit = len(self.k_decay_sp)
+        self.x_fit = np.empty(n_unit, dtype=object)
+        self.y_fit = np.empty(n_unit, dtype=object)
+        self.has_fit = np.zeros(n_unit, dtype=bool)
+
+        # other field initialisations
+        self.x_lim = [0, np.max(self.y_decay_sp[:, -1])]
+        self.y_lim = [0, 1.0]
 
     def init_plot_widgets(self):
 
+        # creates the plot axes/metric legend
+        self.create_plot_axes()
+        self.create_metric_legend()
+
+    # ---------------------------------------------------------------------------
+    # PlotWidget Setup Functions
+    # ---------------------------------------------------------------------------
+
+    def create_plot_axes(self):
+
+        # creates the plot line
+        self.plot_loc = self.plot(
+            [0],
+            [0],
+            pen=None,
+            symbol=self.sym,
+            symbolSize=self.sym_size,
+            symbolPen=self.l_pen_loc,
+            symbolBrush=self.l_brush_loc
+        )
+
+        # creates the trend line
+        self.plot_trend = self.plot(
+            [0],
+            [0],
+            pen=self.l_pen_trend
+        )
+
+    def create_metric_legend(self):
+
         pass
 
+    # ---------------------------------------------------------------------------
+    # Class Object Update Functions
+    # ---------------------------------------------------------------------------
+
+    def update_unit_index(self, i_unit):
+
+        # field update
+        self.i_unit = i_unit
+
+        # field retrieval
+        self.x_plt = self.y_decay_sp[self.i_unit - 1, :]
+        self.y_plt = self.x_decay_sp[self.i_unit - 1, :]
+
+        # updates the plot markers
+        self.update_scatter_plot()
+        self.update_trend_line()
+        self.update_plot_title()
+
+        # updates the other plot properties
+        self.update_axes_grid(bool(self.unit_props.get_para_value('show_grid')))
+
+    def update_scatter_plot(self):
+
+        # updates the plot data
+        self.plot_loc.setData(x=self.x_plt, y=self.y_plt)
+
+        # resets the axes limits
+        self.v_box.setXRange(self.x_lim[0], self.x_lim[1],padding=xy_pad)
+        self.v_box.setYRange(self.y_lim[0], self.y_lim[1],padding=4 * xy_pad)
+
+    def update_trend_line(self):
+
+        i_unit_f = self.i_unit - 1
+
+        if not self.has_fit[i_unit_f]:
+            # sets up the x fit data values
+            A, m = self.k_decay_sp[i_unit_f], self.h_decay_sp[i_unit_f]
+            self.x_fit[i_unit_f] = np.linspace(self.x_plt[0], self.x_plt[-1], self.n_fit)
+
+            if self.is_lin_fit:
+                # case is a linear fit
+                self.y_fit[i_unit_f] = A + m * self.x_fit[i_unit_f]
+            else:
+                self.y_fit[i_unit_f] = A * np.exp(-m * self.x_fit[i_unit_f])
+
+        # updates the plot data
+        self.plot_trend.setData(x=self.x_fit[i_unit_f], y=self.y_fit[i_unit_f])
+
+    def update_plot_title(self):
+
+        # sets the axis labels
+        self.setTitle('Spatial Decay', bold=True)
+        self.getAxis('bottom').setLabel('Distance (um)')
+        self.getAxis('left').setLabel('Amplitude')
+
+    def update_show_metric(self, show_metric):
+
+        pass
+
+    def update_axes_grid(self, show_grid):
+
+        self.plotItem.showGrid(x=show_grid, y=show_grid)
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -273,22 +469,160 @@ class SpatialDecayPlot(UnitPlotLayout):
 """
 
 class AutoCorrelPlot(UnitPlotLayout):
+    # fixed scalar values
+    t_win = 50
+    b_sz = 1
+    t_win_mu = 1e3
+    b_sz_mu = 100
+
+    # pen objects
+    l_pen_marker = pg.mkPen(color=(255, 0, 0), width=2, style=cf.pen_style['Dash'])
+
     def __init__(self, unit_props, i_unit):
         super(AutoCorrelPlot, self).__init__(unit_props, i_unit)
 
-        # field initialisation
-        self.is_updating = True
+        # field initialisations
+        self.cc_gram = None
+        self.x_cc_gram = None
 
         # initialises the plot widgets
+        self.init_other_class_fields()
         self.init_plot_widgets()
-
-        # resets the update flag
-        self.is_updating = False
 
     def init_plot_widgets(self):
 
+        # creates the plot axes/metric legend
+        self.create_plot_axes()
+        self.create_metric_legend()
+
+    def init_other_class_fields(self):
+
+        # memory allocation
+        self.cc_gram = np.empty(self.unit_props.n_unit, dtype=object)
+        self.cc_gram_mu = np.zeros(self.unit_props.n_unit, dtype=float)
+
+        # retrieves the
+        q_met = self.unit_props.get_mem_map_field('q_met')
+        self.i_tauR = q_met[:, self.unit_props.get_metric_col_index('RPV_tauR_estimate')].astype(int)
+        self.y_tauR = q_met[:, self.unit_props.get_metric_col_index('fractionRPVs_estimatedTauR')]
+
+        # ccg bin counts
+        self.n_bin = int(self.t_win / self.b_sz)
+        self.n_bin_mu = int(self.t_win_mu / self.b_sz_mu)
+
+        # resets the axes limits
+        self.v_box.setXRange(0, self.n_bin, padding=xy_pad)
+
+    # ---------------------------------------------------------------------------
+    # PlotWidget Setup Functions
+    # ---------------------------------------------------------------------------
+
+    def create_plot_axes(self):
+
+        # field retrieval
+        xi_bg = np.array(range(self.n_bin))
+        y_bg = np.zeros(self.n_bin, dtype=int)
+
+        # creates the bar-graph object
+        self.bg_item = pg.BarGraphItem(
+            x=xi_bg,
+            height=y_bg,
+            width=1,
+            pen='w',
+            brush=(0,0,255,150),
+        )
+
+        # updates the plot widget item/title
+        self.addItem(self.bg_item)
+
+        # creates the horizontal marker line
+        self.plot_horz = self.plot(
+            [0, self.n_bin],
+            [0, 0],
+            pen=self.l_pen_marker
+        )
+
+        # creates the horizontal marker line
+        self.plot_vert = self.plot(
+            [0, 0],
+            [0, 0],
+            pen=self.l_pen_marker
+        )
+
+    def create_metric_legend(self):
+
         pass
 
+    # ---------------------------------------------------------------------------
+    # Class Object Update Functions
+    # ---------------------------------------------------------------------------
+
+    def update_unit_index(self, i_unit_new):
+
+        # updates the unit index
+        self.i_unit = i_unit_new
+
+        # updates the plot markers
+        self.update_cc_gram()
+        self.update_plot_title()
+
+        # updates the other plot properties
+        self.update_axes_grid(bool(self.unit_props.get_para_value('show_grid')))
+
+    def update_cc_gram(self):
+
+        # field retrieval
+        i_unit_f = self.i_unit - 1
+
+        # ensures the unit cc-gram values are calculated
+        if self.cc_gram[i_unit_f] is None:
+            # retrieves the spike time for the current unit
+            t_spike = self.unit_props.get_mem_map_field('t_spike')
+            spk_cluster = self.unit_props.get_mem_map_field('spk_cluster')
+            t_unit = t_spike[spk_cluster == self.i_unit] * 1000
+
+            # calculates the fine unit cc-gram
+            cc_g = cf.calc_ccgram(t_unit, t_unit, win_sz0=self.n_bin, bin_size=self.b_sz)
+            self.cc_gram[i_unit_f] = cc_g[0][(self.n_bin - 1):]
+
+            # calculates the asymptotic cc-gram value
+            cc_g_mu = cf.calc_ccgram(t_unit, t_unit, win_sz0=self.n_bin_mu, bin_size=self.b_sz_mu)
+            self.cc_gram_mu[i_unit_f] = np.nanmean(cc_g_mu[0][(self.n_bin_mu - 1):])
+
+            # calculates the mean
+            if self.x_cc_gram is None:
+                self.x_cc_gram = cc_g[1][(self.n_bin - 1):] + 0.5
+
+        # updates the histogram values
+        self.bg_item.setOpts(
+            x = self.x_cc_gram,
+            height = self.cc_gram[i_unit_f],
+        )
+
+        # resets the upper limit
+        y_max = np.max(self.cc_gram[i_unit_f])
+        y_max_h = np.floor(math.log10(y_max) - 1)
+        y_max_f = cf.round_up(y_max, -y_max_h)
+        self.v_box.setYRange(0., y_max_f, padding=4 * xy_pad)
+
+        # updates the asymptotic marker
+        self.plot_horz.setData(x=[0, self.n_bin], y=self.cc_gram_mu[i_unit_f] * np.ones(2))
+        self.plot_vert.setData(x=self.x_cc_gram[self.i_tauR[i_unit_f]] * np.ones(2), y=[0, y_max_f])
+
+    def update_show_metric(self, show_metric):
+
+        pass
+
+    def update_axes_grid(self, show_grid):
+
+        self.plotItem.showGrid(x=show_grid, y=show_grid)
+
+    def update_plot_title(self):
+
+        # sets the axis labels
+        self.setTitle('Auto-Correlogram', bold=True)
+        self.getAxis('bottom').setLabel('Time (ms)')
+        self.getAxis('left').setLabel('Freq.')
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -311,4 +645,35 @@ class SpikeActivityPlot(UnitPlotLayout):
 
     def init_plot_widgets(self):
 
+        # creates the plot axes/metric legend
+        self.create_plot_axes()
+        self.create_metric_legend()
+
+    # ---------------------------------------------------------------------------
+    # PlotWidget Setup Functions
+    # ---------------------------------------------------------------------------
+
+    def create_plot_axes(self):
+
         pass
+
+    def create_metric_legend(self):
+
+        pass
+
+    # ---------------------------------------------------------------------------
+    # Class Object Update Functions
+    # ---------------------------------------------------------------------------
+
+    def update_unit_index(self, i_unit_new):
+
+        # updates the unit index
+        self.i_unit = i_unit_new
+
+    def update_show_metric(self, show_metric):
+
+        pass
+
+    def update_axes_grid(self, show_grid):
+
+        self.plotItem.showGrid(x=show_grid, y=show_grid)

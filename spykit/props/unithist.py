@@ -27,7 +27,6 @@ x_gap = 5
 
 class UnitHistPara(PropPara):
     # pyqtSignal functions
-    combo_update = pyqtSignal(str)
     edit_update = pyqtSignal(str)
     check_update = pyqtSignal(str)
     checklist_update = pyqtSignal(str)
@@ -365,3 +364,7 @@ class UnitHistProps(PropWidget):
         n_row = int(np.floor(math.sqrt(n_met)))
 
         return n_row, int(np.ceil(n_met / n_row))
+
+    def get_metric_col_index(self, h_str):
+
+        return np.where(self.get_mem_map_field('q_hdr') == h_str)[1][0]

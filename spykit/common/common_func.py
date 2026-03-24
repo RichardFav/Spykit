@@ -3,6 +3,7 @@ import os
 import re
 import sys
 import math
+import time
 import string
 import random
 import platform
@@ -564,3 +565,56 @@ def clear_layout(layout):
 
         # Delete the layout item itself
         del item
+
+
+def calc_ccgram(ts1, ts2, win_sz0=50, bin_size=1, return_freq=True):
+
+    # initialisations and memory allocation
+    n_spike = len(ts1)
+    i_start, i_spike, win_sz = 0, 0, [-win_sz0 * bin_size, win_sz0 * bin_size]
+    ccInfo = np.nan * np.zeros((n_spike, 2), dtype=float)
+
+    # keep looping until all spikes have been searched
+    for i_spike in range(n_spike):
+        ccInfo[i_spike, 0] = np.searchsorted(ts2, ts1[i_spike] + win_sz[0], side='left')
+        ccInfo[i_spike, 1] = np.searchsorted(ts2, ts1[i_spike] + win_sz[1], side='right') - 1
+
+    # memory allocation and initialisations
+    t_ofs, i_ts1, i_ts2, incr = [], [], [], 0
+
+    # sets up the sorted index difference array
+    d_index = np.diff(ccInfo, axis=1).ravel().astype(int)
+    idx_s = np.argsort(d_index)
+    xi, d_index = np.array(range(n_spike), dtype=int), d_index[idx_s]
+
+    for incr in range(d_index[-1]):
+        # determines which spikes belong to the current window
+        i0 = np.searchsorted(d_index, incr, side='left')
+        tmp = idx_s[np.array(range(i0, n_spike))]
+
+        # sets the overall indices and the centre-times of the spikes
+        idx = ccInfo[tmp, 0].astype(int) + incr
+
+        # appends the time offsets to the total array
+        t_ofs_new = ts2[idx] - ts1[tmp]
+        t_ofs.append(t_ofs_new[np.abs(t_ofs_new) > 1e-6])
+
+    # returns the offsets
+    t_ofs = flat_list(t_ofs)
+    xi_bin = np.arange(win_sz[0]+bin_size/2, win_sz[1] + bin_size/2, bin_size)
+    hh = np.histogram(t_ofs, xi_bin)
+
+    if return_freq:
+        return hh[0] * (1000.0 / (bin_size * len(ts1))), (hh[1][:-1] + hh[1][1:]) / 2
+    else:
+        return hh[0], (hh[1][:-1] + hh[1][1:]) / 2
+
+
+def flat_list(l):
+
+    if len(l) == 0:
+        return []
+    elif isinstance(l[0], list) or isinstance(l[0], np.ndarray):
+        return [item for sublist in l for item in sublist]
+    else:
+        return l

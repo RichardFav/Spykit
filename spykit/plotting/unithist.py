@@ -181,8 +181,8 @@ class UnitHistPlot(PlotWidget):
         self.update_plot_title()
 
         # updates the unit index for each plot
-        for i in range(len(self.i_met)):
-            self.hist[i].update_unit_index(self.i_unit)
+        for hp in self.hist:
+            hp.update_unit_index(self.i_unit)
 
     def update_bin_count(self):
 
@@ -412,7 +412,6 @@ class UnitHist(UnitPlotLayout):
     def update_hist_metric(self, q_met, i_met):
 
         # updates the metric fields
-        self.i_met = i_met
         self.set_quantity_metrics(q_met)
         self.set_metric_info(self.unit_props.p_met_fin[i_met])
 
@@ -571,10 +570,6 @@ class UnitHist(UnitPlotLayout):
     def set_quantity_metrics(self, q_met_new):
 
         self.q_met = q_met_new
-
-    def set_plot_visibility(self, state):
-
-        self.show() if state else self.hide()
 
     # ---------------------------------------------------------------------------
     # Getter Methods

@@ -25,7 +25,6 @@ x_gap = 5
 
 class UnitMetricPara(PropPara):
     # pyqtSignal functions
-    combo_update = pyqtSignal(str)
     edit_update = pyqtSignal(str)
     check_update = pyqtSignal(str)
 
@@ -41,12 +40,20 @@ class UnitMetricPara(PropPara):
     # ---------------------------------------------------------------------------
 
     @staticmethod
+    def _edit_update(p_str, _self):
+
+        if not _self.is_updating:
+            _self.edit_update.emit(p_str)
+
+    @staticmethod
     def _check_update(p_str, _self):
 
         if not _self.is_updating:
             _self.check_update.emit(p_str)
 
     # trace property observer properties
+    i_unit = cf.ObservableProperty(pfcn(_edit_update, 'i_unit'))
+    show_metric = cf.ObservableProperty(pfcn(_check_update, 'show_metric'))
     show_grid = cf.ObservableProperty(pfcn(_check_update, 'show_grid'))
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -84,15 +91,19 @@ class UnitMetricProps(PropWidget):
             if ch_v['type'] in 'edit':
                 setattr(self, ch_k, self.get_para_value(ch_k))
 
+        # connects the slot functions
+        self.p_props.edit_update.connect(self.edit_update)
+        self.p_props.check_update.connect(self.check_update)
+
         # retrieves and updates the region config properties
         self.obj_rconfig = self.findChild(cw.QRegionConfig)
         self.obj_rconfig.set_enabled(True)
         self.obj_rconfig.config_reset.connect(self.reset_plot_config)
 
         # sets the initial configuration
-        self.g_id0 = np.zeros((6,4), dtype=int)
-        self.g_id0[:3, :2], self.g_id0[:3, 2:] = 1, 2
-        self.g_id0[3, :2], self.g_id0[3, 2:], self.g_id0[4:, :] = 3, 4, 5
+        self.g_id0 = np.zeros((9,2), dtype=int)
+        self.g_id0[:4, :1], self.g_id0[:4, 1:] = 1, 2
+        self.g_id0[4:6, :1], self.g_id0[4:6, 1:], self.g_id0[6:, :] = 3, 4, 5
         self.obj_rconfig.reset_config_id(self.g_id0)
         self.obj_rconfig.reset_selector_widgets(self.g_id0)
 
@@ -106,6 +117,9 @@ class UnitMetricProps(PropWidget):
             self.unit_lbl = ['Noise', 'Good', 'MUA', 'Non-Somatic']
 
     def setup_prop_fields(self):
+
+        # field retrieval
+        self.n_unit, _ = self.get_mem_map_field('q_met').shape
 
         # initialisations
         self.p_list_plot = ['Mean Template Waveform', 'Raw Template Waveform',
@@ -126,9 +140,48 @@ class UnitMetricProps(PropWidget):
     # Parameter Update Event Functions
     # ---------------------------------------------------------------------------
 
+    def edit_update(self, p_str):
+
+        # if force updating, then exit the function
+        if self.is_updating:
+            return
+
+        # field retrieval
+        h_edit = self.findChild(cw.QLineEdit,name=p_str)
+        nw_val = h_edit.text()
+
+        match p_str:
+            case 'i_unit':
+                min_val, max_val = 1, self.n_unit
+
+        # determines if the new value is valid
+        chk_val = cf.check_edit_num(nw_val, min_val=min_val, max_val=max_val, is_int=True)
+        if chk_val[1] is None:
+            # updates the parameter value
+            setattr(self, p_str, int(chk_val[0]))
+
+            # parameter specific updates
+            match p_str:
+                case 'i_unit':
+                    # case is the cluster index
+                    unit_tab = self.main_obj.main_obj.main_obj.info_manager.get_info_tab('unit')
+                    unit_tab.table_cell_click(chk_val[0] - 1, 0)
+
+            # updates the histogram view
+            if self.plot_view is not None:
+                setattr(self.plot_view, p_str, int(chk_val[0]))
+
+        else:
+            # otherwise, reset the previous value
+            p_val_pr = getattr(self, p_str)
+            h_edit.setText('%g' % p_val_pr)
+            self.reset_para_value(p_str, p_val_pr)
+
     def check_update(self, p_str):
 
-        pass
+        # updates the histogram view
+        if self.plot_view is not None:
+            setattr(self.plot_view, p_str, self.get_para_value(p_str))
 
     # ---------------------------------------------------------------------------
     # Class Setter Functions
@@ -174,3 +227,7 @@ class UnitMetricProps(PropWidget):
 
         # updates the plot title
         self.plot_view.update_plot_config()
+
+    def get_metric_col_index(self, h_str):
+
+        return np.where(self.get_mem_map_field('q_hdr') == h_str)[1][0]
