@@ -277,6 +277,7 @@ class TemplateTrace(UnitPlotLayout):
     n_col = 4
     n_row = 5
     p_scl = 1.2
+    y_ofs = 0.5
 
     # pen objects
     l_pen_path = pg.mkPen(color=(255, 0, 0), width=2)
@@ -298,17 +299,19 @@ class TemplateTrace(UnitPlotLayout):
 
         # field retrieval
         self.n_pts = self.unit_props.get_mem_map_field('n_pts')
-        self.pk_ch = self.unit_props.get_mem_map_field('pk_ch').astype(int)
         self.ch_pos = self.unit_props.get_mem_map_field('ch_pos')
+
+        # sets the peak channel indices
+        i_col_cmax = self.unit_props.get_metric_col_index('maxChannels')
+        self.pk_ch = self.unit_props.get_mem_map_field('q_met')[:, i_col_cmax].astype(int)
 
         # memory allocation
         self.xi_plt = np.array(range(self.n_pts))
         self.x_plt = np.tile(self.xi_plt / self.xi_plt[-1], (self.n_plot, 1))
 
-        # sets up the connection/x-plot values
-        c_plt0 = np.ones((self.n_plot, self.n_pts), dtype=bool)
-        c_plt0[:, -1] = False
-        self.c_plt = c_plt0.flatten()
+        # sets up the plot connection array
+        self.c_plt = np.ones((self.n_plot, self.n_pts), dtype=bool)
+        self.c_plt[:, -1] = False
 
     def init_plot_widgets(self):
 
@@ -356,12 +359,18 @@ class TemplateTrace(UnitPlotLayout):
         self.i_unit = i_unit_new
 
         # retrieves the trace coordinates
-        x_sig, y_sig, i_ch_w = self.get_trace_coords()
+        x_sig, y_sig, i_ch_w, is_ok = self.get_trace_coords()
 
         # updates the plot paths/traces
-        unit_path = pg.arrayToQPath(x_sig.flatten(), y_sig.flatten(), self.c_plt)
+        unit_path = pg.arrayToQPath(
+            x_sig[is_ok, :].flatten(),
+            y_sig[is_ok, :].flatten(),
+            self.c_plt[is_ok, :].flatten())
         self.plot_path.setPath(unit_path)
-        self.plot_wform.setData(x_sig[i_ch_w, :], y_sig[i_ch_w, :])
+
+        # updates the waveform trace
+        ii = is_ok[np.where(is_ok == i_ch_w)[0][0]]
+        self.plot_wform.setData(x_sig[ii, :], y_sig[ii, :])
 
         # resets the axes limits
         self.v_box.setXRange(self.x_lim[0], self.x_lim[1], padding=xy_pad)
@@ -401,7 +410,7 @@ class TemplateTrace(UnitPlotLayout):
 
         # determines channels closest to likely location
         i_unit_f = self.i_unit - 1
-        i_pk_ch = self.pk_ch[i_unit_f, 0] - 1
+        i_pk_ch = self.pk_ch[i_unit_f] - 1
 
         # determines the neighbouring channels
         i_ch_n = self.get_neighbouring_channels(i_pk_ch)
@@ -425,11 +434,13 @@ class TemplateTrace(UnitPlotLayout):
         y_wform = y_sig[i_ch_w, :]
         y_min, y_max = np.min(y_wform), np.max(y_wform)
         y_sig = (y_sig - y_min) / (y_max - y_min)
+        is_ok = np.where((np.min(y_sig, axis=1) > -self.y_ofs) &
+                         (np.max(y_sig, axis=1) < (1 + self.y_ofs)))[0]
 
         # returns the scaled waveform signals
         x_wform = self.p_scl * (self.x_plt - 1 / 2) * w_pos + ch_pos_n[:, 0].reshape(-1, 1)
         y_wform = self.p_scl * (y_sig - 1 / 2) * h_pos + ch_pos_n[:, 1].reshape(-1, 1)
-        return x_wform, y_wform, i_ch_w
+        return x_wform, y_wform, i_ch_w, is_ok
 
 # ----------------------------------------------------------------------------------------------------------------------
 
