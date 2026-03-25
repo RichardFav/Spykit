@@ -10,7 +10,7 @@ from functools import partial as pfcn
 # spike pipeline imports
 import spykit.common.common_func as cf
 import spykit.common.common_widget as cw
-from spykit.plotting.utils import PlotWidget, PlotLayout, UnitPlotLayout, dlg_width, dlg_height, info_width, x_gap
+from spykit.plotting.utils import (PlotWidget, PlotLayout, UnitPlotLayout, x_gap, setup_default_layout)
 
 # pyqt6 module import
 from PyQt6.QtWidgets import QWidget, QGraphicsPathItem
@@ -52,8 +52,7 @@ class UnitMetricPlot(PlotWidget):
         self.i_unit = 1
 
         # creates the class object
-        sz_layout = QSize(dlg_width - (info_width + x_gap), dlg_height)
-        p_layout = PlotLayout(None, sz_hint=sz_layout)
+        p_layout = setup_default_layout()
         super(UnitMetricPlot, self).__init__(
             'unitmet', b_icon=b_icon, b_type=b_type, tt_lbl=tt_lbl, p_layout=p_layout)
         p_layout.setParent(self)
@@ -80,11 +79,9 @@ class UnitMetricPlot(PlotWidget):
         # field retrieval
         self.t_dur = self.session_info.session_props.t_dur
 
-        # creates the background widget
+        # sets the plot layout properties
         self.bg_widget.setStyleSheet("background-color: rgba(0, 0, 0, 0);")
         self.plot_layout.addWidget(self.bg_widget)
-
-        # sets the plot layout properties
         self.plot_layout.setSpacing(10)
         self.plot_layout.setDimOffset(15, 1)
         self.plot_layout.setRowStretch([0, 0.05])
@@ -113,8 +110,11 @@ class UnitMetricPlot(PlotWidget):
 
         # adds the plot widgets
         for mp in self.m_plot:
+            # updates the plot widget
             mp.update_unit_index(self.i_unit)
-            # mp.setStyleSheet("border: 1px solid white;")
+            mp.plotItem.vb.sigResized.connect(mp.update_view_range)
+
+            # adds the plot item to the widget
             self.plot_layout.addWidget(mp)
 
         # updates the plot title
@@ -384,6 +384,10 @@ class TemplateTrace(UnitPlotLayout):
 
         pass
 
+    def update_view_range(self):
+
+        pass
+
     # ---------------------------------------------------------------------------
     # Class Getter Functions
     # ---------------------------------------------------------------------------
@@ -597,6 +601,10 @@ class SpatialDecayPlot(UnitPlotLayout):
 
         self.plotItem.showGrid(x=show_grid, y=show_grid)
 
+    def update_view_range(self):
+
+        pass
+
 # ----------------------------------------------------------------------------------------------------------------------
 
 """
@@ -770,6 +778,10 @@ class AutoCorrelPlot(UnitPlotLayout):
         self.plotItem.getAxis('bottom').setLabel('Time (ms)')
         self.plotItem.getAxis('left').setLabel('Frequency')
 
+    def update_view_range(self):
+
+        pass
+
 # ----------------------------------------------------------------------------------------------------------------------
 
 """
@@ -863,9 +875,6 @@ class SpikeActivityPlot(UnitPlotLayout):
             pen = self.l_pen_freq,
         )
         self.v_box2.addItem(self.plot_freq)
-
-        # sets the view resize function
-        self.plotItem.vb.sigResized.connect(self.update_view_range)
 
         # updates the axis font properties
         self.getAxis('left').label.setFont(lbl_font)
@@ -1102,6 +1111,10 @@ class SpikeAmplitudeHist(UnitPlotLayout):
         self.setTitle('Spike Amplitude', bold=True)
         self.getAxis('bottom').setLabel('Count')
         self.getAxis('left').setLabel('Amplitude')
+
+    def update_view_range(self):
+
+        pass
 
     # ---------------------------------------------------------------------------
     # Class Getter Functions

@@ -1,6 +1,7 @@
 # module import
 import os
 import numpy as np
+from copy import deepcopy
 from functools import partial as pfcn
 
 # spike pipeline imports
@@ -129,7 +130,26 @@ class WaveFormProps(PropWidget):
         match p_str:
             case 'unit_type':
                 # case is the display unit type
-                pass
+                unit_type = self.get_para_value(p_str)
+                if np.sum(unit_type) == 0:
+                    # if there are no plots selected, then output an error
+                    e_str = "At least one unit type must be selected."
+                    cf.show_error(e_str, "Invalid Configuration")
+
+                    # determines the index of the
+                    i_unit_type = np.where(unit_type)[0]
+                    g_id = deepcopy(self.plot_view.plot_layout.g_id)
+                    i_met_chg = g_id.flatten()[0] - 1
+
+                    # resets the parameter field
+                    unit_type[i_met_chg] = True
+                    self.reset_para_value('hist_type', unit_type)
+
+                    # resets the checklist marker
+                    self.is_updating = True
+                    h_chklist = self.findChild(cw.QLabelCheckCombo, name=p_str)
+                    h_chklist.set_checked(i_met_chg, True)
+                    self.is_updating = False
 
         # updates the plot view parameter value
         if self.plot_view is not None:
@@ -137,10 +157,33 @@ class WaveFormProps(PropWidget):
 
     def colorpick_update(self, p_str):
 
-        match p_str:
-            case 'tr_col':
-                # case is updating the unit type
-                self.plot_view.tr_col = getattr(self.p_props, p_str)
+        # updates the plot view parameter value
+        if self.plot_view is not None:
+            setattr(self.plot_view, p_str, getattr(self.p_props, p_str))
+
+    # ---------------------------------------------------------------------------
+    # Class Setter Functions
+    # ---------------------------------------------------------------------------
+
+    def set_plot_view(self, plot_view_new):
+
+        self.plot_view = plot_view_new
+
+    # ---------------------------------------------------------------------------
+    # Class Getter Functions
+    # ---------------------------------------------------------------------------
+
+    def get_unit_label(self):
+
+        # sets up the unit type fields
+        if self.main_obj.get_field('splitGoodAndMua_NonSomatic'):
+            return ['Noise', 'Somatic Good', 'Somatic MUA', 'Non-somatic Good', 'Non-somatic MUA']
+        else:
+            return ['Noise', 'Good', 'MUA', 'Non-Somatic']
+
+    def get_para_value(self, p_str):
+
+        return getattr(self.p_props, p_str)
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Methods
@@ -160,15 +203,9 @@ class WaveFormProps(PropWidget):
         # field retrieval
         self.is_updating = False
 
-    def set_plot_view(self, plot_view_new):
+    def reset_para_value(self, p_fld, p_val):
 
-        self.plot_view = plot_view_new
-
-    def get_unit_label(self):
-
-        # sets up the unit type fields
-        if self.main_obj.get_field('splitGoodAndMua_NonSomatic'):
-            return ['Noise', 'Somatic Good', 'Somatic MUA', 'Non-somatic Good', 'Non-somatic MUA']
-        else:
-            return ['Noise', 'Good', 'MUA', 'Non-Somatic']
-
+        # resets the parameter value (without activating callback)
+        self.p_props.is_updating = True
+        setattr(self.p_props, p_fld, p_val)
+        self.p_props.is_updating = False

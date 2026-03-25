@@ -95,6 +95,10 @@ class UpSetPlot(PlotWidget):
         # hides the top-left plot region
         self.h_plot[0, 0].hide()
 
+        # sets the plot view resize function
+        self.h_plot[0, 1].plotItem.vb.sigResized.connect(self.update_view_range)
+        self.h_plot[1, 0].plotItem.vb.sigResized.connect(self.update_view_range)
+
         # sets the plot button callback functions
         for pb in self.plot_but:
             cb_fcn = pfcn(self.plot_button_clicked, pb.objectName())
@@ -363,6 +367,10 @@ class UpSetPlot(PlotWidget):
 
         # returns the label array
         return lbl_arr
+
+    def update_view_range(self):
+
+        pass
 
     # ---------------------------------------------------------------------------
     # Plot Button Event Functions

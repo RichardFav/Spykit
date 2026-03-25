@@ -10,13 +10,14 @@ from functools import partial as pfcn
 # spike pipeline imports
 import spykit.common.common_func as cf
 import spykit.common.common_widget as cw
-from spykit.plotting.utils import PlotWidget
+from spykit.plotting.utils import PlotWidget, setup_default_layout
 
 # pyqt6 module import
+from PyQt6.QtWidgets import QWidget
 from PyQt6.QtCore import pyqtSignal
 
 # pyqtgraph modules
-from pyqtgraph import (arrayToQPath, mkBrush, mkPen, plot)
+import pyqtgraph as pg
 from pyqtgraph.Qt.QtWidgets import QGraphicsPathItem
 
 # plot button fields
@@ -35,9 +36,12 @@ x_gap = 5
 
 
 class WaveFormPlot(PlotWidget):
-
     def __init__(self, session_info):
-        super(WaveFormPlot, self).__init__('waveform', b_icon=b_icon, b_type=b_type, tt_lbl=tt_lbl)
+        # creates the class object
+        p_layout = setup_default_layout()
+        super(WaveFormPlot, self).__init__(
+            'waveform', b_icon=b_icon, b_type=b_type, tt_lbl=tt_lbl, p_layout=p_layout)
+        p_layout.setParent(self)
 
         # main class fields
         self.session_info = session_info
@@ -47,10 +51,12 @@ class WaveFormPlot(PlotWidget):
         self.is_init = True
         self.has_plot = False
         self.show_grid = False
+        self.bg_widget = QWidget()
         self.tr_col = cf.get_colour_value('g')
 
         # initialises the other class fields
         self.init_class_fields()
+        self.init_plot_view()
         self.update_plot()
 
         # resets the initialisation flag
@@ -71,66 +77,37 @@ class WaveFormPlot(PlotWidget):
         # memory allocation
         self.n_plt = len(self.unit_lbl)
         self.unit_type = np.ones(self.n_plt, dtype=bool)
+        self.h_pen_tr = pg.mkPen(self.tr_col, width=1)
+
+        # creates the background widget
+        self.bg_widget.setStyleSheet("background-color: rgba(0, 0, 0, 0);")
+        self.plot_layout.addWidget(self.bg_widget)
+        self.plot_layout.setSpacing(10)
+        self.plot_layout.setDimOffset(15, 1)
 
         # sets the plot button callback functions
         for pb in self.plot_but:
             cb_fcn = pfcn(self.plot_button_clicked, pb.objectName())
             pb.clicked.connect(cb_fcn)
 
-    # ---------------------------------------------------------------------------
-    # PLot View Methods
-    # ---------------------------------------------------------------------------
-
-    def update_plot(self):
+    def init_plot_view(self):
 
         # field retrieval
         t0 = np.array(range(self.get_field('n_pts')))
         u_type = np.array(self.get_field('unit_type'))
         y_spike = np.array(self.get_field('y_spike_unit'))
 
-        # determines the unit configuration
-        i_unit = np.where(self.unit_type)[0]
-        n_unit = len(i_unit)
-
-        # if no units are selected, then delete the subplots and exit
-        if n_unit == 0:
-            self.delete_subplots()
-            return
-
-        # sets/clears the subplot regions
-        n_row, n_col = self.get_plot_config(n_unit)
-        if len(self.h_plot):
-            # clears the subplots
-            if (n_row, n_col) == self.h_plot.shape:
-                # case is the configuration is the same (clear plots only)
-                self.clear_subplots()
-            else:
-                # case is config has changed (delete/re-setup plot vlews)
-                self.delete_subplots()
-                self.setup_subplots(n_r=n_row, n_c=n_col)
-
-        else:
-            # sets up the subplots
-            self.setup_subplots(n_r=n_row, n_c=n_col)
-
-        if not isinstance(self.h_plot, np.ndarray):
-            self.h_plot = np.array(self.h_plot).reshape(1, -1)
-
-        # hides the extransoue subplots
-        for i_sub in range(len(i_unit), n_row * n_col):
-            i_row, i_col = i_sub // n_col, i_sub % n_col
-            self.h_plot[i_row, i_col].hide()
+        # memory allocation
+        self.h_plot = np.empty(self.n_plt, dtype=object)
 
         # creates the waveform subplots
-        for i_sub, i_type in enumerate(i_unit):
-            # row/column indices
-            i_row, i_col = i_sub // n_col, i_sub % n_col
-            self.h_plot[i_row, i_col].show()
-
-            # trace plotting
-            is_unit = u_type[:, 0] == i_type
+        for i_type in range(self.n_plt):
+            # creates the plot widget
+            self.h_plot[i_type] = pg.PlotWidget()
+            self.plot_layout.addWidget(self.h_plot[i_type])
 
             # sets the waveform plot points
+            is_unit = u_type[:, 0] == i_type
             t_plt = np.matlib.repmat(t0, sum(is_unit), 1).flatten()
             y_plt = y_spike[is_unit, :].flatten()
 
@@ -139,32 +116,69 @@ class WaveFormPlot(PlotWidget):
             c_arr[:, -1] = 0
 
             # creates the unit traces
-            h_unit = arrayToQPath(t_plt, y_plt, c_arr.flatten())
+            h_unit = pg.arrayToQPath(t_plt, y_plt, c_arr.flatten())
             h_item = QGraphicsPathItem(h_unit)
-            h_item.setPen(mkPen(self.tr_col, width=1))
+            self.h_plot[i_type].addItem(h_item)
 
             # plot title
             t_str = '{0} Unit Waveforms'.format(self.unit_lbl[i_type])
-            self.h_plot[i_row, i_col].setTitle(t_str, size='20pt', bold=True)
-            self.h_plot[i_row, i_col].addItem(h_item)
+            self.h_plot[i_type].setTitle(t_str, size='20pt', bold=True)
 
-            # hides the plot axis
-            h_plt_item = self.h_plot[i_row, i_col].getPlotItem()
+            # sets the axes properties
+            h_plt_item = self.h_plot[i_type].getPlotItem()
             for ax_t in ['left', 'bottom', 'right', 'top']:
+                # resets the axes properties
                 h_plt_item.showAxes(True, False)
                 h_plt_item.layout.setContentsMargins(x_gap, x_gap, x_gap, x_gap)
-                self.h_plot[i_row, i_col].getAxis(ax_t).setStyle(tickLength=0)
+                self.h_plot[i_type].getAxis(ax_t).setStyle(tickLength=0)
 
+                # shows the right/top axes
                 if ax_t in ['right', 'top']:
                     h_plt_item.showAxis(ax_t)
 
+    # ---------------------------------------------------------------------------
+    # PLot View Methods
+    # ---------------------------------------------------------------------------
+
+    def update_plot(self):
+
         # updates the axes grids
+        self.update_plot_config()
+        self.update_trace_colour()
         self.update_axes_grid()
+
+    def update_plot_config(self):
+
+        # determines the unit configuration
+        i_unit = np.where(self.unit_type)[0]
+        n_row, n_col = self.get_plot_config(len(i_unit))
+
+        # hides all plots
+        for hp in self.h_plot:
+            hp.hide()
+
+        # sets/clears the subplot regions
+        g_id = np.zeros((n_row, n_col), dtype=int)
+        for i, id in enumerate(i_unit):
+            i_row, i_col = int(i / n_col), i % n_col
+            g_id[i_row, i_col] = id + 1
+
+        # updates the plot layout
+        self.plot_layout.updateID(g_id)
+        self.plot_layout.activate()
+
+    def update_trace_colour(self):
+
+        # resets the pen colour
+        self.h_pen_tr = pg.mkPen(self.tr_col, width=1)
+
+        for hp in self.h_plot:
+            hp.plotItem.items[0].setPen(self.h_pen_tr)
 
     def update_axes_grid(self):
 
-        for hp in self.h_plot.flatten():
-            # updates the grid visibility
+        # updates the grid visibility
+        for hp in self.h_plot:
             hp_item = hp.getPlotItem()
             hp_item.showGrid(x=self.show_grid, y=self.show_grid)
 
@@ -238,6 +252,9 @@ class WaveFormPlot(PlotWidget):
         match p_str:
             case 'show_grid':
                 _self.update_axes_grid()
+
+            case 'tr_col':
+                _self.update_trace_colour()
 
             case _:
                 _self.update_plot()

@@ -10,7 +10,7 @@ from functools import partial as pfcn
 # spike pipeline imports
 import spykit.common.common_func as cf
 import spykit.common.common_widget as cw
-from spykit.plotting.utils import PlotWidget, PlotLayout, UnitPlotLayout, dlg_width, dlg_height, info_width, x_gap
+from spykit.plotting.utils import PlotWidget, PlotLayout, UnitPlotLayout, setup_default_layout, x_gap
 
 # pyqt6 module import
 from PyQt6.QtWidgets import QWidget, QGraphicsRectItem, QLabel
@@ -45,8 +45,7 @@ class UnitHistPlot(PlotWidget):
         self.i_unit = 1
 
         # creates the class object
-        sz_layout = QSize(dlg_width - (info_width + x_gap), dlg_height)
-        p_layout = PlotLayout(None, sz_hint=sz_layout)
+        p_layout = setup_default_layout()
         super(UnitHistPlot, self).__init__(
             'unithist', b_icon=b_icon, b_type=b_type, tt_lbl=tt_lbl, p_layout=p_layout)
         p_layout.setParent(self)
@@ -360,6 +359,9 @@ class UnitHist(UnitPlotLayout):
         self.create_metric_histogram()
         self.create_threshold_markers()
 
+        # sets the view range change function
+        self.plotItem.vb.sigResized.connect(self.update_view_range)
+
     # ---------------------------------------------------------------------------
     # Plot/Bar Graph Widget Setup Functions
     # ---------------------------------------------------------------------------
@@ -556,6 +558,10 @@ class UnitHist(UnitPlotLayout):
     def update_axes_grid(self, show_grid):
 
         self.plotItem.showGrid(x=show_grid, y=show_grid)
+
+    def update_view_range(self):
+
+        pass
 
     # ---------------------------------------------------------------------------
     # Setter Methods

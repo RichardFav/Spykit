@@ -958,6 +958,12 @@ class PlotPara(PlotParaBase):
     delete_trace = cf.ObservableProperty(functools.partial(prop_update, 'delete_trace'))
     delete_children = cf.ObservableProperty(functools.partial(prop_update, 'delete_children'))
 
+# ----------------------------------------------------------------------------------------------------------------------
+
+def setup_default_layout():
+
+    sz_layout = QSize(dlg_width - (info_width + x_gap), dlg_height)
+    return PlotLayout(None, sz_hint=sz_layout)
 
 # ----------------------------------------------------------------------------------------------------------------------
 
