@@ -17,9 +17,10 @@ import pyqtgraph as pg
 from pyqtgraph import PlotCurveItem, GraphicsObject, ROI, RectROI, CircleROI, TextItem, mkPen, mkBrush, exporters
 
 # plot button fields
-b_icon = ['tick', 'star', 'toggle', 'save', 'close']
-b_type = ['button', 'toggle', 'button', 'button', 'button']
-tt_lbl = ['Display Inset Traces', 'Highlight Inset Traces', 'Toggle Selection', 'Save Figure', 'Close ProbeView']
+b_icon = ['cell', 'tick', 'star', 'toggle', 'save', 'close']
+b_type = ['toggle', 'button', 'toggle', 'button', 'button', 'button']
+tt_lbl = ['Show Unit Markers', 'Display Inset Traces', 'Highlight Inset Traces',
+          'Toggle Selection', 'Save Figure', 'Close ProbeView']
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -48,8 +49,9 @@ class ProbePlot(PlotWidget):
     # list class fields
     add_lbl = ['remove', 'toggle', 'add']
     lbl_tt_str = {
+        'cell': ['Show Unit Markers', 'Hide Unit Markers'],
         'star': ['Enable Inset Trace Highlight', 'Disable Inset Trace Highlight'],
-        'toggle': ['Remove Selection', 'Toggle Selection', 'Add Selection']
+        'toggle': ['Remove Selection', 'Toggle Selection', 'Add Selection'],
     }
 
     def __init__(self, session_info):
@@ -73,7 +75,7 @@ class ProbePlot(PlotWidget):
         # unit marker objects
         self.l_unit_pen = None
         self.l_unit_brush = None
-        self.showing_units = False
+        self.show_units = False
         self.units = []
         self.unit_sel = None
 
@@ -238,6 +240,15 @@ class ProbePlot(PlotWidget):
     def plot_button_clicked(self, b_str):
 
         match b_str:
+            case 'cell':
+                # case is displaying the unit markers
+                obj_but = self.findChild(cw.QPushButton, name=b_str)
+                self.show_units = obj_but.isChecked()
+                obj_but.setToolTip(self.lbl_tt_str[b_str][int(self.show_units)])
+
+                # sets the unit marker visibility
+                self.sub_view.set_unit_marker_visibility(self.show_units)
+
             case 'tick':
                 # case displaying only the inset traces
 
@@ -327,7 +338,7 @@ class ProbePlot(PlotWidget):
 
                 # updates the label properties
                 if ((p_view.ch_label is not None) and
-                        (is_main_view or (not self.showing_units))):
+                        (is_main_view or (not self.show_units))):
                     p_view.ch_label.setVisible(True)
                     p_view.ch_label.setText(self.setup_label_text(i_contact))
                     p_view.ch_label.update()
@@ -542,7 +553,7 @@ class ProbePlot(PlotWidget):
 
         # adds in the probe locations (if calculated)
         if len(self.session_info.post_data.mmap):
-            if not self.showing_units:
+            if not self.show_units:
                 self.create_unit_markers.emit()
 
     def hide_view(self):
@@ -560,15 +571,19 @@ class ProbePlot(PlotWidget):
         self.sub_view.clear_view_unit_markers()
 
         # other field updates
-        self.showing_units = False
+        self.show_units = False
 
     def setup_unit_markers(self, unit_tab):
+
+        # field retrieval
+        obj_but = self.findChild(cw.QPushButton, name='cell')
+        obj_but.setChecked(True)
 
         # sets up the sub-view unit markers
         self.sub_view.setup_view_unit_markers(unit_tab)
 
         # other field updates
-        self.showing_units = True
+        self.show_units = True
 
     def reset_selected_unit_highlight(self, i_ch_unit, type_lbl):
 
@@ -696,7 +711,7 @@ class ProbeView(GraphicsObject):
     # parameters
     dp = 0.1
     pw = 0.05
-    n_ar = 10
+    n_ar = 3
     p_gap = 0.05
     p_exp_shank = 0.2
 
@@ -962,25 +977,12 @@ class ProbeView(GraphicsObject):
                     self, ch_new, self.unit_rad, i_pk - 1, ut, ind_new, unit_col[ut_new])
                 self.main_obj.addItem(self.units[i][ut_new])
 
-    def calc_unit_radius(self):
+    def set_unit_marker_visibility(self, state):
 
-        if self.c_poly is not None:
-            bb_rect = self.c_poly[0].boundingRect()
-            bb_wid, bb_hght = bb_rect.width(), bb_rect.height()
-            self.unit_rad = np.min([bb_wid, bb_hght])
-
-    def calc_unit_offset(self, i_unit, n_unit):
-
-        if n_unit == 1:
-            return np.zeros(2, dtype=float)
-
-        elif n_unit == 2:
-            phi_unit = i_unit * np.pi
-            return (self.unit_rad / 2) * np.array([np.cos(phi_unit), np.sin(phi_unit)])
-
-        else:
-            phi_unit = np.pi * (1 / 2 + i_unit * 2 / n_unit)
-            return (self.unit_rad / 2) * np.array([np.cos(phi_unit), np.sin(phi_unit)])
+        if self.units is not None:
+            for unit in self.units:
+                for u_t in unit.values():
+                    u_t.setVisible(state)
 
     # ---------------------------------------------------------------------------
     # Channel Highlight Functions
@@ -1215,6 +1217,26 @@ class ProbeView(GraphicsObject):
     def inside_polygon_single(self, m_pos):
 
         return next((i for i, cp in enumerate(self.c_poly) if self.has_point(cp, m_pos)), None)
+
+    def calc_unit_radius(self):
+
+        if self.c_poly is not None:
+            bb_rect = self.c_poly[0].boundingRect()
+            bb_wid, bb_hght = bb_rect.width(), bb_rect.height()
+            self.unit_rad = np.min([bb_wid, bb_hght])
+
+    def calc_unit_offset(self, i_unit, n_unit):
+
+        if n_unit == 1:
+            return np.zeros(2, dtype=float)
+
+        elif n_unit == 2:
+            phi_unit = i_unit * np.pi
+            return (self.unit_rad / 2) * np.array([np.cos(phi_unit), np.sin(phi_unit)])
+
+        else:
+            phi_unit = np.pi * (1 / 2 + i_unit * 2 / n_unit)
+            return (self.unit_rad / 2) * np.array([np.cos(phi_unit), np.sin(phi_unit)])
 
     # ---------------------------------------------------------------------------
     # Function Overrides

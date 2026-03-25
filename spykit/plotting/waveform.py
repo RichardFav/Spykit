@@ -3,9 +3,9 @@ import os
 import time
 import math
 import colorsys
-import functools
 import numpy as np
 from copy import deepcopy
+from functools import partial as pfcn
 
 # spike pipeline imports
 import spykit.common.common_func as cf
@@ -23,6 +23,9 @@ from pyqtgraph.Qt.QtWidgets import QGraphicsPathItem
 b_icon = ['save', 'close']
 b_type = ['button', 'button']
 tt_lbl = ['Save Figure', 'Close View']
+
+# widget dimensions
+x_gap = 5
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -43,6 +46,7 @@ class WaveFormPlot(PlotWidget):
         # other class fields
         self.is_init = True
         self.has_plot = False
+        self.show_grid = False
         self.tr_col = cf.get_colour_value('g')
 
         # initialises the other class fields
@@ -64,13 +68,13 @@ class WaveFormPlot(PlotWidget):
         else:
             self.unit_lbl = ['Noise', 'Good', 'MUA', 'Non-Somatic']
 
-        # sets up the plot regions
+        # memory allocation
         self.n_plt = len(self.unit_lbl)
-        self.show_plt = np.ones(self.n_plt, dtype=bool)
+        self.unit_type = np.ones(self.n_plt, dtype=bool)
 
         # sets the plot button callback functions
         for pb in self.plot_but:
-            cb_fcn = functools.partial(self.plot_button_clicked, pb.objectName())
+            cb_fcn = pfcn(self.plot_button_clicked, pb.objectName())
             pb.clicked.connect(cb_fcn)
 
     # ---------------------------------------------------------------------------
@@ -81,11 +85,11 @@ class WaveFormPlot(PlotWidget):
 
         # field retrieval
         t0 = np.array(range(self.get_field('n_pts')))
-        unit_type = np.array(self.get_field('unit_type'))
+        u_type = np.array(self.get_field('unit_type'))
         y_spike = np.array(self.get_field('y_spike_unit'))
 
         # determines the unit configuration
-        i_unit = np.where(self.show_plt)[0]
+        i_unit = np.where(self.unit_type)[0]
         n_unit = len(i_unit)
 
         # if no units are selected, then delete the subplots and exit
@@ -124,7 +128,7 @@ class WaveFormPlot(PlotWidget):
             self.h_plot[i_row, i_col].show()
 
             # trace plotting
-            is_unit = unit_type[:, 0] == i_type
+            is_unit = u_type[:, 0] == i_type
 
             # sets the waveform plot points
             t_plt = np.matlib.repmat(t0, sum(is_unit), 1).flatten()
@@ -144,13 +148,25 @@ class WaveFormPlot(PlotWidget):
             self.h_plot[i_row, i_col].setTitle(t_str, size='20pt', bold=True)
             self.h_plot[i_row, i_col].addItem(h_item)
 
-            # # zero plot line (optional?)
-            # self.h_plot[i_row, i_col].plot(t0[[0, -1]], np.zeros(2), pen='r')
-
             # hides the plot axis
             h_plt_item = self.h_plot[i_row, i_col].getPlotItem()
-            h_plt_item.hideAxis('left')
-            h_plt_item.hideAxis('bottom')
+            for ax_t in ['left', 'bottom', 'right', 'top']:
+                h_plt_item.showAxes(True, False)
+                h_plt_item.layout.setContentsMargins(x_gap, x_gap, x_gap, x_gap)
+                self.h_plot[i_row, i_col].getAxis(ax_t).setStyle(tickLength=0)
+
+                if ax_t in ['right', 'top']:
+                    h_plt_item.showAxis(ax_t)
+
+        # updates the axes grids
+        self.update_axes_grid()
+
+    def update_axes_grid(self):
+
+        for hp in self.h_plot.flatten():
+            # updates the grid visibility
+            hp_item = hp.getPlotItem()
+            hp_item.showGrid(x=self.show_grid, y=self.show_grid)
 
     def clear_current_plot(self):
 
@@ -215,12 +231,18 @@ class WaveFormPlot(PlotWidget):
     # ---------------------------------------------------------------------------
 
     @staticmethod
-    def update_para(_self):
+    def update_para(p_str, _self):
         if _self.is_init:
             return
 
-        _self.update_plot()
+        match p_str:
+            case 'show_grid':
+                _self.update_axes_grid()
+
+            case _:
+                _self.update_plot()
 
     # trace property observer properties
-    show_plt = cf.ObservableProperty(update_para)
-    tr_col = cf.ObservableProperty(update_para)
+    show_grid = cf.ObservableProperty(pfcn(update_para, 'show_grid'))
+    unit_type = cf.ObservableProperty(pfcn(update_para, 'unit_type'))
+    tr_col = cf.ObservableProperty(pfcn(update_para, 'tr_col'))

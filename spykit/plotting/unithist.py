@@ -460,7 +460,7 @@ class UnitHist(UnitPlotLayout):
     def update_thresh_markers(self):
 
         # retrieves the
-        if self.p_str in ['presenceRatio', 'percentageSpikesMissing_gaussian']:
+        if self.p_str in ['presenceRatio']:
             x_lim = [0, 1]
         else:
             x_lim = [self.x_plt[0], self.x_plt[-1]]
@@ -677,7 +677,7 @@ class UnitHist(UnitPlotLayout):
         self.y_lim_min = [self.get_max_lim_value(0.01),
                           self.get_max_lim_value(self.py_gap)]
 
-        if self.p_str == ['presenceRatio', 'percentageSpikesMissing_gaussian']:
+        if self.p_str == ['presenceRatio']:
             x_rng = [0, 1]
         else:
             x_rng = [self.x_plt[0], self.x_plt[-1]]

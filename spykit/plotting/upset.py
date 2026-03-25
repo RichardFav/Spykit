@@ -2,10 +2,10 @@
 import os
 import time
 import colorsys
-import functools
 import numpy as np
 import pandas as pd
 from copy import deepcopy
+from functools import partial as pfcn
 
 # spike pipeline imports
 import spykit.common.common_func as cf
@@ -72,10 +72,13 @@ class UpSetPlot(PlotWidget):
         self.init_class_fields()
 
         # other class fields
+        self.is_init = True
         self.has_plot = False
-        # self.unit_type = 'MUA'
+        self.show_grid = False
+
+        # resets the initialisation flag
+        self.is_init = False
         self.unit_type = 'Noise'
-        # self.unit_type = 'NonSoma'
 
     # ---------------------------------------------------------------------------
     # Class Widget Setup Functions
@@ -94,7 +97,7 @@ class UpSetPlot(PlotWidget):
 
         # sets the plot button callback functions
         for pb in self.plot_but:
-            cb_fcn = functools.partial(self.plot_button_clicked, pb.objectName())
+            cb_fcn = pfcn(self.plot_button_clicked, pb.objectName())
             pb.clicked.connect(cb_fcn)
 
     # ---------------------------------------------------------------------------
@@ -161,7 +164,6 @@ class UpSetPlot(PlotWidget):
         y_axis_int.setTicks([y_tick_lbl])
 
         # other axes properties
-        self.h_plot[0, 1].showGrid(y=True)
         self.v_box[0, 1].setXRange(v_rng_int[0][0], v_rng_int[0][1], padding=0)
 
         # -----------------------------------------------------------------------
@@ -185,7 +187,6 @@ class UpSetPlot(PlotWidget):
 
         # other axis properties
         self.h_plot[1, 0].invertX(True)
-        self.h_plot[1, 0].showGrid(x=True)
 
         # -----------------------------------------------------------------------
         # Interaction Data Subplot
@@ -242,6 +243,14 @@ class UpSetPlot(PlotWidget):
         self.v_box[1, 1].setYRange(y_lim_set[0], y_lim_set[1], padding=0)
         self.v_box[1, 1].setXRange(x_lim[0], x_lim[1], padding=0)
         # self.v_box[1, 1].setXRange(0, len(n_count), padding=0.025)
+
+        # updates the grid visibility
+        self.update_axes_grid()
+
+    def update_axes_grid(self):
+
+        self.h_plot[0, 1].showGrid(y=self.show_grid)
+        self.h_plot[1, 0].showGrid(x=self.show_grid)
 
     def get_data_array(self):
 
@@ -407,8 +416,17 @@ class UpSetPlot(PlotWidget):
     # ---------------------------------------------------------------------------
 
     @staticmethod
-    def update_para(_self):
-        _self.update_plot()
+    def update_para(p_str, _self):
+        if _self.is_init:
+            return
+
+        match p_str:
+            case 'unit_type':
+                _self.update_plot()
+
+            case 'show_grid':
+                _self.update_axes_grid()
 
     # trace property observer properties
-    unit_type = cf.ObservableProperty(update_para)
+    unit_type = cf.ObservableProperty(pfcn(update_para, 'unit_type'))
+    show_grid = cf.ObservableProperty(pfcn(update_para, 'show_grid'))

@@ -26,7 +26,6 @@ x_gap = 5
 class UpSetPara(PropPara):
     # pyqtSignal functions
     combo_update = pyqtSignal(str)
-    edit_update = pyqtSignal(str)
     check_update = pyqtSignal(str)
 
     def __init__(self, p_info):
@@ -45,12 +44,6 @@ class UpSetPara(PropPara):
 
         if not _self.is_updating:
             _self.combo_update.emit(p_str)
-
-    @staticmethod
-    def _edit_update(p_str, _self):
-
-        if not _self.is_updating:
-            _self.edit_update.emit(p_str)
 
     @staticmethod
     def _check_update(p_str, _self):
@@ -93,7 +86,6 @@ class UpSetProps(PropWidget):
     def init_other_class_fields(self):
 
         # connects the slot functions
-        self.p_props.edit_update.connect(self.edit_update)
         self.p_props.combo_update.connect(self.combo_update)
         self.p_props.check_update.connect(self.check_update)
 
@@ -105,11 +97,7 @@ class UpSetProps(PropWidget):
         # sets up the subgroup fields
         p_tmp = {
             'unit_type': self.create_para_field('Display Unit Type', 'combobox', unit_lbl[0], p_list=unit_lbl),
-            'show_grid': self.create_para_field('Show Plot Gridlines', 'checkbox', True),
-            # 'sig_type': self.create_para_field('Signal Type', 'combobox', self.sig_list[0], p_list=self.sig_list),
-            # 't_start': self.create_para_field('Start Time (s)', 'edit', 0),
-            # 'scale_signal': self.create_para_field('Scale Signals', 'checkbox', True),
-            # 'c_map': self.create_para_field('Colormap', 'colormapchooser', 'RdBu'),
+            'show_grid': self.create_para_field('Show Plot Gridlines', 'checkbox', False),
         }
 
         # updates the class field
@@ -119,20 +107,17 @@ class UpSetProps(PropWidget):
     # Parameter Update Event Functions
     # ---------------------------------------------------------------------------
 
-    def edit_update(self, p_str):
-
-        pass
-
     def check_update(self, p_str):
 
-        pass
+        # updates the plot view parameter value
+        if self.plot_view is not None:
+            setattr(self.plot_view, p_str, getattr(self.p_props, p_str))
 
     def combo_update(self, p_str):
 
-        match p_str:
-            case 'unit_type':
-                # case is updating the unit type
-                self.plot_view.unit_type = getattr(self.p_props, p_str)
+        # updates the plot view parameter value
+        if self.plot_view is not None:
+            setattr(self.plot_view, p_str, getattr(self.p_props, p_str))
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Methods

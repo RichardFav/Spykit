@@ -148,7 +148,7 @@ class UnitHistProps(PropWidget):
             'n_c': self.create_para_field('Column Count', 'edit', n_col),
             'n_bin': self.create_para_field('Max Bin Count', 'edit', n_bin0),
             'show_thresh': self.create_para_field('Show Threshold Markers', 'checkbox', True),
-            'show_grid': self.create_para_field('Show Plot Gridlines', 'checkbox', True),
+            'show_grid': self.create_para_field('Show Plot Gridlines', 'checkbox', False),
         }
 
         # updates the class field
@@ -354,9 +354,9 @@ class UnitHistProps(PropWidget):
     def reset_view_para_value(self, p_str, p_val):
 
         # updates the plot view parameter value (without activating callback)
-        self.plot_view.is_init = True
+        self.plot_view.is_updating = True
         setattr(self.plot_view, p_str, p_val)
-        self.plot_view.is_init = False
+        self.plot_view.is_updating = False
 
     def calc_opt_config(self):
 

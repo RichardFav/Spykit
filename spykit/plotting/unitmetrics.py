@@ -943,7 +943,7 @@ class SpikeActivityPlot(UnitPlotLayout):
 
     def update_axes_grid(self, show_grid):
 
-        self.plotItem.showGrid(x=show_grid, y=show_grid)
+        pass
 
     def update_view_range(self):
 
@@ -1031,6 +1031,9 @@ class SpikeAmplitudeHist(UnitPlotLayout):
         self.getAxis('bottom').label.setFont(lbl_font)
         self.getAxis("left").setTickFont(tick_font)
         self.getAxis("bottom").setTickFont(tick_font)
+
+        # updates the grid visibility
+        self.update_axes_grid(self.unit_props.get_para_value('show_grid'))
 
     def create_metric_legend(self):
 

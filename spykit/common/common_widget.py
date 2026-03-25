@@ -160,6 +160,8 @@ icon_path = {
     'trace_off': os.path.join(icon_dir, 'trace_off_icon.png'),
     'star_on': os.path.join(icon_dir, 'star_on_icon.png'),
     'star_off': os.path.join(icon_dir, 'star_off_icon.png'),
+    'cell_on': os.path.join(icon_dir, 'cell_on_icon.png'),
+    'cell_off': os.path.join(icon_dir, 'cell_off_icon.png'),
 }
 
 # channel status colour values

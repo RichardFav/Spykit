@@ -26,8 +26,6 @@ x_gap = 5
 
 class WaveFormPara(PropPara):
     # pyqtSignal functions
-    combo_update = pyqtSignal(str)
-    edit_update = pyqtSignal(str)
     check_update = pyqtSignal(str)
     checklist_update = pyqtSignal(str)
     colorpick_update = pyqtSignal(str)
@@ -42,12 +40,6 @@ class WaveFormPara(PropPara):
     # ---------------------------------------------------------------------------
     # Observable Property Event Callbacks
     # ---------------------------------------------------------------------------
-
-    @staticmethod
-    def _combo_update(p_str, _self):
-
-        if not _self.is_updating:
-            _self.combo_update.emit(p_str)
 
     @staticmethod
     def _check_update(p_str, _self):
@@ -101,8 +93,6 @@ class WaveFormProps(PropWidget):
     def init_other_class_fields(self):
 
         # connects the slot functions
-        self.p_props.edit_update.connect(self.edit_update)
-        self.p_props.combo_update.connect(self.combo_update)
         self.p_props.check_update.connect(self.check_update)
         self.p_props.checklist_update.connect(self.checklist_update)
         self.p_props.colorpick_update.connect(self.colorpick_update)
@@ -118,11 +108,7 @@ class WaveFormProps(PropWidget):
         p_tmp = {
             'unit_type': self.create_para_field('Waveform Unit Type', 'checklist', show_unit, p_list=unit_lbl),
             'tr_col': self.create_para_field('Plot Trace Colour', 'colorpick', tr_col0),
-            'show_grid': self.create_para_field('Show Plot Gridlines', 'checkbox', True),
-            # 'sig_type': self.create_para_field('Signal Type', 'combobox', self.sig_list[0], p_list=self.sig_list),
-            # 't_start': self.create_para_field('Start Time (s)', 'edit', 0),
-            # 'scale_signal': self.create_para_field('Scale Signals', 'checkbox', True),
-            # 'c_map': self.create_para_field('Colormap', 'colormapchooser', 'RdBu'),
+            'show_grid': self.create_para_field('Show Plot Gridlines', 'checkbox', False),
         }
 
         # updates the class field
@@ -132,24 +118,22 @@ class WaveFormProps(PropWidget):
     # Parameter Update Event Functions
     # ---------------------------------------------------------------------------
 
-    def edit_update(self, p_str):
-
-        pass
-
-    def combo_update(self, p_str):
-
-        pass
-
     def check_update(self, p_str):
 
-        pass
+        # updates the plot view parameter value
+        if self.plot_view is not None:
+            setattr(self.plot_view, p_str, getattr(self.p_props, p_str))
 
     def checklist_update(self, p_str):
 
         match p_str:
             case 'unit_type':
-                # case is updating the unit type
-                self.plot_view.show_plt = getattr(self.p_props, p_str)
+                # case is the display unit type
+                pass
+
+        # updates the plot view parameter value
+        if self.plot_view is not None:
+            setattr(self.plot_view, p_str, getattr(self.p_props, p_str))
 
     def colorpick_update(self, p_str):
 

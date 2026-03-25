@@ -131,7 +131,7 @@ class UnitMetricProps(PropWidget):
         p_tmp = {
             'i_unit': self.create_para_field('Cluster ID#', 'edit', 1),
             'show_metric': self.create_para_field('Show Metrics', 'checkbox', True),
-            'show_grid': self.create_para_field('Show Plot Gridlines', 'checkbox', True),
+            'show_grid': self.create_para_field('Show Plot Gridlines', 'checkbox', False),
             'r_cfig': self.create_para_field('', 'rconfig', None, p_list=self.p_list_plot),
         }
 
