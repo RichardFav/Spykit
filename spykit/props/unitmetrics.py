@@ -101,9 +101,10 @@ class UnitMetricProps(PropWidget):
         self.obj_rconfig.config_reset.connect(self.reset_plot_config)
 
         # sets the initial configuration
-        self.g_id0 = np.zeros((9,2), dtype=int)
-        self.g_id0[:4, :1], self.g_id0[:4, 1:] = 1, 2
-        self.g_id0[4:6, :1], self.g_id0[4:6, 1:], self.g_id0[6:, :] = 3, 4, 5
+        self.g_id0 = np.zeros((9,4), dtype=int)
+        self.g_id0[:4, :2], self.g_id0[:4, 2:] = 1, 2
+        self.g_id0[4:6, :2], self.g_id0[4:6, 2:] = 3, 4
+        self.g_id0[6:, :3], self.g_id0[6:, 3] = 5, 6
         self.obj_rconfig.reset_config_id(self.g_id0)
         self.obj_rconfig.reset_selector_widgets(self.g_id0)
 
@@ -123,7 +124,8 @@ class UnitMetricProps(PropWidget):
 
         # initialisations
         self.p_list_plot = ['Mean Template Waveform', 'Raw Template Waveform',
-                            'Spatial Decay', 'Auto-Correlogram', 'Spiking Activity']
+                            'Spatial Decay', 'Auto-Correlogram', 'Spiking Activity',
+                            'Spike Amplitudes']
 
         # sets up the subgroup fields
         p_tmp = {
