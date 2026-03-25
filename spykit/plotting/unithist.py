@@ -460,7 +460,10 @@ class UnitHist(UnitPlotLayout):
     def update_thresh_markers(self):
 
         # retrieves the
-        x_lim = [self.x_plt[0], self.x_plt[-1]]
+        if self.p_str in ['presenceRatio', 'percentageSpikesMissing_gaussian']:
+            x_lim = [0, 1]
+        else:
+            x_lim = [self.x_plt[0], self.x_plt[-1]]
 
         # sets the threshold rectangle y-coordinate
         dy_lim = np.diff(self.y_lim)[0]
@@ -674,8 +677,12 @@ class UnitHist(UnitPlotLayout):
         self.y_lim_min = [self.get_max_lim_value(0.01),
                           self.get_max_lim_value(self.py_gap)]
 
+        if self.p_str == ['presenceRatio', 'percentageSpikesMissing_gaussian']:
+            x_rng = [0, 1]
+        else:
+            x_rng = [self.x_plt[0], self.x_plt[-1]]
+
         # calculates the upper limit
-        x_rng = [self.x_plt[0], self.x_plt[-1]]
         dx_rng = np.diff(x_rng)[0]
         self.x_lim = np.array(x_rng) + dx_rng * np.array([-1, 1]) * self.px_gap
 

@@ -29,6 +29,9 @@ tt_lbl = ['Save Figure', 'Close View']
 
 xy_pad = 0.02
 
+lbl_font = cw.create_font_obj(9, is_bold=True, font_weight=QFont.Weight.Bold)
+tick_font = cw.create_font_obj(8, is_bold=True, font_weight=QFont.Weight.Bold)
+
 # ----------------------------------------------------------------------------------------------------------------------
 
 """
@@ -332,8 +335,8 @@ class TemplateTrace(UnitPlotLayout):
         )
 
         # resets the axis tick marks
-        self.getAxis('left').setTicks([[]])
-        self.getAxis('bottom').setTicks([[]])
+        self.plotItem.getAxis('left').setTicks([[]])
+        self.plotItem.getAxis('bottom').setTicks([[]])
 
         # creates the sub-plot title
         t_str = 'Mean Raw Waveform' if self.is_raw else 'Template Waveform'
@@ -510,6 +513,12 @@ class SpatialDecayPlot(UnitPlotLayout):
             pen=self.l_pen_trend
         )
 
+        # updates the axis font properties
+        self.getAxis('left').label.setFont(lbl_font)
+        self.getAxis('bottom').label.setFont(lbl_font)
+        self.getAxis("left").setTickFont(tick_font)
+        self.getAxis("bottom").setTickFont(tick_font)
+
     def create_metric_legend(self):
 
         pass
@@ -566,8 +575,8 @@ class SpatialDecayPlot(UnitPlotLayout):
 
         # sets the axis labels
         self.setTitle('Spatial Decay', bold=True)
-        self.getAxis('bottom').setLabel('Distance (um)')
-        self.getAxis('left').setLabel('Amplitude')
+        self.plotItem.getAxis('bottom').setLabel('Distance (um)')
+        self.plotItem.getAxis('left').setLabel('Amplitude')
 
     def update_show_metric(self, show_metric):
 
@@ -664,6 +673,12 @@ class AutoCorrelPlot(UnitPlotLayout):
             pen=self.l_pen_marker
         )
 
+        # updates the axis font properties
+        self.getAxis('left').label.setFont(lbl_font)
+        self.getAxis('bottom').label.setFont(lbl_font)
+        self.getAxis("left").setTickFont(tick_font)
+        self.getAxis("bottom").setTickFont(tick_font)
+
     def create_metric_legend(self):
 
         pass
@@ -741,8 +756,8 @@ class AutoCorrelPlot(UnitPlotLayout):
 
         # sets the axis labels
         self.setTitle('Auto-Correlogram', bold=True)
-        self.getAxis('bottom').setLabel('Time (ms)')
-        self.getAxis('left').setLabel('Freq.')
+        self.plotItem.getAxis('bottom').setLabel('Time (ms)')
+        self.plotItem.getAxis('left').setLabel('Frequency')
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -840,6 +855,14 @@ class SpikeActivityPlot(UnitPlotLayout):
 
         # sets the view resize function
         self.plotItem.vb.sigResized.connect(self.update_view_range)
+
+        # updates the axis font properties
+        self.getAxis('left').label.setFont(lbl_font)
+        self.getAxis('right').label.setFont(lbl_font)
+        self.getAxis('bottom').label.setFont(lbl_font)
+        self.getAxis("left").setTickFont(tick_font)
+        self.getAxis("right").setTickFont(tick_font)
+        self.getAxis("bottom").setTickFont(tick_font)
 
     def create_metric_legend(self):
 
@@ -992,6 +1015,12 @@ class SpikeAmplitudeHist(UnitPlotLayout):
             pen = self.l_pen_fit,
         )
 
+        # updates the axis font properties
+        self.getAxis('left').label.setFont(lbl_font)
+        self.getAxis('bottom').label.setFont(lbl_font)
+        self.getAxis("left").setTickFont(tick_font)
+        self.getAxis("bottom").setTickFont(tick_font)
+
     def create_metric_legend(self):
 
         pass
@@ -1015,20 +1044,35 @@ class SpikeAmplitudeHist(UnitPlotLayout):
         x_bin, y_bin, y_fit = self.get_plot_value()
 
         # updates the histogram values
-        self.bg_item.setOpts(
-            x0 = 0,
-            y = x_bin,
-            height = x_bin[1] - x_bin[0],
-            width = y_bin,
-        )
+        if len(x_bin):
+            # case is there are valid values to plot
+            self.bg_item.setOpts(
+                y = x_bin,
+                height = x_bin[1] - x_bin[0],
+                width = y_bin,
+            )
 
-        # updates the plot values
-        self.plot_fit.setData(y_fit, x_bin)
+            # updates the plot values
+            self.plot_fit.setData(y_fit, x_bin)
 
-        # updates the y-axes range
-        x_max = np.max([np.max(y_fit), np.max(y_bin)])
-        self.v_box.setXRange(0., 1.05 * x_max, padding=xy_pad)
-        self.v_box.setYRange(0., x_bin[-1], padding=2 * xy_pad)
+            # updates the y-axes range
+            x_max = np.max([np.max(y_fit), np.max(y_bin)])
+            self.v_box.setXRange(0., 1.05 * x_max, padding=xy_pad)
+            self.v_box.setYRange(0., x_bin[-1], padding=2 * xy_pad)
+
+        else:
+            # case is there are valid values to plot
+            self.bg_item.setOpts(
+                y = [np.nan],
+                width = [np.nan],
+            )
+
+            # updates the plot values
+            self.plot_fit.setData([np.nan], [np.nan])
+
+            # updates the y-axes range
+            self.v_box.setXRange(0., 1, padding=xy_pad)
+            self.v_box.setYRange(0., 1, padding=2 * xy_pad)
 
     def update_show_metric(self, show_metric):
 

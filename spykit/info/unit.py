@@ -268,11 +268,11 @@ class UnitInfoTab(InfoWidget):
         post_tab = self.main_obj.prop_manager.get_prop_tab('postprocess')
         if post_tab is not None:
             # resets the editbox value
-            hist_tab = post_tab.get_tab_view('unithist')
-            h_edit_unit = hist_tab.findChild(cw.QLineEdit, name='i_unit')
-            h_edit_unit.setText('%g' % self.i_unit_sel)
-
-            hist_tab.set_para_value('i_unit', self.i_unit_sel)
+            for t_type in ['unithist', 'unitmet']:
+                hist_tab = post_tab.get_tab_view(t_type)
+                h_edit_unit = hist_tab.findChild(cw.QLineEdit, name='i_unit')
+                h_edit_unit.setText('%g' % self.i_unit_sel)
+                hist_tab.set_para_value('i_unit', self.i_unit_sel)
 
     @staticmethod
     def reset_roi_coord(p, r_dim, ax_lim):
