@@ -1002,7 +1002,14 @@ class SpikeAmplitudeHist(UnitPlotLayout):
         super(SpikeAmplitudeHist, self).__init__(unit_props, i_unit)
 
         # initialises the plot widgets
+        self.init_other_class_fields()
         self.init_plot_widgets()
+
+    def init_other_class_fields(self):
+
+        # title/label font objects
+        self.lbl_font = cw.create_font_obj(10, is_bold=True, font_weight=QFont.Weight.Bold)
+        self.title_font = cw.create_font_obj(10, is_bold=True, font_weight=QFont.Weight.Bold)
 
     def init_plot_widgets(self):
 
@@ -1040,6 +1047,10 @@ class SpikeAmplitudeHist(UnitPlotLayout):
         self.getAxis('bottom').label.setFont(lbl_font)
         self.getAxis("left").setTickFont(tick_font)
         self.getAxis("bottom").setTickFont(tick_font)
+
+        # sets the axis labels
+        self.getAxis('bottom').setLabel('Count', font=self.lbl_font)
+        self.getAxis('left').setLabel('Amplitude', font=self.lbl_font)
 
         # updates the grid visibility
         self.update_axes_grid(self.unit_props.get_para_value('show_grid'))
@@ -1108,9 +1119,7 @@ class SpikeAmplitudeHist(UnitPlotLayout):
     def update_plot_title(self):
 
         # sets the axis labels
-        self.setTitle('Spike Amplitude', bold=True)
-        self.getAxis('bottom').setLabel('Count')
-        self.getAxis('left').setLabel('Amplitude')
+        self.setTitle('Spike Amplitude', font=self.title_font)
 
     def update_view_range(self):
 

@@ -561,6 +561,7 @@ class UnitHist(UnitPlotLayout):
 
     def update_view_range(self):
 
+        # self.plotItem.titleLabel
         pass
 
     # ---------------------------------------------------------------------------

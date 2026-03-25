@@ -49,7 +49,6 @@ class UpSetPlot(PlotWidget):
 
     # pen/font objects
     plt_pen = mkPen('k', width=2)
-    tick_font = cw.create_font_obj(size=10, is_bold=True, font_weight=QFont.Weight.Bold)
 
     # stripe colours
     c_stripe_1 = QColor(c_col1, c_col1, c_col1, 255)
@@ -76,6 +75,10 @@ class UpSetPlot(PlotWidget):
         self.has_plot = False
         self.show_grid = False
 
+        # title/label font sizes
+        self.t_sz = '20pt'
+        self.lbl_font = cw.create_font_obj(size=10, is_bold=True, font_weight=QFont.Weight.Bold)
+
         # resets the initialisation flag
         self.is_init = False
         self.unit_type = 'Noise'
@@ -96,8 +99,8 @@ class UpSetPlot(PlotWidget):
         self.h_plot[0, 0].hide()
 
         # sets the plot view resize function
-        self.h_plot[0, 1].plotItem.vb.sigResized.connect(self.update_view_range)
-        self.h_plot[1, 0].plotItem.vb.sigResized.connect(self.update_view_range)
+        self.h_plot[0, 1].plotItem.vb.sigResized.connect(pfcn(self.update_view_range, True))
+        self.h_plot[1, 0].plotItem.vb.sigResized.connect(pfcn(self.update_view_range, False))
 
         # sets the plot button callback functions
         for pb in self.plot_but:
@@ -144,12 +147,10 @@ class UpSetPlot(PlotWidget):
 
         # plotting values
         x_int = np.array(range(len(n_count))) + 0.5
-        t_str = '{0} Unit Classification Interactions'.format(self.unit_type)
 
         # creates the bar graph item
         bar_int = BarGraphItem(x=x_int, height=n_count, width=0.6)
         self.h_plot[0, 1].addItem(bar_int)
-        self.h_plot[0, 1].setTitle(t_str, size='20pt', bold=True)
         self.v_box[0, 1].setYRange(0, n_count[0], padding=self.x_pad)
         self.v_box[0, 1].setXRange(0, len(n_count))
 
@@ -159,7 +160,7 @@ class UpSetPlot(PlotWidget):
 
         # y-axis properties
         y_axis_int = self.plot_interact.getAxis('left')
-        y_axis_int.setStyle(tickLength=1, tickFont=self.tick_font)
+        y_axis_int.setStyle(tickLength=1, tickFont=self.lbl_font)
 
         # determines the y-axis tick values
         v_rng_int = self.v_box[0, 1].viewRange()
@@ -186,7 +187,7 @@ class UpSetPlot(PlotWidget):
         # y-axis properties
         y_axis_set = self.h_plot[1, 0].getAxis('left')
         y_ticks = [(y_pos, lbl) for y_pos, lbl in zip(y_set, q_hdr)]
-        y_axis_set.setStyle(tickLength=1, tickFont=self.tick_font)
+        y_axis_set.setStyle(tickLength=1, tickFont=self.lbl_font)
         y_axis_set.setTicks([y_ticks])
 
         # other axis properties
@@ -236,12 +237,12 @@ class UpSetPlot(PlotWidget):
         self.plot_details.getAxis('bottom').setTextPen('k')
         self.v_box[1, 1].setBorder(color='k')
 
-        # copies the data plot tick
-        y_axis_details = self.h_plot[1, 1].getAxis('left')
-        y_details = np.linspace(0, n_data, len(y_tick_int))
-        y_tick_details = [(y_pos, str(int(lbl))) for y_pos, lbl in zip(y_details, y_tick_int)]
-        y_axis_details.setTicks([y_tick_details])
-        y_axis_details.setStyle(tickFont=self.tick_font)
+        # # copies the data plot tick
+        # y_axis_details = self.h_plot[1, 1].getAxis('left')
+        # y_details = np.linspace(0, n_data, len(y_tick_int))
+        # y_tick_details = [(y_pos, str(int(lbl))) for y_pos, lbl in zip(y_details, y_tick_int)]
+        # y_axis_details.setTicks([y_tick_details])
+        # y_axis_details.setStyle(tickFont=self.lbl_font)
 
         # resets the axes limits
         self.v_box[1, 1].setYRange(y_lim_set[0], y_lim_set[1], padding=0)
@@ -368,9 +369,17 @@ class UpSetPlot(PlotWidget):
         # returns the label array
         return lbl_arr
 
-    def update_view_range(self):
+    def update_view_range(self, is_main):
 
-        pass
+        if is_main:
+            # updates the title font
+            t_str = '{0} Unit Classification Interactions'.format(self.unit_type)
+            self.h_plot[0, 1].setTitle(t_str, size=self.t_sz, bold=True)
+
+        else:
+            # updates the y-axis font
+            y_axis_set = self.h_plot[1, 0].getAxis('left')
+            y_axis_set.setStyle(tickLength=1, tickFont=self.lbl_font)
 
     # ---------------------------------------------------------------------------
     # Plot Button Event Functions

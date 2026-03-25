@@ -68,7 +68,8 @@ class WaveFormPlot(PlotWidget):
 
     def init_class_fields(self):
 
-        # sets up the unit type fields
+        # field initialisations
+        self.t_sz = '20pt'
         if self.get_field('splitGoodAndMua_NonSomatic'):
             self.unit_lbl = ['Noise', 'Somatic Good', 'Somatic MUA', 'Non-somatic Good', 'Non-somatic MUA']
         else:
@@ -120,10 +121,6 @@ class WaveFormPlot(PlotWidget):
             h_item = QGraphicsPathItem(h_unit)
             self.h_plot[i_type].addItem(h_item)
 
-            # plot title
-            t_str = '{0} Unit Waveforms'.format(self.unit_lbl[i_type])
-            self.h_plot[i_type].setTitle(t_str, size='20pt', bold=True)
-
             # sets the axes properties
             h_plt_item = self.h_plot[i_type].getPlotItem()
             for ax_t in ['left', 'bottom', 'right', 'top']:
@@ -135,6 +132,9 @@ class WaveFormPlot(PlotWidget):
                 # shows the right/top axes
                 if ax_t in ['right', 'top']:
                     h_plt_item.showAxis(ax_t)
+
+            # sets the view range change function
+            h_plt_item.vb.sigResized.connect(pfcn(self.update_view_range, i_type))
 
     # ---------------------------------------------------------------------------
     # PLot View Methods
@@ -182,9 +182,14 @@ class WaveFormPlot(PlotWidget):
             hp_item = hp.getPlotItem()
             hp_item.showGrid(x=self.show_grid, y=self.show_grid)
 
-    def clear_current_plot(self):
+    def update_plot_title(self, i_type):
 
-        pass
+        t_str = '{0} Unit Waveforms'.format(self.unit_lbl[i_type])
+        self.h_plot[i_type].setTitle(t_str, size=self.t_sz, bold=True)
+
+    def update_view_range(self, i_type):
+
+        self.update_plot_title(i_type)
 
     # ---------------------------------------------------------------------------
     # Plot Button Event Functions
