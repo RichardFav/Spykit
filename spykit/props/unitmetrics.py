@@ -70,8 +70,8 @@ class UnitMetricProps(PropWidget):
 
     # font sizes
     lbl_size = 10
-    tick_size = 8
-    title_sub_size0 = 14
+    tick_size = 9
+    title_sub_size0 = 12
     title_main_size0 = 25
 
     def __init__(self, main_obj):

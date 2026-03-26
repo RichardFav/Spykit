@@ -49,6 +49,11 @@ class UpSetPlot(PlotWidget):
     # pen/font objects
     plt_pen = mkPen('k', width=2)
 
+    # font sizes
+    title_size0 = 22
+    tick_size = 10
+    lbl_size = 12
+
     # stripe colours
     c_stripe_1 = QColor(c_col1, c_col1, c_col1, 255)
     c_stripe_2 = QColor(c_col2, c_col2, c_col2, 255)
@@ -75,8 +80,11 @@ class UpSetPlot(PlotWidget):
         self.show_grid = False
 
         # title/label font sizes
-        self.t_sz = '20pt'
-        self.lbl_font = cw.create_font_obj(size=10, is_bold=True, font_weight=QFont.Weight.Bold)
+        self.title_size = '{0}pt'.format(self.title_size0)
+        self.tick_font = cw.create_font_obj(
+            size=self.tick_size, is_bold=True, font_weight=QFont.Weight.Bold)
+        self.lbl_font = cw.create_font_obj(
+            size=self.lbl_size, is_bold=True, font_weight=QFont.Weight.Bold)
 
         # resets the initialisation flag
         self.is_init = False
@@ -88,6 +96,17 @@ class UpSetPlot(PlotWidget):
 
     def init_class_fields(self):
 
+        # field retrieval
+        self.l_size = self.plot_layout.sizeHint()
+
+        # hides the autoscale button
+        for hp in self.h_plot.flatten():
+            hp.hideButtons()
+
+        # removes the mouse interaction
+        for vb in self.v_box.flatten():
+            vb.setMouseEnabled(False, False)
+
         # resets the row stretch
         self.plot_layout.setRowStretch(0, self.p_row)
         self.plot_layout.setRowStretch(1, 100 - self.p_row)
@@ -96,10 +115,6 @@ class UpSetPlot(PlotWidget):
 
         # hides the top-left plot region
         self.h_plot[0, 0].hide()
-
-        # sets the plot view resize function
-        self.h_plot[0, 1].plotItem.vb.sigResized.connect(pfcn(self.update_view_range, True))
-        self.h_plot[1, 0].plotItem.vb.sigResized.connect(pfcn(self.update_view_range, False))
 
         # sets the plot button callback functions
         for pb in self.plot_but:
@@ -159,7 +174,7 @@ class UpSetPlot(PlotWidget):
 
         # y-axis properties
         y_axis_int = self.plot_interact.getAxis('left')
-        y_axis_int.setStyle(tickLength=1, tickFont=self.lbl_font)
+        y_axis_int.setStyle(tickLength=1)
 
         # determines the y-axis tick values
         v_rng_int = self.v_box[0, 1].viewRange()
@@ -186,7 +201,7 @@ class UpSetPlot(PlotWidget):
         # y-axis properties
         y_axis_set = self.h_plot[1, 0].getAxis('left')
         y_ticks = [(y_pos, lbl) for y_pos, lbl in zip(y_set, q_hdr)]
-        y_axis_set.setStyle(tickLength=1, tickFont=self.lbl_font)
+        y_axis_set.setStyle(tickLength=1)
         y_axis_set.setTicks([y_ticks])
 
         # other axis properties
@@ -220,8 +235,12 @@ class UpSetPlot(PlotWidget):
 
         # creates the dot markers
         x_dot, y_dot = np.meshgrid(x_int, y_set)
-        h_dot = ScatterPlotItem(x=x_dot.flatten(),
-                                y=y_dot.flatten(), size=self.m_size, brush=mkBrush(self.c_dot))
+        h_dot = ScatterPlotItem(
+            x=x_dot.flatten(),
+            y=y_dot.flatten(),
+            size=self.m_size,
+            brush=mkBrush(self.c_dot)
+        )
         self.h_plot[1, 1].addItem(h_dot)
 
         # creates the detail type plot
@@ -234,27 +253,70 @@ class UpSetPlot(PlotWidget):
         # hides the plot axis
         self.plot_details.getAxis('left').setTextPen('k')
         self.plot_details.getAxis('bottom').setTextPen('k')
+
+        # updates the viewbox properties
         self.v_box[1, 1].setBorder(color='k')
-
-        # # copies the data plot tick
-        # y_axis_details = self.h_plot[1, 1].getAxis('left')
-        # y_details = np.linspace(0, n_data, len(y_tick_int))
-        # y_tick_details = [(y_pos, str(int(lbl))) for y_pos, lbl in zip(y_details, y_tick_int)]
-        # y_axis_details.setTicks([y_tick_details])
-        # y_axis_details.setStyle(tickFont=self.lbl_font)
-
-        # resets the axes limits
         self.v_box[1, 1].setYRange(y_lim_set[0], y_lim_set[1], padding=0)
         self.v_box[1, 1].setXRange(x_lim[0], x_lim[1], padding=0)
-        # self.v_box[1, 1].setXRange(0, len(n_count), padding=0.025)
 
         # updates the grid visibility
+        self.update_plot_title()
         self.update_axes_grid()
 
     def update_axes_grid(self):
 
         self.h_plot[0, 1].showGrid(y=self.show_grid)
         self.h_plot[1, 0].showGrid(x=self.show_grid)
+
+    def update_plot_title(self):
+
+        # updates the left plot labels
+        self.h_plot[1, 0].getAxis('left').setTickFont(self.lbl_font)
+        self.h_plot[1, 0].getAxis('bottom').setTickFont(self.tick_font)
+
+        # updates the top plot
+        t_str = '{0} Unit Classification Interactions'.format(self.unit_type)
+        self.h_plot[0, 1].setTitle(t_str, size=self.title_size, bold=True)
+        self.h_plot[0, 1].getAxis('left').setTickFont(self.tick_font)
+
+    # ---------------------------------------------------------------------------
+    # Plot Button Event Functions
+    # ---------------------------------------------------------------------------
+
+    def plot_button_clicked(self, b_str):
+
+        match b_str:
+            case 'save':
+                # case is the figure save button
+
+                # outputs the current trace to file
+                f_path = cf.setup_image_file_name(cw.figure_dir, 'TraceTest.png')       # CHANGE THIS TO
+                exp_obj = exporters.ImageExporter(self.h_plot[0, 0].getPlotItem())
+                exp_obj.export(f_path)
+
+            case 'close':
+                # case is the close button
+                self.hide_plot.emit()
+
+    # ---------------------------------------------------------------------------
+    # Other Plot View Functions
+    # ---------------------------------------------------------------------------
+
+    def clear_plot_view(self):
+
+        pass
+
+    def show_view(self):
+
+        pass
+
+    def hide_view(self):
+
+        pass
+
+    # ---------------------------------------------------------------------------
+    # Class Getter Methods
+    # ---------------------------------------------------------------------------
 
     def get_data_array(self):
 
@@ -368,64 +430,49 @@ class UpSetPlot(PlotWidget):
         # returns the label array
         return lbl_arr
 
-    def update_view_range(self, is_main):
-
-        if is_main:
-            # updates the title font
-            t_str = '{0} Unit Classification Interactions'.format(self.unit_type)
-            self.h_plot[0, 1].setTitle(t_str, size=self.t_sz, bold=True)
-
-        else:
-            # updates the y-axis font
-            y_axis_set = self.h_plot[1, 0].getAxis('left')
-            y_axis_set.setStyle(tickLength=1, tickFont=self.lbl_font)
-
-    # ---------------------------------------------------------------------------
-    # Plot Button Event Functions
-    # ---------------------------------------------------------------------------
-
-    def plot_button_clicked(self, b_str):
-
-        match b_str:
-            case 'save':
-                # case is the figure save button
-
-                # outputs the current trace to file
-                f_path = cf.setup_image_file_name(cw.figure_dir, 'TraceTest.png')       # CHANGE THIS TO
-                exp_obj = exporters.ImageExporter(self.h_plot[0, 0].getPlotItem())
-                exp_obj.export(f_path)
-
-            case 'close':
-                # case is the close button
-                self.hide_plot.emit()
-
-    # ---------------------------------------------------------------------------
-    # Other Plot View Functions
-    # ---------------------------------------------------------------------------
-
-    def clear_plot_view(self):
-
-        pass
-
-    def show_view(self):
-
-        pass
-
-    def hide_view(self):
-
-        pass
-
-    # ---------------------------------------------------------------------------
-    # Miscellaneous Methods
-    # ---------------------------------------------------------------------------
-
     def get_field(self, p_fld):
 
         return self.session_info.get_mem_map_field(p_fld)
 
+    # ---------------------------------------------------------------------------
+    # Class Setter Methods
+    # ---------------------------------------------------------------------------
+
     def set_plot_view(self, plot_view_new):
 
         self.plot_view = plot_view_new
+
+    # ---------------------------------------------------------------------------
+    # Widget Event Callback Functions
+    # ---------------------------------------------------------------------------
+
+    def resizeEvent(self, event):
+
+        # field retrieval
+        new_size = event.size()
+
+        # calculates the proportional height/width
+        p_wid = new_size.width() / self.l_size.width()
+        p_hght = new_size.height() / self.l_size.height()
+
+        # resets the font object sizes
+        self.scale_font_sizes(p_wid, p_hght)
+        self.update_plot_title()
+
+    def scale_font_sizes(self, p_wid, p_hght):
+
+        # calculates the new scale factor
+        p_scl = np.sqrt(np.min([p_wid, p_hght]))
+        f_sz_title = int(np.ceil(self.title_size0 * p_scl))
+        f_sz_tick = int(np.ceil(self.tick_size * p_scl))
+        f_sz_lbl = int(np.ceil(self.lbl_size * p_scl))
+
+        # resets the title string
+        self.title_size = '{0}pt'.format(f_sz_title)
+
+        # resets the font objects
+        self.lbl_font.setPointSize(f_sz_lbl)
+        self.tick_font.setPointSize(f_sz_tick)
 
     # ---------------------------------------------------------------------------
     # Static Methods

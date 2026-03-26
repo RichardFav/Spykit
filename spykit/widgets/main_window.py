@@ -46,8 +46,8 @@ info_width = 330
 # object dimensions
 dlg_width = 1650
 dlg_height = 900
-min_width = 800
-min_height = 450
+min_width = 1000
+min_height = 820
 
 # font objects
 font_lbl = cw.create_font_obj(is_bold=True, font_weight=QFont.Weight.Bold)
@@ -110,7 +110,7 @@ class MainWindow(QMainWindow):
 
         # creates the dialog window
         self.setWindowTitle("Spike Interface Pipeline")
-        self.setMinimumSize(min_width, min_height)
+        self.setMinimumSize(QSize(min_width, min_height))
         self.resize(dlg_width, dlg_height)
 
         pg.setConfigOption('useOpenGL', False)

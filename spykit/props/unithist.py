@@ -83,7 +83,7 @@ class UnitHistProps(PropWidget):
     type = 'unithist'
 
     # font sizes
-    tick_size = 10
+    tick_size = 9
     title_sub_size0 = 12
     title_main_size0 = 25
 
@@ -360,7 +360,7 @@ class UnitHistProps(PropWidget):
     def scale_font_sizes(self, p_wid, p_hght):
 
         # calculates the new scale factor
-        p_scl = np.sqrt(np.min([p_wid, p_hght]))
+        p_scl = np.min([p_wid, p_hght])
         f_sz_sub = int(np.ceil(self.title_sub_size0 * p_scl))
         f_sz_main = int(np.ceil(self.title_main_size0 * p_scl))
         f_sz_tick = int(np.ceil(self.tick_size * p_scl))

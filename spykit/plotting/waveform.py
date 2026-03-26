@@ -271,7 +271,7 @@ class WaveFormPlot(PlotWidget):
     def scale_font_sizes(self, p_wid, p_hght):
 
         # calculates the new scale factor
-        p_scl = np.sqrt(np.min([p_wid, p_hght]))
+        p_scl = np.min([p_wid, p_hght])
         f_sz_title = int(np.ceil(self.title_size0 * p_scl))
 
         # resets the title string
