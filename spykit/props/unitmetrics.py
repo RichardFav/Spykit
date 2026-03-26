@@ -10,6 +10,7 @@ from spykit.props.utils import PropWidget, PropPara
 
 # pyqt imports
 from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtGui import QFont
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -67,6 +68,12 @@ class UnitMetricProps(PropWidget):
     # field properties
     type = 'unitmet'
 
+    # font sizes
+    lbl_size = 10
+    tick_size = 8
+    title_sub_size0 = 14
+    title_main_size0 = 25
+
     def __init__(self, main_obj):
         # sets the input arguments
         self.main_obj = main_obj
@@ -116,6 +123,15 @@ class UnitMetricProps(PropWidget):
             self.unit_lbl = ['Noise', 'Somatic Good', 'Somatic MUA', 'Non-somatic Good', 'Non-somatic MUA']
         else:
             self.unit_lbl = ['Noise', 'Good', 'MUA', 'Non-Somatic']
+
+        # sets up the title/label font sizes
+        self.title_sub_size = '{0}pt'.format(self.title_sub_size0)
+        self.title_main_font = cw.create_font_obj(
+            self.title_main_size0, is_bold=True, font_weight=QFont.Weight.Bold)
+        self.lbl_font = cw.create_font_obj(
+            self.lbl_size, is_bold=True, font_weight=QFont.Weight.Bold)
+        self.tick_font = cw.create_font_obj(
+            self.tick_size, is_bold=True, font_weight=QFont.Weight.Bold)
 
     def setup_prop_fields(self):
 
@@ -217,6 +233,23 @@ class UnitMetricProps(PropWidget):
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
     # ---------------------------------------------------------------------------
+
+    def scale_font_sizes(self, p_wid, p_hght):
+
+        # calculates the new scale factor
+        p_scl = np.min([p_wid, p_hght])
+        f_sz_sub = int(np.ceil(self.title_sub_size0 * p_scl))
+        f_sz_main = int(np.ceil(self.title_main_size0 * p_scl))
+        f_sz_lbl = int(np.ceil(self.lbl_size * p_scl))
+        f_sz_tick = int(np.ceil(self.tick_size * p_scl))
+
+        # resets the title string
+        self.title_sub_size = '{0}pt'.format(f_sz_sub)
+
+        # resets the font objects
+        self.title_main_font.setPointSize(f_sz_main)
+        self.lbl_font.setPointSize(f_sz_lbl)
+        self.tick_font.setPointSize(f_sz_tick)
 
     def reset_para_value(self, p_fld, p_val):
 

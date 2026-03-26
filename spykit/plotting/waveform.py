@@ -14,7 +14,7 @@ from spykit.plotting.utils import PlotWidget, setup_default_layout
 
 # pyqt6 module import
 from PyQt6.QtWidgets import QWidget
-from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtCore import pyqtSignal, Qt
 
 # pyqtgraph modules
 import pyqtgraph as pg
@@ -36,6 +36,9 @@ x_gap = 5
 
 
 class WaveFormPlot(PlotWidget):
+    # font sizes
+    title_size0 = 22
+
     def __init__(self, session_info):
         # creates the class object
         p_layout = setup_default_layout()
@@ -68,8 +71,11 @@ class WaveFormPlot(PlotWidget):
 
     def init_class_fields(self):
 
+        # field retrieval
+        self.l_size = self.plot_layout.sizeHint()
+        self.title_size = '{0}pt'.format(self.title_size0)
+
         # field initialisations
-        self.t_sz = '20pt'
         if self.get_field('splitGoodAndMua_NonSomatic'):
             self.unit_lbl = ['Noise', 'Somatic Good', 'Somatic MUA', 'Non-somatic Good', 'Non-somatic MUA']
         else:
@@ -80,16 +86,19 @@ class WaveFormPlot(PlotWidget):
         self.unit_type = np.ones(self.n_plt, dtype=bool)
         self.h_pen_tr = pg.mkPen(self.tr_col, width=1)
 
-        # creates the background widget
+        # background widget properties
         self.bg_widget.setStyleSheet("background-color: rgba(0, 0, 0, 0);")
         self.plot_layout.addWidget(self.bg_widget)
-        self.plot_layout.setSpacing(10)
-        self.plot_layout.setDimOffset(15, 1)
+
+        # creates the background widget
+        self.plot_layout.setSpacing(5)
+        self.plot_layout.setDimOffset(36, 1)
 
         # sets the plot button callback functions
         for pb in self.plot_but:
             cb_fcn = pfcn(self.plot_button_clicked, pb.objectName())
             pb.clicked.connect(cb_fcn)
+            pb.raise_()
 
     def init_plot_view(self):
 
@@ -123,18 +132,16 @@ class WaveFormPlot(PlotWidget):
 
             # sets the axes properties
             h_plt_item = self.h_plot[i_type].getPlotItem()
+            h_plt_item.showAxes(True, False)
+            h_plt_item.layout.setContentsMargins(x_gap, x_gap, x_gap, x_gap)
+
             for ax_t in ['left', 'bottom', 'right', 'top']:
                 # resets the axes properties
-                h_plt_item.showAxes(True, False)
-                h_plt_item.layout.setContentsMargins(x_gap, x_gap, x_gap, x_gap)
                 self.h_plot[i_type].getAxis(ax_t).setStyle(tickLength=0)
 
                 # shows the right/top axes
                 if ax_t in ['right', 'top']:
                     h_plt_item.showAxis(ax_t)
-
-            # sets the view range change function
-            h_plt_item.vb.sigResized.connect(pfcn(self.update_view_range, i_type))
 
     # ---------------------------------------------------------------------------
     # PLot View Methods
@@ -185,11 +192,7 @@ class WaveFormPlot(PlotWidget):
     def update_plot_title(self, i_type):
 
         t_str = '{0} Unit Waveforms'.format(self.unit_lbl[i_type])
-        self.h_plot[i_type].setTitle(t_str, size=self.t_sz, bold=True)
-
-    def update_view_range(self, i_type):
-
-        self.update_plot_title(i_type)
+        self.h_plot[i_type].setTitle(t_str, size=self.title_size, bold=True)
 
     # ---------------------------------------------------------------------------
     # Plot Button Event Functions
@@ -244,6 +247,35 @@ class WaveFormPlot(PlotWidget):
                 return 1, 2
             case _:
                 return 2, int(np.ceil(n_plt / 2))
+
+    # ---------------------------------------------------------------------------
+    # Widget Event Callback Functions
+    # ---------------------------------------------------------------------------
+
+    def resizeEvent(self, event):
+
+        # field retrieval
+        new_size = event.size()
+
+        # calculates the proportional height/width
+        p_wid = new_size.width() / self.l_size.width()
+        p_hght = new_size.height() / self.l_size.height()
+
+        # resets the font object sizes
+        self.scale_font_sizes(p_wid, p_hght)
+
+        # resets the plot titles
+        for i in range(self.n_plt):
+            self.update_plot_title(i)
+
+    def scale_font_sizes(self, p_wid, p_hght):
+
+        # calculates the new scale factor
+        p_scl = np.sqrt(np.min([p_wid, p_hght]))
+        f_sz_title = int(np.ceil(self.title_size0 * p_scl))
+
+        # resets the title string
+        self.title_size = '{0}pt'.format(f_sz_title)
 
     # ---------------------------------------------------------------------------
     # Parameter Field Update Methods

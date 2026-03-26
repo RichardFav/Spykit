@@ -43,7 +43,6 @@ class UpSetPlot(PlotWidget):
     c_col1 = 220
     c_col2 = 200
     c_col3 = 175
-
     x_pad = 0.005
     y_pad = 0.02
 

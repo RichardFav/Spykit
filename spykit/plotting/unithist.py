@@ -36,9 +36,6 @@ class UnitHistPlot(PlotWidget):
     # widget dimensions
     p_row0 = 5
 
-    # font objects
-    font_title = cw.create_font_obj(is_bold=True, font_weight=QFont.Weight.Bold, size=24)
-
     def __init__(self, session_info):
         # field initialisations
         self.is_updating = True
@@ -70,6 +67,9 @@ class UnitHistPlot(PlotWidget):
 
     def init_class_fields(self):
 
+        # field retrieval
+        self.l_size = self.plot_layout.sizeHint()
+
         # creates the background widget
         self.bg_widget.setStyleSheet("background-color: rgba(0, 0, 0, 0);")
         self.plot_layout.addWidget(self.bg_widget)
@@ -97,7 +97,7 @@ class UnitHistPlot(PlotWidget):
             self.q_met_hist[i_met] = self.get_hist_metrics(i_met)
 
         # creates the title widget
-        self.title_lbl = cw.create_text_label(None, 'TEST', font=self.font_title, align='center')
+        self.title_lbl = cw.create_text_label(None, 'TEST', font=self.unit_props.title_main_font, align='center')
         self.title_lbl.setStyleSheet("QLabel { color: white; background-color: rgba(0, 0, 0, 0);}")
         self.plot_layout.addWidget(self.title_lbl)
 
@@ -284,6 +284,33 @@ class UnitHistPlot(PlotWidget):
     def get_field(self, p_fld):
 
         return self.session_info.get_mem_map_field(p_fld)
+
+    # ---------------------------------------------------------------------------
+    # Widget Event Callback Functions
+    # ---------------------------------------------------------------------------
+
+    def resizeEvent(self, event):
+
+        # field retrieval
+        new_size = event.size()
+
+        # calculates the proportional height/width
+        p_wid = new_size.width() / self.l_size.width()
+        p_hght = new_size.height() / self.l_size.height()
+
+        # resets the font object sizes
+        self.unit_props.scale_font_sizes(p_wid, p_hght)
+
+        # resets the title/label fonts
+        self.title_lbl.setFont(self.unit_props.title_main_font)
+        for hp in self.hist:
+            hp.update_view_range()
+
+        # updates the plot layout
+        self.plot_layout.activate()
+
+        # Call the base class implementation
+        super().resizeEvent(event)
 
     # ---------------------------------------------------------------------------
     # Observable Property Event Callbacks
@@ -503,7 +530,7 @@ class UnitHist(UnitPlotLayout):
 
         # field retrieval
         q_met_unit = self.q_met[self.i_unit - 1]
-        lbl_col = 'w' if self.is_met_within_limits() else 'r'
+        self.lbl_col = 'w' if self.is_met_within_limits() else 'r'
 
         # sets up the histogram title string
         if np.isnan(q_met_unit):
@@ -514,21 +541,30 @@ class UnitHist(UnitPlotLayout):
             q_met_str = f"({q_met_unit:.3f})"
 
         # resets the title string
-        t_str_nw = "{0} {1}".format(self.t_str, q_met_str)
-        self.plotItem.setTitle(
-            t_str_nw,
-            bold = True,
-            size='10pt',
-            color=lbl_col,
-        )
+        self.t_str_plt = "{0} {1}".format(self.t_str, q_met_str)
+        self.update_plot_title()
 
         # updates the axes colour
-        h_pen_lbl = pg.mkPen(color=lbl_col)
+        h_pen_lbl = pg.mkPen(color=self.lbl_col)
         for ax_t in ['left', 'bottom']:
             h_ax = self.getAxis(ax_t)
             h_ax.setPen(h_pen_lbl)
             h_ax.setTextPen(h_pen_lbl)
             h_ax.setZValue(-10)
+
+    def update_plot_title(self):
+
+        # sets the sub-plot title
+        self.plotItem.setTitle(
+            self.t_str_plt,
+            bold=True,
+            size=self.unit_props.title_sub_size,
+            color=self.lbl_col,
+        )
+
+        # updates the axis font properties
+        self.getAxis("left").setTickFont(self.unit_props.tick_font)
+        self.getAxis("bottom").setTickFont(self.unit_props.tick_font)
 
     def update_bin_count(self):
 
@@ -562,7 +598,7 @@ class UnitHist(UnitPlotLayout):
     def update_view_range(self):
 
         # self.plotItem.titleLabel
-        pass
+        self.update_plot_title()
 
     # ---------------------------------------------------------------------------
     # Setter Methods

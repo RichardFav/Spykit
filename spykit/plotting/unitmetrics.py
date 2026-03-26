@@ -29,9 +29,6 @@ tt_lbl = ['Save Figure', 'Close View']
 
 xy_pad = 0.02
 
-lbl_font = cw.create_font_obj(9, is_bold=True, font_weight=QFont.Weight.Bold)
-tick_font = cw.create_font_obj(8, is_bold=True, font_weight=QFont.Weight.Bold)
-
 # ----------------------------------------------------------------------------------------------------------------------
 
 """
@@ -44,7 +41,7 @@ class UnitMetricPlot(PlotWidget):
     n_plot = 6
 
     # font objects
-    font_title = cw.create_font_obj(is_bold=True, font_weight=QFont.Weight.Bold, size=24)
+    title_font_main = cw.create_font_obj(is_bold=True, font_weight=QFont.Weight.Bold, size=24)
 
     def __init__(self, session_info):
         # field initialisations
@@ -77,6 +74,7 @@ class UnitMetricPlot(PlotWidget):
     def init_class_fields(self):
 
         # field retrieval
+        self.l_size = self.plot_layout.sizeHint()
         self.t_dur = self.session_info.session_props.t_dur
 
         # sets the plot layout properties
@@ -95,7 +93,8 @@ class UnitMetricPlot(PlotWidget):
     def init_plot_view(self):
 
         # creates the title widget
-        self.title_lbl = cw.create_text_label(None, 'TEST', font=self.font_title, align='center')
+        self.title_lbl = cw.create_text_label(
+            None, 'TEST', font=self.unit_props.title_main_font, align='center')
         self.title_lbl.setStyleSheet("QLabel { color: white; background-color: rgba(0, 0, 0, 0);}")
         self.plot_layout.addWidget(self.title_lbl)
 
@@ -112,7 +111,6 @@ class UnitMetricPlot(PlotWidget):
         for mp in self.m_plot:
             # updates the plot widget
             mp.update_unit_index(self.i_unit)
-            mp.plotItem.vb.sigResized.connect(mp.update_view_range)
 
             # adds the plot item to the widget
             self.plot_layout.addWidget(mp)
@@ -249,6 +247,33 @@ class UnitMetricPlot(PlotWidget):
         return self.session_info.get_mem_map_field(p_fld)
 
     # ---------------------------------------------------------------------------
+    # Widget Event Callback Functions
+    # ---------------------------------------------------------------------------
+
+    def resizeEvent(self, event):
+
+        # field retrieval
+        new_size = event.size()
+
+        # calculates the proportional height/width
+        p_wid = new_size.width() / self.l_size.width()
+        p_hght = new_size.height() / self.l_size.height()
+
+        # resets the font object sizes
+        self.unit_props.scale_font_sizes(p_wid, p_hght)
+
+        # resets the title/label fonts
+        self.title_lbl.setFont(self.unit_props.title_main_font)
+        for mp in self.m_plot:
+            mp.update_view_range()
+
+        # updates the plot layout
+        self.plot_layout.activate()
+
+        # Call the base class implementation
+        super().resizeEvent(event)
+
+    # ---------------------------------------------------------------------------
     # Observable Property Event Callbacks
     # ---------------------------------------------------------------------------
 
@@ -342,8 +367,7 @@ class TemplateTrace(UnitPlotLayout):
         self.plotItem.getAxis('bottom').setTicks([[]])
 
         # creates the sub-plot title
-        t_str = 'Mean Raw Waveform' if self.is_raw else 'Template Waveform'
-        self.setTitle(t_str, bold=True)
+        self.t_str = 'Mean Raw Waveform' if self.is_raw else 'Template Waveform'
 
     def create_metric_legend(self):
 
@@ -376,6 +400,11 @@ class TemplateTrace(UnitPlotLayout):
         self.v_box.setXRange(self.x_lim[0], self.x_lim[1], padding=xy_pad)
         self.v_box.setYRange(self.y_lim[0], self.y_lim[1], padding=xy_pad)
 
+    def update_plot_title(self):
+
+        # sets the sub-plot title
+        self.setTitle(self.t_str, size=self.unit_props.title_sub_size, bold=True)
+
     def update_show_metric(self, show_metric):
 
         pass
@@ -386,7 +415,7 @@ class TemplateTrace(UnitPlotLayout):
 
     def update_view_range(self):
 
-        pass
+        self.update_plot_title()
 
     # ---------------------------------------------------------------------------
     # Class Getter Functions
@@ -528,11 +557,9 @@ class SpatialDecayPlot(UnitPlotLayout):
             pen=self.l_pen_trend
         )
 
-        # updates the axis font properties
-        self.getAxis('left').label.setFont(lbl_font)
-        self.getAxis('bottom').label.setFont(lbl_font)
-        self.getAxis("left").setTickFont(tick_font)
-        self.getAxis("bottom").setTickFont(tick_font)
+        # sets the axes labels
+        self.plotItem.getAxis('bottom').setLabel('Distance (um)')
+        self.plotItem.getAxis('left').setLabel('Amplitude')
 
     def create_metric_legend(self):
 
@@ -588,10 +615,14 @@ class SpatialDecayPlot(UnitPlotLayout):
 
     def update_plot_title(self):
 
-        # sets the axis labels
-        self.setTitle('Spatial Decay', bold=True)
-        self.plotItem.getAxis('bottom').setLabel('Distance (um)')
-        self.plotItem.getAxis('left').setLabel('Amplitude')
+        # sets the sub-plot title
+        self.setTitle('Spatial Decay', size=self.unit_props.title_sub_size, bold=True)
+
+        # updates the axis font properties
+        self.getAxis('left').label.setFont(self.unit_props.lbl_font)
+        self.getAxis('bottom').label.setFont(self.unit_props.lbl_font)
+        self.getAxis("left").setTickFont(self.unit_props.tick_font)
+        self.getAxis("bottom").setTickFont(self.unit_props.tick_font)
 
     def update_show_metric(self, show_metric):
 
@@ -603,7 +634,7 @@ class SpatialDecayPlot(UnitPlotLayout):
 
     def update_view_range(self):
 
-        pass
+        self.update_plot_title()
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -692,11 +723,9 @@ class AutoCorrelPlot(UnitPlotLayout):
             pen=self.l_pen_marker
         )
 
-        # updates the axis font properties
-        self.getAxis('left').label.setFont(lbl_font)
-        self.getAxis('bottom').label.setFont(lbl_font)
-        self.getAxis("left").setTickFont(tick_font)
-        self.getAxis("bottom").setTickFont(tick_font)
+        # sets the axis labels
+        self.plotItem.getAxis('bottom').setLabel('Time (ms)')
+        self.plotItem.getAxis('left').setLabel('Frequency')
 
     def create_metric_legend(self):
 
@@ -773,14 +802,18 @@ class AutoCorrelPlot(UnitPlotLayout):
 
     def update_plot_title(self):
 
-        # sets the axis labels
-        self.setTitle('Auto-Correlogram', bold=True)
-        self.plotItem.getAxis('bottom').setLabel('Time (ms)')
-        self.plotItem.getAxis('left').setLabel('Frequency')
+        # sets the sub-plot title
+        self.setTitle('Auto-Correlogram', size=self.unit_props.title_sub_size, bold=True)
+
+        # updates the axis font properties
+        self.getAxis('left').label.setFont(self.unit_props.lbl_font)
+        self.getAxis('bottom').label.setFont(self.unit_props.lbl_font)
+        self.getAxis("left").setTickFont(self.unit_props.tick_font)
+        self.getAxis("bottom").setTickFont(self.unit_props.tick_font)
 
     def update_view_range(self):
 
-        pass
+        self.update_plot_title()
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -866,7 +899,9 @@ class SpikeActivityPlot(UnitPlotLayout):
         self.plotItem.showAxis('right')
         self.plotItem.scene().addItem(self.v_box2)
         self.plotItem.getAxis('right').linkToView(self.v_box2)
+        self.plotItem.vb.sigResized.connect(self.view_box_resize)
         self.v_box2.setXLink(self.plotItem)
+
 
         # creates the spiking frequency plot
         self.plot_freq = self.plot(
@@ -876,13 +911,18 @@ class SpikeActivityPlot(UnitPlotLayout):
         )
         self.v_box2.addItem(self.plot_freq)
 
+        # sets the axes title labels
+        self.plotItem.getAxis('bottom').setLabel('Time (s)')
+        self.plotItem.getAxis('left').setLabel('Spike Amplitude', color=self.rpv_col)
+        self.plotItem.getAxis('right').setLabel('Firing Rate (Hz)', color=self.freq_col)
+
         # updates the axis font properties
-        self.getAxis('left').label.setFont(lbl_font)
-        self.getAxis('right').label.setFont(lbl_font)
-        self.getAxis('bottom').label.setFont(lbl_font)
-        self.getAxis("left").setTickFont(tick_font)
-        self.getAxis("right").setTickFont(tick_font)
-        self.getAxis("bottom").setTickFont(tick_font)
+        self.getAxis('left').label.setFont(self.unit_props.lbl_font)
+        self.getAxis('right').label.setFont(self.unit_props.lbl_font)
+        self.getAxis('bottom').label.setFont(self.unit_props.lbl_font)
+        self.getAxis("left").setTickFont(self.unit_props.tick_font)
+        self.getAxis("right").setTickFont(self.unit_props.tick_font)
+        self.getAxis("bottom").setTickFont(self.unit_props.tick_font)
 
     def create_metric_legend(self):
 
@@ -954,18 +994,27 @@ class SpikeActivityPlot(UnitPlotLayout):
 
         pass
 
+    def update_plot_title(self):
+
+        # sets the sub-plot title
+        self.setTitle('Spike Activity', size=self.unit_props.title_sub_size, bold=True)
+
+        # updates the axis font properties
+        self.getAxis('left').label.setFont(self.unit_props.lbl_font)
+        self.getAxis('bottom').label.setFont(self.unit_props.lbl_font)
+        self.getAxis('right').label.setFont(self.unit_props.lbl_font)
+        self.getAxis("left").setTickFont(self.unit_props.tick_font)
+        self.getAxis("bottom").setTickFont(self.unit_props.tick_font)
+        self.getAxis("right").setTickFont(self.unit_props.tick_font)
+
     def update_view_range(self):
+
+        self.update_plot_title()
+
+    def view_box_resize(self):
 
         self.v_box2.setGeometry(self.plotItem.vb.sceneBoundingRect())
         self.v_box2.linkedViewChanged(self.plotItem.vb, self.v_box2.XAxis)
-
-    def update_plot_title(self):
-
-        # sets the axis labels
-        self.setTitle('Spike Activity', bold=True)
-        self.plotItem.getAxis('bottom').setLabel('Time (s)')
-        self.plotItem.getAxis('left').setLabel('Spike Amplitude', color=self.rpv_col)
-        self.plotItem.getAxis('right').setLabel('Firing Rate (Hz)', color=self.freq_col)
 
     # ---------------------------------------------------------------------------
     # Class Getter Functions
@@ -1002,14 +1051,7 @@ class SpikeAmplitudeHist(UnitPlotLayout):
         super(SpikeAmplitudeHist, self).__init__(unit_props, i_unit)
 
         # initialises the plot widgets
-        self.init_other_class_fields()
         self.init_plot_widgets()
-
-    def init_other_class_fields(self):
-
-        # title/label font objects
-        self.lbl_font = cw.create_font_obj(10, is_bold=True, font_weight=QFont.Weight.Bold)
-        self.title_font = cw.create_font_obj(10, is_bold=True, font_weight=QFont.Weight.Bold)
 
     def init_plot_widgets(self):
 
@@ -1042,15 +1084,9 @@ class SpikeAmplitudeHist(UnitPlotLayout):
             pen = self.l_pen_fit,
         )
 
-        # updates the axis font properties
-        self.getAxis('left').label.setFont(lbl_font)
-        self.getAxis('bottom').label.setFont(lbl_font)
-        self.getAxis("left").setTickFont(tick_font)
-        self.getAxis("bottom").setTickFont(tick_font)
-
         # sets the axis labels
-        self.getAxis('bottom').setLabel('Count', font=self.lbl_font)
-        self.getAxis('left').setLabel('Amplitude', font=self.lbl_font)
+        self.getAxis('bottom').setLabel('Count')
+        self.getAxis('left').setLabel('Amplitude')
 
         # updates the grid visibility
         self.update_axes_grid(self.unit_props.get_para_value('show_grid'))
@@ -1118,12 +1154,19 @@ class SpikeAmplitudeHist(UnitPlotLayout):
 
     def update_plot_title(self):
 
-        # sets the axis labels
-        self.setTitle('Spike Amplitude', font=self.title_font)
+        # sets the sub-plot title
+        self.setTitle('Spike Amplitude', size=self.unit_props.title_sub_size, bold=True)
+
+        # updates the axis font properties
+        self.getAxis('left').label.setFont(self.unit_props.lbl_font)
+        self.getAxis('bottom').label.setFont(self.unit_props.lbl_font)
+        self.getAxis("left").setTickFont(self.unit_props.tick_font)
+        self.getAxis("bottom").setTickFont(self.unit_props.tick_font)
 
     def update_view_range(self):
 
-        pass
+        # updates the plot title
+        self.update_plot_title()
 
     # ---------------------------------------------------------------------------
     # Class Getter Functions
