@@ -84,8 +84,8 @@ class UnitHistProps(PropWidget):
 
     # font sizes
     tick_size = 9
-    title_sub_size0 = 12
-    title_main_size0 = 25
+    title_sub_size = 12
+    title_main_size = 25
 
     def __init__(self, main_obj):
         # sets the input arguments
@@ -130,10 +130,11 @@ class UnitHistProps(PropWidget):
         else:
             self.unit_lbl = ['Noise', 'Good', 'MUA', 'Non-Somatic']
 
-        # sets up the title/label font sizes
-        self.title_sub_size = '{0}pt'.format(self.title_sub_size0)
+        # sets up the font objects
         self.title_main_font = cw.create_font_obj(
-            self.title_main_size0, is_bold=True, font_weight=QFont.Weight.Bold)
+            self.title_main_size, is_bold=True, font_weight=QFont.Weight.Bold)
+        self.title_sub_font = cw.create_font_obj(
+            self.title_sub_size, is_bold=True, font_weight=QFont.Weight.Bold)
         self.tick_font = cw.create_font_obj(
             self.tick_size, is_bold=True, font_weight=QFont.Weight.Bold)
 
@@ -361,15 +362,13 @@ class UnitHistProps(PropWidget):
 
         # calculates the new scale factor
         p_scl = np.min([p_wid, p_hght])
-        f_sz_sub = int(np.ceil(self.title_sub_size0 * p_scl))
-        f_sz_main = int(np.ceil(self.title_main_size0 * p_scl))
+        f_sz_sub = int(np.ceil(self.title_sub_size * p_scl))
+        f_sz_main = int(np.ceil(self.title_main_size * p_scl))
         f_sz_tick = int(np.ceil(self.tick_size * p_scl))
-
-        # resets the title string
-        self.title_sub_size = '{0}pt'.format(f_sz_sub)
 
         # resets the font objects
         self.title_main_font.setPointSize(f_sz_main)
+        self.title_sub_font.setPointSize(f_sz_sub)
         self.tick_font.setPointSize(f_sz_tick)
 
     def reset_para_value(self, p_fld, p_val):

@@ -13,7 +13,7 @@ import spykit.common.common_widget as cw
 from spykit.plotting.utils import PlotWidget, PlotLayout, UnitPlotLayout, setup_default_layout, x_gap
 
 # pyqt6 module import
-from PyQt6.QtWidgets import QWidget, QGraphicsRectItem, QLabel
+from PyQt6.QtWidgets import QWidget, QGraphicsRectItem, QLabel, QGridLayout
 from PyQt6.QtCore import pyqtSignal, QSize
 from PyQt6.QtGui import QFont
 
@@ -97,7 +97,8 @@ class UnitHistPlot(PlotWidget):
             self.q_met_hist[i_met] = self.get_hist_metrics(i_met)
 
         # creates the title widget
-        self.title_lbl = cw.create_text_label(None, 'TEST', font=self.unit_props.title_main_font, align='center')
+        self.title_lbl = cw.create_text_label(
+            None, 'TEST', font=self.unit_props.title_main_font, align='center')
         self.title_lbl.setStyleSheet("QLabel { color: white; background-color: rgba(0, 0, 0, 0);}")
         self.plot_layout.addWidget(self.title_lbl)
 
@@ -346,6 +347,7 @@ class UnitHist(UnitPlotLayout):
     px_gap = 0.02
     py_thresh = 0.9
     grid_alpha = 0.25
+    py_title = 5
 
     # pen/brush objects
     l_brush_thresh = pg.mkBrush('r')
@@ -382,16 +384,40 @@ class UnitHist(UnitPlotLayout):
 
     def init_plot_widgets(self):
 
+        # subplot layout setup
+        self.sp_layout = QGridLayout()
+        self.sp_layout.setRowStretch(0, self.py_title)
+        self.sp_layout.setRowStretch(1, 100 - self.py_title)
+        self.setLayout(self.sp_layout)
+
+        # creates a temporary plot widget for the bar graph
+        self.p_widget = pg.PlotWidget()
+        self.sp_layout.addWidget(self.p_widget, 1, 0, 1, 1)
+        self.p_widget.hideButtons()
+
         # creates the metric histogram/markers
         self.create_metric_histogram()
         self.create_threshold_markers()
+        self.create_subplot_title()
 
         # sets the view range change function
-        self.plotItem.vb.sigResized.connect(self.update_view_range)
+        self.p_widget.plotItem.vb.sigResized.connect(self.update_view_range)
+
+        # hides the wrapper plot widget axes
+        self.plotItem.getAxis('left').hide()
+        self.plotItem.getAxis('bottom').hide()
 
     # ---------------------------------------------------------------------------
     # Plot/Bar Graph Widget Setup Functions
     # ---------------------------------------------------------------------------
+
+    def create_subplot_title(self):
+
+        # creates the title label
+        self.title_lbl = cw.create_text_label(
+            None, 'TEST', font=self.unit_props.title_sub_font, align='center')
+        self.sp_layout.addWidget(self.title_lbl, 0, 0, 1, 1)
+        self.title_lbl.raise_()
 
     def create_metric_histogram(self):
 
@@ -405,18 +431,19 @@ class UnitHist(UnitPlotLayout):
         )
 
         # updates the plot widget item/title
-        self.addItem(self.bg_item)
+        self.p_widget.addItem(self.bg_item)
 
     def create_threshold_markers(self):
 
         # creates the plot line
         self.unit_plot = self.plot([0], [0], pen=self.l_pen_unit)
+        self.p_widget.addItem(self.unit_plot);
 
         # creates the threshold rectangle widget
         self.thresh_rect = QGraphicsRectItem(0, 0, 1, 1)
         self.thresh_rect.setBrush(self.l_brush_thresh);
         self.thresh_rect.setPen(self.l_pen_thresh);
-        self.addItem(self.thresh_rect);
+        self.p_widget.addItem(self.thresh_rect);
 
         # creates the linear region
         self.thresh_reg = pg.LinearRegionItem(
@@ -431,8 +458,8 @@ class UnitHist(UnitPlotLayout):
 
         # adds the threshold marker to the plot item
         self.thresh_reg.setZValue(20)
-        self.addItem(self.thresh_reg)
-        self.plotItem.showGrid(alpha=self.grid_alpha)
+        self.p_widget.addItem(self.thresh_reg)
+        self.p_widget.plotItem.showGrid(alpha=self.grid_alpha)
 
     # ---------------------------------------------------------------------------
     # Class Object Update Functions
@@ -475,10 +502,11 @@ class UnitHist(UnitPlotLayout):
         self.dx_lim = np.diff(self.x_plt[:2])[0] / 2 if self.is_fixed_bin else 0
 
         # updates the y-axes limits
-        self.v_box.setYRange(self.y_lim[0], self.y_lim[1], padding=0)
-        self.v_box.setXRange(self.x_lim[0], self.x_lim[1], padding=0)
+        vb = self.p_widget.plotItem.vb
+        vb.setYRange(self.y_lim[0], self.y_lim[1], padding=0)
+        vb.setXRange(self.x_lim[0], self.x_lim[1], padding=0)
 
-        ax_bottom = self.getAxis('bottom')
+        ax_bottom = self.p_widget.getAxis('bottom')
         if self.is_fixed_bin:
             x_ticks = [(x + 1, str(x + 1)) for x in range(self.n_bin)]
             ax_bottom.setTicks([x_ticks])
@@ -530,7 +558,7 @@ class UnitHist(UnitPlotLayout):
 
         # field retrieval
         q_met_unit = self.q_met[self.i_unit - 1]
-        self.lbl_col = 'w' if self.is_met_within_limits() else 'r'
+        self.lbl_col = 'white' if self.is_met_within_limits() else 'red'
 
         # sets up the histogram title string
         if np.isnan(q_met_unit):
@@ -541,13 +569,13 @@ class UnitHist(UnitPlotLayout):
             q_met_str = f"({q_met_unit:.3f})"
 
         # resets the title string
-        self.t_str_plt = "{0} {1}".format(self.t_str, q_met_str)
+        self.t_str_plt = "{0}\n{1}".format(self.t_str, q_met_str)
         self.update_plot_title()
 
         # updates the axes colour
-        h_pen_lbl = pg.mkPen(color=self.lbl_col)
+        h_pen_lbl = pg.mkPen(color=self.lbl_col[0])
         for ax_t in ['left', 'bottom']:
-            h_ax = self.getAxis(ax_t)
+            h_ax = self.p_widget.getAxis(ax_t)
             h_ax.setPen(h_pen_lbl)
             h_ax.setTextPen(h_pen_lbl)
             h_ax.setZValue(-10)
@@ -555,16 +583,13 @@ class UnitHist(UnitPlotLayout):
     def update_plot_title(self):
 
         # sets the sub-plot title
-        self.plotItem.setTitle(
-            self.t_str_plt,
-            bold=True,
-            size=self.unit_props.title_sub_size,
-            color=self.lbl_col,
-        )
+        self.title_lbl.setFont(self.unit_props.title_sub_font)
+        self.title_lbl.setText(self.t_str_plt)
+        self.title_lbl.setStyleSheet("color: {0};".format(self.lbl_col))
 
         # updates the axis font properties
-        self.getAxis("left").setTickFont(self.unit_props.tick_font)
-        self.getAxis("bottom").setTickFont(self.unit_props.tick_font)
+        self.p_widget.getAxis("left").setTickFont(self.unit_props.tick_font)
+        self.p_widget.getAxis("bottom").setTickFont(self.unit_props.tick_font)
 
     def update_bin_count(self):
 
@@ -593,11 +618,10 @@ class UnitHist(UnitPlotLayout):
 
     def update_axes_grid(self, show_grid):
 
-        self.plotItem.showGrid(x=show_grid, y=show_grid)
+        self.p_widget.plotItem.showGrid(x=show_grid, y=show_grid)
 
     def update_view_range(self):
 
-        # self.plotItem.titleLabel
         self.update_plot_title()
 
     # ---------------------------------------------------------------------------
