@@ -808,3 +808,5 @@ class UnitHist(UnitPlotLayout):
         else:
             # no limit is specified
             return True
+
+        pass

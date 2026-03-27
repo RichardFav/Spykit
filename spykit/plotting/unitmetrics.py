@@ -400,10 +400,18 @@ class TemplateTrace(UnitPlotLayout):
         self.v_box.setXRange(self.x_lim[0], self.x_lim[1], padding=xy_pad)
         self.v_box.setYRange(self.y_lim[0], self.y_lim[1], padding=xy_pad)
 
+        # updates the plot title
+        self.update_plot_title()
+
     def update_plot_title(self):
 
         # sets the sub-plot title
-        self.setTitle(self.t_str, size=self.unit_props.title_sub_size, bold=True)
+        self.setTitle(
+            self.t_str,
+            color=self.get_title_colour(),
+            size=self.unit_props.title_sub_size,
+            bold=True
+        )
 
     def update_show_metric(self, show_metric):
 
@@ -474,6 +482,65 @@ class TemplateTrace(UnitPlotLayout):
         x_wform = self.p_scl * (self.x_plt - 1 / 2) * w_pos + ch_pos_n[:, 0].reshape(-1, 1)
         y_wform = self.p_scl * (y_sig - 1 / 2) * h_pos + ch_pos_n[:, 1].reshape(-1, 1)
         return x_wform, y_wform, i_ch_w, is_ok
+
+    def get_title_colour(self):
+
+        # initialisations
+        i_unit_f = self.i_unit - 1
+        p_value = self.unit_props.get_mem_map_field
+
+        if self.is_raw:
+            # memory allocation
+            is_ok = np.ones(2, dtype=bool)
+
+            # metric retrieval
+            raw_amp = self.unit_props.q_met['rawAmplitude'][i_unit_f]
+            s_snr = self.unit_props.q_met['signalToNoiseRatio'][i_unit_f]
+
+            # metric feasibility checks
+            is_ok[0] = raw_amp > p_value('minAmplitude')
+            is_ok[1] = s_snr >= p_value('minSNR')
+
+        else:
+            # memory allocation
+            is_ok = np.ones(7, dtype=bool)
+
+            # metric retrieval
+            n_peak = self.unit_props.q_met['nPeaks'][i_unit_f]
+            n_trough = self.unit_props.q_met['nTroughs'][i_unit_f]
+            sd_slope = self.unit_props.q_met['spatialDecaySlope'][i_unit_f]
+            wv_flat = self.unit_props.q_met['waveformBaselineFlatness'][i_unit_f]
+            wv_dur = self.unit_props.q_met['waveformDuration_peakTrough'][i_unit_f]
+            peak_width = self.unit_props.q_met['mainPeak_before_width'][i_unit_f]
+            tr_width = self.unit_props.q_met['mainTrough_width'][i_unit_f]
+            sec_peak_ratio = np.abs(self.unit_props.q_met['scndPeakToTroughRatio'][i_unit_f])
+            tr_peak2_ratio = np.abs(self.unit_props.q_met['troughToPeak2Ratio'][i_unit_f])
+            peak_ratio = np.abs(self.unit_props.q_met['peak1ToPeak2Ratio'][i_unit_f])
+            peak_tr_ratio = np.abs(self.unit_props.q_met['mainPeakToTroughRatio'][i_unit_f])
+
+            # spatial decay feasibility
+            if p_value('computeSpatialDecay'):
+                if p_value('spDecayLinFit'):
+                    is_ok[0] = sd_slope >= p_value('minSpatialDecaySlope')
+                else:
+                    is_ok[0] = ((sd_slope >= p_value('minSpatialDecaySlopeExp')) and
+                                (sd_slope <= p_value('maxSpatialDecaySlopeExp')))
+
+            # other metric feasibility checks
+            is_ok[1] = ((n_peak <= p_value('maxNPeaks')) and
+                        (n_trough <= p_value('maxNTroughs')))
+            is_ok[2] = wv_flat <= p_value('maxWvBaselineFraction')
+            is_ok[3] = ((wv_dur >= p_value('minWvDuration')) and
+                        (wv_dur <= p_value('maxWvDuration')))
+            is_ok[4] = sec_peak_ratio <= p_value('maxScndPeakToTroughRatio_noise')
+            is_ok[5] = not ((tr_peak2_ratio < p_value('minTroughToPeak2Ratio_nonSomatic')) and
+                        (peak_width < p_value('minWidthFirstPeak_nonSomatic')) and
+                        (tr_width < p_value('minWidthMainTrough_nonSomatic')) and
+                        (peak_ratio > p_value('maxPeak1ToPeak2Ratio_nonSomatic')))
+            is_ok[6] = peak_tr_ratio <= p_value('maxMainPeakToTroughRatio_nonSomatic')
+
+        # returns the colour based on overall feasibility
+        return 'white' if np.all(is_ok) else 'red'
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -616,7 +683,12 @@ class SpatialDecayPlot(UnitPlotLayout):
     def update_plot_title(self):
 
         # sets the sub-plot title
-        self.setTitle('Spatial Decay', size=self.unit_props.title_sub_size, bold=True)
+        self.setTitle(
+            'Spatial Decay',
+            color=self.get_title_colour(),
+            size=self.unit_props.title_sub_size,
+            bold=True
+        )
 
         # updates the axis font properties
         self.getAxis('left').label.setFont(self.unit_props.lbl_font)
@@ -635,6 +707,30 @@ class SpatialDecayPlot(UnitPlotLayout):
     def update_view_range(self):
 
         self.update_plot_title()
+
+    # ---------------------------------------------------------------------------
+    # Class Getter Functions
+    # ---------------------------------------------------------------------------
+
+    def get_title_colour(self):
+
+        # initialisations
+        i_unit_f = self.i_unit - 1
+        p_value = self.unit_props.get_mem_map_field
+
+        # metric retrieval
+        sd_slope = self.unit_props.q_met['spatialDecaySlope'][i_unit_f]
+
+        # spatial decay feasibility
+        if p_value('computeSpatialDecay'):
+            if p_value('spDecayLinFit'):
+                is_ok = sd_slope >= p_value('minSpatialDecaySlope')
+            else:
+                is_ok = ((sd_slope >= p_value('minSpatialDecaySlopeExp')) and
+                         (sd_slope <= p_value('maxSpatialDecaySlopeExp')))
+
+        # returns the colour based on overall feasibility
+        return 'white' if is_ok else 'red'
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -803,7 +899,12 @@ class AutoCorrelPlot(UnitPlotLayout):
     def update_plot_title(self):
 
         # sets the sub-plot title
-        self.setTitle('Auto-Correlogram', size=self.unit_props.title_sub_size, bold=True)
+        self.setTitle(
+            'Auto-Correlogram',
+            size=self.unit_props.title_sub_size,
+            color=self.get_title_colour(),
+            bold=True
+        )
 
         # updates the axis font properties
         self.getAxis('left').label.setFont(self.unit_props.lbl_font)
@@ -814,6 +915,22 @@ class AutoCorrelPlot(UnitPlotLayout):
     def update_view_range(self):
 
         self.update_plot_title()
+
+    # ---------------------------------------------------------------------------
+    # Class Getter Functions
+    # ---------------------------------------------------------------------------
+
+    def get_title_colour(self):
+
+        # initialisations
+        i_unit_f = self.i_unit - 1
+        p_value = self.unit_props.get_mem_map_field
+
+        # metric feasibility checks
+        is_ok = self.unit_props.q_met['fractionRPVs_estimatedTauR'][i_unit_f] <= p_value('maxRPVviolations')
+
+        # returns the colour based on overall feasibility
+        return 'white' if is_ok else 'red'
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -839,7 +956,7 @@ class SpikeActivityPlot(UnitPlotLayout):
     n_bin_min = 30
 
     def __init__(self, unit_props, i_unit, t_dur):
-        super(SpikeActivityPlot, self).__init__(unit_props, i_unit)
+        super(SpikeActivityPlot, self).__init__(unit_props, i_unit, ax_type=['bottom'])
 
         # input arguments
         self.t_dur = np.floor(t_dur)
@@ -902,7 +1019,6 @@ class SpikeActivityPlot(UnitPlotLayout):
         self.plotItem.vb.sigResized.connect(self.view_box_resize)
         self.v_box2.setXLink(self.plotItem)
 
-
         # creates the spiking frequency plot
         self.plot_freq = self.plot(
             [0, 1],
@@ -915,6 +1031,12 @@ class SpikeActivityPlot(UnitPlotLayout):
         self.plotItem.getAxis('bottom').setLabel('Time (s)')
         self.plotItem.getAxis('left').setLabel('Spike Amplitude', color=self.rpv_col)
         self.plotItem.getAxis('right').setLabel('Firing Rate (Hz)', color=self.freq_col)
+
+        # updates the axes colours
+        self.plotItem.getAxis('left').setPen(self.rpv_col)
+        self.plotItem.getAxis('right').setPen(self.freq_col)
+        self.plotItem.getAxis('left').setTextPen(self.rpv_col)
+        self.plotItem.getAxis('right').setTextPen(self.freq_col)
 
         # updates the axis font properties
         self.getAxis('left').label.setFont(self.unit_props.lbl_font)
@@ -997,7 +1119,12 @@ class SpikeActivityPlot(UnitPlotLayout):
     def update_plot_title(self):
 
         # sets the sub-plot title
-        self.setTitle('Spike Activity', size=self.unit_props.title_sub_size, bold=True)
+        self.setTitle(
+            'Spike Activity',
+            size=self.unit_props.title_sub_size,
+            color=self.get_title_colour(),
+            bold=True
+        )
 
         # updates the axis font properties
         self.getAxis('left').label.setFont(self.unit_props.lbl_font)
@@ -1035,6 +1162,24 @@ class SpikeActivityPlot(UnitPlotLayout):
         y_new[-1] = y[-1]
 
         return x_new - (x[1] - x[0]) / 2, y_new
+
+    def get_title_colour(self):
+
+        # initialisations
+        i_unit_f = self.i_unit - 1
+        is_ok = np.ones(2, dtype=bool)
+        p_value = self.unit_props.get_mem_map_field
+
+        # metric retrieval
+        n_spike = self.unit_props.q_met['nSpikes'][i_unit_f]
+        p_ratio = self.unit_props.q_met['presenceRatio'][i_unit_f]
+
+        # metric feasibility check
+        is_ok[0] = n_spike >= p_value('minNumSpikes')
+        is_ok[1] = p_ratio >= p_value('minPresenceRatio')
+
+        # returns the colour based on overall feasibility
+        return 'white' if np.all(is_ok) else 'red'
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -1155,7 +1300,12 @@ class SpikeAmplitudeHist(UnitPlotLayout):
     def update_plot_title(self):
 
         # sets the sub-plot title
-        self.setTitle('Spike Amplitude', size=self.unit_props.title_sub_size, bold=True)
+        self.setTitle(
+            'Spike Amplitude',
+            size=self.unit_props.title_sub_size,
+            color=self.get_title_colour(),
+            bold=True
+        )
 
         # updates the axis font properties
         self.getAxis('left').label.setFont(self.unit_props.lbl_font)
@@ -1185,3 +1335,21 @@ class SpikeAmplitudeHist(UnitPlotLayout):
         # returns the non-NaN values
         ii = ~np.isnan(x_bin)
         return x_bin[ii], y_bin[ii], y_fit[ii]
+
+    def get_title_colour(self):
+
+        # initialisations
+        i_unit_f = self.i_unit - 1
+        p_value = self.unit_props.get_mem_map_field
+        x_bin = self.unit_props.get_mem_map_field('x_bin_amp')[i_unit_f, :]
+
+        if np.all(np.isnan(x_bin)):
+            # case is there are no feasible amplitudes
+            return 'red'
+
+        else:
+            # metric feasibility checks
+            is_ok = self.unit_props.q_met['percentageSpikesMissing_gaussian'][i_unit_f] <= p_value('maxPercSpikesMissing')
+
+            # returns the colour based on overall feasibility
+            return 'white' if is_ok else 'red'

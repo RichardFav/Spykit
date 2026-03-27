@@ -309,7 +309,7 @@ class UpSetPlot(PlotWidget):
                 # case is the figure save button
 
                 # outputs the current trace to file
-                f_path = cf.setup_image_file_name(cw.figure_dir, 'TraceTest.png')       # CHANGE THIS TO
+                f_path = cf.setup_image_file_name(cw.figure_dir, 'TraceTest.png')
                 exp_obj = exporters.ImageExporter(self.h_plot[0, 0].getPlotItem())
                 exp_obj.export(f_path)
 

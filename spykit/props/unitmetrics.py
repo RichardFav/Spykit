@@ -94,6 +94,9 @@ class UnitMetricProps(PropWidget):
 
     def init_other_class_fields(self):
 
+        # retrieves the metric table
+        self.q_met = self.main_obj.main_obj.main_obj.session_obj.get_metric_table()
+
         for ch_k, ch_v in self.p_info['ch_fld'].items():
             if ch_v['type'] in 'edit':
                 setattr(self, ch_k, self.get_para_value(ch_k))

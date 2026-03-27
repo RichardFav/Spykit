@@ -694,11 +694,15 @@ class PlotWidget(QWidget):
 """
 
 class UnitPlotLayout(pg.PlotWidget):
-    def __init__(self, unit_props, i_unit):
+    # pen objects
+    l_pen_axes = pg.mkPen(color=(255, 255, 255))
+
+    def __init__(self, unit_props, i_unit, ax_type=['left', 'right', 'bottom', 'top']):
         super(UnitPlotLayout, self).__init__()
 
         # field initialisations
         self.i_unit = i_unit
+        self.ax_type = ax_type
         self.unit_props = unit_props
 
         # initialises the class fields
@@ -717,6 +721,11 @@ class UnitPlotLayout(pg.PlotWidget):
         # sets the default plot properties
         self.getAxis('left').setStyle(tickLength=0)
         self.getAxis('bottom').setStyle(tickLength=0)
+
+        # resets the axes pen
+        for ax_t in self.ax_type:
+            self.plotItem.getAxis(ax_t).setPen(self.l_pen_axes)
+            self.plotItem.getAxis(ax_t).setTextPen(self.l_pen_axes)
 
 # ----------------------------------------------------------------------------------------------------------------------
 
