@@ -10,13 +10,15 @@ from functools import partial as pfcn
 # spike pipeline imports
 import spykit.common.common_func as cf
 import spykit.common.common_widget as cw
-from spykit.plotting.utils import PlotWidget
+from spykit.plotting.utils import PlotWidget, setup_default_layout
 
 # pyqt6 module import
+from PyQt6.QtWidgets import QWidget
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtGui import (QColor, QFont)
 
-# pyqtgraph modules
+# pyqtgraph module imports
+import pyqtgraph as pg
 from pyqtgraph import (BarGraphItem, PlotDataItem, ScatterPlotItem, mkBrush, mkPen, plot)
 
 # plot button fields
@@ -37,14 +39,15 @@ class UpSetPlot(PlotWidget):
     reset_highlight = pyqtSignal(object)
 
     # parameters
-    p_row = 60
-    p_col = 30
+    p_row = 6
+    p_col = 3
     m_size = 10
     c_col1 = 220
     c_col2 = 200
     c_col3 = 175
     x_pad = 0.005
     y_pad = 0.02
+    n_plot = 3
 
     # pen/font objects
     plt_pen = mkPen('k', width=2)
@@ -60,31 +63,22 @@ class UpSetPlot(PlotWidget):
     c_dot = QColor(c_col3, c_col3, c_col3, 255)
 
     def __init__(self, session_info):
-        super(UpSetPlot, self).__init__('upset', b_icon=b_icon, b_type=b_type, tt_lbl=tt_lbl)
+        # creates the class object
+        p_layout = setup_default_layout()
+        super(UpSetPlot, self).__init__(
+            'upset', b_icon=b_icon, b_type=b_type, tt_lbl=tt_lbl, p_layout=p_layout)
 
         # main class fields
         self.session_info = session_info
 
-        # sets up the plot regions
-        self.setup_subplots(n_r=2, n_c=2)
-        self.plot_set = self.h_plot[0, 1].getPlotItem()
-        self.plot_interact = self.h_plot[0, 1].getPlotItem()
-        self.plot_details = self.h_plot[1, 1].getPlotItem()
-
         # initialises the other class fields
         self.init_class_fields()
+        self.init_plot_view()
 
         # other class fields
         self.is_init = True
         self.has_plot = False
         self.show_grid = False
-
-        # title/label font sizes
-        self.title_size = '{0}pt'.format(self.title_size0)
-        self.tick_font = cw.create_font_obj(
-            size=self.tick_size, is_bold=True, font_weight=QFont.Weight.Bold)
-        self.lbl_font = cw.create_font_obj(
-            size=self.lbl_size, is_bold=True, font_weight=QFont.Weight.Bold)
 
         # resets the initialisation flag
         self.is_init = False
@@ -99,27 +93,74 @@ class UpSetPlot(PlotWidget):
         # field retrieval
         self.l_size = self.plot_layout.sizeHint()
 
-        # hides the autoscale button
-        for hp in self.h_plot.flatten():
-            hp.hideButtons()
-
-        # removes the mouse interaction
-        for vb in self.v_box.flatten():
-            vb.setMouseEnabled(False, False)
-
-        # resets the row stretch
-        self.plot_layout.setRowStretch(0, self.p_row)
-        self.plot_layout.setRowStretch(1, 100 - self.p_row)
-        self.plot_layout.setColumnStretch(0, self.p_col)
-        self.plot_layout.setColumnStretch(1, 100 - self.p_col)
-
-        # hides the top-left plot region
-        self.h_plot[0, 0].hide()
+        # creates the background widget
+        self.bg_widget = QWidget()
+        self.bg_widget.setStyleSheet("background-color: rgba(0, 0, 0, 0);")
+        self.plot_layout.addWidget(self.bg_widget)
 
         # sets the plot button callback functions
         for pb in self.plot_but:
             cb_fcn = pfcn(self.plot_button_clicked, pb.objectName())
             pb.clicked.connect(cb_fcn)
+
+        # title/label font sizes
+        self.title_size = '{0}pt'.format(self.title_size0)
+        self.tick_font = cw.create_font_obj(
+            size=self.tick_size, is_bold=True, font_weight=QFont.Weight.Bold)
+        self.lbl_font = cw.create_font_obj(
+            size=self.lbl_size, is_bold=True, font_weight=QFont.Weight.Bold)
+
+    def init_plot_view(self):
+
+        # create the plot widgets
+        self.h_plot = np.empty(self.n_plot, dtype=object)
+        for i_plot in range(self.n_plot):
+            self.h_plot[i_plot] = pg.PlotWidget()
+            self.plot_layout.addWidget(self.h_plot[i_plot])
+
+        # creates the interaction bar graph object
+        self.bg_int = pg.BarGraphItem(
+            x=[0],
+            height=[0],
+            width=1,
+            pen='w',
+            brush=(0,0,255,150),
+        )
+
+        # sets the interaction plot properties
+        self.h_plot[0].addItem(self.bg_int)
+        self.h_plot[0].plotItem.getAxis('bottom').setTicks([])
+        self.h_plot[0].plotItem.getAxis('left').setStyle(tickLength=1)
+
+        # creates the set count bar graph object
+        self.bg_set = pg.BarGraphItem(
+            x=[0],
+            height=[0],
+            width=1,
+        )
+
+        # sets the set count plot properties
+        self.h_plot[1].invertX(True)
+        self.h_plot[1].addItem(self.bg_set)
+        self.h_plot[1].getAxis('left').setStyle(tickLength=1)
+
+        # sets the details plot properites
+        self.h_plot[2].plotItem.vb.setBorder(color='k')
+        self.h_plot[2].plotItem.getAxis('left').setTextPen('k')
+        self.h_plot[2].plotItem.getAxis('bottom').setTextPen('k')
+        self.h_plot[2].plotItem.layout.setContentsMargins(10, 0, 0, 0)
+
+        # updates the plot layout
+        g_id = np.zeros((10, 10), dtype=int)
+        g_id[:self.p_row, self.p_col:] = 1
+        g_id[self.p_row:, :self.p_col] = 2
+        g_id[self.p_row:, self.p_col:] = 3
+        self.plot_layout.updateID(g_id)
+        self.plot_layout.activate()
+
+        # hides the autoscale button
+        for hp in self.h_plot:
+            hp.hideButtons()
 
     # ---------------------------------------------------------------------------
     # PLot View Methods
@@ -130,9 +171,6 @@ class UpSetPlot(PlotWidget):
         # -----------------------------------------------------------------------
         # Pre-Calculations
         # -----------------------------------------------------------------------
-
-        # clears the plot data
-        self.clear_subplots()
 
         # field retrieval
         q_hdr = np.array(self.get_data_labels())
@@ -162,28 +200,20 @@ class UpSetPlot(PlotWidget):
         # plotting values
         x_int = np.array(range(len(n_count))) + 0.5
 
-        # creates the bar graph item
-        bar_int = BarGraphItem(x=x_int, height=n_count, width=0.6)
-        self.h_plot[0, 1].addItem(bar_int)
-        self.v_box[0, 1].setYRange(0, n_count[0], padding=self.x_pad)
-        self.v_box[0, 1].setXRange(0, len(n_count))
-
-        # sets the x-axis properties
-        x_axis_int = self.plot_interact.getAxis('bottom')
-        x_axis_int.setTicks([])
-
-        # y-axis properties
-        y_axis_int = self.plot_interact.getAxis('left')
-        y_axis_int.setStyle(tickLength=1)
+        # updates the interatction bar graph item
+        self.bg_int.setOpts(x=x_int, height=n_count, width=0.6)
+        self.h_plot[0].plotItem.vb.setYRange(0, n_count[0], padding=self.x_pad)
+        self.h_plot[0].plotItem.vb.setXRange(0, len(n_count), padding=self.x_pad)
 
         # determines the y-axis tick values
-        v_rng_int = self.v_box[0, 1].viewRange()
+        y_axis_int = self.h_plot[0].plotItem.getAxis('left')
+        v_rng_int = self.h_plot[0].plotItem.vb.viewRange()
         y_tick_int = y_axis_int.tickValues(v_rng_int[1][0], v_rng_int[1][1], y_axis_int.size().height())[0][1]
         y_tick_lbl = [(y_pos, str(int(y_pos))) for y_pos in y_tick_int]
         y_axis_int.setTicks([y_tick_lbl])
 
         # other axes properties
-        self.v_box[0, 1].setXRange(v_rng_int[0][0], v_rng_int[0][1], padding=0)
+        self.h_plot[0].plotItem.vb.setXRange(v_rng_int[0][0], v_rng_int[0][1], padding=0)
 
         # -----------------------------------------------------------------------
         # Set Size Subplot
@@ -193,19 +223,13 @@ class UpSetPlot(PlotWidget):
         y_set = np.array(range(n_data)) + 0.5
 
         # creates the bar plot
-        bar_set = BarGraphItem(x0=0, y=y_set, height=0.6, width=s_count)
-        self.h_plot[1, 0].addItem(bar_set)
-        self.v_box[1, 0].setYRange(0, n_data, padding=self.x_pad)
-        self.v_box[1, 0].setXRange(0, np.max(s_count), padding=self.y_pad)
+        self.bg_set.setOpts(x0=0, y=y_set, height=0.6, width=s_count)
+        self.h_plot[1].plotItem.vb.setYRange(0, n_data, padding=self.x_pad)
+        self.h_plot[1].plotItem.vb.setXRange(0, np.max(s_count), padding=self.y_pad)
 
         # y-axis properties
-        y_axis_set = self.h_plot[1, 0].getAxis('left')
         y_ticks = [(y_pos, lbl) for y_pos, lbl in zip(y_set, q_hdr)]
-        y_axis_set.setStyle(tickLength=1)
-        y_axis_set.setTicks([y_ticks])
-
-        # other axis properties
-        self.h_plot[1, 0].invertX(True)
+        self.h_plot[1].getAxis('left').setTicks([y_ticks])
 
         # -----------------------------------------------------------------------
         # Interaction Data Subplot
@@ -213,7 +237,7 @@ class UpSetPlot(PlotWidget):
 
         # field retrieval
         x_lim = v_rng_int[0]
-        y_lim_set = self.v_box[1, 0].viewRange()[1]
+        y_lim_set = self.h_plot[1].plotItem.vb.viewRange()[1]
 
         # creates the fill markers
         for i in range(n_data):
@@ -231,7 +255,7 @@ class UpSetPlot(PlotWidget):
                 p_item = PlotDataItem(x_lim, y_fill, fillLevel=y0, brush=mkBrush(self.c_stripe_2))
 
             # adds the plot item
-            self.h_plot[1, 1].addItem(p_item)
+            self.h_plot[2].addItem(p_item)
 
         # creates the dot markers
         x_dot, y_dot = np.meshgrid(x_int, y_set)
@@ -241,23 +265,18 @@ class UpSetPlot(PlotWidget):
             size=self.m_size,
             brush=mkBrush(self.c_dot)
         )
-        self.h_plot[1, 1].addItem(h_dot)
+        self.h_plot[2].addItem(h_dot)
 
         # creates the detail type plot
         for i in range(len(p_type)):
             y_plt = y_set[p_bool[p_type[i]]]
             x_plt = x_int[i] * np.ones(len(y_plt))
-            self.h_plot[1, 1].plot(x_plt, y_plt, pen=self.plt_pen, symbolBrush='k',
-                                   symbol='o', symbolpen='k', symbolSize=self.m_size)
-
-        # hides the plot axis
-        self.plot_details.getAxis('left').setTextPen('k')
-        self.plot_details.getAxis('bottom').setTextPen('k')
+            self.h_plot[2].plot(x_plt, y_plt, pen=self.plt_pen, symbolBrush='k',
+                                symbol='o', symbolpen='k', symbolSize=self.m_size)
 
         # updates the viewbox properties
-        self.v_box[1, 1].setBorder(color='k')
-        self.v_box[1, 1].setYRange(y_lim_set[0], y_lim_set[1], padding=0)
-        self.v_box[1, 1].setXRange(x_lim[0], x_lim[1], padding=0)
+        self.h_plot[2].plotItem.vb.setYRange(y_lim_set[0], y_lim_set[1], padding=0)
+        self.h_plot[2].plotItem.vb.setXRange(x_lim[0], x_lim[1], padding=0)
 
         # updates the grid visibility
         self.update_plot_title()
@@ -265,19 +284,19 @@ class UpSetPlot(PlotWidget):
 
     def update_axes_grid(self):
 
-        self.h_plot[0, 1].showGrid(y=self.show_grid)
-        self.h_plot[1, 0].showGrid(x=self.show_grid)
+        self.h_plot[0].showGrid(y=self.show_grid)
+        self.h_plot[1].showGrid(x=self.show_grid)
 
     def update_plot_title(self):
 
-        # updates the left plot labels
-        self.h_plot[1, 0].getAxis('left').setTickFont(self.lbl_font)
-        self.h_plot[1, 0].getAxis('bottom').setTickFont(self.tick_font)
-
         # updates the top plot
         t_str = '{0} Unit Classification Interactions'.format(self.unit_type)
-        self.h_plot[0, 1].setTitle(t_str, size=self.title_size, bold=True)
-        self.h_plot[0, 1].getAxis('left').setTickFont(self.tick_font)
+        self.h_plot[0].setTitle(t_str, size=self.title_size, bold=True)
+        self.h_plot[0].getAxis('left').setTickFont(self.tick_font)
+
+        # updates the left plot labels
+        self.h_plot[1].getAxis('left').setTickFont(self.lbl_font)
+        self.h_plot[1].getAxis('bottom').setTickFont(self.tick_font)
 
     # ---------------------------------------------------------------------------
     # Plot Button Event Functions

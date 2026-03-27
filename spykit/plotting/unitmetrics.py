@@ -1070,7 +1070,7 @@ class SpikeAmplitudeHist(UnitPlotLayout):
             x0=0,
             height=1,
             width=1,
-            pen='w',
+            pen=None,
             brush=self.l_brush_hist,
         )
 
