@@ -10,6 +10,7 @@ from functools import partial as pfcn
 # custom module imports
 import spykit.common.common_func as cf
 import spykit.common.common_widget as cw
+from spykit.threads.utils import ThreadWorker
 from spykit.common.common_widget import SearchMixin, QProgressWidget
 
 # pyqt imports
@@ -502,7 +503,25 @@ class InfoManager(QWidget):
         self.is_updating = False
 
     # ---------------------------------------------------------------------------
-    # Unit Tab Functions
+    # Unit Table Setup Functions
+    # ---------------------------------------------------------------------------
+
+    def add_unit_table(self):
+
+        t_worker = ThreadWorker(None, self.unit_table_thread_fcn)
+        t_worker.start()
+
+    def unit_table_thread_fcn(self, _):
+
+        # field retrieval
+        unit_tab = self.get_info_tab('unit')
+
+        # sets up and updates the table
+        unit_tab.setup_unit_table()
+        unit_tab.update_unit_status()
+
+    # ---------------------------------------------------------------------------
+    # Unit Tab Event Functions
     # ---------------------------------------------------------------------------
 
     def unit_status_update(self, tab_obj):

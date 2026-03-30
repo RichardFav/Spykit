@@ -14,7 +14,7 @@ from functools import partial as pfcn
 
 # pyqt6 module import
 from PyQt6.QtWidgets import (QMainWindow, QHBoxLayout, QFormLayout, QWidget, QGridLayout, QScrollArea,
-                             QMessageBox, QInputDialog, QDialog, QMenuBar, QToolBar, QMenu)
+                             QMessageBox, QInputDialog, QDialog, QMenuBar, QToolBar, QMenu, QApplication)
 from PyQt6.QtCore import Qt, QSize, QRect, pyqtSignal, QObject, QTimer
 from PyQt6.QtGui import QFont, QIcon, QAction
 
@@ -92,10 +92,10 @@ class MainWindow(QMainWindow):
         # sets the widget style sheets
         self.set_styles()
 
-        # REMOVE ME LATER
-        if platform.system() == "Windows":
-            if os.environ['COMPUTERNAME'] == "DESKTOP-NLLEH0V":
-                self.testing()
+        # # REMOVE ME LATER
+        # if platform.system() == "Windows":
+        #     if os.environ['COMPUTERNAME'] == "DESKTOP-NLLEH0V":
+        #         self.testing()
 
     # ---------------------------------------------------------------------------
     # Class Widget Setup Functions
@@ -1015,6 +1015,8 @@ class MenuBar(QObject):
         if file_info is None:
             return
 
+        t0 = time.time()
+
         # clears the post-processing memory map/temporary files
         self.main_obj.session_obj.clear_postprocessing()
 
@@ -1032,6 +1034,7 @@ class MenuBar(QObject):
         # creates the session data
         self.main_obj.session_obj.reset_session(ses_data)
         self.main_obj.session_obj.reset_channel_data(channel_data)
+        time.sleep(0.1)
 
         # resets the sorting information object
         if 'sorting_props' in ses_data:
@@ -1051,9 +1054,10 @@ class MenuBar(QObject):
         # resets the property/information panel fields
         self.main_obj.prop_manager.set_prop_para(ses_data['prop_para'])
         self.main_obj.info_manager.set_info_para(ses_data['info_para'])
+        QApplication.processEvents()
 
         # sets/runs the config field/routines
-        time.sleep(0.1)
+        # time.sleep(0.01)
         if ses_data['configs'] is not None:
             # removes any temporary memory map files
             self.main_obj.remove_temp_mem_maps()
@@ -1077,14 +1081,13 @@ class MenuBar(QObject):
                     self.main_obj.added_post_process(mm_name)
 
                 # updates the unit information tab
-                unit_tab = self.main_obj.info_manager.get_info_tab('unit')
-                unit_tab.setup_unit_table()
-                unit_tab.update_unit_status()
+                self.main_obj.info_manager.add_unit_table()
 
                 # adds the post-processing views
                 self.main_obj.prop_manager.add_post_process_views()
 
             # runs the preprocessing (if data in config field)
+            ignore_pp = True
             if not ignore_pp:
                 prep_task = prep_info.configs.task_name
                 if len(prep_task):
