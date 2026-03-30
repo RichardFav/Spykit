@@ -135,18 +135,30 @@ class PropManager(QWidget):
                     tab_widget.obj_rconfig.config_reset.connect(self.update_config)
 
                 case 'postprocess':
-                    # sets the plot views
-                    pp_tab = self.main_obj.prop_manager.get_prop_tab('postprocess')
+                    # crates the config views for each post-processing view type
                     for pf in tab_widget.plot_views:
-                        self.main_obj.prop_manager.add_config_view(pt.prop_names[pf])
-                        self.main_obj.plot_manager.add_plot_view(pf, show_plot=False)
+                        self.add_config_view(pt.prop_names[pf])
 
-                        # sets the property tab plot views
-                        p_view = self.main_obj.plot_manager.get_plot_view(pf)
-                        pp_tab.set_plot_view(pf, p_view)
+    # ---------------------------------------------------------------------------
+    # Post-Processing View Setup Functions
+    # ---------------------------------------------------------------------------
 
-                    # resets the plot configuration
-                    self.update_config()
+    def add_post_process_views(self):
+
+        # field retrieval
+        pp_tab = self.get_prop_tab('postprocess')
+
+        # creates the plot views for each post-processing type
+        for pf in pp_tab.plot_views:
+            # sets up and runs the plot view setup thread worker
+            self.main_obj.plot_manager.add_plot_view(pf, show_plot=False)
+
+            # sets the property tab plot views
+            p_view = self.main_obj.plot_manager.get_plot_view(pf)
+            pp_tab.set_plot_view(pf, p_view)
+
+        # resets the plot configuration
+        self.update_config()
 
     # ---------------------------------------------------------------------------
     # Special Widget Event Functions

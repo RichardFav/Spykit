@@ -1,7 +1,6 @@
 # module import
 import os
 import re
-# import functools
 import time
 import glob
 import pickle
@@ -1059,6 +1058,11 @@ class MenuBar(QObject):
             # removes any temporary memory map files
             self.main_obj.remove_temp_mem_maps()
 
+            # resets the preprocessing configuration fields
+            prep_info = self.main_obj.info_manager.get_info_tab('preprocess')
+            prep_info.configs.clear()
+            prep_info.configs = ses_data['configs']
+
             # determines if there are any available memory maps
             mm_file = self.main_obj.session_obj.get_mem_map_files(False)
             self.set_menu_enabled('load_postprocessed', mm_file is not None)
@@ -1077,25 +1081,24 @@ class MenuBar(QObject):
                 unit_tab.setup_unit_table()
                 unit_tab.update_unit_status()
 
-            # resets the preprocessing configuration fields
-            prep_info = self.main_obj.info_manager.get_info_tab('preprocess')
-            prep_info.configs.clear()
-            prep_info.configs = ses_data['configs']
+                # adds the post-processing views
+                self.main_obj.prop_manager.add_post_process_views()
 
             # runs the preprocessing (if data in config field)
-            prep_task = prep_info.configs.task_name
-            if len(prep_task) and (not ignore_pp):
-                # if there is preprocessed data, prompt the user if they would like to re-run the calculations
-                t_str = 'Re-run Preprocessing?'
-                q_str = 'The loaded session has preprocessed tasks. Would you like to re-run these tasks?'
-                u_choice = QMessageBox.question(self.main_obj, 'Use Default Files?', q_str, cf.q_yes_no, cf.q_yes)
-                if u_choice == cf.q_no:
-                    # if not, then exit
-                    return
+            if not ignore_pp:
+                prep_task = prep_info.configs.task_name
+                if len(prep_task):
+                    # if there is preprocessed data, prompt the user if they would like to re-run the calculations
+                    t_str = 'Re-run Preprocessing?'
+                    q_str = 'The loaded session has preprocessed tasks. Would you like to re-run these tasks?'
+                    u_choice = QMessageBox.question(self.main_obj, 'Use Default Files?', q_str, cf.q_yes_no, cf.q_yes)
+                    if u_choice == cf.q_no:
+                        # if not, then exit
+                        return
 
-                # runs the preprocessing dialog window
-                prep_opt = tuple(prep_info.configs.prep_opt.values())
-                self.main_obj.run_preprocessing_dialog((prep_task, prep_opt))
+                    # runs the preprocessing dialog window
+                    prep_opt = tuple(prep_info.configs.prep_opt.values())
+                    self.main_obj.run_preprocessing_dialog((prep_task, prep_opt))
 
         # resets the status label
         self.main_obj.info_manager.prog_widget.update_message_label()
