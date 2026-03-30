@@ -1054,7 +1054,7 @@ class MenuBar(QObject):
         # resets the property/information panel fields
         self.main_obj.prop_manager.set_prop_para(ses_data['prop_para'])
         self.main_obj.info_manager.set_info_para(ses_data['info_para'])
-        QApplication.processEvents()
+        # QApplication.processEvents()
 
         # sets/runs the config field/routines
         # time.sleep(0.01)

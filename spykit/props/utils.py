@@ -1,8 +1,8 @@
 # module imports
-from copy import deepcopy
-
+import time
 import numpy as np
-import functools
+from copy import deepcopy
+from functools import partial as pfcn
 
 # custom module imports
 import spykit.common.common_func as cf
@@ -99,7 +99,7 @@ class PropManager(QWidget):
         self.props_layout.addWidget(self.tab_group_props)
 
         # sets up the slot function
-        cb_fcn = functools.partial(self.tab_change_props)
+        cb_fcn = pfcn(self.tab_change_props)
         self.tab_group_props.currentChanged.connect(cb_fcn)
         self.tab_group_props.setContentsMargins(0, 0, 0, 0)
         self.tab_group_props.setSizePolicy(QSizePolicy(cf.q_exp, cf.q_min))
@@ -925,7 +925,7 @@ class PropWidget(QWidget):
                 layout.addRow(obj_fspec)
 
                 # sets up the slot function
-                cb_fcn = functools.partial(self.button_file_spec, p_str_l)
+                cb_fcn = pfcn(self.button_file_spec, p_str_l)
                 obj_fspec.connect(cb_fcn)
 
             case 'colormapchooser':
@@ -942,7 +942,7 @@ class PropWidget(QWidget):
             return self.widget_para_update
 
         else:
-            return functools.partial(self.widget_para_update, h_widget)
+            return pfcn(self.widget_para_update, h_widget)
 
     # ---------------------------------------------------------------------------
     # Parameter Getter/Setter Methods

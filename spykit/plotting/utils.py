@@ -1,4 +1,5 @@
 # module imports
+import time
 import functools
 import numpy as np
 from copy import deepcopy
@@ -102,6 +103,7 @@ class PlotManager(QWidget):
 
         # increments the plot count
         self.n_plot += 1
+        self.types[p_type] = self.n_plot
 
         # removes any currently highlighted plot
         self.remove_plot_highlight()
@@ -115,7 +117,6 @@ class PlotManager(QWidget):
         self.main_layout.updateID(self.grid_id, False)
 
         # stores the new plot properties
-        self.types[p_type] = self.n_plot
         self.plots.append(plot_new)
 
         if expand_grid:
