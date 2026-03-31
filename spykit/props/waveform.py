@@ -157,7 +157,7 @@ class WaveFormProps(PropWidget):
                 case 'i_unit':
                     # case is the cluster index
                     unit_tab = self.main_obj.main_obj.main_obj.info_manager.get_info_tab('unit')
-                    unit_tab.table_cell_click(chk_val[0] - 1, 0)
+                    unit_tab.reset_selected_cell(chk_val[0] - 1)
 
             # updates the histogram view
             if self.plot_view is not None:

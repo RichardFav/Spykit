@@ -348,3 +348,17 @@ class UnitInfoTab(InfoWidget):
     def get_unit_type_labels(self):
 
         return np.array([self.unit_lbl[x[0]] for x in self.get_field('unit_type')])
+
+    def reset_selected_cell(self, i_row):
+
+        # field retrieval
+        item_sel = self.table.selectedItems()
+        i_col = item_sel[0].column() if len(item_sel) else 0
+
+        # force runs the cell click callback
+        self.table_cell_click(i_row, i_col)
+        self.table.verticalScrollBar().setValue(i_row)
+
+        # # resets the selected cell
+        # item_new = self.table.item(i_row, i_col)
+        # self.table.scrollToItem(item_new, QAbstractItemView.ScrollHint.PositionAtTop)
