@@ -2752,10 +2752,17 @@ class QProgressWidget(QWidget):
         self.time_line.setUpdateInterval(self.t_int)
         self.time_line.frameChanged.connect(self.prog_update)
 
-    def prog_update(self):
+    def prog_update(self, use_time_line=True):
 
+        # calculates the scaled value
         pr_scl = self.p_max_r * self.pr_max
-        p_val = int(pr_scl * self.time_line.currentValue()) - self.dp_max
+
+        if use_time_line is None:
+            p_val = int(pr_scl * self.time_line.currentValue()) - self.dp_max
+
+        else:
+            p_val = int(pr_scl) - self.dp_max
+
         p_val = np.min([self.p_max, np.max([0, p_val])])
         self.prog_bar.setValue(p_val)
 
@@ -2769,7 +2776,7 @@ class QProgressWidget(QWidget):
         self.n_jobs += 1
         self.update_message_label()
 
-        # stops the progressbar (if there are no more jobs)
+        # starts the progressbar (if not currently running)
         if not self.is_running:
             self.set_progbar_state(True)
 

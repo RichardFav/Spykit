@@ -143,22 +143,25 @@ class PropManager(QWidget):
     # Post-Processing View Setup Functions
     # ---------------------------------------------------------------------------
 
-    def add_post_process_views(self):
+    def add_post_process_views(self, m_obj):
 
         # field retrieval
         pp_tab = self.get_prop_tab('postprocess')
+        n_views = len(pp_tab.plot_views)
 
         # creates the plot views for each post-processing type
-        for pf in pp_tab.plot_views:
+        for i_pf, pf in enumerate(pp_tab.plot_views):
             # sets up and runs the plot view setup thread worker
-            self.main_obj.plot_manager.add_plot_view(pf, show_plot=False)
+            m_str = 'Creating {0} View'.format(pf.capitalize())
+            m_obj.update_progress_bar(m_str, 0.5 * (1 + (i_pf / n_views)))
+            self.main_obj.plot_manager.add_plot_view(pf, show_plot=False, expand_grid=False)
 
             # sets the property tab plot views
             p_view = self.main_obj.plot_manager.get_plot_view(pf)
             pp_tab.set_plot_view(pf, p_view)
 
-        # resets the plot configuration
-        self.update_config()
+        # updates the progressbars
+        m_obj.update_progress_bar('View Setup Complete!', 1)
 
     # ---------------------------------------------------------------------------
     # Special Widget Event Functions

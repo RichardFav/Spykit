@@ -204,7 +204,7 @@ class MainWindow(QMainWindow):
                 # create the trigger plot view
                 self.prop_manager.add_prop_tabs('trigger')
                 self.plot_manager.get_plot_view('trigger', expand_grid=False)
-                c_id[-1, :2] = self.plot_manager.get_plot_index('trigger')
+                # c_id[-1, :2] = self.plot_manager.get_plot_index('trigger')
 
                 # appends the trigger plot view to the prop manager
                 self.prop_manager.add_config_view('Trigger')
@@ -1015,12 +1015,11 @@ class MenuBar(QObject):
         if file_info is None:
             return
 
-        t0 = time.time()
-
         # clears the post-processing memory map/temporary files
         self.main_obj.session_obj.clear_postprocessing()
 
         # loads data from the file
+        self.update_progress_bar('Loading Session File', 0.1)
         with open(file_info, 'rb') as f:
             ses_data = pickle.load(f)
 
@@ -1031,20 +1030,24 @@ class MenuBar(QObject):
         ses_data['prop_para']['trace']['t_start'] = 0
         ses_data['prop_para']['trace']['t_finish'] = ses_data['prop_para']['trace']['t_span']
 
-        # creates the session data
+        # resets the session data
         self.main_obj.session_obj.reset_session(ses_data)
+
+        # resets the channel data
+        self.update_progress_bar('Resetting Channel Data', 0.2)
         self.main_obj.session_obj.reset_channel_data(channel_data)
-        time.sleep(0.1)
 
         # resets the sorting information object
         if 'sorting_props' in ses_data:
             self.main_obj.session_obj.set_sorting_props(ses_data['sorting_props'])
 
         # updates the bad/sync channel status table fields
+        self.update_progress_bar('Updating Channel Information', 0.3)
         self.main_obj.bad_channel_change()
         self.main_obj.sync_channel_change()
 
         # resets the multi-run property fields
+        self.update_progress_bar('Resetting Info Parameters', 0.4)
         n_run = self.main_obj.session_obj.session.get_run_count()
         for pt in ['general', 'trigger']:
             # retrieves the property tab
@@ -1054,10 +1057,9 @@ class MenuBar(QObject):
         # resets the property/information panel fields
         self.main_obj.prop_manager.set_prop_para(ses_data['prop_para'])
         self.main_obj.info_manager.set_info_para(ses_data['info_para'])
-        # QApplication.processEvents()
+        QApplication.processEvents()
 
         # sets/runs the config field/routines
-        # time.sleep(0.01)
         if ses_data['configs'] is not None:
             # removes any temporary memory map files
             self.main_obj.remove_temp_mem_maps()
@@ -1084,7 +1086,7 @@ class MenuBar(QObject):
                 self.main_obj.info_manager.add_unit_table()
 
                 # adds the post-processing views
-                self.main_obj.prop_manager.add_post_process_views()
+                self.main_obj.prop_manager.add_post_process_views(self)
 
             # runs the preprocessing (if data in config field)
             ignore_pp = True
@@ -1104,7 +1106,34 @@ class MenuBar(QObject):
                     self.main_obj.run_preprocessing_dialog((prep_task, prep_opt))
 
         # resets the status label
+        self.update_progress_bar('', 0)
         self.main_obj.info_manager.prog_widget.update_message_label()
+
+    def update_progress_bar(self, m_str, pr_val):
+
+        # updates the GUI progressbar
+        pr_widget = self.main_obj.info_manager.prog_widget
+        pr_widget.update_prog_message(m_str, pr_val)
+        pr_widget.prog_update(False)
+
+        # force updates the gui
+        QApplication.processEvents()
+
+        # # field retrieval
+        # pr_widget = self.main_obj.info_manager.prog_widget
+        #
+        # if m_str is None:
+        #     # case is stopping the progressbar
+        #     pr_widget.delete_job('loading')
+        #     pr_widget.update_message_label()
+        #
+        # elif is_start:
+        #     # case is starting the progressbar
+        #     pr_widget.add_job('loading', m_str)
+        #
+        # else:
+        #     # case is updating the message
+        #     a = 1
 
     def load_preprocessed(self):
 
