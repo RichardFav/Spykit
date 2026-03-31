@@ -75,9 +75,10 @@ class ProbePlot(PlotWidget):
         # unit marker objects
         self.l_unit_pen = None
         self.l_unit_brush = None
-        self.show_units = False
         self.units = []
         self.unit_sel = None
+        self.show_units = False
+        self.has_units = False
 
         # other class fields
         self.i_status = 1
@@ -119,6 +120,9 @@ class ProbePlot(PlotWidget):
         for pb in self.plot_but:
             cb_fcn = pfcn(self.plot_button_clicked, pb.objectName())
             pb.clicked.connect(cb_fcn)
+
+        # disables the unit button
+        self.set_button_enable('cell', False)
 
     def setup_probe_views(self):
 
@@ -306,6 +310,11 @@ class ProbePlot(PlotWidget):
                 # case is the close button
                 self.probe_roi_moved.emit(None)
                 self.hide_plot.emit()
+
+    def set_button_enable(self, b_str, state):
+
+        obj_but = self.findChild(cw.QPushButton, name=b_str)
+        obj_but.setEnabled(state)
 
     # ---------------------------------------------------------------------------
     # Widget Event Functions
@@ -553,7 +562,7 @@ class ProbePlot(PlotWidget):
 
         # adds in the probe locations (if calculated)
         if len(self.session_info.post_data.mmap):
-            if not self.show_units:
+            if not self.has_units:
                 self.create_unit_markers.emit()
 
     def hide_view(self):
@@ -571,7 +580,16 @@ class ProbePlot(PlotWidget):
         self.sub_view.clear_view_unit_markers()
 
         # other field updates
-        self.show_units = False
+        self.has_units = False
+
+        # updates the highlight toggle tooltip string
+        if self.show_units:
+            obj_but = self.findChild(cw.QPushButton, name='cell')
+            obj_but.setChecked(False)
+            self.plot_button_clicked('cell')
+
+        # disables the button
+        self.set_button_enable('cell', False)
 
     def setup_unit_markers(self, unit_tab):
 
@@ -583,7 +601,9 @@ class ProbePlot(PlotWidget):
         self.sub_view.setup_view_unit_markers(unit_tab)
 
         # other field updates
+        self.has_units = True
         self.show_units = True
+        self.set_button_enable('cell', True)
 
     def reset_selected_unit_highlight(self, i_ch_unit, type_lbl):
 

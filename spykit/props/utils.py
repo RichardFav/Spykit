@@ -135,6 +135,9 @@ class PropManager(QWidget):
                     tab_widget.obj_rconfig.config_reset.connect(self.update_config)
 
                 case 'postprocess':
+                    # disables the tab (re-enables when tabs are created)
+                    self.set_tab_enabled('postprocess', False)
+
                     # crates the config views for each post-processing view type
                     for pf in tab_widget.plot_views:
                         self.add_config_view(pt.prop_names[pf])
@@ -159,6 +162,9 @@ class PropManager(QWidget):
             # sets the property tab plot views
             p_view = self.main_obj.plot_manager.get_plot_view(pf)
             pp_tab.set_plot_view(pf, p_view)
+
+        # disables the tab (re-enables when tabs are created)
+        self.set_tab_enabled('postprocess', True)
 
         # updates the progressbars
         m_obj.update_progress_bar('View Setup Complete!', 1)

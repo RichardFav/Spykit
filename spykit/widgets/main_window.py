@@ -1069,6 +1069,10 @@ class MenuBar(QObject):
             prep_info.configs.clear()
             prep_info.configs = ses_data['configs']
 
+            # enables the relavant menu items
+            self.set_menu_enabled_blocks('post-preprocess')
+            self.set_menu_enabled_blocks('post-sorting')
+
             # determines if there are any available memory maps
             mm_file = self.main_obj.session_obj.get_mem_map_files(False)
             self.set_menu_enabled('load_postprocessed', mm_file is not None)
@@ -1076,7 +1080,6 @@ class MenuBar(QObject):
                 # updates the other tabs
                 self.main_obj.session_obj.post_data.read_post_process(mm_file)
                 self.main_obj.prop_manager.add_prop_tabs(['postprocess'])
-                self.main_obj.info_manager.set_tab_enabled('unit', True)
 
                 for i_mm in range(mm_file.shape[2]):
                     mm_name = os.path.split(mm_file[0, 0, i_mm])[1]
@@ -1088,8 +1091,18 @@ class MenuBar(QObject):
                 # adds the post-processing views
                 self.main_obj.prop_manager.add_post_process_views(self)
 
+                # clears any units (if already created)
+                probe_view = self.main_obj.plot_manager.get_plot_view('probe')
+                if probe_view.has_units:
+                    probe_view.clear_unit_markers()
+
+                # recreates the unit markers
+                probe_view.create_unit_markers.emit()
+
+                # updates the post-processing menu item blocks
+                self.set_menu_enabled_blocks('post-postprocess')
+
             # runs the preprocessing (if data in config field)
-            ignore_pp = True
             if not ignore_pp:
                 prep_task = prep_info.configs.task_name
                 if len(prep_task):
@@ -1097,13 +1110,10 @@ class MenuBar(QObject):
                     t_str = 'Re-run Preprocessing?'
                     q_str = 'The loaded session has preprocessed tasks. Would you like to re-run these tasks?'
                     u_choice = QMessageBox.question(self.main_obj, 'Use Default Files?', q_str, cf.q_yes_no, cf.q_yes)
-                    if u_choice == cf.q_no:
-                        # if not, then exit
-                        return
-
-                    # runs the preprocessing dialog window
-                    prep_opt = tuple(prep_info.configs.prep_opt.values())
-                    self.main_obj.run_preprocessing_dialog((prep_task, prep_opt))
+                    if u_choice == cf.q_yes:
+                        # if so, run the preprocessing dialog window
+                        prep_opt = tuple(prep_info.configs.prep_opt.values())
+                        self.main_obj.run_preprocessing_dialog((prep_task, prep_opt))
 
         # resets the status label
         self.update_progress_bar('', 0)
@@ -1118,22 +1128,6 @@ class MenuBar(QObject):
 
         # force updates the gui
         QApplication.processEvents()
-
-        # # field retrieval
-        # pr_widget = self.main_obj.info_manager.prog_widget
-        #
-        # if m_str is None:
-        #     # case is stopping the progressbar
-        #     pr_widget.delete_job('loading')
-        #     pr_widget.update_message_label()
-        #
-        # elif is_start:
-        #     # case is starting the progressbar
-        #     pr_widget.add_job('loading', m_str)
-        #
-        # else:
-        #     # case is updating the message
-        #     a = 1
 
     def load_preprocessed(self):
 

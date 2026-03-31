@@ -520,6 +520,9 @@ class InfoManager(QWidget):
         unit_tab.setup_unit_table()
         unit_tab.update_unit_status()
 
+        # enables the unit tab
+        self.set_tab_enabled('unit', True)
+
     # ---------------------------------------------------------------------------
     # Unit Tab Event Functions
     # ---------------------------------------------------------------------------
