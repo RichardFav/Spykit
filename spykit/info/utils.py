@@ -508,10 +508,11 @@ class InfoManager(QWidget):
 
     def add_unit_table(self):
 
-        t_worker = ThreadWorker(None, self.unit_table_thread_fcn)
+        t_worker = ThreadWorker(None, self.create_unit_table)
+        t_worker.work_finished.connect(self.finish_unit_table)
         t_worker.start()
 
-    def unit_table_thread_fcn(self, _):
+    def create_unit_table(self, _):
 
         # field retrieval
         unit_tab = self.get_info_tab('unit')
@@ -522,6 +523,36 @@ class InfoManager(QWidget):
 
         # enables the unit tab
         self.set_tab_enabled('unit', True)
+
+    def finish_unit_table(self, _):
+
+        # field retrieval
+        unit_tab = self.get_info_tab('unit')
+        table_obj = self.get_table_widget('unit')
+
+        # flag that manual update is taking place
+        self.is_updating = True
+
+        for i_row, c_stat in enumerate(unit_tab.df_unit['Unit Type']):
+            # sets the table row colour
+            unit_tab.set_table_row_colour(i_row, c_stat.lower())
+
+            for i_col in range(table_obj.columnCount()):
+                # sets the item value (based on the field values)
+                value = unit_tab.df_unit.iloc[i_row][unit_tab.df_unit.columns[i_col]]
+                if isinstance(value, np.bool_):
+                    # case is a boolean field
+                    table_obj.item(i_row, i_col).setCheckState(cf.chk_state[value])
+
+                else:
+                    # case is a string field
+                    table_obj.item(i_row, i_col).setText(str(value))
+
+        # resets the update flag
+        self.is_updating = False
+
+        # sets the table sorting properties
+        self.set_other_table_props(table_obj, 'unit', 2)
 
     # ---------------------------------------------------------------------------
     # Unit Tab Event Functions
@@ -549,7 +580,7 @@ class InfoManager(QWidget):
     # Class Property Widget Setup Functions
     # ---------------------------------------------------------------------------
 
-    def setup_info_table(self, data, t_type, c_hdr):
+    def setup_info_table(self, data, t_type, c_hdr, set_values=True):
 
         # retrieves the table widget
         table_obj = self.get_table_widget(t_type)
@@ -579,12 +610,14 @@ class InfoManager(QWidget):
                 if isinstance(value, np.bool_):
                     # case is a boolean field
                     item.setFlags(self.check_item_flag)
-                    item.setCheckState(cf.chk_state[value])
+                    if set_values:
+                        item.setCheckState(cf.chk_state[value])
 
                 else:
                     # case is a string field
                     item.setFlags(self.norm_item_flag)
-                    item.setText(str(value))
+                    if set_values:
+                        item.setText(str(value))
 
                 # ads the item to the table
                 item.setTextAlignment(cf.align_type['center'])
@@ -594,8 +627,14 @@ class InfoManager(QWidget):
         self.is_updating = False
 
         # resizes the table to the contents
+        if set_values:
+            self.set_other_table_props(table_obj, t_type, 3)
+
+    def set_other_table_props(self, table_obj, t_type, i_col_sort):
+
+        # sets the table sorting properties
         table_obj.setSortingEnabled(True)
-        table_obj.horizontalHeader().setSortIndicator(3, Qt.SortOrder.AscendingOrder)
+        table_obj.horizontalHeader().setSortIndicator(i_col_sort, Qt.SortOrder.AscendingOrder)
         table_obj.resizeColumnsToContents()
 
         # sets the checkbox callback function

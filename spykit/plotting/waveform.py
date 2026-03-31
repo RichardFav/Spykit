@@ -39,6 +39,9 @@ class WaveFormPlot(PlotWidget):
     # font sizes
     title_size0 = 22
 
+    # pen objects
+    l_pen_sel = pg.mkPen(color=(255, 0, 0), width=4)
+
     def __init__(self, session_info):
         # creates the class object
         p_layout = setup_default_layout()
@@ -50,10 +53,14 @@ class WaveFormPlot(PlotWidget):
         self.session_info = session_info
         s_props = self.session_info.session_props
 
+        # field initialisations
+        self.is_updating = True
+        self.i_unit = 1
+
         # other class fields
-        self.is_init = True
         self.has_plot = False
         self.show_grid = False
+        self.i_type_sel = None
         self.bg_widget = QWidget()
         self.tr_col = cf.get_colour_value('g')
 
@@ -63,7 +70,7 @@ class WaveFormPlot(PlotWidget):
         self.update_plot()
 
         # resets the initialisation flag
-        self.is_init = False
+        self.is_updating = False
 
     # ---------------------------------------------------------------------------
     # Class Widget Setup Functions
@@ -74,6 +81,7 @@ class WaveFormPlot(PlotWidget):
         # field retrieval
         self.l_size = self.plot_layout.sizeHint()
         self.title_size = '{0}pt'.format(self.title_size0)
+        self.t0 = np.array(range(self.get_field('n_pts')))
 
         # field initialisations
         if self.get_field('splitGoodAndMua_NonSomatic'):
@@ -103,32 +111,38 @@ class WaveFormPlot(PlotWidget):
     def init_plot_view(self):
 
         # field retrieval
-        t0 = np.array(range(self.get_field('n_pts')))
+        d_val = np.zeros(1)
         u_type = np.array(self.get_field('unit_type'))
         y_spike = np.array(self.get_field('y_spike_unit'))
 
         # memory allocation
         self.h_plot = np.empty(self.n_plt, dtype=object)
+        self.h_plot_sel = np.empty(self.n_plt, dtype=object)
 
         # creates the waveform subplots
         for i_type in range(self.n_plt):
-            # creates the plot widget
+            # creates the waveform plot widget
             self.h_plot[i_type] = pg.PlotWidget()
             self.plot_layout.addWidget(self.h_plot[i_type])
 
             # sets the waveform plot points
             is_unit = u_type[:, 0] == i_type
-            t_plt = np.matlib.repmat(t0, sum(is_unit), 1).flatten()
+            t_plt = np.matlib.repmat(self.t0, sum(is_unit), 1).flatten()
             y_plt = y_spike[is_unit, :].flatten()
 
             # sets up the connectivity array
-            c_arr = np.ones((sum(is_unit), len(t0)), dtype=np.ubyte)
+            c_arr = np.ones((sum(is_unit), len(self.t0)), dtype=np.ubyte)
             c_arr[:, -1] = 0
 
-            # creates the unit traces
-            h_unit = pg.arrayToQPath(t_plt, y_plt, c_arr.flatten())
-            h_item = QGraphicsPathItem(h_unit)
+            # creates the unit waveform traces
+            h_path = pg.arrayToQPath(t_plt, y_plt, c_arr.flatten())
+            h_item = QGraphicsPathItem(h_path)
             self.h_plot[i_type].addItem(h_item)
+
+            # creates the unit selection trace
+            h_path_sel = pg.arrayToQPath(d_val, d_val)
+            h_item_sel = QGraphicsPathItem(h_path_sel)
+            self.h_plot[i_type].addItem(h_item_sel)
 
             # sets the axes properties
             h_plt_item = self.h_plot[i_type].getPlotItem()
@@ -151,8 +165,28 @@ class WaveFormPlot(PlotWidget):
 
         # updates the axes grids
         self.update_plot_config()
+        self.update_selected_trace()
         self.update_trace_colour()
         self.update_axes_grid()
+
+    def update_selected_trace(self):
+
+        # hides the unit (if one is already selected)
+        if self.i_type_sel is not None:
+            self.h_plot[self.i_type_sel].plotItem.items[1].hide()
+
+        # field retrieval
+        u_type = np.array(self.get_field('unit_type'))
+        y_spike = np.array(self.get_field('y_spike_unit'))
+
+        # resets the class fields
+        self.i_type_sel = u_type[self.i_unit - 1][0]
+
+        # resets the selected trace plot
+        hp = self.h_plot[self.i_type_sel].plotItem.items[1]
+        hp.setPath(pg.arrayToQPath(self.t0, y_spike[self.i_unit - 1, :]))
+        hp.setPen(self.l_pen_sel)
+        hp.show()
 
     def update_plot_config(self):
 
@@ -283,7 +317,7 @@ class WaveFormPlot(PlotWidget):
 
     @staticmethod
     def update_para(p_str, _self):
-        if _self.is_init:
+        if _self.is_updating:
             return
 
         match p_str:
@@ -293,10 +327,14 @@ class WaveFormPlot(PlotWidget):
             case 'tr_col':
                 _self.update_trace_colour()
 
+            case 'i_unit':
+                _self.update_selected_trace()
+
             case _:
                 _self.update_plot()
 
     # trace property observer properties
+    i_unit = cf.ObservableProperty(pfcn(update_para, 'i_unit'))
     show_grid = cf.ObservableProperty(pfcn(update_para, 'show_grid'))
     unit_type = cf.ObservableProperty(pfcn(update_para, 'unit_type'))
     tr_col = cf.ObservableProperty(pfcn(update_para, 'tr_col'))

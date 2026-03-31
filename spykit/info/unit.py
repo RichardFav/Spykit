@@ -1,4 +1,5 @@
 # module import
+import time
 import numpy as np
 import pandas as pd
 from copy import deepcopy
@@ -268,11 +269,11 @@ class UnitInfoTab(InfoWidget):
         post_tab = self.main_obj.prop_manager.get_prop_tab('postprocess')
         if post_tab is not None:
             # resets the editbox value
-            for t_type in ['unithist', 'unitmet']:
-                hist_tab = post_tab.get_tab_view(t_type)
-                h_edit_unit = hist_tab.findChild(cw.QLineEdit, name='i_unit')
+            for t_type in ['unithist', 'unitmet', 'waveform']:
+                pp_sub_tab = post_tab.get_tab_view(t_type)
+                h_edit_unit = pp_sub_tab.findChild(cw.QLineEdit, name='i_unit')
                 h_edit_unit.setText('%g' % self.i_unit_sel)
-                hist_tab.set_para_value('i_unit', self.i_unit_sel)
+                pp_sub_tab.set_para_value('i_unit', self.i_unit_sel)
 
     @staticmethod
     def reset_roi_coord(p, r_dim, ax_lim):
@@ -325,10 +326,8 @@ class UnitInfoTab(InfoWidget):
                 p_fld = bc_var_map[i_ch]
                 self.df_unit[p_fld] = self.df_unit[p_fld].astype(float).astype(int)
 
-        # sets the table data/row colours
-        self.main_obj.info_manager.setup_info_table(self.df_unit, 'unit', c_hdr)
-        for i_row, c_stat in enumerate(self.df_unit['Unit Type']):
-            self.set_table_row_colour(i_row, c_stat.lower())
+        # creates the table object
+        self.main_obj.info_manager.setup_info_table(self.df_unit, 'unit', c_hdr, set_values=False)
 
     def update_unit_status(self):
 

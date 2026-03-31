@@ -27,6 +27,7 @@ x_gap = 5
 
 class WaveFormPara(PropPara):
     # pyqtSignal functions
+    edit_update = pyqtSignal(str)
     check_update = pyqtSignal(str)
     checklist_update = pyqtSignal(str)
     colorpick_update = pyqtSignal(str)
@@ -41,6 +42,12 @@ class WaveFormPara(PropPara):
     # ---------------------------------------------------------------------------
     # Observable Property Event Callbacks
     # ---------------------------------------------------------------------------
+
+    @staticmethod
+    def _edit_update(p_str, _self):
+
+        if not _self.is_updating:
+            _self.edit_update.emit(p_str)
 
     @staticmethod
     def _check_update(p_str, _self):
@@ -61,6 +68,7 @@ class WaveFormPara(PropPara):
             _self.colorpick_update.emit(p_str)
 
     # trace property observer properties
+    i_unit = cf.ObservableProperty(pfcn(_edit_update, 'i_unit'))
     unit_type = cf.ObservableProperty(pfcn(_checklist_update, 'unit_type'))
     show_grid = cf.ObservableProperty(pfcn(_check_update, 'show_grid'))
     tr_col = cf.ObservableProperty(pfcn(_colorpick_update, 'tr_col'))
@@ -94,11 +102,15 @@ class WaveFormProps(PropWidget):
     def init_other_class_fields(self):
 
         # connects the slot functions
+        self.p_props.edit_update.connect(self.edit_update)
         self.p_props.check_update.connect(self.check_update)
         self.p_props.checklist_update.connect(self.checklist_update)
         self.p_props.colorpick_update.connect(self.colorpick_update)
 
     def setup_prop_fields(self):
+
+        # field retrieval
+        self.n_unit, _ = self.get_mem_map_field('q_met').shape
 
         # field retrieval
         unit_lbl = self.get_unit_label()
@@ -107,6 +119,7 @@ class WaveFormProps(PropWidget):
 
         # sets up the subgroup fields
         p_tmp = {
+            'i_unit': self.create_para_field('Cluster ID#', 'edit', 1),
             'unit_type': self.create_para_field('Waveform Unit Type', 'checklist', show_unit, p_list=unit_lbl),
             'tr_col': self.create_para_field('Plot Trace Colour', 'colorpick', tr_col0),
             'show_grid': self.create_para_field('Show Plot Gridlines', 'checkbox', False),
@@ -118,6 +131,43 @@ class WaveFormProps(PropWidget):
     # ---------------------------------------------------------------------------
     # Parameter Update Event Functions
     # ---------------------------------------------------------------------------
+
+    def edit_update(self, p_str):
+
+        # if force updating, then exit the function
+        if self.is_updating:
+            return
+
+        # field retrieval
+        h_edit = self.findChild(cw.QLineEdit,name=p_str)
+        nw_val = h_edit.text()
+
+        match p_str:
+            case 'i_unit':
+                min_val, max_val = 1, self.n_unit
+
+        # determines if the new value is valid
+        chk_val = cf.check_edit_num(nw_val, min_val=min_val, max_val=max_val, is_int=True)
+        if chk_val[1] is None:
+            # updates the parameter value
+            setattr(self, p_str, int(chk_val[0]))
+
+            # parameter specific updates
+            match p_str:
+                case 'i_unit':
+                    # case is the cluster index
+                    unit_tab = self.main_obj.main_obj.main_obj.info_manager.get_info_tab('unit')
+                    unit_tab.table_cell_click(chk_val[0] - 1, 0)
+
+            # updates the histogram view
+            if self.plot_view is not None:
+                setattr(self.plot_view, p_str, int(chk_val[0]))
+
+        else:
+            # otherwise, reset the previous value
+            p_val_pr = getattr(self, p_str)
+            h_edit.setText('%g' % p_val_pr)
+            self.reset_para_value(p_str, p_val_pr)
 
     def check_update(self, p_str):
 
@@ -169,6 +219,10 @@ class WaveFormProps(PropWidget):
 
         self.plot_view = plot_view_new
 
+    def set_para_value(self, p_fld, p_val):
+
+        setattr(self.p_props, p_fld, p_val)
+
     # ---------------------------------------------------------------------------
     # Class Getter Functions
     # ---------------------------------------------------------------------------
@@ -184,6 +238,10 @@ class WaveFormProps(PropWidget):
     def get_para_value(self, p_str):
 
         return getattr(self.p_props, p_str)
+
+    def get_mem_map_field(self, p_fld):
+
+        return self.main_obj.main_obj.session_obj.get_mem_map_field(p_fld)
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Methods
