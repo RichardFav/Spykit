@@ -1346,7 +1346,7 @@ class UnitMarker(pg.QtWidgets.QGraphicsEllipseItem):
             'Unit Type: {0}'.format(self.u_type),
             'Channel Index: {0}'.format(int(self.i_ch + 1)),
             'Count: {0}'.format(len(self.i_unit)),
-            'Unit Indices: {0}'.format(unit_str),
+            'Cluster IDs: {0}'.format(unit_str),
         ])
 
     def set_unit_highlight(self, is_show):

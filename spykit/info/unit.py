@@ -268,12 +268,18 @@ class UnitInfoTab(InfoWidget):
         # retrieves
         post_tab = self.main_obj.prop_manager.get_prop_tab('postprocess')
         if post_tab is not None:
+            # flag that manual updating is occuring
+            self.is_updating = True
+
             # resets the editbox value
             for t_type in ['unithist', 'unitmet', 'waveform']:
                 pp_sub_tab = post_tab.get_tab_view(t_type)
                 h_edit_unit = pp_sub_tab.findChild(cw.QLineEdit, name='i_unit')
                 h_edit_unit.setText('%g' % self.i_unit_sel)
                 pp_sub_tab.set_para_value('i_unit', self.i_unit_sel)
+
+            # resets the update flag
+            self.is_updating = False
 
     @staticmethod
     def reset_roi_coord(p, r_dim, ax_lim):
@@ -351,6 +357,10 @@ class UnitInfoTab(InfoWidget):
 
     def reset_selected_cell(self, i_row):
 
+        # return if manually updating
+        if self.is_updating:
+            return
+
         # field retrieval
         item_sel = self.table.selectedItems()
         i_col = item_sel[0].column() if len(item_sel) else 0
@@ -358,7 +368,3 @@ class UnitInfoTab(InfoWidget):
         # force runs the cell click callback
         self.table_cell_click(i_row, i_col)
         self.table.verticalScrollBar().setValue(i_row)
-
-        # # resets the selected cell
-        # item_new = self.table.item(i_row, i_col)
-        # self.table.scrollToItem(item_new, QAbstractItemView.ScrollHint.PositionAtTop)
