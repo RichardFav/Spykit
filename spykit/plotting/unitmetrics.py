@@ -10,6 +10,7 @@ from functools import partial as pfcn
 # spike pipeline imports
 import spykit.common.common_func as cf
 import spykit.common.common_widget as cw
+from spykit.threads.utils import ThreadWorker
 from spykit.plotting.utils import (PlotWidget, PlotLayout, UnitPlotLayout, x_gap, setup_default_layout)
 
 # pyqt6 module import
@@ -850,22 +851,18 @@ class AutoCorrelPlot(UnitPlotLayout):
 
         # ensures the unit cc-gram values are calculated
         if self.cc_gram[i_unit_f] is None:
-            # retrieves the spike time for the current unit
-            t_spike = self.unit_props.get_mem_map_field('t_spike')
-            spk_cluster = self.unit_props.get_mem_map_field('spk_cluster')
-            t_unit = t_spike[spk_cluster == self.i_unit] * 1000
+            # hides the plot widget
+            self.hide()
+            if i_unit_f > 0:
+                self.set_prog_state(True)
 
-            # calculates the fine unit cc-gram
-            cc_g = cf.calc_ccgram(t_unit, t_unit, win_sz0=self.n_bin, bin_size=self.b_sz)
-            self.cc_gram[i_unit_f] = np.flip(cc_g[0][:self.n_bin])
+            # sets up and run the calculation thread worker
+            self.t_worker = ThreadWorker(None, self.calc_cc_gram, None)
+            self.t_worker.work_finished.connect(self.cc_gram_finished)
+            self.t_worker.start()
 
-            # calculates the asymptotic cc-gram value
-            cc_g_mu = cf.calc_ccgram(t_unit, t_unit, win_sz0=self.n_bin_mu, bin_size=self.b_sz_mu)
-            self.cc_gram_mu[i_unit_f] = np.nanmean(cc_g_mu[0][(self.n_bin_mu - 1):])
-
-            # calculates the mean
-            if self.x_cc_gram is None:
-                self.x_cc_gram = cc_g[1][(self.n_bin - 1):] + 0.5
+            # exits the function (re-run function in work_finished function)
+            return
 
         # updates the histogram values
         self.bg_item.setOpts(
@@ -915,6 +912,58 @@ class AutoCorrelPlot(UnitPlotLayout):
     def update_view_range(self):
 
         self.update_plot_title()
+
+    # ---------------------------------------------------------------------------
+    # Correlogram Calculation Functions
+    # ---------------------------------------------------------------------------
+
+    def calc_cc_gram(self, _):
+
+        # field retrieval
+        i_unit_f = self.i_unit - 1
+
+        # retrieves the spike time for the current unit
+        t_spike = self.unit_props.get_mem_map_field('t_spike')
+        spk_cluster = self.unit_props.get_mem_map_field('spk_cluster')
+        t_unit = t_spike[spk_cluster == self.i_unit] * 1000
+
+        # calculates the fine unit cc-gram
+        cc_g = cf.calc_ccgram(t_unit, t_unit, win_sz0=self.n_bin, bin_size=self.b_sz)
+        self.cc_gram[i_unit_f] = np.flip(cc_g[0][:self.n_bin])
+
+        # calculates the asymptotic cc-gram value
+        cc_g_mu = cf.calc_ccgram(t_unit, t_unit, win_sz0=self.n_bin_mu, bin_size=self.b_sz_mu)
+        self.cc_gram_mu[i_unit_f] = np.nanmean(cc_g_mu[0][(self.n_bin_mu - 1):])
+
+        # calculates the mean
+        if self.x_cc_gram is None:
+            self.x_cc_gram = cc_g[1][(self.n_bin - 1):] + 0.5
+
+    def cc_gram_finished(self, _):
+
+        # re-shows the plot widget
+        self.show()
+        if self.i_unit > 1:
+            self.set_prog_state(False)
+            time.sleep(0.1)
+
+        # re-runs the update function
+        self.update_cc_gram()
+
+    def set_prog_state(self, state):
+
+        # field initialisation
+        job_name = 'cc-gram'
+        job_desc = 'Autocorrelogram Calculations'
+        info_manager = self.unit_props.main_obj.main_obj.main_obj.info_manager
+
+        if state:
+            # case is starting the progressbar
+            info_manager.add_job(job_name, job_desc)
+
+        else:
+            # case is stopping the progressbar
+            info_manager.delete_job(job_name)
 
     # ---------------------------------------------------------------------------
     # Class Getter Functions

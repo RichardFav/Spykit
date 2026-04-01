@@ -2750,20 +2750,16 @@ class QProgressWidget(QWidget):
         self.time_line.setLoopCount(int(1e6))
         self.time_line.setFrameRange(0, self.p_max)
         self.time_line.setUpdateInterval(self.t_int)
-        self.time_line.frameChanged.connect(self.prog_update)
+        self.time_line.valueChanged.connect(self.prog_update)
 
-    def prog_update(self, use_time_line=True):
+    def prog_update(self, pr_val):
 
         # calculates the scaled value
         pr_scl = self.p_max_r * self.pr_max
-
-        if use_time_line is None:
-            p_val = int(pr_scl * self.time_line.currentValue()) - self.dp_max
-
-        else:
-            p_val = int(pr_scl) - self.dp_max
-
+        p_val = int(pr_scl * pr_val) - self.dp_max
         p_val = np.min([self.p_max, np.max([0, p_val])])
+
+        # sets the progressbar value
         self.prog_bar.setValue(p_val)
 
     def add_job(self, job_name_add, job_desc_add):
@@ -2804,6 +2800,10 @@ class QProgressWidget(QWidget):
         self.pr_max = pr_val
 
         # updates the text/tooltip strings
+        self.update_prog_labels(desc_txt)
+
+    def update_prog_labels(self, desc_txt):
+
         self.lbl_obj.setText(desc_txt)
         self.lbl_obj.setToolTip(desc_txt)
 
@@ -2859,7 +2859,6 @@ class QProgressWidget(QWidget):
         # updates the text/tooltip strings
         self.lbl_obj.setText(desc_txt)
         self.lbl_obj.setToolTip(desc_tt)
-
 
     def get_status_text(self):
 

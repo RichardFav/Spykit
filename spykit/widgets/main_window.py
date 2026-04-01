@@ -1116,15 +1116,19 @@ class MenuBar(QObject):
                         self.main_obj.run_preprocessing_dialog((prep_task, prep_opt))
 
         # resets the status label
-        self.update_progress_bar('', 0)
+        self.update_progress_bar(None, None)
         self.main_obj.info_manager.prog_widget.update_message_label()
 
     def update_progress_bar(self, m_str, pr_val):
 
         # updates the GUI progressbar
         pr_widget = self.main_obj.info_manager.prog_widget
-        pr_widget.update_prog_message(m_str, pr_val)
-        pr_widget.prog_update(False)
+        if m_str is None:
+            pr_widget.set_progbar_state(False)
+
+        else:
+            pr_widget.prog_update(pr_val)
+            pr_widget.update_prog_labels(m_str)
 
         # force updates the gui
         QApplication.processEvents()
