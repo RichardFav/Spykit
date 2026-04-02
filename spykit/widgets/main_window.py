@@ -727,8 +727,8 @@ class MainWindow(QMainWindow):
         # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/tiny_example (preprocessed).ssf"
         # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/tiny_example (sorting - SK2).ssf"
 
-        f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/tiny_example.ssf"
-        # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/large_example.ssf"
+        # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/tiny_example.ssf"
+        f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/large_example.ssf"
 
         # loads the session
         self.menu_bar.load_session(f_file, True)
@@ -737,7 +737,7 @@ class MainWindow(QMainWindow):
         config_tab = self.prop_manager.get_prop_tab('config')
 
         # fixed plot view
-        c_id = config_tab.obj_rconfig.c_id
+        # c_id = config_tab.obj_rconfig.c_id
         # c_id[:] = self.plot_manager.get_plot_index('upset')
         # c_id[:] = self.plot_manager.get_plot_index('unithist')
         # c_id[:] = self.plot_manager.get_plot_index('unitmet')
@@ -1089,32 +1089,12 @@ class MenuBar(QObject):
             self.set_menu_enabled_blocks('post-preprocess')
             self.set_menu_enabled_blocks('post-sorting')
 
-            # removes any temporary memory map files
-            self.main_obj.remove_temp_mem_maps()
-
-            # determines if there are any available memory maps
+            # enables post-processing loading (if files are available)
             mm_file = self.main_obj.session_obj.get_mem_map_files(False)
             self.set_menu_enabled('load_postprocessed', mm_file is not None)
-            if mm_file is not None:
-                # updates the post-processing tabs
-                self.main_obj.session_obj.post_data.read_post_process(mm_file)
-                self.main_obj.prop_manager.add_prop_tabs(['postprocess'])
 
-                for i_mm in range(mm_file.shape[2]):
-                    mm_name = os.path.split(mm_file[0, 0, i_mm])[1]
-                    self.main_obj.added_post_process(mm_name)
-
-                # updates the unit information tab
-                self.main_obj.info_manager.add_unit_table()
-
-                # adds the post-processing views
-                self.main_obj.prop_manager.add_post_process_views(self)
-
-                # clears any units (if already created)
-                self.main_obj.plot_manager.get_plot_view('probe').reset_unit_markers()
-
-                # updates the post-processing menu item blocks
-                self.set_menu_enabled_blocks('post-postprocess')
+            # removes any temporary memory map files
+            self.main_obj.remove_temp_mem_maps()
 
             # runs the preprocessing (if data in config field)
             if not ignore_pp:
@@ -1153,7 +1133,48 @@ class MenuBar(QObject):
 
     def load_postprocessed(self):
 
-        pass
+        # determines the available post processing files
+        mm_file, mm_name = self.get_post_process_files()
+        if mm_file is None:
+            # if there are no feasible files then exit the function
+            e_str = 'There are no feasible post-processed data files for this session.'
+            cf.show_error(e_str)
+            return
+
+        # prompts the user for the memory map files to analyse
+        file_dlg = cw.QFileListDialog(None, np.unique(mm_name.flatten()))
+        file_dlg.exec()
+        if file_dlg.file_sel is None:
+            # case is the user cancelled
+            return
+
+        else:
+            # otherwise, retrieve the files associated with the selected file
+            mm_file = np.where(mm_name == file_dlg.file_sel, mm_file, np.nan)
+            mm_file = mm_file[:, :, np.array([isinstance(x, str) for x in mm_file[0, 0, :]])]
+
+        # clears the post-processing memory map/temporary files
+        self.main_obj.session_obj.clear_postprocessing()
+
+        # updates the post-processing tabs
+        self.main_obj.session_obj.post_data.read_post_process(mm_file)
+        self.main_obj.prop_manager.add_prop_tabs(['postprocess'])
+
+        for i_mm in range(mm_file.shape[2]):
+            mm_name = os.path.split(mm_file[0, 0, i_mm])[1]
+            self.main_obj.added_post_process(mm_name)
+
+        # updates the unit information tab
+        self.main_obj.info_manager.add_unit_table()
+
+        # adds the post-processing views
+        self.main_obj.prop_manager.add_post_process_views(self)
+
+        # clears any units (if already created)
+        self.main_obj.plot_manager.get_plot_view('probe').reset_unit_markers()
+
+        # updates the post-processing menu item blocks
+        self.set_menu_enabled_blocks('post-postprocess')
 
     def load_trigger(self, file_info=None):
 
@@ -1450,7 +1471,7 @@ class MenuBar(QObject):
         self.main_obj.info_manager.prog_widget.update_message_label()
 
     # ---------------------------------------------------------------------------
-    # Spike Sorting Menubar Functions
+    # BombCell Menubar Functions
     # ---------------------------------------------------------------------------
 
     def run_bomb_cell(self):
@@ -1473,36 +1494,8 @@ class MenuBar(QObject):
         pass
 
     # ---------------------------------------------------------------------------
-    # PyqtSignal Slot Functions
+    # File I/O Functions
     # ---------------------------------------------------------------------------
-
-    def output_prog(self, i_item, n_item):
-
-        print('{0} of {1} complete'.format(i_item, n_item))
-
-    # ---------------------------------------------------------------------------
-    # Miscellaneous Functions
-    # ---------------------------------------------------------------------------
-
-    def set_menu_enabled(self, menu_name, state):
-
-        self.get_menu_item(menu_name).setEnabled(state)
-
-    def set_tool_enabled(self, tool_name, state):
-
-        self.get_tool_item(tool_name).setEnabled(state)
-
-    def get_menu_item(self, menu_name):
-
-        return self.menu_bar.findChild((QWidget, QAction, QMenu), name=menu_name)
-
-    def get_tool_item(self, tool_name):
-
-        return self.tool_bar.findChild(QAction, name=tool_name)
-
-    def context_menu_event(self, evnt):
-
-        evnt.ignore()
 
     def load_file(self, file_info, f_type, dir_only=False, def_dir=None):
 
@@ -1553,6 +1546,26 @@ class MenuBar(QObject):
         elif output_data is None:
             return None
 
+    # ---------------------------------------------------------------------------
+    # PyqtSignal Slot Functions
+    # ---------------------------------------------------------------------------
+
+    def output_prog(self, i_item, n_item):
+
+        print('{0} of {1} complete'.format(i_item, n_item))
+
+    # ---------------------------------------------------------------------------
+    # Class Setter Functions
+    # ---------------------------------------------------------------------------
+
+    def set_menu_enabled(self, menu_name, state):
+
+        self.get_menu_item(menu_name).setEnabled(state)
+
+    def set_tool_enabled(self, tool_name, state):
+
+        self.get_tool_item(tool_name).setEnabled(state)
+
     def set_menu_enabled_blocks(self, m_type):
 
         # initialisations
@@ -1577,18 +1590,30 @@ class MenuBar(QObject):
                 menu_on = ['sorting', 'postprocess', 'clear_prep', 'save_preprocessed']
 
             case 'post-sorting':
-                # case is post preprocessing
-                menu_on = ['clear_sort']
+                # case is post spike sorting
+                menu_on = ['clear_sort', 'load_preprocessed']
 
             case 'post-postprocess':
                 # case is post preprocessing
-                menu_on = ['save_postprocessed', 'clear_bombcell']
+                menu_on = ['save_postprocessed', 'clear_bombcell', 'load_preprocessed']
 
         # resets the menu enabled properties
         [self.set_menu_enabled(m_on, True) for m_on in menu_on]
         [self.set_menu_enabled(m_off, False) for m_off in menu_off]
         [self.set_tool_enabled(t_on, True) for t_on in tool_on]
         [self.set_tool_enabled(t_off, False) for t_off in tool_off]
+
+    # ---------------------------------------------------------------------------
+    # Class Getter Functions
+    # ---------------------------------------------------------------------------
+
+    def get_menu_item(self, menu_name):
+
+        return self.menu_bar.findChild((QWidget, QAction, QMenu), name=menu_name)
+
+    def get_tool_item(self, tool_name):
+
+        return self.tool_bar.findChild(QAction, name=tool_name)
 
     def get_sync_output_dir(self, rr, output_dir_base):
 
@@ -1599,6 +1624,48 @@ class MenuBar(QObject):
         else:
             # case is using the custom path
             return output_dir_base / rr._run_name
+
+    def get_post_process_files(self):
+
+        # determines the available memory map files
+        pp_files = self.main_obj.session_obj.get_mem_map_files(False)
+        if pp_files is None:
+            return None, None
+
+        # removes the non-feasible memory map files
+        is_feas = self.get_feas_pp_files(pp_files)
+
+        # if there are no feasible memory mapped files, then exit
+        if np.any(is_feas):
+            # retrieves the path file names
+            pp_names = np.empty(pp_files.shape, dtype=object)
+            for i, x in np.ndenumerate(pp_files):
+                pp_names[i[0], i[1], i[2]] = Path(x).stem
+
+            return (np.where(is_feas, pp_files, 0),
+                    np.where(is_feas, pp_names, 0))
+        else:
+            return None, None
+
+    def get_feas_pp_files(self, pp_files):
+
+        # memory allocation
+        is_feas = np.zeros(pp_files.shape, dtype=bool)
+
+        # determines the feasible files (based on type)
+        for i in range(is_feas.shape[0]):
+            for j in range(is_feas.shape[1]):
+                for k in range(is_feas.shape[2]):
+                    if self.main_obj.session_obj.is_concat_run():
+                        is_feas[i, j, k] = 'concat' in pp_files[i, j, k]
+                    else:
+                        is_feas[i, j, k] = 'concat' not in pp_files[i, j, k]
+
+        return is_feas
+
+    # ---------------------------------------------------------------------------
+    # Miscellaneous Functions
+    # ---------------------------------------------------------------------------
 
     def check_custom_sync_dir(self, raw_runs, dir_base):
 
@@ -1639,6 +1706,10 @@ class MenuBar(QObject):
             # case is the directory is infeasible
             cf.show_error(err_str, 'Invalid Trigger File Directory')
             return False
+
+    def context_menu_event(self, evnt):
+
+        evnt.ignore()
 
     @staticmethod
     def gen_random_string(str_len):

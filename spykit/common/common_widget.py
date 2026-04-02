@@ -24,7 +24,7 @@ from PyQt6.QtWidgets import (QWidget, QHBoxLayout, QGridLayout, QVBoxLayout, QPu
                              QApplication, QTreeView, QFrame, QRadioButton, QAbstractItemView, QStylePainter,
                              QStyleOptionComboBox, QStyle, QProxyStyle, QItemDelegate, QTreeWidget, QTreeWidgetItem,
                              QHeaderView, QStyleOptionButton, QTableWidgetItem, QProgressBar, QSpacerItem,
-                             QStyledItemDelegate, QDialog, QTableWidget)
+                             QStyledItemDelegate, QDialog, QTableWidget, QListWidget)
 from PyQt6.QtCore import (Qt, QRect, QRectF, QMimeData, pyqtSignal, QItemSelectionModel, QAbstractTableModel,
                           QSizeF, QSize, QObject, QVariant, QTimeLine, QEvent, QPoint, QPointF)
 from PyQt6.QtGui import (QFont, QDrag, QCursor, QStandardItemModel, QStandardItem, QPalette, QPixmap, QImage,
@@ -1614,6 +1614,7 @@ class QEditButton(QWidget):
         cb_fcn = functools.partial(cb_fcn, self)
         self.obj_but.clicked.connect(cb_fcn)
 
+
 # ----------------------------------------------------------------------------------------------------------------------
 
 """
@@ -1654,6 +1655,7 @@ class QColorLabel(QLabel):
         # sets image pixmap properties
         lbl_image = QImage(bytes(image_data), self.n_pts, self.n_rep, 3 * self.n_pts, QImage.Format.Format_RGB888)
         self.setPixmap(QPixmap(lbl_image))
+
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -1982,6 +1984,7 @@ class QInfoTable(QTableWidget):
         table_style_chk = CheckBoxStyle(self.style())
         self.setStyle(table_style_chk)
 
+
 # ----------------------------------------------------------------------------------------------------------------------
 
 """
@@ -2028,6 +2031,75 @@ class QTableUndock(QDialog):
             table_width += table_obj.columnWidth(i)
 
         return table_width, table_height
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+"""
+    QFileListDialog:
+"""
+
+class QFileListDialog(QDialog):
+    # class properties
+    n_but = 2
+    dlg_width = 400
+    dlg_height = 300
+    b_str = ['Load', 'Cancel']
+
+    def __init__(self, parent=None, f_list=None, title_str='Select A File'):
+        super(QFileListDialog, self).__init__()
+
+        # input arguments
+        self.f_list = f_list
+
+        # creates the dialog layout
+        self.main_layout = QGridLayout()
+
+        # class widgets
+        self.file_sel = None
+        self.file_list = QListWidget()
+        self.cont_but = np.empty(self.n_but, dtype=object)
+
+        # sets the class properties
+        self.setWindowTitle(title_str)
+        self.setLayout(self.main_layout)
+        self.resize(self.dlg_width, self.dlg_height)
+
+        # initialises the class objects
+        self.init_class_objects()
+
+    def init_class_objects(self):
+
+        # sets the layout properties
+        self.main_layout.setSpacing(5)
+        self.main_layout.setRowStretch(0, 3)
+        self.main_layout.setRowStretch(1, 3)
+        self.main_layout.setRowStretch(2, 24)
+        self.main_layout.setColumnStretch(0, 7)
+        self.main_layout.setColumnStretch(1, 1)
+
+        # file list widget setup
+        self.file_list.addItems(self.f_list)
+        self.file_list.setCurrentRow(0)
+        self.file_list.setStyleSheet("border: 1px solid black;")
+        self.main_layout.addWidget(self.file_list, 0, 0, 3, 1)
+
+        # control button setup
+        cb_fcn = [self.open_file, self.close_dialog]
+        for i_but in range(self.n_but):
+            self.cont_but[i_but] = create_push_button(None, self.b_str[i_but], font=font_lbl)
+            self.main_layout.addWidget(self.cont_but[i_but], i_but, 1, 1, 1)
+            self.cont_but[i_but].clicked.connect(cb_fcn[i_but])
+
+    def open_file(self):
+
+        self.file_sel = self.file_list.currentItem().text()
+        self.close()
+
+    def close_dialog(self):
+
+        self.file_sel = None
+        self.close()
 
 # ----------------------------------------------------------------------------------------------------------------------
 # BASE WIDGET COMBINATIONS
@@ -2299,6 +2371,7 @@ class QLabelCombo(QWidget):
 
         for t in items:
             self.addItem(t)
+
 
 # ----------------------------------------------------------------------------------------------------------------------
 

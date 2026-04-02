@@ -73,7 +73,7 @@ class SessionWorkBook(QObject):
         self.open_session = False
 
     # ---------------------------------------------------------------------------
-    # Getter Functions
+    # Class Getter Functions
     # ---------------------------------------------------------------------------
 
     def get_avail_channel(self, is_raw=False, use_last_rec=False):
@@ -483,7 +483,7 @@ class SessionWorkBook(QObject):
         return mmap_files
 
     # ---------------------------------------------------------------------------
-    # Setter Functions
+    # Class Setter Functions
     # ---------------------------------------------------------------------------
 
     def set_all_channel_states(self, is_checked):
@@ -541,7 +541,7 @@ class SessionWorkBook(QObject):
         return np.all([os.path.exists(x) for x in f_path.flatten()])
 
     # ---------------------------------------------------------------------------
-    # Session wrapper functions
+    # Session Wrapper Functions
     # ---------------------------------------------------------------------------
 
     def reset_channel_data(self, ch_data):
@@ -1265,6 +1265,9 @@ class PostProcessData(QObject):
 
         # reads the stored memory maps
         for i_file in range(n_file_pp):
+            if mm_file[0, 0, i_file] == 0:
+                continue
+
             # memory allocation
             mmap_tmp = np.empty((n_run_pp, n_shank_pp), dtype=object)
 

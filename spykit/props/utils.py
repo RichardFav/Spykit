@@ -169,6 +169,10 @@ class PropManager(QWidget):
         # updates the progressbars
         m_obj.update_progress_bar('View Setup Complete!', 1)
 
+        # resets the status label
+        m_obj.update_progress_bar(None, None)
+        self.main_obj.info_manager.prog_widget.update_message_label()
+
     # ---------------------------------------------------------------------------
     # Special Widget Event Functions
     # ---------------------------------------------------------------------------
