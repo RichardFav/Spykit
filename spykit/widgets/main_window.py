@@ -92,10 +92,10 @@ class MainWindow(QMainWindow):
         # sets the widget style sheets
         self.set_styles()
 
-        # # REMOVE ME LATER
-        # if platform.system() == "Windows":
-        #     if os.environ['COMPUTERNAME'] == "DESKTOP-NLLEH0V":
-        #         self.testing()
+        # REMOVE ME LATER
+        if platform.system() == "Windows":
+            if os.environ['COMPUTERNAME'] == "DESKTOP-NLLEH0V":
+                self.testing()
 
     # ---------------------------------------------------------------------------
     # Class Widget Setup Functions
@@ -345,6 +345,9 @@ class MainWindow(QMainWindow):
 
     def added_post_process(self, mm_name_new):
 
+        if 'postprocess' not in self.prop_manager.t_types:
+            self.prop_manager.add_prop_tabs('postprocess')
+
         # retrieves the configuration tab object
         post_tab = self.prop_manager.get_prop_tab('postprocess')
         post_tab.add_soln_file(mm_name_new)
@@ -530,15 +533,30 @@ class MainWindow(QMainWindow):
         h_prog.prog_bar.setValue(int(h_prog.p_max))
         h_prog.lbl_obj.setText("File Output Complete")
         h_prog.lbl_obj.setToolTip("")
-
-        # resets the progressbar
         h_prog.set_progbar_state(False)
-        self.menu_bar.set_menu_enabled_blocks('post-postprocess')
 
         # adds the postprocessing tab
-        self.prop_manager.add_prop_tabs('postprocess')
         self.session_obj.post_data.add_post_process(self.mm_file_tmp, self.mmap_pp_tmp)
+        self.prop_manager.add_prop_tabs(['postprocess'])
+
+        # updates the unit information tab
+        self.info_manager.add_unit_table()
+
+        # adds the post-processing views
+        self.prop_manager.add_post_process_views(self.menu_bar)
+
+        # resets the unit markers
+        self.plot_manager.get_plot_view('probe').reset_unit_markers()
+
+        # resets the progressbar
+        self.menu_bar.set_menu_enabled_blocks('post-postprocess')
+
+        # resets the memory mapping fields
         self.mm_file_tmp, self.mmap_pp_tmp = None, None
+
+        # resets the status label
+        self.menu_bar.update_progress_bar(None, None)
+        self.info_manager.prog_widget.update_message_label()
 
     def remove_temp_mem_maps(self):
 
@@ -548,9 +566,9 @@ class MainWindow(QMainWindow):
         # deletes any existing temporary memmap files
         pat = cf.wildcard_to_regex('Temp_*.dat')
         for imm_f, mm_f in enumerate(reversed(mm_file)):
-            if re.fullmatch(pat, os.path.split(mm_f)[1]):
+            if re.fullmatch(pat, os.path.split(mm_f)[1]) and os.path.exists(mm_f):
                 os.remove(mm_f)
-                mm_file.pop(imm_f)
+                mm_file.pop()
 
     # ---------------------------------------------------------------------------
     # Obsolete Preprocessing Functions
@@ -706,10 +724,11 @@ class MainWindow(QMainWindow):
     def testing(self):
 
         # f_file = "C:/Work/Other Projects/EPhys Project/Code/spykit/spykit/resources/session/tiny_session.ssf"
-        # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/tiny_example.ssf"
         # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/tiny_example (preprocessed).ssf"
         # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/tiny_example (sorting - SK2).ssf"
-        f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/large_example.ssf"
+
+        f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/tiny_example.ssf"
+        # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/large_example.ssf"
 
         # loads the session
         self.menu_bar.load_session(f_file, True)
@@ -1061,9 +1080,6 @@ class MenuBar(QObject):
 
         # sets/runs the config field/routines
         if ses_data['configs'] is not None:
-            # removes any temporary memory map files
-            self.main_obj.remove_temp_mem_maps()
-
             # resets the preprocessing configuration fields
             prep_info = self.main_obj.info_manager.get_info_tab('preprocess')
             prep_info.configs.clear()
@@ -1073,11 +1089,14 @@ class MenuBar(QObject):
             self.set_menu_enabled_blocks('post-preprocess')
             self.set_menu_enabled_blocks('post-sorting')
 
+            # removes any temporary memory map files
+            self.main_obj.remove_temp_mem_maps()
+
             # determines if there are any available memory maps
             mm_file = self.main_obj.session_obj.get_mem_map_files(False)
             self.set_menu_enabled('load_postprocessed', mm_file is not None)
             if mm_file is not None:
-                # updates the other tabs
+                # updates the post-processing tabs
                 self.main_obj.session_obj.post_data.read_post_process(mm_file)
                 self.main_obj.prop_manager.add_prop_tabs(['postprocess'])
 
@@ -1092,12 +1111,7 @@ class MenuBar(QObject):
                 self.main_obj.prop_manager.add_post_process_views(self)
 
                 # clears any units (if already created)
-                probe_view = self.main_obj.plot_manager.get_plot_view('probe')
-                if probe_view.has_units:
-                    probe_view.clear_unit_markers()
-
-                # recreates the unit markers
-                probe_view.create_unit_markers.emit()
+                self.main_obj.plot_manager.get_plot_view('probe').reset_unit_markers()
 
                 # updates the post-processing menu item blocks
                 self.set_menu_enabled_blocks('post-postprocess')

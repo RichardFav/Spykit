@@ -738,7 +738,12 @@ class UnitHist(UnitPlotLayout):
         self.y_plt = n_count / np.sum(n_count)
 
         # calculates the upper limit
-        y_max = np.max(self.y_plt)
+        if np.all(np.isnan(self.y_plt)):
+            y_max = 1.0
+        else:
+            y_max = np.max(self.y_plt)
+
+        # sets the overall y-axis max limit
         y_max_h = np.floor(math.log10(y_max) - 1)
         self.y_lim_max = cf.round_up(y_max, -y_max_h)
         self.y_lim_min = [self.get_max_lim_value(0.01),

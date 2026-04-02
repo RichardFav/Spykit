@@ -1338,6 +1338,7 @@ class PostProcessData(QObject):
 
                 # flushes and deletes the memory map
                 self.mmap[self.i_mmap][i_run, i_shank].flush()
+                self.mmap[self.i_mmap][i_run, i_shank]._mmap.close()
                 self.mmap[self.i_mmap][i_run, i_shank] = None
                 time.sleep(0.25)
 

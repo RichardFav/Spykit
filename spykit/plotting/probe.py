@@ -605,6 +605,15 @@ class ProbePlot(PlotWidget):
         self.show_units = True
         self.set_button_enable('cell', True)
 
+    def reset_unit_markers(self):
+
+        # clears the unit markers (if created)
+        if self.has_units:
+            self.clear_unit_markers()
+
+        # recreates the unit markers
+        self.create_unit_markers.emit()
+
     def reset_selected_unit_highlight(self, i_ch_unit, type_lbl):
 
         # removes any currently selected highlights

@@ -533,8 +533,7 @@ class BombCellSolver(QDialog):
 
         # sets up the memory map file
         sort_dir = self.main_obj.session_obj.get_sorting_folder_paths()[0, 0]
-        self.mmap_file = os.path.join(str(sort_dir), self.mmap_name)
-        self.create_solver_mmap()
+        self.create_solver_mmap(str(sort_dir))
 
         # intiialises the parameter groups
         self.setup_para_group()
@@ -606,10 +605,11 @@ class BombCellSolver(QDialog):
     # Memory Map Functions
     # ---------------------------------------------------------------------------
 
-    def create_solver_mmap(self):
+    def create_solver_mmap(self, sort_dir):
 
         # initialisations
         n_fld = 3
+        self.mmap_file = os.path.join(sort_dir, self.mmap_name)
 
         # sets the memory map data type
         dt = np.dtype([
@@ -619,9 +619,10 @@ class BombCellSolver(QDialog):
         ])
 
         # deletes any previous memory mapping file
-        if os.path.exists(self.mmap_file):
+        for p in Path('.').rglob(self.mmap_name):
             try:
-                os.remove(self.mmap_file)
+                os.remove(p)
+                time.sleep(0.1)
             except:
                 pass
 
@@ -630,6 +631,9 @@ class BombCellSolver(QDialog):
         self.mmap['s_flag'] = np.int16(0)
         self.mmap['i_unit'] = np.int16(0)
         self.mmap['n_unit'] = np.int16(0)
+
+        # pauses for a little bit...
+        time.sleep(0.1)
 
     def delete_solver_mmap(self):
 
@@ -850,6 +854,7 @@ class BombCellSolver(QDialog):
 
     def close_window(self, force_close=False):
 
+        # stops the thread worker (if running)
         if self.is_running:
             # resets the boolean flags
             self.is_running = False
