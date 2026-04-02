@@ -517,6 +517,9 @@ class InfoManager(QWidget):
         # field retrieval
         unit_tab = self.get_info_tab('unit')
 
+        # disables the table
+        self.set_tab_enabled('unit', False)
+
         # sets up and updates the table
         unit_tab.setup_unit_table()
         unit_tab.update_unit_status()

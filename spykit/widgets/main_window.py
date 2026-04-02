@@ -1138,9 +1138,17 @@ class MenuBar(QObject):
             return
 
         else:
-            # otherwise, retrieve the files associated with the selected file
-            mm_file = np.where(mm_name == file_dlg.file_sel, mm_file, np.nan)
-            mm_file = mm_file[:, :, np.array([isinstance(x, str) for x in mm_file[0, 0, :]])]
+            # determines if the file has already been loaded
+            mm_file_sel = f"{file_dlg.file_sel}.dat"
+            if mm_file_sel in self.main_obj.session_obj.post_data.mmap_name:
+                # case is the file has already been loaded
+                e_str = f'The file "{mm_file_sel}" is already loaded. Try loading another file.'
+                cf.show_error(e_str, 'Duplicate File Error')
+                return
+            else:
+                # otherwise, retrieve the files associated with the selected file
+                mm_file = np.where(mm_name == file_dlg.file_sel, mm_file, np.nan)
+                mm_file = mm_file[:, :, np.array([isinstance(x, str) for x in mm_file[0, 0, :]])]
 
         # # clears the post-processing memory map/temporary files
         # self.main_obj.session_obj.clear_postprocessing()
