@@ -230,10 +230,6 @@ class PropManager(QWidget):
                         # case is the waveform plot
                         pp_prop.get_tab_view(type_r[id]).post_process_change()
 
-        # resets the parameter tab
-
-
-
     # ---------------------------------------------------------------------------
     # Property Parameter Get/Set Functions
     # --------------------------------------------------------------------------

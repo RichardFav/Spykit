@@ -585,11 +585,16 @@ class InfoManager(QWidget):
         # retrieves the table widget
         table_obj = self.get_table_widget(t_type)
 
+        # if the table/data shape is equal then exit
+        if (table_obj.rowCount(), table_obj.columnCount()) == data.shape:
+            return
+
         # flag that manual update is taking place
         self.is_updating = True
 
         # clears the table model
         table_obj.clear()
+        table_obj.setSortingEnabled(False)
         table_obj.setRowCount(data.shape[0])
         table_obj.setColumnCount(data.shape[1])
 

@@ -692,6 +692,9 @@ class MainWindow(QMainWindow):
         self.info_manager.tab_group_table.setVisible(False)
         self.menu_bar.set_menu_enabled_blocks('init')
 
+        # clears the post-processing memory map/temporary files
+        self.main_obj.session_obj.clear_postprocessing()
+
         # resets the session flag
         self.has_session = False
 
@@ -1113,20 +1116,6 @@ class MenuBar(QObject):
         self.update_progress_bar(None, None)
         self.main_obj.info_manager.prog_widget.update_message_label()
 
-    def update_progress_bar(self, m_str, pr_val):
-
-        # updates the GUI progressbar
-        pr_widget = self.main_obj.info_manager.prog_widget
-        if m_str is None:
-            pr_widget.set_progbar_state(False)
-
-        else:
-            pr_widget.prog_update(pr_val)
-            pr_widget.update_prog_labels(m_str)
-
-        # force updates the gui
-        QApplication.processEvents()
-
     def load_preprocessed(self):
 
         pass
@@ -1153,8 +1142,8 @@ class MenuBar(QObject):
             mm_file = np.where(mm_name == file_dlg.file_sel, mm_file, np.nan)
             mm_file = mm_file[:, :, np.array([isinstance(x, str) for x in mm_file[0, 0, :]])]
 
-        # clears the post-processing memory map/temporary files
-        self.main_obj.session_obj.clear_postprocessing()
+        # # clears the post-processing memory map/temporary files
+        # self.main_obj.session_obj.clear_postprocessing()
 
         # updates the post-processing tabs
         self.main_obj.session_obj.post_data.read_post_process(mm_file)
@@ -1666,6 +1655,20 @@ class MenuBar(QObject):
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
     # ---------------------------------------------------------------------------
+
+    def update_progress_bar(self, m_str, pr_val):
+
+        # updates the GUI progressbar
+        pr_widget = self.main_obj.info_manager.prog_widget
+        if m_str is None:
+            pr_widget.set_progbar_state(False)
+
+        else:
+            pr_widget.prog_update(pr_val)
+            pr_widget.update_prog_labels(m_str)
+
+        # force updates the gui
+        QApplication.processEvents()
 
     def check_custom_sync_dir(self, raw_runs, dir_base):
 

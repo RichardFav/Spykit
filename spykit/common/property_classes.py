@@ -1308,6 +1308,10 @@ class PostProcessData(QObject):
 
     def clear_post_process(self):
 
+        # exits if there is no data loaded
+        if len(self.mmap) == 0:
+            return
+
         # clears and deletes the temporary memory mapped files
         for i_map in range(len(self.mmap)):
             # field retrieval
@@ -1327,6 +1331,12 @@ class PostProcessData(QObject):
                             os.remove(self.mmap_file[i_map][i_run, i_shank])
                         except:
                             pass
+
+        # resets the class fields
+        self.i_mmap = 0
+        self.mmap = []
+        self.mmap_file = []
+        self.mmap_name = []
 
     def rename_post_process(self, mmap_file_new):
 
