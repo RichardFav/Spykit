@@ -124,7 +124,7 @@ f_name = {
     'session': "Session",
     'trigger': "Trigger",
     'config': "Configuration",
-    'post': "Post-Processing"
+    'postprocess': "Post-Processing"
 }
 
 # parameter/resource folder paths

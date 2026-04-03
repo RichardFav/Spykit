@@ -137,6 +137,7 @@ class PropManager(QWidget):
                 case 'postprocess':
                     # disables the tab (re-enables when tabs are created)
                     self.set_tab_enabled('postprocess', False)
+                    self.set_tab_visible('postprocess', False)
 
                     # crates the config views for each post-processing view type
                     for pf in tab_widget.plot_views:
@@ -163,7 +164,7 @@ class PropManager(QWidget):
             p_view = self.main_obj.plot_manager.get_plot_view(pf)
             pp_tab.set_plot_view(pf, p_view)
 
-        # disables the tab (re-enables when tabs are created)
+        # re-enables the tab (re-enables when tabs are created)
         self.set_tab_enabled('postprocess', True)
 
         # updates the progressbars

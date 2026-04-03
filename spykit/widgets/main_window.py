@@ -1167,7 +1167,7 @@ class MenuBar(QObject):
         # adds the post-processing views
         self.main_obj.prop_manager.add_post_process_views(self)
 
-        # clears any units (if already created)
+        # clears any probe unit markers (if already created)
         self.main_obj.plot_manager.get_plot_view('probe').reset_unit_markers()
 
         # updates the post-processing menu item blocks
@@ -1592,7 +1592,7 @@ class MenuBar(QObject):
 
             case 'post-postprocess':
                 # case is post preprocessing
-                menu_on = ['save_postprocessed', 'clear_bombcell', 'load_preprocessed']
+                menu_on = ['save_postprocessed', 'clear_bombcell']
 
         # resets the menu enabled properties
         [self.set_menu_enabled(m_on, True) for m_on in menu_on]

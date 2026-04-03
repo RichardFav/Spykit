@@ -40,7 +40,7 @@ class PlotManager(QWidget):
     probe_inset_button = pyqtSignal(object)
 
     # array class fields
-    prop_views = ['trace', 'trigger', 'post']
+    prop_views = ['trace', 'trigger', 'postprocess']
     pp_views = ['unitmet', 'unithist', 'waveform', 'upset']
 
     # parameters
@@ -314,12 +314,29 @@ class PlotManager(QWidget):
 
         # determines which property tab view is currently being viewed
         for pv in self.prop_views:
-            if pv not in self.types:
-                continue
+            match pv:
+                case 'postprocess':
+                    # case is the post-processing view
+                    pp_tab = self.main_obj.prop_manager.get_prop_tab('postprocess')
+                    if pp_tab is None:
+                        continue
 
-            i_view = self.types[pv]
-            if np.any(c_id == i_view):
-                prop_viewing.append(pv)
+                    for pp_pv in pp_tab.plot_views:
+                        # determines if there is a match
+                        i_view_pp = self.types[pp_pv]
+                        if np.any(c_id == i_view_pp):
+                            prop_viewing.append(pv)
+                            break
+
+                case _:
+                    # case is the other property view
+                    if pv not in self.types:
+                        continue
+
+                    # determines if there is a match
+                    i_view = self.types[pv]
+                    if np.any(c_id == i_view):
+                        prop_viewing.append(pv)
 
         return prop_viewing
 
