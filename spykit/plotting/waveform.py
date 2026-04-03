@@ -127,7 +127,7 @@ class WaveFormPlot(PlotWidget):
 
             # sets the waveform plot points
             is_unit = u_type[:, 0] == i_type
-            t_plt = np.matlib.repmat(self.t0, sum(is_unit), 1).flatten()
+            t_plt = np.tile(self.t0, sum(is_unit))
             y_plt = y_spike[is_unit, :].flatten()
 
             # sets up the connectivity array

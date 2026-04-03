@@ -520,7 +520,7 @@ class BombCellSolver(QDialog):
 
     def bombcell_init_complete(self):
 
-        # deermines if the experiment is feasible for analysis (exit if not)
+        # determines if the experiment is feasible for analysis (exit if not)
         if not self.check_expt_dir():
             # if not, then close the window
             self.close_window(True)
@@ -658,7 +658,7 @@ class BombCellSolver(QDialog):
 
         # experimental information dictionary
         exp_info = {
-            "exDir": self.expt_dir,
+            "exDir": self.expt_dir.replace('//', '/'),
             "nRun": self.n_run,
             "nShank": self.main_obj.session_obj.get_shank_count(),
             "isConcat": self.main_obj.session_obj.is_concat_run(),
