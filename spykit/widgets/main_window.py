@@ -730,8 +730,8 @@ class MainWindow(QMainWindow):
         # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/tiny_example (preprocessed).ssf"
         # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/tiny_example (sorting - SK2).ssf"
 
-        # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/tiny_example.ssf"
-        f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/large_example.ssf"
+        f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/tiny_example.ssf"
+        # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/large_example.ssf"
 
         # loads the session
         self.menu_bar.load_session(f_file, True)
@@ -1424,8 +1424,11 @@ class MenuBar(QObject):
         channel_tab.reset_combobox_fields('data', ["Raw"])
         self.main_obj.info_manager.channel_combobox_update('data', channel_tab)
 
-        # disable menu item
-        self.set_menu_enabled('clear_prep', False)
+        # clears the post-processing memory map/temporary files
+        self.main_obj.session_obj.clear_postprocessing()
+
+        # disable menu items
+        self.set_menu_enabled_blocks('clear-preprocess')
         self.main_obj.info_manager.prog_widget.update_message_label()
 
     def run_test(self):
@@ -1460,11 +1463,11 @@ class MenuBar(QObject):
             # exit if the user cancelled
             return
 
-        # clears the session data field
-        self.main_obj.session_obj.set_post_data(None)
+        # clears the post-processing memory map/temporary files
+        self.main_obj.session_obj.clear_postprocessing()
 
-        # disable menu item
-        self.set_menu_enabled('clear_sort', False)
+        # disable menu items
+        self.set_menu_enabled_blocks('clear-sorting')
         self.main_obj.info_manager.prog_widget.update_message_label()
 
     # ---------------------------------------------------------------------------
@@ -1488,7 +1491,15 @@ class MenuBar(QObject):
 
     def clear_bomb_cell(self):
 
-        pass
+        # prompts the user if they want to clear
+        q_str = "Are you sure you want to clear the existing spike sorting calculations?"
+        u_choice = QMessageBox.question(self.main_obj, 'Clear Spike Sorting?', q_str, cf.q_yes_no, cf.q_yes)
+        if u_choice == cf.q_no:
+            # exit if the user cancelled
+            return
+
+        # disable menu items
+        self.set_menu_enabled_blocks('clear-postprocess')
 
     # ---------------------------------------------------------------------------
     # File I/O Functions
@@ -1571,28 +1582,41 @@ class MenuBar(QObject):
 
         match m_type:
             case 'init':
-                # case is initialising
+                # case is initialising/resetting
                 tool_off = ['save']
-                menu_off = ['save', 'clear', 'preprocessing', 'save_preprocessed', 'sorting',
-                            'clear_prep', 'clear_sort', 'load_trigger', 'load_config', 'postprocess',
-                            'clear_bombcell']
+                menu_off = ['save', 'clear', 'preprocessing', 'sorting', 'postprocess',
+                            'clear_prep', 'clear_sort', 'clear_bombcell', 'load_trigger',
+                            'load_config', 'save_preprocessed', 'save_preprocessed']
 
             case 'session-open':
-                # case is post session opening
+                # case is opening a bew session
                 tool_on = ['save']
                 menu_on = ['save', 'clear', 'preprocessing', 'load_trigger', 'load_config']
 
             case 'post-preprocess':
-                # case is post preprocessing
-                menu_on = ['sorting', 'postprocess', 'clear_prep', 'save_preprocessed']
+                # case is post pre-processing
+                menu_on = ['sorting', 'clear_prep', 'save_preprocessed']
+
+            case 'clear-preprocess':
+                # case is clearing pre-processing
+                menu_off = ['sorting', 'postprocess', 'clear_prep', 'clear_sort',
+                            'clear_bombcell', 'save_preprocessed', 'save_postprocessed']
 
             case 'post-sorting':
                 # case is post spike sorting
-                menu_on = ['clear_sort', 'load_preprocessed']
+                menu_on = ['clear_sort', 'postprocess']
+
+            case 'clear-sorting':
+                # case is clearing spike sorting
+                menu_off = ['postprocess', 'clear_sort', 'clear_bombcell', 'save_postprocessed']
 
             case 'post-postprocess':
-                # case is post preprocessing
-                menu_on = ['save_postprocessed', 'clear_bombcell']
+                # case is post-postprocessing
+                menu_on = ['clear_bombcell', 'save_postprocessed']
+
+            case 'clear-postprocess':
+                # case is clearing post-postprocessing
+                menu_off = ['clear_bombcell', 'save_postprocessed']
 
         # resets the menu enabled properties
         [self.set_menu_enabled(m_on, True) for m_on in menu_on]
