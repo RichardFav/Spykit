@@ -567,19 +567,24 @@ class BombCellSolver(QDialog):
                 s_info['iShank'] = i_shank + 1
 
                 # runs the bombcell solver
-                self.bc_pkg_fcn('runCalc', s_info)
-                if self.mmap['s_flag']:
+                err_str = self.bc_pkg_fcn('runCalc', s_info)
+                if len(err_str):
+                    # case is there is an error in the calculations
+                    return err_str
+
+                elif self.mmap['s_flag']:
                     # if successful, stores the results from the solver
                     bc_data_nw[i_run, i_shank] = BombCellSoln(self.bc_pkg_fcn)
 
                 else:
                     # otherwise, exit the loop
-                    return
+                    return 'BombCell calculation output error.'
 
         # stores the data struct within the class
         self.bc_data = bc_data_nw
+        return []
 
-    def bombcell_solver_complete(self):
+    def bombcell_solver_complete(self, error_msg):
 
         # stops the solver timer
         self.solver_timer.stop()
@@ -593,12 +598,19 @@ class BombCellSolver(QDialog):
         self.cont_button[0].setChecked(False)
         self.cont_button[0].setText('Run Solver')
 
-        # resets the new solution flag
-        self.has_bc = True
-        self.is_new_soln = True
+        if len(error_msg):
+            # case is there was a BombCell calculation error
+            cf.show_error(error_msg, 'BombCell Calculation Error')
 
-        # updates the boolean flags
-        self.bc_para_c = deepcopy(self.bc_pkg_fcn('getClassField', 'bcPara'))
+        else:
+            # otherwise, reset the new solution flag
+            self.has_bc = True
+            self.is_new_soln = True
+
+            # updates the boolean flags
+            self.bc_para_c = deepcopy(self.bc_pkg_fcn('getClassField', 'bcPara'))
+
+        # resets the button properties
         self.set_button_props(True)
 
     # ---------------------------------------------------------------------------
@@ -668,11 +680,11 @@ class BombCellSolver(QDialog):
         }
 
         # runs the experiment folder diagnosis
-        expt_ok = self.bc_pkg_fcn('checkExptDir', exp_info)
-        if not expt_ok:
-            cf.show_error('The specified folder is not a feasible experiment', 'Error!')
+        err_str = self.bc_pkg_fcn('checkExptDir', exp_info)
+        if len(err_str):
+            cf.show_error(err_str, 'BombCell Error')
 
-        return expt_ok
+        return not len(err_str)
 
     def run_solver(self):
 
