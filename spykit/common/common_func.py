@@ -252,10 +252,19 @@ def check_edit_string(nw_str, use_special=False):
     # shows the error and returns a None value
     return None, e_str
 
-def show_error(text, title=""):
-
+def show_error(text, title="", force_resize=False):
     # otherwise, create the error message
     err_dlg = QMessageBox()
+
+    # resizes the messagebox (if required)
+    if force_resize:
+        f_metrics = QFontMetrics(err_dlg.font())
+        text_width = f_metrics.horizontalAdvance(text)
+
+        err_dlg.setStyleSheet(f"QLabel {{ min-width: {text_width}px; }}")
+        err_dlg.setFixedWidth(text_width)
+
+    # sets the other properties
     err_dlg.setText(text)
     err_dlg.setWindowTitle(title)
     err_dlg.setWindowFlags(Qt.WindowType.WindowStaysOnTopHint)

@@ -592,7 +592,6 @@ class BombCellSolver(QDialog):
         # stops and updates the progressbar
         self.prog_bar.stop_timer()
         self.prog_bar.set_label('Solver Complete')
-        self.prog_bar.set_full_prog()
 
         # resets the button text
         self.cont_button[0].setChecked(False)
@@ -600,12 +599,14 @@ class BombCellSolver(QDialog):
 
         if len(error_msg):
             # case is there was a BombCell calculation error
-            cf.show_error(error_msg, 'BombCell Calculation Error')
+            cf.show_error(error_msg, 'BombCell Calculation Error', True)
+            self.prog_bar.set_progbar_state(False)
 
         else:
             # otherwise, reset the new solution flag
             self.has_bc = True
             self.is_new_soln = True
+            self.prog_bar.set_full_prog()
 
             # updates the boolean flags
             self.bc_para_c = deepcopy(self.bc_pkg_fcn('getClassField', 'bcPara'))

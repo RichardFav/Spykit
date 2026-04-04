@@ -34,10 +34,7 @@ class ThreadWorker(QThread):
         self.work_started.emit()
 
         # runs the thread job
-        try:
-            thread_data = self.work_fcn(self.work_para)
-        except:
-            pass
+        thread_data = self.work_fcn(self.work_para)
 
         # emits the work start signal
         self.is_running = False
