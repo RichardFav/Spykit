@@ -22,11 +22,13 @@ class PostMemMap(QObject):
     n_hdr_nonsoma = 2
     n_dim_para = 11
 
-    def __init__(self):
+    def __init__(self, main_obj):
         super(PostMemMap, self).__init__()
 
         # field initialsiation
         self.mmap_file = None
+        self.main_obj = main_obj
+        self.session_obj = main_obj.session_obj
 
     def set_mmap_file(self, mmap_file_new):
 
@@ -37,6 +39,11 @@ class PostMemMap(QObject):
 
         # field retrieval
         p_fcn = bc_data.get_para_value
+
+        # spykit session details
+        is_per_shank = int(self.session_obj.is_per_shank())
+        is_concat_run = int(self.session_obj.is_concat_run())
+        session_name = self.session_obj.session.get_session_props()['session_name']
 
         # array dimensions
         n_unit = int(bc_data.array_dim['nUnit'])
@@ -104,6 +111,11 @@ class PostMemMap(QObject):
              n_peak_max, n_trough_max, n_hist_max, n_decay_loc) = dim_arr
 
         dt_type = np.dtype([
+            # case is spykit session parameters
+            ('is_per_shank', "bool"),
+            ('is_concat_run', "bool"),
+            ('session_name', 'S7'),
+
             # case is array dimensions
             ('n_unit', 'i4'),
             ('n_pts', 'i4'),

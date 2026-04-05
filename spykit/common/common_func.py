@@ -16,7 +16,7 @@ from typing import TypeVar
 import numpy as np
 from PyQt6.QtWidgets import (QMessageBox, QSizePolicy)
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QColor
+from PyQt6.QtGui import QColor, QFontMetrics
 
 # other initialisations
 q_fix = QSizePolicy.Policy.Fixed
@@ -262,7 +262,7 @@ def show_error(text, title="", force_resize=False):
         text_width = f_metrics.horizontalAdvance(text)
 
         err_dlg.setStyleSheet(f"QLabel {{ min-width: {text_width}px; }}")
-        err_dlg.setFixedWidth(text_width)
+        # err_dlg.setFixedWidth(text_width)
 
     # sets the other properties
     err_dlg.setText(text)

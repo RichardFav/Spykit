@@ -443,6 +443,8 @@ class SessionWorkBook(QObject):
     def get_mem_map_files(self, is_flat=True):
 
         # field retrieval
+        is_per_shank = self.is_per_shank()
+        is_concat_run = self.is_concat_run()
         bc_dir = self.get_sorting_folder_paths('bombcell')
 
         # finds all the bombcell memory mapping files
@@ -655,10 +657,19 @@ class SessionWorkBook(QObject):
         self.reset_current_session()
         self.session._s._pp_runs = []
 
-    def clear_postprocessing(self):
+    # ---------------------------------------------------------------------------
+    # Post-Processing Methods
+    # ---------------------------------------------------------------------------
+
+    def remove_post_process(self, i_mmap_rmv=None):
 
         if self.post_data is not None:
-            self.post_data.clear_post_process()
+            self.post_data.remove_post_process(i_mmap_rmv)
+
+    def clear_all_postprocessing(self):
+
+        if self.post_data is not None:
+            self.post_data.clear_all_postprocessing()
 
     # ---------------------------------------------------------------------------
     # Static Methods
@@ -1294,7 +1305,11 @@ class PostProcessData(QObject):
         if not is_save:
             self.added_pp.emit(self.mmap_name[-1])
 
-    def remove_post_process(self, i_mmap_rmv):
+    def remove_post_process(self, i_mmap_rmv=None):
+
+        # default memory map array index
+        if i_mmap_rmv is None:
+            i_mmap_rmv = self.i_mmap
 
         # appends the new mmap file
         self.mmap.pop(i_mmap_rmv)
@@ -1302,11 +1317,11 @@ class PostProcessData(QObject):
         self.mmap_name.pop(i_mmap_rmv)
         self.is_saved.pop(i_mmap_rmv)
 
-        # decrements the memory index
-        if i_mmap_rmv > self.i_mmap:
+        # decrements the memory map array index (if current exceeds length)
+        if (i_mmap_rmv > self.i_mmap) and len(self.mmap):
             self.i_mmap -= 1
 
-    def clear_post_process(self):
+    def clear_all_postprocessing(self):
 
         # exits if there is no data loaded
         if len(self.mmap) == 0:

@@ -591,7 +591,6 @@ class BombCellSolver(QDialog):
 
         # stops and updates the progressbar
         self.prog_bar.stop_timer()
-        self.prog_bar.set_label('Solver Complete')
 
         # resets the button text
         self.cont_button[0].setChecked(False)
@@ -606,6 +605,9 @@ class BombCellSolver(QDialog):
             # otherwise, reset the new solution flag
             self.has_bc = True
             self.is_new_soln = True
+
+            # resets the progressbar
+            self.prog_bar.set_label('Solver Complete')
             self.prog_bar.set_full_prog()
 
             # updates the boolean flags

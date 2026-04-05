@@ -282,7 +282,7 @@ class OpenSession(QMainWindow):
         self.session_obj.open_session = False
         if update_session:
             # clears the post-processing memory map/temporary files
-            self.session_obj.clear_postprocessing()
+            self.session_obj.clear_all_postprocessing()
 
             # resets the session object
             self.session_obj.session = self.session

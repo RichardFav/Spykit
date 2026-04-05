@@ -221,6 +221,10 @@ class SavePrep(QDialog):
                 # outputs the binary file
                 pp_rec.save(format="binary", folder=out_folder, n_jobs=self.n_worker, progres_bar=True)
 
+    # ---------------------------------------------------------------------------
+    # Miscellaneous Functions
+    # ---------------------------------------------------------------------------
+
     def close_window(self):
 
         # closes the dialog window

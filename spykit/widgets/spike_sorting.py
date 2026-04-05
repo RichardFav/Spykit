@@ -4,9 +4,11 @@ import os
 import time
 import docker
 import shutil
+import logging
 import platform
 import numpy as np
 import pandas as pd
+from pathlib import Path
 from copy import deepcopy
 from textwrap import dedent
 from functools import partial as pfcn
@@ -651,20 +653,33 @@ class SpikeSortingDialog(QMainWindow):
         run_sorter_method = self.get_sorter_method()
 
         # runs the preprocessing
-        self.session.sort_obj.sort(sort_config, per_shank, concat_runs, run_sorter_method)
+        try:
+            self.session.sort_obj.sort(sort_config, per_shank, concat_runs, run_sorter_method)
+            return []
+        except Exception as e:
+            return str(e)
 
-    def spike_sorting_complete(self):
+    def spike_sorting_complete(self, sorting_msg):
 
         # stops and updates the progressbar
         self.prog_bar.stop_timer()
-        self.prog_bar.set_label('Spike Sorting Complete')
-        self.prog_bar.set_full_prog()
+
+        if len(sorting_msg):
+            # case is there was a spike-sorting calculation error
+            error_msg = self.get_spike_sorting_error(sorting_msg)
+            cf.show_error(error_msg, 'BombCell Calculation Error', True)
+            self.prog_bar.set_progbar_state(False)
+
+        else:
+            # updates the boolean flags
+            self.has_ss = True
+
+            # resets the progressbar
+            self.prog_bar.set_label('Spike Sorting Complete')
+            self.prog_bar.set_full_prog()
 
         # resets the other properties
         self.set_sorting_props(True)
-
-        # updates the boolean flags
-        self.has_ss = True
 
     def reset_tab_types(self):
 
@@ -853,6 +868,19 @@ class SpikeSortingDialog(QMainWindow):
         # returns the array
         return out_path
 
+    def get_spike_sorting_error(self, sorting_msg):
+
+        if re.search(r'n_samples=\d+ should be >= n_clusters=\d+', sorting_msg) is not None:
+            # case is the sample count is too low
+            err_msg = ('The number of samples found is lower than the cluster count.\n'
+                       'Try reducing the parameter "Single-Channel Template Count".')
+
+        else:
+            # other message type
+            err_msg = sorting_msg
+
+        return err_msg
+
     # ---------------------------------------------------------------------------
     # Static Methods
     # ---------------------------------------------------------------------------
@@ -890,6 +918,14 @@ class SpikeSortingDialog(QMainWindow):
     @staticmethod
     def delete_sorter_folders(out_path):
         for op in out_path:
+            # force deletes the log file
+            for log_file in op.rglob('kilosort4.log'):
+                try:
+                    os.remove(log_file)
+                except PermissionError as pe:
+                    logging.shutdown()
+                    os.system(f'del /f /q "{log_file}"')
+
             shutil.rmtree(op, ignore_errors=True)
 
 

@@ -478,7 +478,7 @@ class MainWindow(QMainWindow):
         mm_file = self.session_obj.setup_mmap_files(mm_name)
 
         # creates the memory map object
-        pmm_obj = PostMemMap()
+        pmm_obj = PostMemMap(self)
         pmm_obj.progress_fcn.connect(self.postprocessing_progress)
 
         # array dimensioning
@@ -693,7 +693,7 @@ class MainWindow(QMainWindow):
         self.menu_bar.set_menu_enabled_blocks('init')
 
         # clears the post-processing memory map/temporary files
-        self.main_obj.session_obj.clear_postprocessing()
+        self.main_obj.session_obj.clear_all_postprocessing()
 
         # resets the session flag
         self.has_session = False
@@ -726,15 +726,19 @@ class MainWindow(QMainWindow):
 
     def testing(self):
 
-        # f_file = "C:/Work/Other Projects/EPhys Project/Code/spykit/spykit/resources/session/tiny_session.ssf"
-        # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/tiny_example (preprocessed).ssf"
-        # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/tiny_example (sorting - SK2).ssf"
+        # tiny examples
+        #  => (CS/SS = Combined/Separated Shank; SR/CR = Separated/Concated Runs)
+        # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/Tiny Example/tiny_example.ssf"
+        # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/Tiny Example/tiny_example_1 (CS + SR).ssf"
+        f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/Tiny Example/tiny_example_2 (SS + SR).ssf"
+        # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/Tiny Example/tiny_example_3 (CS + CR).ssf"
+        # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/Tiny Example/tiny_example_4 (SS + CR).ssf"
 
-        f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/tiny_example.ssf"
-        # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/large_example.ssf"
+        # large examples
+        # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/Large Example/large_example.ssf"
 
         # loads the session
-        self.menu_bar.load_session(f_file, True)
+        self.menu_bar.load_session(f_file, False)
 
         # retrieves the configuration tab object
         config_tab = self.prop_manager.get_prop_tab('config')
@@ -1015,7 +1019,7 @@ class MenuBar(QObject):
     def close_window(self):
 
         # clears the post-processing memory map/temporary files
-        self.main_obj.session_obj.clear_postprocessing()
+        self.main_obj.session_obj.clear_all_postprocessing()
 
         # closes the post-proessing dialog window (if open)
         if self.main_obj.bombcell_dlg is not None:
@@ -1038,7 +1042,7 @@ class MenuBar(QObject):
             return
 
         # clears the post-processing memory map/temporary files
-        self.main_obj.session_obj.clear_postprocessing()
+        self.main_obj.session_obj.clear_all_postprocessing()
 
         # loads data from the file
         self.update_progress_bar('Loading Session File', 0.1)
@@ -1424,12 +1428,12 @@ class MenuBar(QObject):
         channel_tab.reset_combobox_fields('data', ["Raw"])
         self.main_obj.info_manager.channel_combobox_update('data', channel_tab)
 
-        # clears the post-processing memory map/temporary files
-        self.main_obj.session_obj.clear_postprocessing()
-
         # disable menu items
         self.set_menu_enabled_blocks('clear-preprocess')
         self.main_obj.info_manager.prog_widget.update_message_label()
+
+        # clears the spike-sorting fields
+        self.clear_spike_sorting(False)
 
     def run_test(self):
 
@@ -1454,17 +1458,18 @@ class MenuBar(QObject):
 
         self.main_obj.run_spike_sorting_dialog()
 
-    def clear_spike_sorting(self):
+    def clear_spike_sorting(self, prompt_user=True):
 
-        # prompts the user if they want to clear
-        q_str = "Are you sure you want to clear the existing spike sorting calculations?"
-        u_choice = QMessageBox.question(self.main_obj, 'Clear Spike Sorting?', q_str, cf.q_yes_no, cf.q_yes)
-        if u_choice == cf.q_no:
-            # exit if the user cancelled
-            return
+        if prompt_user:
+            # prompts the user if they want to clear
+            q_str = "Are you sure you want to clear the existing spike sorting calculations?"
+            u_choice = QMessageBox.question(self.main_obj, 'Clear Spike Sorting?', q_str, cf.q_yes_no, cf.q_yes)
+            if u_choice == cf.q_no:
+                # exit if the user cancelled
+                return
 
         # clears the post-processing memory map/temporary files
-        self.main_obj.session_obj.clear_postprocessing()
+        self.clear_bomb_cell(False)
 
         # disable menu items
         self.set_menu_enabled_blocks('clear-sorting')
@@ -1489,14 +1494,21 @@ class MenuBar(QObject):
             # if already setup, then reshow the window
             self.main_obj.bombcell_dlg.show_window()
 
-    def clear_bomb_cell(self):
+    def clear_bomb_cell(self, prompt_user=True):
 
         # prompts the user if they want to clear
-        q_str = "Are you sure you want to clear the existing spike sorting calculations?"
-        u_choice = QMessageBox.question(self.main_obj, 'Clear Spike Sorting?', q_str, cf.q_yes_no, cf.q_yes)
-        if u_choice == cf.q_no:
-            # exit if the user cancelled
-            return
+        if prompt_user:
+            q_str = "Are you sure you want to clear the existing spike sorting calculations?"
+            u_choice = QMessageBox.question(self.main_obj, 'Clear Spike Sorting?', q_str, cf.q_yes_no, cf.q_yes)
+            if u_choice == cf.q_no:
+                # exit if the user cancelled
+                return
+
+        # clears the post-processing data
+        self.main_obj.session_obj.clear_all_postprocessing()
+
+        #
+        a = 1
 
         # disable menu items
         self.set_menu_enabled_blocks('clear-postprocess')
