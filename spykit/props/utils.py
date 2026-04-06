@@ -139,9 +139,9 @@ class PropManager(QWidget):
                     self.set_tab_enabled('postprocess', False)
                     self.set_tab_visible('postprocess', False)
 
-                    # crates the config views for each post-processing view type
-                    for pf in tab_widget.plot_views:
-                        self.add_config_view(pt.prop_names[pf])
+                    # # creates the config views for each post-processing view type
+                    # for pf in tab_widget.plot_views:
+                    #     self.add_config_view(pt.prop_names[pf])
 
     # ---------------------------------------------------------------------------
     # Post-Processing View Setup Functions

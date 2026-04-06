@@ -84,6 +84,16 @@ class ConfigProps(PropWidget):
         self.obj_rconfig.obj_lbl_combo.obj_cbox.addItem(v_type)
         self.obj_rconfig.is_updating = False
 
+    def remove_config_view(self, v_type):
+
+        # determines the view index
+        i_view = self.obj_rconfig.obj_lbl_combo.obj_cbox.findText(v_type)
+        if i_view >= 0:
+            # removes the item from the list
+            self.obj_rconfig.is_updating = True
+            self.obj_rconfig.obj_lbl_combo.obj_cbox.removeItem(i_view)
+            self.obj_rconfig.is_updating = False
+
     def has_config_view(self, v_type):
 
         c_box = self.obj_rconfig.obj_lbl_combo.obj_cbox

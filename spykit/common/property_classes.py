@@ -48,7 +48,7 @@ class SessionWorkBook(QObject):
     # array class fields
     c_hdr_ch = ['', 'Keep?', 'Status', 'Channel ID', 'Contact ID', 'Channel Index', 'X-Coord', 'Y-Coord', 'Shank ID']
 
-    def __init__(self):
+    def __init__(self, main_obj):
         super(SessionWorkBook, self).__init__()
 
         # initialisation flag
@@ -60,6 +60,7 @@ class SessionWorkBook(QObject):
         self.channel_data = None
         self.post_data = None
         self.session_props = None
+        self.main_obj = main_obj
 
         # other class field
         self.current_run = None
@@ -692,7 +693,7 @@ class SessionWorkBook(QObject):
             _probe_current = _self.get_current_recording_probe()
             _self.channel_data = ChannelData(_probe_current)
             _self.session_props = SessionProps(_probe_current)
-            _self.post_data = PostProcessData()
+            _self.post_data = PostProcessData(_self.main_obj)
             _self.session.load_sorting_para(_self)
 
             # connects the signal functions
@@ -1257,9 +1258,12 @@ class PostProcessData(QObject):
     # pyqtsignal functions
     added_pp = pyqtSignal(str)
 
-    def __init__(self):
+    def __init__(self, main_obj):
         # initialises the property widget
         super(PostProcessData, self).__init__()
+
+        # input arguments
+        self.main_obj = main_obj
 
         # field initialisation
         self.mmap = []
@@ -1271,7 +1275,7 @@ class PostProcessData(QObject):
     def read_post_process(self, mm_file):
 
         # creates the memory map object
-        pmm_obj = PostMemMap()
+        pmm_obj = PostMemMap(self.main_obj)
         n_run_pp, n_shank_pp, n_file_pp = mm_file.shape
 
         # reads the stored memory maps

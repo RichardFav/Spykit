@@ -41,8 +41,8 @@ class PostMemMap(QObject):
         p_fcn = bc_data.get_para_value
 
         # spykit session details
-        is_per_shank = int(self.session_obj.is_per_shank())
-        is_concat_run = int(self.session_obj.is_concat_run())
+        is_per_shank = self.session_obj.is_per_shank()
+        is_concat_run = self.session_obj.is_concat_run()
         session_name = self.session_obj.session.get_session_props()['session_name']
 
         # array dimensions
@@ -111,11 +111,6 @@ class PostMemMap(QObject):
              n_peak_max, n_trough_max, n_hist_max, n_decay_loc) = dim_arr
 
         dt_type = np.dtype([
-            # case is spykit session parameters
-            ('is_per_shank', "bool"),
-            ('is_concat_run', "bool"),
-            ('session_name', 'S7'),
-
             # case is array dimensions
             ('n_unit', 'i4'),
             ('n_pts', 'i4'),
@@ -128,6 +123,11 @@ class PostMemMap(QObject):
             ('n_trough_max', 'i4'),
             ('n_hist_max', 'i4'),
             ('n_decay_loc', 'i4'),
+
+            # case is spykit session parameters
+            ('is_per_shank', "bool"),
+            ('is_concat_run', "bool"),
+            ('session_name', 'S7'),
 
             # case is ephys data
             ('i_spike', 'f4', (n_spike, 1)),

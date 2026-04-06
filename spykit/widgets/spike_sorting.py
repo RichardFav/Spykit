@@ -147,7 +147,7 @@ class SpikeSortingDialog(QMainWindow):
         self.solver_tab = {}
 
         # boolean class fields
-        self.has_ss = False
+        self.ss_change = False
         self.is_running = True
         self.is_updating = False
         self.per_shank = False
@@ -272,10 +272,10 @@ class SpikeSortingDialog(QMainWindow):
             # sets the button properties
             checkbox_new.pressed.connect(cb)
             checkbox_new.setFixedHeight(cf.but_height)
+            checkbox_new.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
 
         if self.main_obj is not None:
             # updates the checkbox properties
-            self.set_checkbox_enabled_props()
             self.checkbox_opt[0].setCheckState(cf.chk_state[self.per_shank_pp])
             self.checkbox_opt[1].setCheckState(cf.chk_state[self.concat_runs_pp])
 
@@ -607,6 +607,9 @@ class SpikeSortingDialog(QMainWindow):
 
         # if there is a change, prompt the user if they would like to update the props
         if self.is_prop_change:
+            # case is the user chose to update the parameters
+            self.update_sort_para_changes()
+
             q_str = 'Do you want to update the parameter changes?'
             u_choice = QMessageBox.question(self.main_obj, 'Update Changes?', q_str, cf.q_yes_no_cancel, cf.q_yes)
             if u_choice == cf.q_yes:
@@ -617,7 +620,7 @@ class SpikeSortingDialog(QMainWindow):
                 return
 
         # runs the post window close functions
-        self.close_spike_sorting.emit(self.has_ss)
+        self.close_spike_sorting.emit(self.ss_change)
 
         # closes the window
         self.close()
@@ -670,9 +673,12 @@ class SpikeSortingDialog(QMainWindow):
             cf.show_error(error_msg, 'BombCell Calculation Error', True)
             self.prog_bar.set_progbar_state(False)
 
+            # updates the boolean flags
+            self.ss_change = False
+
         else:
             # updates the boolean flags
-            self.has_ss = True
+            self.ss_change = True
 
             # resets the progressbar
             self.prog_bar.set_label('Spike Sorting Complete')
@@ -804,7 +810,8 @@ class SpikeSortingDialog(QMainWindow):
         out_path = self.get_output_file_path(deepcopy(out_path))
         if len(out_path):
             # case is there is at least one output path that exists
-            q_str = 'Spike sorting data already exists for this experiment. Do you want to overwrite?'
+            q_str = ('Spike sorting data already exists for this experiment. Do you want to overwrite?\n'
+                     'Note that this operation cannot be reversed.')
             u_choice = QMessageBox.question(self.main_obj, 'Overwrite Folder?', q_str, cf.q_yes_no, cf.q_yes)
             if u_choice == cf.q_yes:
                 # case is the user chose to overwrite the folder

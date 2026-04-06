@@ -72,7 +72,7 @@ class MainWindow(QMainWindow):
         self.main_layout = QGridLayout()
 
         # main class object setup
-        self.session_obj = SessionWorkBook()
+        self.session_obj = SessionWorkBook(self)
 
         # main class widget setup
         self.menu_bar = MenuBar(self)
@@ -461,11 +461,11 @@ class MainWindow(QMainWindow):
         h_app.close_spike_sorting.connect(self.on_spike_sorting_close)
         h_app.show()
 
-    def on_spike_sorting_close(self, has_ss):
+    def on_spike_sorting_close(self, ss_change):
 
-        # runs the preprocessing specifc updates
-        if has_ss:
-            pass
+        # if there is a change in spike-sorting then
+        if ss_change:
+            self.menu_bar.clear_bomb_cell(prompt_user=False)
 
     # ---------------------------------------------------------------------------
     # Postprocessing Functions
@@ -729,8 +729,8 @@ class MainWindow(QMainWindow):
         # tiny examples
         #  => (CS/SS = Combined/Separated Shank; SR/CR = Separated/Concated Runs)
         # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/Tiny Example/tiny_example.ssf"
-        # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/Tiny Example/tiny_example_1 (CS + SR).ssf"
-        f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/Tiny Example/tiny_example_2 (SS + SR).ssf"
+        f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/Tiny Example/tiny_example_1 (CS + SR).ssf"
+        # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/Tiny Example/tiny_example_2 (SS + SR).ssf"
         # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/Tiny Example/tiny_example_3 (CS + CR).ssf"
         # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/Tiny Example/tiny_example_4 (SS + CR).ssf"
 
@@ -924,7 +924,7 @@ class MenuBar(QObject):
 
         # initialisations
         p_str = ['run_bombcell', 'clear_bombcell']
-        p_lbl = ['Run BombCell', 'Clear BombCell Calculations']
+        p_lbl = ['Run BombCell', 'Clear Postprocessing']
         cb_fcn = [self.run_bomb_cell, self.clear_bomb_cell]
 
         # adds the preprocessing menu items
@@ -1160,6 +1160,11 @@ class MenuBar(QObject):
         # updates the post-processing tabs
         self.main_obj.session_obj.post_data.read_post_process(mm_file)
         self.main_obj.prop_manager.add_prop_tabs(['postprocess'])
+
+        # creates the config views for each post-processing view type
+        pp_tab = self.main_obj.prop_manager.get_prop_tab('postprocess')
+        for pf in pp_tab.plot_views:
+            self.main_obj.prop_manager.add_config_view(ppt.prop_names[pf])
 
         for i_mm in range(mm_file.shape[2]):
             mm_name = os.path.split(mm_file[0, 0, i_mm])[1]
@@ -1469,7 +1474,7 @@ class MenuBar(QObject):
                 return
 
         # clears the post-processing memory map/temporary files
-        self.clear_bomb_cell(False)
+        self.clear_bomb_cell(prompt_user=False)
 
         # disable menu items
         self.set_menu_enabled_blocks('clear-sorting')
@@ -1494,12 +1499,12 @@ class MenuBar(QObject):
             # if already setup, then reshow the window
             self.main_obj.bombcell_dlg.show_window()
 
-    def clear_bomb_cell(self, prompt_user=True):
+    def clear_bomb_cell(self, state=False, prompt_user=True):
 
         # prompts the user if they want to clear
         if prompt_user:
-            q_str = "Are you sure you want to clear the existing spike sorting calculations?"
-            u_choice = QMessageBox.question(self.main_obj, 'Clear Spike Sorting?', q_str, cf.q_yes_no, cf.q_yes)
+            q_str = "Are you sure you want to clear the loaded post-processing data?"
+            u_choice = QMessageBox.question(self.main_obj, 'Clear Postprocessing?', q_str, cf.q_yes_no, cf.q_yes)
             if u_choice == cf.q_no:
                 # exit if the user cancelled
                 return
@@ -1507,8 +1512,30 @@ class MenuBar(QObject):
         # clears the post-processing data
         self.main_obj.session_obj.clear_all_postprocessing()
 
+        # clears the post-processing views from the configuration panel
+        is_view_change = False
+        g_id = deepcopy(self.main_obj.plot_manager.grid_id)
+        cf_props = self.main_obj.prop_manager.get_prop_tab('config')
+        pp_props = self.main_obj.prop_manager.get_prop_tab('postprocess')
+
         #
-        a = 1
+        for pp_view in pp_props.plot_views:
+            # determines if the view has been created
+            if pp_view in self.main_obj.plot_manager.types:
+                # removes the plot from the plot view
+                pp_id = self.main_obj.plot_manager.types[pp_view]
+                if pp_id in g_id:
+                    is_view_change = True
+                    g_id[g_id == pp_id] = 0
+                    self.main_obj.plot_manager.get_plot_view(pp_view).hide()
+
+                # removes the view from the configuration list
+                cf_props.remove_config_view(ppt.prop_names[pp_view])
+
+        # resets the view ID (if a change was made)
+        if is_view_change:
+            self.main_obj.prop_manager.set_region_config(g_id)
+            self.main_obj.plot_manager.update_plot_config(g_id)
 
         # disable menu items
         self.set_menu_enabled_blocks('clear-postprocess')
