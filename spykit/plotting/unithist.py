@@ -131,9 +131,13 @@ class UnitHistPlot(PlotWidget):
     # Parameter Update Functions
     # ---------------------------------------------------------------------------
 
-    def plot_update(self, p_str):
+    def update_plot(self, p_str='reset'):
 
         match p_str:
+            case 'reset':
+                # case is resetting the entire plot
+                self.reset_all_histograms()
+
             case p_str if p_str in ['opt_config', 'n_r', 'n_c', 'hist_type']:
                 # case is altering a configuration parameter
                 self.update_hist_config(p_str != 'hist_type')
@@ -153,6 +157,13 @@ class UnitHistPlot(PlotWidget):
             case 'show_grid':
                 # case is showing the plot grid
                 self.update_show_grid()
+
+    def reset_all_histograms(self):
+
+        # updates the unit index for each plot
+        for hp in self.hist:
+            hp.update_thresh_markers(True)
+            hp.update_unit_index(self.i_unit)
 
     def update_hist_config(self, check_dim=True):
 
@@ -322,7 +333,7 @@ class UnitHistPlot(PlotWidget):
         if _self.is_updating:
             return
 
-        _self.plot_update(p_str)
+        _self.update_plot(p_str)
 
     # property observer properties
     hist_type = cf.ObservableProperty(pfcn(para_update, 'hist_type'))
@@ -514,7 +525,10 @@ class UnitHist(UnitPlotLayout):
         else:
             ax_bottom.setTicks(None)
 
-    def update_thresh_markers(self):
+    def update_thresh_markers(self, reset_threshold=False):
+
+        if reset_threshold:
+            self.get_metric_thresholds()
 
         # retrieves the
         if self.p_str in ['presenceRatio']:

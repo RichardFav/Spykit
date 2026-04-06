@@ -94,11 +94,15 @@ class PlotManager(QWidget):
     # Plot View I/O Functions
     # ---------------------------------------------------------------------------
 
-    def add_plot_view(self, p_type, expand_grid=True, show_plot=True):
+    def add_plot_view(self, p_type, expand_grid=True, show_plot=True, clear_view=True):
 
         # if the plot type exists in the list, then exit
         if p_type in self.types:
-            self.clear_plot_view(p_type)
+            # clears the view (if required)
+            if clear_view:
+                self.clear_plot_view(p_type)
+
+            # exits the function
             return
 
         # increments the plot count

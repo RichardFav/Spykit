@@ -521,7 +521,8 @@ class InfoManager(QWidget):
         self.set_tab_enabled('unit', False)
 
         # sets up and updates the table
-        unit_tab.setup_unit_table()
+        unit_tab.setup_unit_table_data()
+        self.setup_info_table(unit_tab.df_unit, 'unit', unit_tab.c_hdr, set_values=False)
         unit_tab.update_unit_status()
 
         # enables the unit tab

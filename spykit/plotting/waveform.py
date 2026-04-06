@@ -110,12 +110,8 @@ class WaveFormPlot(PlotWidget):
 
     def init_plot_view(self):
 
-        # field retrieval
-        d_val = np.zeros(1)
-        u_type = np.array(self.get_field('unit_type'))
-        y_spike = np.array(self.get_field('y_spike_unit'))
-
         # memory allocation
+        d_val = np.zeros(1)
         self.h_plot = np.empty(self.n_plt, dtype=object)
         self.h_plot_sel = np.empty(self.n_plt, dtype=object)
 
@@ -123,19 +119,11 @@ class WaveFormPlot(PlotWidget):
         for i_type in range(self.n_plt):
             # creates the waveform plot widget
             self.h_plot[i_type] = pg.PlotWidget()
+            self.h_plot[i_type].hideButtons()
             self.plot_layout.addWidget(self.h_plot[i_type])
 
-            # sets the waveform plot points
-            is_unit = u_type[:, 0] == i_type
-            t_plt = np.tile(self.t0, sum(is_unit))
-            y_plt = y_spike[is_unit, :].flatten()
-
-            # sets up the connectivity array
-            c_arr = np.ones((sum(is_unit), len(self.t0)), dtype=np.ubyte)
-            c_arr[:, -1] = 0
-
             # creates the unit waveform traces
-            h_path = pg.arrayToQPath(t_plt, y_plt, c_arr.flatten())
+            h_path = pg.arrayToQPath(d_val, d_val)
             h_item = QGraphicsPathItem(h_path)
             self.h_plot[i_type].addItem(h_item)
 
@@ -148,6 +136,7 @@ class WaveFormPlot(PlotWidget):
             h_plt_item = self.h_plot[i_type].getPlotItem()
             h_plt_item.showAxes(True, False)
             h_plt_item.layout.setContentsMargins(x_gap, x_gap, x_gap, x_gap)
+            h_plt_item.vb.setXRange(0, self.t0[-1])
 
             for ax_t in ['left', 'bottom', 'right', 'top']:
                 # resets the axes properties
@@ -156,6 +145,35 @@ class WaveFormPlot(PlotWidget):
                 # shows the right/top axes
                 if ax_t in ['right', 'top']:
                     h_plt_item.showAxis(ax_t)
+
+        # creates the unit type traces
+        self.reset_unit_traces()
+
+    def reset_unit_traces(self):
+
+        # field retrieval
+        u_type = np.array(self.get_field('unit_type'))
+        y_spike = np.array(self.get_field('y_spike_unit'))
+
+        # creates the waveform traces
+        for i_type in range(self.n_plt):
+            # sets the waveform plot points
+            is_unit = u_type[:, 0] == i_type
+            t_plt = np.tile(self.t0, sum(is_unit))
+            y_plt = y_spike[is_unit, :].flatten()
+
+            # sets up the connectivity array
+            c_arr = np.ones((sum(is_unit), len(self.t0)), dtype=np.ubyte)
+            c_arr[:, -1] = 0
+
+            # creates the unit waveform traces
+            hp = self.h_plot[i_type].plotItem.items[0]
+            hp.setPath(pg.arrayToQPath(t_plt, y_plt, c_arr.flatten()))
+
+            # sets the axes properties
+            if len(y_plt):
+                h_plt_item = self.h_plot[i_type].getPlotItem()
+                h_plt_item.vb.setYRange(np.min(y_plt), np.max(y_plt))
 
     # ---------------------------------------------------------------------------
     # PLot View Methods

@@ -2050,7 +2050,7 @@ class QFileListDialog(QDialog):
         super(QFileListDialog, self).__init__()
 
         # input arguments
-        self.f_list = f_list
+        self.f_list = f_list[np.array([len(x) for x in f_list]) > 0]
 
         # creates the dialog layout
         self.main_layout = QGridLayout()
@@ -2678,6 +2678,9 @@ class QLabelCheckCombo(QWidget):
 
     def get_selected_items(self):
         return [x.strip() for x in self.h_combo.get_selected_items()]
+
+    def get_selected_states(self):
+        return self.h_combo.get_selected_states()
 
     def check_update(self, item):
         self.item_clicked.emit(item)

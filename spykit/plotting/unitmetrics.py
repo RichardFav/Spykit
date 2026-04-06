@@ -124,7 +124,7 @@ class UnitMetricPlot(PlotWidget):
     # Parameter Update Functions
     # ---------------------------------------------------------------------------
 
-    def plot_update(self, p_str):
+    def update_plot(self, p_str='i_unit'):
 
         match p_str:
             case 'i_unit':
@@ -283,7 +283,7 @@ class UnitMetricPlot(PlotWidget):
         if _self.is_updating:
             return
 
-        _self.plot_update(p_str)
+        _self.update_plot(p_str)
 
     # property observer properties
     i_unit = cf.ObservableProperty(pfcn(para_update, 'i_unit'))

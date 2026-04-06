@@ -562,14 +562,18 @@ class MainWindow(QMainWindow):
 
         # determines if there are any outstanding post-processing calculations
         pp_data = self.session_obj.post_data
-        if len(pp_data.is_saved) and (not np.all(pp_data.is_saved)):
+        if pp_data is None:
+            # case is the post-processing data class is empty
+            return True
+
+        elif len(pp_data.is_saved) and (not np.all(pp_data.is_saved)):
             # if so, prompt the user if they want to close
             q_str = ('There are post-processing calculations that haven''t been saved.\n'
                      'Do you still want to continue closing Spykit?')
             u_choice = QMessageBox.question(self, 'Confirm Spykit Close', q_str, cf.q_yes_no, cf.q_yes)
 
             # returns the user choise
-            return u_choice == cf.q_yes:
+            return u_choice == cf.q_yes
 
         else:
             # case is there are no outstanding files
@@ -755,7 +759,7 @@ class MainWindow(QMainWindow):
         # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/Large Example/large_example.ssf"
 
         # loads the session
-        self.menu_bar.load_session(f_file, False)
+        self.menu_bar.load_session(f_file, True)
 
         # retrieves the configuration tab object
         config_tab = self.prop_manager.get_prop_tab('config')
@@ -1182,9 +1186,6 @@ class MenuBar(QObject):
                 # otherwise, retrieve the files associated with the selected file
                 mm_file = np.where(mm_name == file_dlg.file_sel, mm_file, np.nan)
                 mm_file = mm_file[:, :, np.array([isinstance(x, str) for x in mm_file[0, 0, :]])]
-
-        # # clears the post-processing memory map/temporary files
-        # self.main_obj.session_obj.clear_postprocessing()
 
         # updates the post-processing tabs
         self.main_obj.session_obj.post_data.read_post_process(mm_file)
@@ -1732,8 +1733,8 @@ class MenuBar(QObject):
             for i, x in np.ndenumerate(pp_files):
                 pp_names[i[0], i[1], i[2]] = Path(x).stem
 
-            return (np.where(is_feas, pp_files, 0),
-                    np.where(is_feas, pp_names, 0))
+            return (np.where(is_feas, pp_files, ''),
+                    np.where(is_feas, pp_names, ''))
         else:
             return None, None
 

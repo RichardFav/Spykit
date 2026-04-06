@@ -177,19 +177,21 @@ class PropManager(QWidget):
 
             # adds the config/plot views
             self.main_obj.prop_manager.add_config_view(ppt.prop_names[pf])
-            self.main_obj.plot_manager.add_plot_view(pf, show_plot=False, expand_grid=False)
 
             # sets the property tab plot views
+            self.main_obj.plot_manager.add_plot_view(
+                pf, show_plot=False, expand_grid=False, clear_view=False)
             p_view = self.main_obj.plot_manager.get_plot_view(pf)
             pp_tab.set_plot_view(pf, p_view)
 
-        # re-enables the tab (re-enables when tabs are created)
+        # updates the progressbar
+        m_obj.update_progress_bar('View Setup Complete!', 1)
+
+        # updates the other gui properties
+        self.main_obj.info_manager.get_info_tab('unit').update_unit_status()
         self.set_tab_enabled('postprocess', True)
 
         # updates the progressbars
-        m_obj.update_progress_bar('View Setup Complete!', 1)
-
-        # resets the status label
         m_obj.update_progress_bar(None, None)
         self.main_obj.info_manager.prog_widget.update_message_label()
 
@@ -236,7 +238,7 @@ class PropManager(QWidget):
         # updates the memory map index
         self.main_obj.session_obj.post_data.set_mmap_index(i_mmap)
 
-        # updates the plot views (if being shown)
+        # updates the visible plot views
         type_r = cf.reverse_dict(p_manager.types)
         c_id = np.unique(self.get_prop_tab('config').obj_rconfig.c_id)
         for id in c_id:

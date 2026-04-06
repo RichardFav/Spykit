@@ -308,7 +308,7 @@ class UnitInfoTab(InfoWidget):
     # Miscellaneous Methods
     # ---------------------------------------------------------------------------
 
-    def setup_unit_table(self):
+    def setup_unit_table_data(self):
 
         # sets up the unit type fields
         if self.get_field('splitGoodAndMua_NonSomatic'):
@@ -319,21 +319,18 @@ class UnitInfoTab(InfoWidget):
         # sets the column headers
         q_hdr = self.main_obj.session_obj.get_mem_map_field('q_hdr')[0]
         is_ok = np.array([x in bc_var_map for x in q_hdr])
-        c_hdr = np.array(['Unit Type'] + [bc_var_map[x] for x in q_hdr[is_ok]])
+        self.c_hdr = np.array(['Unit Type'] + [bc_var_map[x] for x in q_hdr[is_ok]])
 
         # sets the unit metrics dataframe
         unit_type = self.get_unit_type_labels()
         q_met = self.main_obj.session_obj.get_mem_map_field('q_met')[:, is_ok]
-        self.df_unit = pd.DataFrame(np.hstack((unit_type.reshape(-1, 1), q_met)), columns=c_hdr)
+        self.df_unit = pd.DataFrame(np.hstack((unit_type.reshape(-1, 1), q_met)), columns=self.c_hdr)
 
         # sets the dtype of specific columns
         for i_ch in int_col:
             if i_ch in bc_var_map:
                 p_fld = bc_var_map[i_ch]
                 self.df_unit[p_fld] = self.df_unit[p_fld].astype(float).astype(int)
-
-        # creates the table object
-        self.main_obj.info_manager.setup_info_table(self.df_unit, 'unit', c_hdr, set_values=False)
 
     def update_unit_status(self):
 

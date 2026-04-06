@@ -251,12 +251,23 @@ class WaveFormProps(PropWidget):
 
         # field retrieval
         self.is_updating = True
-        h_combo = self.findChild(QComboBox, name='unit_type')
+        u_lbl = self.get_unit_label()
+        h_chklist = self.findChild(cw.QLabelCheckCombo, name='unit_type')
+
+        # retrieves the current selected units
+        is_sel = h_chklist.get_selected_states()
+        if len(u_lbl) != len(is_sel):
+            # if this doesn't match, then reset the array
+            is_sel = np.ones(len(u_lbl), dtype=bool)
 
         # clears and resets the unit-types
-        h_combo.clear()
-        for t in self.get_unit_label():
-            h_combo.addItem(t)
+        h_chklist.clear()
+        for i, t in enumerate(self.get_unit_label()):
+            h_chklist.add_item(t, is_sel[i])
+
+        # resets the waveform traces
+        self.plot_view.reset_unit_traces()
+        self.plot_view.update_selected_trace()
 
         # field retrieval
         self.is_updating = False
