@@ -242,8 +242,8 @@ class PropManager(QWidget):
         type_r = cf.reverse_dict(p_manager.types)
         c_id = np.unique(self.get_prop_tab('config').obj_rconfig.c_id)
         for id in c_id:
-            # updates the post-processing views (if currently views)
             if (id in type_r) and (type_r[id] in p_manager.pp_views):
+                # updates the post-processing views (if currently viewing)
                 h_view = self.main_obj.plot_manager.get_plot_view(type_r[id])
                 h_view.update_plot()
 
@@ -251,6 +251,20 @@ class PropManager(QWidget):
                     case 'waveform':
                         # case is the waveform plot
                         pp_prop.get_tab_view(type_r[id]).post_process_change()
+
+        # resets the unit table row colours
+        unit_tab = self.main_obj.info_manager.get_info_tab('unit')
+        unit_tab.setup_unit_table_data()
+        for i_row, c_stat in enumerate(unit_tab.df_unit['Unit Type']):
+            # resets the row colour
+            unit_tab.set_table_row_colour(i_row, c_stat.lower())
+
+            # resets the unit classification field
+            value = unit_tab.df_unit.iloc[i_row][unit_tab.df_unit.columns[0]]
+            unit_tab.table.item(i_row, 0).setText(str(value))
+
+        # clears any probe unit markers (if already created)
+        self.main_obj.plot_manager.get_plot_view('probe').reset_unit_markers()
 
     # ---------------------------------------------------------------------------
     # Property Parameter Get/Set Functions

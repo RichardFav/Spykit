@@ -1191,11 +1191,6 @@ class MenuBar(QObject):
         self.main_obj.session_obj.post_data.read_post_process(mm_file)
         self.main_obj.prop_manager.add_prop_tabs(['postprocess'])
 
-        # # creates the config views for each post-processing view type
-        # pp_tab = self.main_obj.prop_manager.get_prop_tab('postprocess')
-        # for pf in pp_tab.plot_views:
-        #     self.main_obj.prop_manager.add_config_view(ppt.prop_names[pf])
-
         for i_mm in range(mm_file.shape[2]):
             mm_name = os.path.split(mm_file[0, 0, i_mm])[1]
             self.main_obj.added_post_process(mm_name)
