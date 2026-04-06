@@ -5,6 +5,7 @@ from copy import deepcopy
 from functools import partial as pfcn
 
 # custom module imports
+import spykit.props.prop_type as ppt
 import spykit.common.common_func as cf
 import spykit.common.common_widget as cw
 
@@ -144,8 +145,23 @@ class PropManager(QWidget):
                     #     self.add_config_view(pt.prop_names[pf])
 
     # ---------------------------------------------------------------------------
-    # Post-Processing View Setup Functions
+    # Post-Processing View/Tab Functions
     # ---------------------------------------------------------------------------
+
+    def rename_post_process_solution(self, mm_name_new):
+
+        # field retrieval
+        pp_tab = self.get_prop_tab('postprocess')
+        pp_data = self.main_obj.session_obj.post_data
+
+        # determines the location of the current item
+        mm_name_prev = pp_data.mmap_name[pp_data.i_mmap]
+        i_mmap_prev = pp_tab.soln_combo.obj_cbox.findText(mm_name_prev)
+
+        # resets the combobox item text
+        pp_tab.is_updating = True
+        pp_tab.soln_combo.obj_cbox.setItemText(i_mmap_prev, mm_name_new)
+        pp_tab.is_updating = False
 
     def add_post_process_views(self, m_obj):
 
@@ -158,6 +174,9 @@ class PropManager(QWidget):
             # sets up and runs the plot view setup thread worker
             m_str = 'Creating {0} View'.format(pf.capitalize())
             m_obj.update_progress_bar(m_str, 0.5 * (1 + (i_pf / n_views)))
+
+            # adds the config/plot views
+            self.main_obj.prop_manager.add_config_view(ppt.prop_names[pf])
             self.main_obj.plot_manager.add_plot_view(pf, show_plot=False, expand_grid=False)
 
             # sets the property tab plot views

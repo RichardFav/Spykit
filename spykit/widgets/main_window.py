@@ -558,6 +558,23 @@ class MainWindow(QMainWindow):
         self.menu_bar.update_progress_bar(None, None)
         self.info_manager.prog_widget.update_message_label()
 
+    def post_processing_data_check(self):
+
+        # determines if there are any outstanding post-processing calculations
+        pp_data = self.session_obj.post_data
+        if len(pp_data.is_saved) and (not np.all(pp_data.is_saved)):
+            # if so, prompt the user if they want to close
+            q_str = ('There are post-processing calculations that haven''t been saved.\n'
+                     'Do you still want to continue closing Spykit?')
+            u_choice = QMessageBox.question(self, 'Confirm Spykit Close', q_str, cf.q_yes_no, cf.q_yes)
+
+            # returns the user choise
+            return u_choice == cf.q_yes:
+
+        else:
+            # case is there are no outstanding files
+            return True
+
     def remove_temp_mem_maps(self):
 
         # determines all memory map files in the expt directory
@@ -1018,8 +1035,14 @@ class MenuBar(QObject):
 
     def close_window(self):
 
-        # clears the post-processing memory map/temporary files
-        self.main_obj.session_obj.clear_all_postprocessing()
+        # determines if there are any outstanding post-processing data files
+        if self.main_obj.post_processing_data_check():
+            # if the user chose to continue, then clear the data files
+            self.main_obj.session_obj.clear_all_postprocessing()
+
+        else:
+            # if the user cancelled, then exit
+            return
 
         # closes the post-proessing dialog window (if open)
         if self.main_obj.bombcell_dlg is not None:
@@ -1041,8 +1064,14 @@ class MenuBar(QObject):
         if file_info is None:
             return
 
-        # clears the post-processing memory map/temporary files
-        self.main_obj.session_obj.clear_all_postprocessing()
+        # determines if there are any outstanding post-processing data files
+        if self.main_obj.post_processing_data_check():
+            # if the user chose to continue, then clear the data files
+            self.main_obj.session_obj.clear_all_postprocessing()
+
+        else:
+            # if the user cancelled, then exit
+            return
 
         # loads data from the file
         self.update_progress_bar('Loading Session File', 0.1)
@@ -1161,10 +1190,10 @@ class MenuBar(QObject):
         self.main_obj.session_obj.post_data.read_post_process(mm_file)
         self.main_obj.prop_manager.add_prop_tabs(['postprocess'])
 
-        # creates the config views for each post-processing view type
-        pp_tab = self.main_obj.prop_manager.get_prop_tab('postprocess')
-        for pf in pp_tab.plot_views:
-            self.main_obj.prop_manager.add_config_view(ppt.prop_names[pf])
+        # # creates the config views for each post-processing view type
+        # pp_tab = self.main_obj.prop_manager.get_prop_tab('postprocess')
+        # for pf in pp_tab.plot_views:
+        #     self.main_obj.prop_manager.add_config_view(ppt.prop_names[pf])
 
         for i_mm in range(mm_file.shape[2]):
             mm_name = os.path.split(mm_file[0, 0, i_mm])[1]
@@ -1391,6 +1420,7 @@ class MenuBar(QObject):
                         os.remove(mm_f)
 
             # runs the postprocessing output thread worker
+            self.main_obj.prop_manager.rename_post_process_solution(f"{mm_name}.dat")
             self.main_obj.session_obj.post_data.rename_post_process(mm_file)
 
     def save_config(self):
@@ -1716,10 +1746,14 @@ class MenuBar(QObject):
         for i in range(is_feas.shape[0]):
             for j in range(is_feas.shape[1]):
                 for k in range(is_feas.shape[2]):
+                    # determines if the file is a temporary file
+                    is_temp_file = os.path.split(pp_files[i, j, k])[-1].startswith('Temp_')
+
+                    # sets the final feasibility flag
                     if self.main_obj.session_obj.is_concat_run():
-                        is_feas[i, j, k] = 'concat' in pp_files[i, j, k]
+                        is_feas[i, j, k] = ('concat' in pp_files[i, j, k]) and (not is_temp_file)
                     else:
-                        is_feas[i, j, k] = 'concat' not in pp_files[i, j, k]
+                        is_feas[i, j, k] = ('concat' not in pp_files[i, j, k]) and (not is_temp_file)
 
         return is_feas
 
