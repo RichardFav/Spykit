@@ -519,6 +519,7 @@ class InfoManager(QWidget):
 
         # disables the table
         self.set_tab_enabled('unit', False)
+        unit_tab.table.hide()
 
         # sets up and updates the table
         unit_tab.setup_unit_table_data()
@@ -526,6 +527,7 @@ class InfoManager(QWidget):
         unit_tab.update_unit_status()
 
         # enables the unit tab
+        unit_tab.table.show()
         self.set_tab_enabled('unit', True)
 
     def finish_unit_table(self, _):

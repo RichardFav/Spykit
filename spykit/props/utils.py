@@ -255,6 +255,9 @@ class PropManager(QWidget):
         # resets the unit table row colours
         unit_tab = self.main_obj.info_manager.get_info_tab('unit')
         unit_tab.setup_unit_table_data()
+        # unit_tab.table.hide()
+        # QApplication.processEvents()
+
         for i_row, c_stat in enumerate(unit_tab.df_unit['Unit Type']):
             # resets the row colour
             unit_tab.set_table_row_colour(i_row, c_stat.lower())
@@ -264,6 +267,7 @@ class PropManager(QWidget):
             unit_tab.table.item(i_row, 0).setText(str(value))
 
         # clears any probe unit markers (if already created)
+        # unit_tab.table.show()
         self.main_obj.plot_manager.get_plot_view('probe').reset_unit_markers()
 
     # ---------------------------------------------------------------------------
