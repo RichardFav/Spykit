@@ -137,6 +137,7 @@ class UpSetPlot(PlotWidget):
             x=[0],
             height=[0],
             width=1,
+            pen=None,
         )
 
         # sets the set count plot properties
@@ -339,13 +340,17 @@ class UpSetPlot(PlotWidget):
 
     def get_data_array(self):
 
-        # sets up the metric table
+        # field retrieval
         p = self.get_field
         q_met = self.session_info.get_metric_table()
+        unit_tab = self.session_info.main_obj.info_manager.get_info_tab('unit')
+        unit_lbl = unit_tab.get_unit_type_labels()
 
         match self.unit_type:
             case 'Noise':
                 # case is the noisy units
+
+                # sets up the interaction array
                 data_arr = [
                     np.isnan(q_met['nPeaks']) | (q_met['nPeaks'] > p('maxNPeaks')),
                     np.isnan(q_met['nTroughs']) | (q_met['nTroughs'] > p('maxNTroughs')),
@@ -362,35 +367,54 @@ class UpSetPlot(PlotWidget):
                     data_arr += [((q_met['spatialDecaySlope'] < p('minSpatialDecaySlopeExp')) |
                                   (q_met['spatialDecaySlope'] > p('maxSpatialDecaySlopeExp')))]
 
+                # keep only the noisy units
+                is_keep = unit_lbl == self.unit_type
+
             case 'MUA':
                 # case is the MUA units
+
+                # field retrieval
+                p_ratio = q_met['presenceRatio']
+                p_RPV_est = q_met['fractionRPVs_estimatedTauR']
+                p_spike_miss = q_met['percentageSpikesMissing_gaussian']
+
+                # sets up the interaction array
                 data_arr = [
-                    q_met['percentageSpikesMissing_gaussian'] > p('maxPercSpikesMissing'),
+                    (p_spike_miss > p('maxPercSpikesMissing')),
                     q_met['nSpikes'] < p('minNumSpikes'),
-                    q_met['fractionRPVs_estimatedTauR'] > p('maxRPVviolations'),
-                    q_met['presenceRatio'] < p('minPresenceRatio')
+                    (p_RPV_est > p('maxRPVviolations')),
+                    (p_ratio < p('minPresenceRatio'))
                 ]
 
+                # data_arr = [
+                #     ((p_spike_miss > p('maxPercSpikesMissing')) | np.isnan(p_spike_miss)),
+                #     q_met['nSpikes'] < p('minNumSpikes'),
+                #     ((p_RPV_est > p('maxRPVviolations')) | np.isnan(p_RPV_est)),
+                #     ((p_ratio < p('minPresenceRatio')) | np.isnan(p_ratio))
+                # ]
+
                 # appends distance metrics (if applicable)
-                if p('computeDistanceMetrics') and (not np.isnan(p('isoDmin'))):
+                if bool(p('computeDistanceMetrics')) and (not np.isnan(p('isoDmin'))):
                     data_arr += [q_met['isoD'] < p('isoDmin'),
                                  q_met['Lratio'] > p('lratioMax')]
 
                 # appends extracted raw waveform metrics (if applicable)
-                if p('extractRaw'):
+                if bool(p('extractRaw')):
                     data_arr += [q_met['rawAmplitude'] < p('minAmplitude'),
                                  q_met['signalToNoiseRatio'] < p('minSNR')]
 
                 # appends drift correction labels (if applicable)
-                if p('computeDrift'):
-                    data_arr += [q_met['maxDriftEstimate'] > p('maxDrift')]
+                if bool(p('computeDrift')):
+                    mx_drift = q_met['maxDriftEstimate']
+                    data_arr += [(mx_drift > p('maxDrift')) | ~np.isnan(mx_drift)]
 
                 # keep only MUA and single units
                 is_keep = np.isin(self.get_field('unit_type'), [1, 2]).flatten()
-                data_arr = [x[is_keep] for x in data_arr]
 
             case 'NonSoma':
                 # case is the non-soma units
+
+                # sets up the interaction array
                 data_arr = [
                     ((q_met['troughToPeak2Ratio'] < p('minTroughToPeak2Ratio_nonSomatic')) &
                      (q_met['mainPeak_before_width'] < p('minWidthFirstPeak_nonSomatic')) &
@@ -399,8 +423,11 @@ class UpSetPlot(PlotWidget):
                     q_met['mainPeakToTroughRatio'] > p('maxMainPeakToTroughRatio_nonSomatic')
                 ]
 
+                # keep only the non-soma units
+                is_keep = unit_lbl == 'Non-Somatic'
+
         # returns the label array
-        return np.transpose(np.array(data_arr))
+        return np.transpose(np.array([x[is_keep] for x in data_arr]))
 
     def get_data_labels(self):
 
