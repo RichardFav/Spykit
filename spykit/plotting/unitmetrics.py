@@ -302,7 +302,7 @@ class TemplateTrace(UnitPlotLayout):
     n_plot = 20
     n_col = 4
     n_row = 5
-    p_scl = 1.2
+    p_scl = 0.95
     y_ofs = 0.5
 
     # pen objects
@@ -660,7 +660,7 @@ class SpatialDecayPlot(UnitPlotLayout):
         self.plot_loc.setData(x=self.x_plt, y=self.y_plt)
 
         # resets the axes limits
-        self.v_box.setXRange(self.x_lim[0], self.x_lim[1],padding=xy_pad)
+        self.v_box.setXRange(self.x_plt[0], self.x_plt[-1],padding=xy_pad)
         self.v_box.setYRange(self.y_lim[0], self.y_lim[1],padding=4 * xy_pad)
 
     def update_trend_line(self):
@@ -1001,6 +1001,7 @@ class SpikeActivityPlot(UnitPlotLayout):
     sym_size = 6
 
     # other fixed scalars
+    t_min = 10
     py_max = 1.1
     n_bin_min = 30
 
@@ -1008,7 +1009,7 @@ class SpikeActivityPlot(UnitPlotLayout):
         super(SpikeActivityPlot, self).__init__(unit_props, i_unit, ax_type=['bottom'])
 
         # input arguments
-        self.t_dur = np.floor(t_dur)
+        self.t_dur = np.floor(t_dur) if (t_dur > self.t_min) else t_dur
 
         # initialises the plot widgets
         self.init_other_class_fields()
@@ -1142,7 +1143,7 @@ class SpikeActivityPlot(UnitPlotLayout):
         self.plot_rpv.setData(x[~is_ok], y[~is_ok])
 
         # resets the axes view range
-        self.v_box.setXRange(0., self.t_dur, padding=xy_pad)
+        self.v_box.setXRange(0., self.t_dur, padding=xy_pad if (self.t_dur > 1) else 0)
         self.v_box.setYRange(0., self.py_max * np.max(y), padding=2 * xy_pad)
 
     def update_spike_freq(self):
