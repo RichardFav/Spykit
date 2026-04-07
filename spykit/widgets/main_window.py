@@ -1527,44 +1527,89 @@ class MenuBar(QObject):
 
     def clear_bomb_cell(self, state=False, prompt_user=True):
 
-        # prompts the user if they want to clear
+        # initialisations
+        reset_view = True
+        pp_data = self.main_obj.session_obj.post_data
+
+        # prompts the user for the files to remove (if calling via menu item)
         if prompt_user:
-            q_str = "Are you sure you want to clear the loaded post-processing data?"
-            u_choice = QMessageBox.question(self.main_obj, 'Clear Postprocessing?', q_str, cf.q_yes_no, cf.q_yes)
-            if u_choice == cf.q_no:
-                # exit if the user cancelled
-                return
+            if len(pp_data.mmap_name) > 1:
+                # case is multiple loaded post-processing data file
+                pp_name = np.array([os.path.splitext(x)[0] for x in pp_data.mmap_name])
+                file_dlg = cw.QFileListDialog(
+                    None, pp_name, is_multi_sel=True, main_lbl='Clear')
+                file_dlg.exec()
+                if file_dlg.file_sel is None:
+                    # case is the user cancelled
+                    return
+                else:
+                    # otherwise, set the memory mapping files to remove
+                    _, i_mmap_rmv, _ = np.intersect1d(pp_name, file_dlg.file_sel, return_indices=True)
+                    reset_view = len(i_mmap_rmv) == len(pp_name)
 
-        # clears the post-processing data
-        self.main_obj.session_obj.clear_all_postprocessing()
+            else:
+                # case is only one loaded post-processing data file
+                q_str = "Are you sure you want to clear the current post-processing dataset?"
+                u_choice = QMessageBox.question(self.main_obj, 'Clear Postprocessing?', q_str, cf.q_yes_no, cf.q_yes)
+                if u_choice == cf.q_no:
+                    # exit if the user cancelled
+                    return
 
-        # clears the post-processing views from the configuration panel
-        is_view_change = False
-        g_id = deepcopy(self.main_obj.plot_manager.grid_id)
-        cf_props = self.main_obj.prop_manager.get_prop_tab('config')
-        pp_props = self.main_obj.prop_manager.get_prop_tab('postprocess')
+                else:
+                    # otherwise, flag all memory maps are to be cleared
+                    i_mmap_rmv = [0]
 
-        #
-        for pp_view in pp_props.plot_views:
-            # determines if the view has been created
-            if pp_view in self.main_obj.plot_manager.types:
-                # removes the plot from the plot view
-                pp_id = self.main_obj.plot_manager.types[pp_view]
-                if pp_id in g_id:
-                    is_view_change = True
-                    g_id[g_id == pp_id] = 0
-                    self.main_obj.plot_manager.get_plot_view(pp_view).hide()
+        else:
+            # otherwise, clear all the post-processing data
+            i_mmap_rmv = np.array(range(len(pp_data.mmap_name)))
 
-                # removes the view from the configuration list
-                cf_props.remove_config_view(ppt.prop_names[pp_view])
+        # removes the post-processing
+        for i_rmv in np.flip(i_mmap_rmv):
+            self.main_obj.session_obj.remove_post_process(i_rmv)
+            time.sleep(0.05)
 
-        # resets the view ID (if a change was made)
-        if is_view_change:
-            self.main_obj.prop_manager.set_region_config(g_id)
-            self.main_obj.plot_manager.update_plot_config(g_id)
+        if reset_view:
+            # clears the post-processing views from the configuration panel
+            is_view_change = False
+            g_id = deepcopy(self.main_obj.plot_manager.grid_id)
+            cf_props = self.main_obj.prop_manager.get_prop_tab('config')
+            pp_props = self.main_obj.prop_manager.get_prop_tab('postprocess')
 
-        # disable menu items
-        self.set_menu_enabled_blocks('clear-postprocess')
+            for pp_view in pp_props.plot_views:
+                # determines if the view has been created
+                if pp_view in self.main_obj.plot_manager.types:
+                    # removes the plot from the plot view
+                    pp_id = self.main_obj.plot_manager.types[pp_view]
+                    if pp_id in g_id:
+                        is_view_change = True
+                        g_id[g_id == pp_id] = 0
+                        self.main_obj.plot_manager.get_plot_view(pp_view).hide()
+
+                    # removes the view from the configuration list
+                    cf_props.remove_config_view(ppt.prop_names[pp_view])
+
+            # resets the view ID (if a change was made)
+            if is_view_change:
+                # force updates the gui
+                time.sleep(0.05)
+                self.main_obj.prop_manager.set_region_config(g_id)
+
+                # resets the configuration ID flags and views
+                time.sleep(0.05)
+                self.main_obj.plot_manager.update_plot_config(g_id)
+                self.main_obj.reset_prop_tab_visible(g_id)
+
+            # clear the units from probe-view
+            self.main_obj.plot_manager.get_plot_view('probe').clear_unit_markers()
+            self.main_obj.info_manager.set_tab_enabled('unit', False)
+
+            # disable menu items
+            self.set_menu_enabled_blocks('clear-postprocess')
+
+        else:
+            # re-runs the solution file selection callback function
+            pp_tab = self.main_obj.prop_manager.get_prop_tab('postprocess')
+            pp_tab.combo_soln_name(pp_tab.soln_combo.obj_cbox)
 
     # ---------------------------------------------------------------------------
     # File I/O Functions

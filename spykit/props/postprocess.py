@@ -110,14 +110,31 @@ class PostProcProps(PropWidget):
             # adds the tab to the tab group
             self.tab_group_pp.addTab(tab_widget, t_lbl)
 
-    def add_soln_file(self, mm_name_new):
+    # ---------------------------------------------------------------------------
+    # Solution File I/O Functions
+    # ---------------------------------------------------------------------------
+
+    def add_soln_file(self, mmap_name_add):
 
         # adds the solver solution file name
-        self.mm_name.append(mm_name_new)
+        self.mm_name.append(mmap_name_add)
 
         # adds the new field to the combobox
         self.is_updating = True
-        self.soln_combo.obj_cbox.addItem(mm_name_new)
+        self.soln_combo.obj_cbox.addItem(mmap_name_add)
+        self.is_updating = False
+
+        # updates the other properties
+        self.soln_combo.set_enabled(len(self.mm_name) > 1)
+
+    def remove_soln_file(self, i_mm_rmv):
+
+        # removes the solution file name
+        self.mm_name.pop(i_mm_rmv)
+
+        # removes the field from the combobox
+        self.is_updating = True
+        self.soln_combo.obj_cbox.removeItem(i_mm_rmv)
         self.is_updating = False
 
         # updates the other properties

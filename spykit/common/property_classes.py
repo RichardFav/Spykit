@@ -665,6 +665,11 @@ class SessionWorkBook(QObject):
     def remove_post_process(self, i_mmap_rmv=None):
 
         if self.post_data is not None:
+            # removes the item from the
+            pp_tab = self.main_obj.prop_manager.get_prop_tab('postprocess')
+            pp_tab.remove_soln_file(i_mmap_rmv)
+
+            # removes the memory map
             self.post_data.remove_post_process(i_mmap_rmv)
 
     def clear_all_postprocessing(self):
@@ -1272,6 +1277,10 @@ class PostProcessData(QObject):
         self.is_saved = []
         self.i_mmap = 0
 
+    # ---------------------------------------------------------------------------
+    # Memory Map I/O Functions
+    # ---------------------------------------------------------------------------
+
     def read_post_process(self, mm_file):
 
         # creates the memory map object
@@ -1309,22 +1318,6 @@ class PostProcessData(QObject):
         if not is_save:
             self.added_pp.emit(self.mmap_name[-1])
 
-    def remove_post_process(self, i_mmap_rmv=None):
-
-        # default memory map array index
-        if i_mmap_rmv is None:
-            i_mmap_rmv = self.i_mmap
-
-        # appends the new mmap file
-        self.mmap.pop(i_mmap_rmv)
-        self.mmap_file.pop(i_mmap_rmv)
-        self.mmap_name.pop(i_mmap_rmv)
-        self.is_saved.pop(i_mmap_rmv)
-
-        # decrements the memory map array index (if current exceeds length)
-        if (i_mmap_rmv > self.i_mmap) and len(self.mmap):
-            self.i_mmap -= 1
-
     def clear_all_postprocessing(self):
 
         # exits if there is no data loaded
@@ -1357,6 +1350,22 @@ class PostProcessData(QObject):
         self.mmap_file = []
         self.mmap_name = []
 
+    def remove_post_process(self, i_mmap_rmv=None):
+
+        # default memory map array index
+        if i_mmap_rmv is None:
+            i_mmap_rmv = self.i_mmap
+
+        # appends the new mmap file
+        self.mmap.pop(i_mmap_rmv)
+        self.mmap_file.pop(i_mmap_rmv)
+        self.mmap_name.pop(i_mmap_rmv)
+        self.is_saved.pop(i_mmap_rmv)
+
+        # decrements the memory map array index (if current exceeds length)
+        if (i_mmap_rmv > self.i_mmap) and len(self.mmap):
+            self.i_mmap -= 1
+
     def rename_post_process(self, mmap_file_new):
 
         # field retrieval
@@ -1383,9 +1392,17 @@ class PostProcessData(QObject):
         self.mmap_file[self.i_mmap] = mmap_file_new
         self.mmap_name[self.i_mmap] = os.path.split(mmap_file_new[0, 0])[1]
 
+    # ---------------------------------------------------------------------------
+    # Class Setter Functions
+    # ---------------------------------------------------------------------------
+
     def set_mmap_index(self, i_mmap_new):
 
         self.i_mmap = i_mmap_new
+
+    # ---------------------------------------------------------------------------
+    # Class Getter Functions
+    # ---------------------------------------------------------------------------
 
     def get_mem_map_field(self, i_run, i_shank, p_fld):
 

@@ -2049,12 +2049,13 @@ class QFileListDialog(QDialog):
     n_but = 2
     dlg_width = 400
     dlg_height = 300
-    b_str = ['Load', 'Cancel']
 
-    def __init__(self, parent=None, f_list=None, title_str='Select A File'):
+    def __init__(self, parent=None, f_list=None, title_str='Select A File', is_multi_sel=False, main_lbl='Load'):
         super(QFileListDialog, self).__init__()
 
         # input arguments
+        self.b_str = [main_lbl, 'Cancel']
+        self.is_multi_sel = is_multi_sel
         self.f_list = f_list[np.array([len(x) for x in f_list]) > 0]
 
         # creates the dialog layout
@@ -2089,16 +2090,30 @@ class QFileListDialog(QDialog):
         self.file_list.setStyleSheet("border: 1px solid black;")
         self.main_layout.addWidget(self.file_list, 0, 0, 3, 1)
 
+        # makes the list widget multi-select (if required)
+        if self.is_multi_sel:
+            self.file_list.setSelectionMode(QAbstractItemView.SelectionMode.MultiSelection)
+            self.file_list.itemSelectionChanged.connect(self.list_select)
+
         # control button setup
-        cb_fcn = [self.open_file, self.close_dialog]
+        cb_fcn = [self.main_select, self.close_dialog]
         for i_but in range(self.n_but):
             self.cont_but[i_but] = create_push_button(None, self.b_str[i_but], font=font_lbl)
             self.main_layout.addWidget(self.cont_but[i_but], i_but, 1, 1, 1)
             self.cont_but[i_but].clicked.connect(cb_fcn[i_but])
 
-    def open_file(self):
+    def list_select(self):
 
-        self.file_sel = self.file_list.currentItem().text()
+        item_sel = self.file_list.selectedItems()
+        self.cont_but[0].setEnabled(len(item_sel) > 0)
+
+    def main_select(self):
+
+        if self.is_multi_sel:
+            self.file_sel = [item.text() for item in self.file_list.selectedItems()]
+        else:
+            self.file_sel = self.file_list.currentItem().text()
+
         self.close()
 
     def close_dialog(self):
