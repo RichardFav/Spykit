@@ -2023,10 +2023,15 @@ class QTableUndock(QDialog):
     def get_table_dimensions(self, table_obj):
 
         # initalisations
-        table_height = (table_obj.rowCount() + 2) * table_obj.hght_row
-        table_width = 2 * (1 + self.main_layout.spacing() + self.main_layout.getContentsMargins()[0])
+        l_space = self.main_layout.spacing()
+        c_margin = self.main_layout.getContentsMargins()
 
         # calculates the table width
+        h_ofs = 2 * l_space + np.sum(c_margin[1::2])
+        table_height = h_ofs + (table_obj.rowCount() + 1) * table_obj.hght_row
+
+        # calculates the table width
+        table_width = 2 * (1 + l_space + c_margin[0])
         for i in range(table_obj.columnCount()):
             table_width += table_obj.columnWidth(i)
 
