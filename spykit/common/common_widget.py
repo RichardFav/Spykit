@@ -303,7 +303,7 @@ class QRegionConfig(QWidget):
         self.is_sel = None
         self.is_show_lbl = False
         self.gbox_height = gbox_height
-        self.tr_col = cf.get_colour_value('w')
+        self.trace_col = cf.get_colour_value('w')
 
         # array class fields
         self.h_rgrid = []
@@ -372,7 +372,7 @@ class QRegionConfig(QWidget):
 
         # trace index/colour fields
         self.i_trace = self.obj_lbl_combo.obj_cbox.currentIndex()
-        self.tr_col = self.p_col[self.i_trace]
+        self.trace_col = self.p_col[self.i_trace]
 
         # adds the widgets to the class widget
         self.main_layout.addWidget(self.rc_widget)
@@ -572,7 +572,7 @@ class QRegionConfig(QWidget):
 
         # trace index/colour fields
         self.i_trace = h_cbox.currentIndex()
-        self.tr_col = self.p_col[self.i_trace]
+        self.trace_col = self.p_col[self.i_trace]
 
         # updates the grid object style sheets
         for i, h in enumerate(self.h_rgrid):
@@ -731,8 +731,8 @@ class QRegionConfig(QWidget):
 
     def set_grid_style_sheet(self, h_grid, n_col):
 
-        tr_col_f = deepcopy(self.tr_col)
-        tr_col_f.setAlpha(128)
+        trace_col_f = deepcopy(self.trace_col)
+        trace_col_f.setAlpha(128)
 
         # appends the selection colour (if provided)
         ss_str = textwrap.dedent("""
@@ -744,7 +744,7 @@ class QRegionConfig(QWidget):
                 background-color: %s;
                 border: 1px solid;
             }                        
-        """ % (self.get_rgba_string(n_col), self.get_rgba_string(tr_col_f)))
+        """ % (self.get_rgba_string(n_col), self.get_rgba_string(trace_col_f)))
 
         # updates the object style sheet
         h_grid.setStyleSheet(ss_str)

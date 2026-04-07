@@ -39,9 +39,6 @@ class WaveFormPlot(PlotWidget):
     # font sizes
     title_size0 = 22
 
-    # pen objects
-    l_pen_sel = pg.mkPen(color=(255, 0, 0), width=4)
-
     def __init__(self, session_info):
         # creates the class object
         p_layout = setup_default_layout()
@@ -62,7 +59,8 @@ class WaveFormPlot(PlotWidget):
         self.show_grid = False
         self.i_type_sel = None
         self.bg_widget = QWidget()
-        self.tr_col = cf.get_colour_value('g')
+        self.trace_col = cf.get_colour_value('g')
+        self.unit_col = cf.get_colour_value('r')
 
         # initialises the other class fields
         self.init_class_fields()
@@ -82,6 +80,7 @@ class WaveFormPlot(PlotWidget):
         self.l_size = self.plot_layout.sizeHint()
         self.title_size = '{0}pt'.format(self.title_size0)
         self.t0 = np.array(range(self.get_field('n_pts')))
+        self.h_pen_unit = pg.mkPen(self.unit_col, width=3)
 
         # field initialisations
         if self.get_field('splitGoodAndMua_NonSomatic'):
@@ -92,7 +91,7 @@ class WaveFormPlot(PlotWidget):
         # memory allocation
         self.n_plt = len(self.unit_lbl)
         self.unit_type = np.ones(self.n_plt, dtype=bool)
-        self.h_pen_tr = pg.mkPen(self.tr_col, width=1)
+        self.h_pen_trace = pg.mkPen(self.trace_col, width=1)
 
         # background widget properties
         self.bg_widget.setStyleSheet("background-color: rgba(0, 0, 0, 0);")
@@ -185,6 +184,7 @@ class WaveFormPlot(PlotWidget):
         self.update_plot_config()
         self.update_selected_trace()
         self.update_trace_colour()
+        self.update_unit_colour()
         self.update_axes_grid()
 
     def update_selected_trace(self):
@@ -203,7 +203,6 @@ class WaveFormPlot(PlotWidget):
         # resets the selected trace plot
         hp = self.h_plot[self.i_type_sel].plotItem.items[1]
         hp.setPath(pg.arrayToQPath(self.t0, y_spike[self.i_unit - 1, :]))
-        hp.setPen(self.l_pen_sel)
         hp.show()
 
     def update_plot_config(self):
@@ -229,10 +228,18 @@ class WaveFormPlot(PlotWidget):
     def update_trace_colour(self):
 
         # resets the pen colour
-        self.h_pen_tr = pg.mkPen(self.tr_col, width=1)
+        self.h_pen_trace = pg.mkPen(self.trace_col, width=1)
 
         for hp in self.h_plot:
-            hp.plotItem.items[0].setPen(self.h_pen_tr)
+            hp.plotItem.items[0].setPen(self.h_pen_trace)
+
+    def update_unit_colour(self):
+
+        # resets the pen colour
+        self.h_pen_unit = pg.mkPen(self.unit_col, width=3)
+
+        for hp in self.h_plot:
+            hp.plotItem.items[1].setPen(self.h_pen_unit)
 
     def update_axes_grid(self):
 
@@ -342,8 +349,11 @@ class WaveFormPlot(PlotWidget):
             case 'show_grid':
                 _self.update_axes_grid()
 
-            case 'tr_col':
+            case 'trace_col':
                 _self.update_trace_colour()
+
+            case 'unit_col':
+                _self.update_unit_colour()
 
             case 'i_unit':
                 _self.update_selected_trace()
@@ -355,4 +365,5 @@ class WaveFormPlot(PlotWidget):
     i_unit = cf.ObservableProperty(pfcn(update_para, 'i_unit'))
     show_grid = cf.ObservableProperty(pfcn(update_para, 'show_grid'))
     unit_type = cf.ObservableProperty(pfcn(update_para, 'unit_type'))
-    tr_col = cf.ObservableProperty(pfcn(update_para, 'tr_col'))
+    trace_col = cf.ObservableProperty(pfcn(update_para, 'trace_col'))
+    unit_col = cf.ObservableProperty(pfcn(update_para, 'unit_col'))

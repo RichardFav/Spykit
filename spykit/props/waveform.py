@@ -71,7 +71,8 @@ class WaveFormPara(PropPara):
     i_unit = cf.ObservableProperty(pfcn(_edit_update, 'i_unit'))
     unit_type = cf.ObservableProperty(pfcn(_checklist_update, 'unit_type'))
     show_grid = cf.ObservableProperty(pfcn(_check_update, 'show_grid'))
-    tr_col = cf.ObservableProperty(pfcn(_colorpick_update, 'tr_col'))
+    trace_col = cf.ObservableProperty(pfcn(_colorpick_update, 'trace_col'))
+    unit_col = cf.ObservableProperty(pfcn(_colorpick_update, 'unit_col'))
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -114,14 +115,16 @@ class WaveFormProps(PropWidget):
 
         # field retrieval
         unit_lbl = self.get_unit_label()
-        tr_col0 = cf.get_colour_value('g')
+        trace_col0 = cf.get_colour_value('g')
+        unit_col0 = cf.get_colour_value('r')
         show_unit = np.ones(len(unit_lbl), dtype=bool)
 
         # sets up the subgroup fields
         p_tmp = {
             'i_unit': self.create_para_field('Cluster ID#', 'edit', 1),
             'unit_type': self.create_para_field('Waveform Unit Type', 'checklist', show_unit, p_list=unit_lbl),
-            'tr_col': self.create_para_field('Plot Trace Colour', 'colorpick', tr_col0),
+            'trace_col': self.create_para_field('Waveform Colour', 'colorpick', trace_col0),
+            'unit_col': self.create_para_field('Selected Unit Colour', 'colorpick', unit_col0),
             'show_grid': self.create_para_field('Show Plot Gridlines', 'checkbox', False),
         }
 
