@@ -572,7 +572,7 @@ class UnitHist(UnitPlotLayout):
 
         # field retrieval
         q_met_unit = self.q_met[self.i_unit - 1]
-        self.lbl_col = 'white' if self.is_met_within_limits() else 'red'
+        self.lbl_col = self.get_plot_thresh_colour()
 
         # sets up the histogram title string
         if np.isnan(q_met_unit):
@@ -797,6 +797,18 @@ class UnitHist(UnitPlotLayout):
 
         return -(x * self.y_lim_max) / (1 - x)
 
+    def get_plot_thresh_colour(self):
+
+        # field retrieval
+        q_val = self.q_met[self.i_unit - 1]
+
+        if np.isnan(q_val):
+            # case is the metric value is a NaN
+            return 'yellow'
+        else:
+            # otherwise, determine if the value is within limits
+            return 'white' if self.is_met_within_limits(q_val) else 'red'
+
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
     # ---------------------------------------------------------------------------
@@ -806,10 +818,9 @@ class UnitHist(UnitPlotLayout):
         # determines if all metrics are
         return next((False for x in self.q_met if (x % 1 != 0)), True)
 
-    def is_met_within_limits(self):
+    def is_met_within_limits(self, q_val):
 
         # field retrieval
-        q_val = self.q_met[self.i_unit - 1]
         has_lim = ~np.isnan(self.p_met)
 
         if np.all(has_lim):
