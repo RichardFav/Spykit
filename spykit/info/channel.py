@@ -338,7 +338,7 @@ class ChannelInfoTab(InfoWidget):
         # resets the update flag
         self.is_updating = False
 
-    def reset_table_rows(self):
+    def set_table_rows(self):
 
         self.get_filtered_items()
         for i_row in range(self.table.rowCount()):

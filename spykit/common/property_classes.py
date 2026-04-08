@@ -247,6 +247,19 @@ class SessionWorkBook(QObject):
 
         return t_dur
 
+    def get_current_session_duration(self):
+
+        # field retrieval
+        t_dur = self.get_run_durations()
+
+        if self.is_concat_run():
+            # case is a concatenated run
+            return np.sum(t_dur)
+
+        else:
+            # case is separated runs
+            return t_dur[self.get_current_run_index()]
+
     def get_raw_recording_probe(self, i_run=None, ses_name=None):
 
         if i_run is None:
@@ -361,7 +374,7 @@ class SessionWorkBook(QObject):
 
         # field retrieval
         is_concat_run = self.is_concat_run()
-        n_shank = self.get_shank_count if self.is_per_shank() else 1
+        n_shank = self.get_shank_count() if self.is_per_shank() else 1
         n_run = 1 if is_concat_run else self.session.get_run_count()
 
         # determines path of sorting output directory exists

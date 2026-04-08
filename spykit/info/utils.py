@@ -171,6 +171,8 @@ class InfoManager(QWidget):
                     elif t_type == 'unit':
                         # case us the unit tab
                         tab_widget.data_change.connect(self.unit_status_update)
+                        tab_widget.run_change.connect(pfcn(self.unit_combobox_update, 'run'))
+                        tab_widget.shank_change.connect(pfcn(self.unit_combobox_update, 'shank'))
                         tab_widget.mouse_move.connect(self.unit_mouse_move)
                         tab_widget.mouse_leave.connect(self.unit_mouse_leave)
                         tab_widget.set_update_flag.connect(self.update_flag_change)
@@ -303,7 +305,7 @@ class InfoManager(QWidget):
                 # resets the channel statuses
                 ch_status = self.session_obj.session.bad_ch[0]
                 tab_obj.update_channel_status(ch_status, self.session_obj.get_keep_channels())
-                tab_obj.reset_table_rows()
+                tab_obj.set_table_rows()
                 tab_obj.is_updating = True
 
                 # run/concatenation types (based on selection)
@@ -366,7 +368,7 @@ class InfoManager(QWidget):
 
             case 'shank':
                 # resets the channel statuses
-                tab_obj.reset_table_rows()
+                tab_obj.set_table_rows()
                 self.i_shank_pr = tab_obj.shank_type.current_index()
 
                 # resets the trace/trigger view
@@ -525,6 +527,7 @@ class InfoManager(QWidget):
         unit_tab.setup_unit_table_data()
         self.setup_info_table(unit_tab.df_unit, 'unit', unit_tab.c_hdr, set_values=False)
         unit_tab.update_unit_status()
+        unit_tab.set_combobox_props()
 
         # enables the unit tab
         unit_tab.table.show()
@@ -567,12 +570,29 @@ class InfoManager(QWidget):
     def unit_status_update(self, tab_obj):
 
         # resets the table rows based on the selection
-        tab_obj.reset_table_rows()
+        tab_obj.set_table_rows()
 
         # updates the unit markers
         probe_view = self.get_probe_plot_view()
         if probe_view is not None:
             probe_view.setup_unit_markers(tab_obj)
+
+    def unit_combobox_update(self, d_type, tab_obj):
+
+        # if manually updating the combobox, then exit
+        if self.is_updating:
+            return
+        else:
+            self.is_updating = True
+
+        match d_type:
+            case 'run':
+                # case is altering the session run
+                pass
+
+            case 'shank':
+                # case is altering the recording shank
+                pass
 
     def unit_mouse_move(self):
 

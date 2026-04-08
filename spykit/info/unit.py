@@ -41,7 +41,9 @@ int_col = [
 
 class UnitInfoTab(InfoWidget):
     # pyqtSignal signal functions
+    run_change = pyqtSignal(QWidget)
     data_change = pyqtSignal(QWidget)
+    shank_change = pyqtSignal(QWidget)
     status_change = pyqtSignal(QWidget, object)
     set_update_flag = pyqtSignal(bool)
     mouse_move = pyqtSignal(object)
@@ -92,6 +94,8 @@ class UnitInfoTab(InfoWidget):
         self.opt_widget = QWidget()
         self.opt_layout = QGridLayout()
         self.status_filter = QLabelCheckCombo(None, lbl="Unit Type Filter:", font=font_lbl)
+        self.run_type = QLabelCombo(None, 'Session Run:', None, font_lbl=font_lbl)
+        self.shank_type = QLabelCombo(None, "Recording Shank:", None, font_lbl=font_lbl)
         self.unit_label = QLabelText(None, lbl_str="Selected Unit:", text_str='N/A',
                                      font_lbl=font_lbl, font_txt=font_lbl)
 
@@ -113,8 +117,12 @@ class UnitInfoTab(InfoWidget):
         # adds the widgets to the layout widget
         self.opt_layout.addWidget(self.status_filter.h_lbl, 0, 0, 1, 1)
         self.opt_layout.addWidget(self.status_filter.h_combo, 0, 1, 1, 1)
-        self.opt_layout.addWidget(self.unit_label.obj_lbl, 1, 0, 1, 1)
-        self.opt_layout.addWidget(self.unit_label.obj_txt, 1, 1, 1, 1)
+        self.opt_layout.addWidget(self.run_type.obj_lbl, 1, 0, 1, 1)
+        self.opt_layout.addWidget(self.run_type.obj_cbox, 1, 1, 1, 1)
+        self.opt_layout.addWidget(self.shank_type.obj_lbl, 2, 0, 1, 1)
+        self.opt_layout.addWidget(self.shank_type.obj_cbox, 2, 1, 1, 1)
+        self.opt_layout.addWidget(self.unit_label.obj_lbl, 3, 0, 1, 1)
+        self.opt_layout.addWidget(self.unit_label.obj_txt, 3, 1, 1, 1)
 
         # sets the option combobox layout properties
         self.opt_layout.setColumnStretch(0, 10)
@@ -146,7 +154,7 @@ class UnitInfoTab(InfoWidget):
         self.table.mouseMoveEvent = self.table_mouse_move
 
     # ---------------------------------------------------------------------------
-    # Getter Functions
+    # Class Getter Functions
     # ---------------------------------------------------------------------------
 
     def get_filtered_items(self):
@@ -166,14 +174,24 @@ class UnitInfoTab(InfoWidget):
 
         # resets the row highlight (based on filter selection - if selected)
         if self.i_unit_sel is not None:
-            self.reset_row_highlight(self.is_filt[self.i_unit_sel - 1], True)
+            self.set_row_highlight(self.is_filt[self.i_unit_sel - 1], True)
 
     def get_field(self, p_fld):
 
         return self.main_obj.session_obj.get_mem_map_field(p_fld)
+#
+    def get_unit_indices(self):
+
+        # retrieves the unit ID's for each row
+        unit_id = []
+        for i in range(self.table.rowCount()):
+            item = self.table.item(i, self.i_col_unit)
+            unit_id.append(int(item.text()))
+
+        return np.array(unit_id)
 
     # ---------------------------------------------------------------------------
-    # Setter Functions
+    # Class Setter Functions
     # ---------------------------------------------------------------------------
 
     def set_table_row_colour(self, i_row, c_stat):
@@ -181,7 +199,29 @@ class UnitInfoTab(InfoWidget):
         for i_col in range(self.table.columnCount()):
             self.table.item(i_row, i_col).setBackground(self.row_col[c_stat])
 
-    def reset_table_rows(self):
+    def set_combobox_props(self):
+
+        # field retrieval
+        s_obj = self.main_obj.session_obj
+        is_per_shank = s_obj.is_per_shank()
+        is_concat_run = s_obj.is_concat_run()
+        run_list = ['Concatenated Run'] if is_concat_run else s_obj.session.get_run_names()
+
+        # flag that the widgets are being manually updated
+        self.is_updating = True
+
+        # sets the run type comobobox properties
+        self.run_type.set_enabled(not is_concat_run)
+        self.run_type.addItems(run_list, True)
+
+        # sets the shank type comobobox properties
+        self.shank_type.set_enabled(is_per_shank)
+        self.shank_type.addItems(s_obj.get_shank_names(), True)
+
+        # resets the update flag
+        self.is_updating = False
+
+    def set_table_rows(self):
 
         self.get_filtered_items()
 
@@ -189,7 +229,7 @@ class UnitInfoTab(InfoWidget):
         for i_row in range(self.table.rowCount()):
             self.table.setRowHidden(i_row, not self.is_filt[unit_id[i_row] - 1])
 
-    def reset_row_highlight(self, is_highlight_on, reset_lbl=False):
+    def set_row_highlight(self, is_highlight_on, reset_lbl=False):
 
         # retrieves the row index corresponding the unit selection
         i_row_sel = np.where(self.get_unit_indices() == self.i_unit_sel)[0][0]
@@ -206,16 +246,6 @@ class UnitInfoTab(InfoWidget):
 
             if reset_lbl:
                 self.unit_label.set_label('N/A')
-
-    def get_unit_indices(self):
-
-        # retrieves the unit ID's for each row
-        unit_id = []
-        for i in range(self.table.rowCount()):
-            item = self.table.item(i, self.i_col_unit)
-            unit_id.append(int(item.text()))
-
-        return np.array(unit_id)
 
     # ---------------------------------------------------------------------------
     # Mouse Event Functions
@@ -235,14 +265,14 @@ class UnitInfoTab(InfoWidget):
 
         # removes any previous row highlights
         if self.i_unit_sel is not None:
-            self.reset_row_highlight(False)
+            self.set_row_highlight(False)
 
         # resets the selected unit index
         unit_lbl = self.table.item(i_row, self.i_col_unit).text()
         self.i_unit_sel = int(unit_lbl)
 
         # sets the row highlight
-        self.reset_row_highlight(True)
+        self.set_row_highlight(True)
 
         # channel position/index
         i_ch_unit = self.df_unit['Max Channel'][self.i_unit_sel - 1]

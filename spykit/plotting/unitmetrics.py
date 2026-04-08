@@ -76,7 +76,7 @@ class UnitMetricPlot(PlotWidget):
 
         # field retrieval
         self.l_size = self.plot_layout.sizeHint()
-        self.t_dur = self.session_info.session_props.t_dur
+        self.t_dur = self.session_info.get_current_session_duration()
 
         # sets the plot layout properties
         self.bg_widget.setStyleSheet("background-color: rgba(0, 0, 0, 0);")
@@ -183,6 +183,11 @@ class UnitMetricPlot(PlotWidget):
         u_type = self.unit_props.get_unit_type(self.i_unit - 1)
         t_str_nw = "Unit #{0} Quality Metrics ({1})".format(self.i_unit, u_type)
         self.title_lbl.setText(t_str_nw)
+
+    def update_session_duration(self):
+
+        # resets the run duration
+        self.t_dur = self.session_info.get_current_session_duration()
 
     # ---------------------------------------------------------------------------
     # Plot Button Event Functions
