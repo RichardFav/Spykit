@@ -943,6 +943,9 @@ class ProbeView(GraphicsObject):
 
     def clear_view_unit_markers(self):
 
+        if self.units is None:
+            return
+
         for un in self.units:
             for un_g in un.values():
                 self.main_obj.removeItem(un_g)

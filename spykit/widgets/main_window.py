@@ -1464,7 +1464,7 @@ class MenuBar(QObject):
         self.main_obj.info_manager.prog_widget.update_message_label()
 
         # clears the spike-sorting fields
-        self.clear_spike_sorting(False)
+        self.clear_spike_sorting(prompt_user=False)
 
     def run_test(self):
 
@@ -1489,7 +1489,7 @@ class MenuBar(QObject):
 
         self.main_obj.run_spike_sorting_dialog()
 
-    def clear_spike_sorting(self, prompt_user=True):
+    def clear_spike_sorting(self, state=False, prompt_user=True):
 
         if prompt_user:
             # prompts the user if they want to clear
@@ -1573,31 +1573,32 @@ class MenuBar(QObject):
             is_view_change = False
             g_id = deepcopy(self.main_obj.plot_manager.grid_id)
             cf_props = self.main_obj.prop_manager.get_prop_tab('config')
+
             pp_props = self.main_obj.prop_manager.get_prop_tab('postprocess')
+            if pp_props is not None:
+                for pp_view in pp_props.plot_views:
+                    # determines if the view has been created
+                    if pp_view in self.main_obj.plot_manager.types:
+                        # removes the plot from the plot view
+                        pp_id = self.main_obj.plot_manager.types[pp_view]
+                        if pp_id in g_id:
+                            is_view_change = True
+                            g_id[g_id == pp_id] = 0
+                            self.main_obj.plot_manager.get_plot_view(pp_view).hide()
 
-            for pp_view in pp_props.plot_views:
-                # determines if the view has been created
-                if pp_view in self.main_obj.plot_manager.types:
-                    # removes the plot from the plot view
-                    pp_id = self.main_obj.plot_manager.types[pp_view]
-                    if pp_id in g_id:
-                        is_view_change = True
-                        g_id[g_id == pp_id] = 0
-                        self.main_obj.plot_manager.get_plot_view(pp_view).hide()
+                        # removes the view from the configuration list
+                        cf_props.remove_config_view(ppt.prop_names[pp_view])
 
-                    # removes the view from the configuration list
-                    cf_props.remove_config_view(ppt.prop_names[pp_view])
+                # resets the view ID (if a change was made)
+                if is_view_change:
+                    # force updates the gui
+                    time.sleep(0.05)
+                    self.main_obj.prop_manager.set_region_config(g_id)
 
-            # resets the view ID (if a change was made)
-            if is_view_change:
-                # force updates the gui
-                time.sleep(0.05)
-                self.main_obj.prop_manager.set_region_config(g_id)
-
-                # resets the configuration ID flags and views
-                time.sleep(0.05)
-                self.main_obj.plot_manager.update_plot_config(g_id)
-                self.main_obj.reset_prop_tab_visible(g_id)
+                    # resets the configuration ID flags and views
+                    time.sleep(0.05)
+                    self.main_obj.plot_manager.update_plot_config(g_id)
+                    self.main_obj.reset_prop_tab_visible(g_id)
 
             # clear the units from probe-view
             self.main_obj.plot_manager.get_plot_view('probe').clear_unit_markers()
