@@ -233,7 +233,7 @@ class WaveFormProps(PropWidget):
     def get_unit_label(self):
 
         # sets up the unit type fields
-        if self.main_obj.get_field('splitGoodAndMua_NonSomatic'):
+        if bool(self.main_obj.get_field('splitGoodAndMua_NonSomatic')):
             return ['Noise', 'Somatic Good', 'Somatic MUA', 'Non-somatic Good', 'Non-somatic MUA']
         else:
             return ['Noise', 'Good', 'MUA', 'Non-Somatic']

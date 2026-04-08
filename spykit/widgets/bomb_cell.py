@@ -69,7 +69,7 @@ class BombCellInfoTab(InfoWidgetPara):
 
     def setup_prop_fields(self):
 
-        self.p_map = {}
+        self.p_map_fld = {}
 
         # sets up the fields for each parameter group
         for pg, ps in self.p_tab.items():
@@ -90,7 +90,7 @@ class BombCellInfoTab(InfoWidgetPara):
                 p_desc, p_type = p_info['pDesc'], p_info['pType']
 
                 # sets the parameter-group mapping value
-                self.p_map[_ps] = pg
+                self.p_map_fld[_ps] = pg
 
                 match p_type:
                     case 'Checkbox':
@@ -169,7 +169,7 @@ class BombCellInfoTab(InfoWidgetPara):
 
 class BombCellSoln(object):
     # parameter mapping dictionary
-    p_map = {
+    p_map_bc = {
         # array dimensions
         'n_unit': 'nUnit',
         'n_pts': 'nPts',
@@ -234,10 +234,11 @@ class BombCellSoln(object):
         self.t_unique = bc_pkg_fcn('getClassField', 'tUnique')
 
         # bombcell parameter setup
+        self.p_value = {}
         self.bc_para = bc_pkg_fcn('getClassField', 'bcPara')
         for k, v in self.bc_para.items():
             if not isinstance(v, str):
-                self.p_map[k] = k
+                self.p_value[k] = k
 
         # other fields
         self.meta_data = bc_pkg_fcn('getClassField','metaData')
@@ -248,8 +249,8 @@ class BombCellSoln(object):
             p_val = getattr(self, p_fld_bc)
 
         else:
-            if p_fld_bc in self.p_map:
-                p_fld = self.p_map[p_fld_bc]
+            if p_fld_bc in self.p_value:
+                p_fld = self.p_value[p_fld_bc]
             else:
                 return None
 
@@ -398,7 +399,7 @@ class BombCellSolver(QDialog):
 
         # creates the threadworker object
         self.t_worker = ThreadWorker(self, self.init_bombcell_solver, None)
-        self.t_worker.work_finished.connect(self.bombcell_init_complete)
+        self.t_worker.work_finished.connect(self.bombcell_solver_init_complete)
 
         # starts the worker object
         self.prog_bar.is_task = True
@@ -433,17 +434,6 @@ class BombCellSolver(QDialog):
         tab_style = cw.CheckBoxStyle(self.para_tab.style())
         self.para_tab.setStyle(tab_style)
 
-    def setup_para_group(self):
-
-        # creates the tab objects
-        for ts, p_tab in self.p_grp.items():
-            tab_widget = BombCellInfoTab(ts, self, p_tab)
-            self.para_tab.addTab(tab_widget, ts)
-            self.h_tab_para.append(tab_widget)
-
-        # tab change callback function
-        self.para_tab.currentChanged.connect(self.on_tab_changed)
-
     def init_progress_frame(self):
 
         # sets the frame/layout properties
@@ -466,7 +456,7 @@ class BombCellSolver(QDialog):
     def init_cont_buttons(self):
 
         # initialisations
-        cb_fcn = [self.run_solver, self.reset_para, self.close_window]
+        cb_fcn = [self.run_solver, self.reset_solver_para, self.close_window]
 
         # sets the button widget properties
         self.button_frame.setContentsMargins(self.x_gap, self.x_gap, self.x_gap, self.x_gap)
@@ -493,6 +483,20 @@ class BombCellSolver(QDialog):
         # sets the control button properties
         self.cont_button[0].setCheckable(True)
 
+    def setup_para_group(self):
+
+        #
+        self.post_processing_para_check()
+
+        # creates the tab objects
+        for ts, p_tab in self.p_grp.items():
+            tab_widget = BombCellInfoTab(ts, self, p_tab)
+            self.para_tab.addTab(tab_widget, ts)
+            self.h_tab_para.append(tab_widget)
+
+        # tab change callback function
+        self.para_tab.currentChanged.connect(self.on_tab_changed)
+
     def set_style_sheets(self):
 
         pass
@@ -518,7 +522,7 @@ class BombCellSolver(QDialog):
         # other class field initialisations
         self.bc_pkg_fcn('setClassField', 'useSpykit', True)
 
-    def bombcell_init_complete(self):
+    def bombcell_solver_init_complete(self):
 
         # determines if the experiment is feasible for analysis (exit if not)
         if not self.check_expt_dir():
@@ -584,7 +588,7 @@ class BombCellSolver(QDialog):
         self.bc_data = bc_data_nw
         return []
 
-    def bombcell_solver_complete(self, error_msg):
+    def bombcell_solver_run_complete(self, error_msg):
 
         # stops the solver timer
         self.solver_timer.stop()
@@ -723,7 +727,7 @@ class BombCellSolver(QDialog):
 
             # creates the threadworker object
             self.t_worker = ThreadWorker(self, self.run_bombcell_solver, None)
-            self.t_worker.work_finished.connect(self.bombcell_solver_complete)
+            self.t_worker.work_finished.connect(self.bombcell_solver_run_complete)
 
             # starts the worker object
             self.t_worker.start()
@@ -742,6 +746,42 @@ class BombCellSolver(QDialog):
             # disables the progressbar fields
             self.prog_bar.set_progbar_state(False)
             self.cont_button[0].setText('Run Solver')
+
+    def set_button_props(self, state, chk_para=False):
+
+        if state:
+            # resets the button properties
+            if self.has_bc or chk_para:
+                self.check_para_reset(self.bc_para_c)
+            else:
+                self.check_para_reset()
+
+        else:
+            # force disable reset button
+            self.cont_button[1].setEnabled(False)
+
+        # sets the close window button
+        self.cont_button[2].setEnabled(state)
+
+    def reset_solver_para(self):
+
+        # flag that manual updating is taking place
+        self.is_updating = True
+
+        # field retrieval
+        bc_para = self.bc_pkg_fcn('getClassField', 'bcPara')
+        bc_para0 = self.bc_pkg_fcn('getClassField', 'bcPara0')
+
+        for pf, pv0 in bc_para0.items():
+            pv = bc_para[pf]
+            if (pv0 != pv) and (not np.isnan(pv)):
+                # resets the class object parameter values
+                self.bc_pkg_fcn('setParaValue', pf, pv0)
+                self.set_widget_para_value(pf, pv0)
+
+        # disables the button
+        self.is_updating = False
+        self.cont_button[1].setEnabled(False)
 
     def solver_timer_fcn(self):
 
@@ -774,68 +814,24 @@ class BombCellSolver(QDialog):
             # updates the progressbar string/value
             self.prog_bar.update_prog_fields(pr_str, pr_val)
 
-    def set_button_props(self, state, chk_para=False):
+    def post_processing_soln_change(self):
 
-        if state:
-            # resets the button properties
-            if self.has_bc or chk_para:
-                self.check_para_reset(self.bc_para_c)
-            else:
-                self.check_para_reset()
+        # determines if any parameters are altered
+        para_changed = self.post_processing_para_check()
+        if len(para_changed):
+            # flag that the fields are being manually updated
+            self.is_updating = False
+            bc_para = self.bc_pkg_fcn('getClassField', 'bcPara')
 
-        else:
-            # force disable reset button
-            self.cont_button[1].setEnabled(False)
+            # resets the widget fields
+            for pc in para_changed:
+                self.set_widget_para_value(pc, bc_para[pc])
 
-        # sets the close window button
-        self.cont_button[2].setEnabled(state)
-
-    def reset_para(self):
-
-        # flag that manual updating is taking place
-        self.is_updating = True
-
-        # field retrieval
-        bc_para = self.bc_pkg_fcn('getClassField', 'bcPara')
-        bc_para0 = self.bc_pkg_fcn('getClassField', 'bcPara0')
-
-        for pf, pv0 in bc_para0.items():
-            pv = bc_para[pf]
-            if (pv0 != pv) and (not np.isnan(pv)):
-                # resets the class object parameter values
-                self.bc_pkg_fcn('setParaValue', pf, pv0)
-
-                # resets the parameter field
-                h_obj = self.para_tab.findChild(QWidget, name=pf)
-                if isinstance(h_obj, QCheckBox):
-                    # case is a checkbox
-                    h_obj.setChecked(bool(pv0))
-
-                elif isinstance(h_obj, QLineEdit):
-                    # case is an editbox
-                    p_info = self.bc_pkg_fcn('getParaInfo', pf)
-                    if p_info['pType'] == 'EditS':
-                        # case is a string editbox
-                        h_obj.setText(pv0)
-
-                    elif np.isnan(pv0):
-                        # case is a NaN value
-                        h_obj.setText(str(pv0))
-
-                    else:
-                        # case is a numeric editbox
-                        h_obj.setText('%g' % int(pv0))
-
-                elif isinstance(h_obj, QComboBox):
-                    # case is a combobox
-                    h_obj.setCurrentIndex(int(pv0))
-
-        # disables the button
-        self.is_updating = False
-        self.cont_button[1].setEnabled(False)
+            # resets the update flag
+            self.is_updating = False
 
     # ---------------------------------------------------------------------------
-    # Other Class Event Functions
+    # Class Event Functions
     # ---------------------------------------------------------------------------
 
     def closeEvent(self, event):
@@ -961,3 +957,56 @@ class BombCellSolver(QDialog):
 
         # flag that there is no difference
         return False
+
+    def post_processing_para_check(self):
+
+        # field retrieval
+        para_changed = []
+        s_obj = self.main_obj.session_obj
+
+        # check if there is any existing post-processing data loaded
+        if (s_obj.post_data is not None) and len(s_obj.post_data.mmap):
+            # resets the parameters to match the post-processing dataset
+            bc_para = self.bc_pkg_fcn('getClassField', 'bcPara')
+            for k in bc_para.keys():
+                if k not in self.p_str_u:
+                    # if the parameters do not match, then reset the value
+                    p_val_pp = s_obj.get_mem_map_field(k)
+                    if (p_val_pp != bc_para[k]) and (not np.isnan(bc_para[k])):
+                        para_changed.append(k)
+                        bc_para[k] = p_val_pp
+                        self.bc_pkg_fcn('setParaValue', k, p_val_pp)
+
+            # resets the parameter struct (if a change is made)
+            if len(para_changed):
+                self.bc_pkg_fcn('setClassField', 'bcPara', bc_para)
+
+        # returns the altered parameters
+        return para_changed
+
+    def set_widget_para_value(self, pf, pv):
+
+        # resets the parameter field
+        h_obj = self.para_tab.findChild(QWidget, name=pf)
+        if isinstance(h_obj, QCheckBox):
+            # case is a checkbox
+            h_obj.setChecked(bool(pv))
+
+        elif isinstance(h_obj, QLineEdit):
+            # case is an editbox
+            p_info = self.bc_pkg_fcn('getParaInfo', pf)
+            if p_info['pType'] == 'EditS':
+                # case is a string editbox
+                h_obj.setText(pv)
+
+            elif np.isnan(pv):
+                # case is a NaN value
+                h_obj.setText(str(pv))
+
+            else:
+                # case is a numeric editbox
+                h_obj.setText('%g' % int(pv))
+
+        elif isinstance(h_obj, QComboBox):
+            # case is a combobox
+            h_obj.setCurrentIndex(int(pv))

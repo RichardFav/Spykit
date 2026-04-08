@@ -72,7 +72,7 @@ class PostProcProps(PropWidget):
         # creates the combobox
         self.soln_combo.setSizePolicy(QSizePolicy(cf.q_min, cf.q_max))
         self.soln_combo.setContentsMargins(0, 5, 5, 5)
-        self.soln_combo.connect(self.combo_soln_name)
+        self.soln_combo.connect(self.soln_combo_change)
 
     def init_pp_fields(self):
 
@@ -156,7 +156,7 @@ class PostProcProps(PropWidget):
 
         pass
 
-    def combo_soln_name(self, h_combo):
+    def soln_combo_change(self, h_combo):
 
         # resets the post-processing tabs/views
         if not self.is_updating:

@@ -1609,7 +1609,7 @@ class MenuBar(QObject):
         else:
             # re-runs the solution file selection callback function
             pp_tab = self.main_obj.prop_manager.get_prop_tab('postprocess')
-            pp_tab.combo_soln_name(pp_tab.soln_combo.obj_cbox)
+            pp_tab.soln_combo_change(pp_tab.soln_combo.obj_cbox)
 
     # ---------------------------------------------------------------------------
     # File I/O Functions

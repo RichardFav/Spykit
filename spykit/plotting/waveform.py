@@ -83,7 +83,7 @@ class WaveFormPlot(PlotWidget):
         self.h_pen_unit = pg.mkPen(self.unit_col, width=3)
 
         # field initialisations
-        if self.get_field('splitGoodAndMua_NonSomatic'):
+        if bool(self.get_field('splitGoodAndMua_NonSomatic')):
             self.unit_lbl = ['Noise', 'Somatic Good', 'Somatic MUA', 'Non-somatic Good', 'Non-somatic MUA']
         else:
             self.unit_lbl = ['Noise', 'Good', 'MUA', 'Non-Somatic']

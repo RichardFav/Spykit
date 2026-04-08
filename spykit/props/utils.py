@@ -252,11 +252,9 @@ class PropManager(QWidget):
                         # case is the waveform plot
                         pp_prop.get_tab_view(type_r[id]).post_process_change()
 
-        # resets the unit table row colours
+        # resets the unit table properties
         unit_tab = self.main_obj.info_manager.get_info_tab('unit')
         unit_tab.setup_unit_table_data()
-        # unit_tab.table.hide()
-        # QApplication.processEvents()
 
         for i_row, c_stat in enumerate(unit_tab.df_unit['Unit Type']):
             # resets the row colour
@@ -266,9 +264,11 @@ class PropManager(QWidget):
             value = unit_tab.df_unit.iloc[i_row][unit_tab.df_unit.columns[0]]
             unit_tab.table.item(i_row, 0).setText(str(value))
 
-        # clears any probe unit markers (if already created)
-        # unit_tab.table.show()
+        # clears any probe unit markers
         self.main_obj.plot_manager.get_plot_view('probe').reset_unit_markers()
+
+        if self.main_obj.bombcell_dlg is not None:
+            self.main_obj.bombcell_dlg.post_processing_soln_change()
 
     # ---------------------------------------------------------------------------
     # Property Parameter Get/Set Functions
