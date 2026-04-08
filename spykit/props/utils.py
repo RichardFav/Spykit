@@ -229,14 +229,19 @@ class PropManager(QWidget):
 
         pass
 
-    def post_process_change(self, i_mmap):
+    def post_process_change(self, i_mmap=None):
+
+        if i_mmap is None:
+            # retrieves the current memory map index (if not provided)
+            i_mmap = self.main_obj.session_obj.post_data.i_mmap
+
+        else:
+            # otherwise, update the memory map index
+            self.main_obj.session_obj.post_data.set_mmap_index(i_mmap)
 
         # field retrieval
         p_manager = self.main_obj.plot_manager
         pp_prop = self.main_obj.prop_manager.get_prop_tab('postprocess')
-
-        # updates the memory map index
-        self.main_obj.session_obj.post_data.set_mmap_index(i_mmap)
 
         # updates the visible plot views
         type_r = cf.reverse_dict(p_manager.types)
@@ -255,16 +260,18 @@ class PropManager(QWidget):
         # resets the unit table properties
         unit_tab = self.main_obj.info_manager.get_info_tab('unit')
         unit_tab.setup_unit_table_data()
+        self.main_obj.info_manager.set_unit_table_data()
 
-        for i_row, c_stat in enumerate(unit_tab.df_unit['Unit Type']):
-            # resets the row colour
-            unit_tab.set_table_row_colour(i_row, c_stat.lower())
-
-            # resets the unit classification field
-            value = unit_tab.df_unit.iloc[i_row][unit_tab.df_unit.columns[0]]
-            unit_tab.table.item(i_row, 0).setText(str(value))
+        # for i_row, c_stat in enumerate(unit_tab.df_unit['Unit Type']):
+        #     # resets the row colour
+        #     unit_tab.set_table_row_colour(i_row, c_stat.lower())
+        #
+        #     # resets the unit classification field
+        #     value = unit_tab.df_unit.iloc[i_row][unit_tab.df_unit.columns[0]]
+        #     unit_tab.table.item(i_row, 0).setText(str(value))
 
         # clears any probe unit markers
+        time.sleep(0.05)
         self.main_obj.plot_manager.get_plot_view('probe').reset_unit_markers()
 
         if self.main_obj.bombcell_dlg is not None:

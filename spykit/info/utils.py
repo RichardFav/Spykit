@@ -511,7 +511,7 @@ class InfoManager(QWidget):
     def add_unit_table(self):
 
         t_worker = ThreadWorker(None, self.create_unit_table)
-        t_worker.work_finished.connect(self.finish_unit_table)
+        t_worker.work_finished.connect(self.set_unit_table_data)
         t_worker.start()
 
     def create_unit_table(self, _):
@@ -523,9 +523,16 @@ class InfoManager(QWidget):
         self.set_tab_enabled('unit', False)
         unit_tab.table.hide()
 
-        # sets up and updates the table
+        # table data retrieval
         unit_tab.setup_unit_table_data()
-        self.setup_info_table(unit_tab.df_unit, 'unit', unit_tab.c_hdr, set_values=False)
+
+        # table creation
+        n_row_max = np.max(self.main_obj.session_obj.post_data.n_unit_pp)
+        table_dim = (n_row_max, unit_tab.df_unit.shape[1])
+        self.setup_info_table(
+            unit_tab.df_unit, 'unit', unit_tab.c_hdr, set_values=False, table_dim=table_dim)
+
+        # updates the table properties
         unit_tab.update_unit_status()
         unit_tab.set_combobox_props()
 
@@ -533,9 +540,12 @@ class InfoManager(QWidget):
         unit_tab.table.show()
         self.set_tab_enabled('unit', True)
 
-    def finish_unit_table(self, _):
+        return []
+
+    def set_unit_table_data(self, thread_data=None):
 
         # field retrieval
+        i_col_sort = 2
         unit_tab = self.get_info_tab('unit')
         table_obj = self.get_table_widget('unit')
 
@@ -544,6 +554,7 @@ class InfoManager(QWidget):
 
         for i_row, c_stat in enumerate(unit_tab.df_unit['Unit Type']):
             # sets the table row colour
+            table_obj.showRow(i_row)
             unit_tab.set_table_row_colour(i_row, c_stat.lower())
 
             for i_col in range(table_obj.columnCount()):
@@ -557,11 +568,17 @@ class InfoManager(QWidget):
                     # case is a string field
                     table_obj.item(i_row, i_col).setText(str(value))
 
+        # hides the extra table rows
+        for i_row in range(unit_tab.df_unit.shape[0], table_obj.rowCount()):
+            table_obj.hideRow(i_row)
+            table_obj.item(i_row, i_col_sort).setText(str(i_row))
+
         # resets the update flag
         self.is_updating = False
 
         # sets the table sorting properties
-        self.set_other_table_props(table_obj, 'unit', 2)
+        if thread_data is not None:
+            self.set_other_table_props(table_obj, 'unit', i_col_sort)
 
     # ---------------------------------------------------------------------------
     # Unit Tab Event Functions
@@ -582,17 +599,20 @@ class InfoManager(QWidget):
         # if manually updating the combobox, then exit
         if self.is_updating:
             return
-        else:
-            self.is_updating = True
 
         match d_type:
             case 'run':
                 # case is altering the session run
-                pass
+                run_name = tab_obj.run_type.current_text()
+                self.main_obj.session_obj.set_current_run(run_name)
 
             case 'shank':
                 # case is altering the recording shank
-                pass
+                shank_name = tab_obj.shank_type.current_text()
+                self.main_obj.session_obj.set_current_shank(shank_name)
+
+        # field retrieval
+        self.main_obj.prop_manager.post_process_change()
 
     def unit_mouse_move(self):
 
@@ -606,13 +626,17 @@ class InfoManager(QWidget):
     # Class Property Widget Setup Functions
     # ---------------------------------------------------------------------------
 
-    def setup_info_table(self, data, t_type, c_hdr, set_values=True):
+    def setup_info_table(self, data, t_type, c_hdr, set_values=True, table_dim=None):
 
         # retrieves the table widget
         table_obj = self.get_table_widget(t_type)
 
+        # table dimensions (if not provided externally)
+        if table_dim is None:
+            table_dim = data.shape
+
         # if the table/data shape is equal then exit
-        if (table_obj.rowCount(), table_obj.columnCount()) == data.shape:
+        if (table_obj.rowCount(), table_obj.columnCount()) == table_dim:
             return
 
         # flag that manual update is taking place
@@ -621,8 +645,8 @@ class InfoManager(QWidget):
         # clears the table model
         table_obj.clear()
         table_obj.setSortingEnabled(False)
-        table_obj.setRowCount(data.shape[0])
-        table_obj.setColumnCount(data.shape[1])
+        table_obj.setRowCount(table_dim[0])
+        table_obj.setColumnCount(table_dim[1])
 
         # sets the table header view
         table_obj.setHorizontalHeaderLabels(c_hdr)
@@ -631,23 +655,25 @@ class InfoManager(QWidget):
             # updates the table header font
             table_obj.horizontalHeaderItem(i_col).setFont(self.table_hdr_font)
 
-            for i_row in range(data.shape[0]):
+            value0 = data.iloc[0][data.columns[i_col]]
+            for i_row in range(table_dim[0]):
                 # creates the widget item
                 item = cw.QTableWidgetItemSortable()
                 item.setFont(self.table_font)
 
                 # sets the item properties (based on the field values)
-                value = data.iloc[i_row][data.columns[i_col]]
-                if isinstance(value, np.bool_):
+                if isinstance(value0, np.bool_):
                     # case is a boolean field
                     item.setFlags(self.check_item_flag)
                     if set_values:
+                        value = data.iloc[i_row][data.columns[i_col]]
                         item.setCheckState(cf.chk_state[value])
 
                 else:
                     # case is a string field
                     item.setFlags(self.norm_item_flag)
                     if set_values:
+                        value = data.iloc[i_row][data.columns[i_col]]
                         item.setText(str(value))
 
                 # ads the item to the table
@@ -722,13 +748,6 @@ class InfoManager(QWidget):
         info_c = it.info_types[t_type.split()[0].lower()]
         i_tab = next(i for i, x in enumerate(self.tabs) if isinstance(x, info_c))
         return self.tabs[i_tab].findChild(QTableWidget)
-
-    def get_column_values(self, t_type, i_col):
-
-        # retrieves the table widget
-        table_obj = self.get_table_widget(t_type)
-
-        a = 1
 
     def update_table_value(self, t_type, i_row, value):
 

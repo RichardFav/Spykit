@@ -963,7 +963,7 @@ class ProbeView(GraphicsObject):
         pk_ch = np.array(unit_tab.df_unit['Max Channel'])
         unit_types = unit_tab.get_unit_type_labels()
 
-        # removes any filtered imtems
+        # removes any filtered items
         is_filt = unit_tab.is_filt
         if is_filt is not None:
             c_id = c_id[is_filt]

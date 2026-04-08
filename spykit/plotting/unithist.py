@@ -88,13 +88,11 @@ class UnitHistPlot(PlotWidget):
     def init_plot_view(self):
 
         # field retrieval
-        n_met = np.sum(self.unit_props.can_plot)
-        self.hist = np.empty(n_met, dtype=object)
-        self.q_met_hist = np.empty(n_met, dtype=object)
+        self.n_met = np.sum(self.unit_props.can_plot)
+        self.hist = np.empty(self.n_met, dtype=object)
 
-        # memory allocation
-        for i_met in range(n_met):
-            self.q_met_hist[i_met] = self.get_hist_metrics(i_met)
+        # retrieves the histogram metrics
+        self.get_all_hist_metrics()
 
         # creates the title widget
         self.title_lbl = cw.create_text_label(
@@ -115,7 +113,7 @@ class UnitHistPlot(PlotWidget):
                     )
 
                     # updates the figure with the plot metric data (if available)
-                    if i_glob < n_met:
+                    if i_glob < self.n_met:
                         self.hist[i_glob].update_hist_metric(
                             self.q_met_hist[i_glob], i_glob
                         )
@@ -136,7 +134,8 @@ class UnitHistPlot(PlotWidget):
         match p_str:
             case 'reset':
                 # case is resetting the entire plot
-                self.reset_all_histograms()
+                self.get_all_hist_metrics()
+                self.update_all_histograms()
 
             case p_str if p_str in ['opt_config', 'n_r', 'n_c', 'hist_type']:
                 # case is altering a configuration parameter
@@ -158,10 +157,11 @@ class UnitHistPlot(PlotWidget):
                 # case is showing the plot grid
                 self.update_show_grid()
 
-    def reset_all_histograms(self):
+    def update_all_histograms(self):
 
         # updates the unit index for each plot
-        for hp in self.hist:
+        for ip, hp in enumerate(self.hist):
+            hp.update_hist_metric(self.q_met_hist[ip], ip)
             hp.update_thresh_markers(True)
             hp.update_unit_index(self.i_unit)
 
@@ -265,10 +265,6 @@ class UnitHistPlot(PlotWidget):
         self.unit_props = unit_props_new
         unit_props_new.set_plot_view(self)
 
-        # field retrieval
-        self.q_met = self.unit_props.get_mem_map_field('q_met')
-        self.q_hdr = self.unit_props.get_mem_map_field('q_hdr')
-
         # histogram parameter fields
         self.is_updating = True
         self.hist_type = self.unit_props.get_para_value('hist_type')
@@ -287,6 +283,17 @@ class UnitHistPlot(PlotWidget):
     # ---------------------------------------------------------------------------
     # Class Getter Functions
     # ---------------------------------------------------------------------------
+
+    def get_all_hist_metrics(self):
+
+        # field retrieval
+        self.q_met = self.unit_props.get_mem_map_field('q_met')
+        self.q_hdr = self.unit_props.get_mem_map_field('q_hdr')
+
+        # memory allocation
+        self.q_met_hist = np.empty(self.n_met, dtype=object)
+        for i_met in range(self.n_met):
+            self.q_met_hist[i_met] = self.get_hist_metrics(i_met)
 
     def get_hist_metrics(self, i_glob):
 

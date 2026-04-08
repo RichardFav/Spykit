@@ -149,7 +149,7 @@ class UpSetPlot(PlotWidget):
         self.h_plot[2].plotItem.vb.setBorder(color='k')
         self.h_plot[2].plotItem.getAxis('left').setTextPen('k')
         self.h_plot[2].plotItem.getAxis('bottom').setTextPen('k')
-        self.h_plot[2].plotItem.layout.setContentsMargins(10, 0, 0, 0)
+        # self.h_plot[2].plotItem.layout.setContentsMargins(10, 0, 0, 0)
 
         # updates the plot layout
         g_id = np.zeros((10, 10), dtype=int)
@@ -205,15 +205,10 @@ class UpSetPlot(PlotWidget):
         self.bg_int.setOpts(x=x_int, height=n_count, width=0.6)
         self.h_plot[0].plotItem.vb.setYRange(0, n_count[0], padding=self.x_pad)
         self.h_plot[0].plotItem.vb.setXRange(0, len(n_count), padding=self.x_pad)
-
-        # determines the y-axis tick values
-        y_axis_int = self.h_plot[0].plotItem.getAxis('left')
-        v_rng_int = self.h_plot[0].plotItem.vb.viewRange()
-        y_tick_int = y_axis_int.tickValues(v_rng_int[1][0], v_rng_int[1][1], y_axis_int.size().height())[0][1]
-        y_tick_lbl = [(y_pos, str(int(y_pos))) for y_pos in y_tick_int]
-        y_axis_int.setTicks([y_tick_lbl])
+        y_tick_int = self.set_axis_tick_labels(self.h_plot[0].plotItem, 1)
 
         # other axes properties
+        v_rng_int = self.h_plot[0].plotItem.vb.viewRange()
         self.h_plot[0].plotItem.vb.setXRange(v_rng_int[0][0], v_rng_int[0][1], padding=0)
 
         # -----------------------------------------------------------------------
@@ -227,6 +222,12 @@ class UpSetPlot(PlotWidget):
         self.bg_set.setOpts(x0=0, y=y_set, height=0.6, width=s_count)
         self.h_plot[1].plotItem.vb.setYRange(0, n_data, padding=self.x_pad)
         self.h_plot[1].plotItem.vb.setXRange(0, np.max(s_count), padding=self.y_pad)
+        self.set_axis_tick_labels(self.h_plot[1].plotItem, 0)
+
+        # #
+        # y_axis_set = self.h_plot[1].plotItem.getAxis('left')
+        # v_rng_set = self.h_plot[1].plotItem.vb.viewRange()
+        # y_tick_set = y_axis_int.tickValues(v_rng_set[1][0], v_rng_set[1][1], y_axis_set.size().height())[0][1]
 
         # y-axis properties
         y_ticks = [(y_pos, lbl) for y_pos, lbl in zip(y_set, q_hdr)]
@@ -275,9 +276,13 @@ class UpSetPlot(PlotWidget):
             self.h_plot[2].plot(x_plt, y_plt, pen=self.plt_pen, symbolBrush='k',
                                 symbol='o', symbolpen='k', symbolSize=self.m_size)
 
+        # y-axis dummy tick labels
+        y_tick_set = [(y_plt[-1], y_tick_int[-1][1])]
+
         # updates the viewbox properties
         self.h_plot[2].plotItem.vb.setYRange(y_lim_set[0], y_lim_set[1], padding=0)
         self.h_plot[2].plotItem.vb.setXRange(x_lim[0], x_lim[1], padding=0)
+        self.h_plot[2].getAxis('left').setTicks([y_tick_set])
 
         # updates the grid visibility
         self.update_plot_title()
@@ -487,6 +492,24 @@ class UpSetPlot(PlotWidget):
     def set_plot_view(self, plot_view_new):
 
         self.plot_view = plot_view_new
+
+    @staticmethod
+    def set_axis_tick_labels(p_item, ax_dim):
+
+        # field retrieval
+        vb_rng = p_item.vb.viewRange()
+        h_axis = p_item.getAxis('left' if ax_dim else 'bottom')
+        ax_size = h_axis.size().height() if ax_dim else h_axis.size().width()
+
+        # sets up the ticklabel array
+        tick_pos = h_axis.tickValues(vb_rng[ax_dim][0], vb_rng[ax_dim][1], ax_size)[0][1]
+        _, i_tick = np.unique([str(int(x)) for x in tick_pos], return_index=True)
+        tick_lbl = [(t_pos, str(int(t_pos))) for t_pos in np.array(tick_pos)[i_tick]]
+
+        # resets the y-axes ticklabels
+        h_axis.setTicks([tick_lbl])
+
+        return tick_lbl
 
     # ---------------------------------------------------------------------------
     # Widget Event Callback Functions

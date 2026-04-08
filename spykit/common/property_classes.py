@@ -1287,8 +1287,14 @@ class PostProcessData(QObject):
         self.mmap = []
         self.mmap_file = []
         self.mmap_name = []
+        self.n_unit_pp = []
         self.is_saved = []
+
+        # scale class fields
         self.i_mmap = 0
+        self.n_mmap = 0
+        self.n_run_pp = 0
+        self.n_shank_pp = 0
 
     # ---------------------------------------------------------------------------
     # Memory Map I/O Functions
@@ -1298,7 +1304,10 @@ class PostProcessData(QObject):
 
         # creates the memory map object
         pmm_obj = PostMemMap(self.main_obj)
-        n_run_pp, n_shank_pp, n_file_pp = mm_file.shape
+
+        if (self.n_mmap == 0):
+            self.i_mmap = 0
+            self.n_run_pp, self.n_shank_pp, n_file_pp = mm_file.shape
 
         # reads the stored memory maps
         for i_file in range(n_file_pp):
@@ -1306,11 +1315,11 @@ class PostProcessData(QObject):
                 continue
 
             # memory allocation
-            mmap_tmp = np.empty((n_run_pp, n_shank_pp), dtype=object)
+            mmap_tmp = np.empty((self.n_run_pp, self.n_shank_pp), dtype=object)
 
             # reads the memory mapped files (for each run/shank)
-            for i_run in range(n_run_pp):
-                for i_shank in range(n_shank_pp):
+            for i_run in range(self.n_run_pp):
+                for i_shank in range(self.n_shank_pp):
                     pmm_obj.set_mmap_file(mm_file[i_run, i_shank, i_file])
                     mmap_tmp[i_run, i_shank] = pmm_obj.read_mem_map()
 
@@ -1327,6 +1336,16 @@ class PostProcessData(QObject):
         # sets saved flag
         self.is_saved.append(is_save)
 
+        # determines the unit count (if the first mmap)
+        self.n_mmap += 1
+        if (self.n_mmap == 1):
+            # memory allocation
+            self.n_unit_pp = np.zeros((self.n_run_pp, self.n_shank_pp), dtype=int)
+            for i_run in range(self.n_run_pp):
+                for i_shank in range(self.n_shank_pp):
+                    self.n_unit_pp[i_run, i_shank] = (
+                        int(self.get_mem_map_field(i_run, i_shank, 'n_unit')))
+
         # flag that a new process has been added
         if not is_save:
             self.added_pp.emit(self.mmap_name[-1])
@@ -1334,17 +1353,17 @@ class PostProcessData(QObject):
     def clear_all_postprocessing(self):
 
         # exits if there is no data loaded
-        if len(self.mmap) == 0:
+        if self.n_mmap == 0:
             return
 
         # clears and deletes the temporary memory mapped files
-        for i_map in range(len(self.mmap)):
+        for i_map in range(self.n_mmap):
             # field retrieval
             if i_map == 0:
                 n_run, n_shank = self.mmap[i_map].shape
 
-            for i_run in range(n_run):
-                for i_shank in range(n_shank):
+            for i_run in range(self.n_run_pp):
+                for i_shank in range(self.n_shank_pp):
                     # clears the memory maps
                     self.mmap[i_map][i_run, i_shank].flush()
                     self.mmap[i_map][i_run, i_shank] = None
@@ -1358,10 +1377,17 @@ class PostProcessData(QObject):
                             pass
 
         # resets the class fields
-        self.i_mmap = 0
         self.mmap = []
         self.mmap_file = []
         self.mmap_name = []
+        self.is_saved = []
+        self.n_unit_pp = []
+
+        # resets the scalar fields
+        self.i_mmap = 0
+        self.n_mmap = 0
+        self.n_run_pp = 0
+        self.n_shank_pp = 0
 
     def remove_post_process(self, i_mmap_rmv=None):
 
@@ -1375,18 +1401,23 @@ class PostProcessData(QObject):
         self.mmap_name.pop(i_mmap_rmv)
         self.is_saved.pop(i_mmap_rmv)
 
+        # decrements the map count
+        self.n_mmap -= 1
+        if (self.n_mmap == 0):
+            # if there are no mmap files, then reset the scalar fields
+            self.n_run_pp = 0
+            self.n_shank_pp = 0
+            self.n_unit_pp = []
+
         # decrements the memory map array index (if current exceeds length)
         if (i_mmap_rmv > self.i_mmap) and len(self.mmap):
             self.i_mmap -= 1
 
     def rename_post_process(self, mmap_file_new):
 
-        # field retrieval
-        n_run, n_shank = mmap_file_new.shape
-
         # renames the temporary file names
-        for i_run in range(n_run):
-            for i_shank in range(n_shank):
+        for i_run in range(self.n_run_pp):
+            for i_shank in range(self.n_shank_pp):
                 # field retrieval
                 dt = self.mmap[self.i_mmap][i_run, i_shank].dtype
 

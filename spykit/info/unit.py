@@ -211,12 +211,18 @@ class UnitInfoTab(InfoWidget):
         self.is_updating = True
 
         # sets the run type comobobox properties
-        self.run_type.set_enabled(not is_concat_run)
         self.run_type.addItems(run_list, True)
+        self.run_type.set_current_index(0)
+        self.run_type.set_enabled(not is_concat_run)
 
         # sets the shank type comobobox properties
-        self.shank_type.set_enabled(is_per_shank)
         self.shank_type.addItems(s_obj.get_shank_names(), True)
+        self.shank_type.set_current_index(0)
+        self.shank_type.set_enabled(is_per_shank)
+
+        # connects the signal/slot functions
+        self.run_type.connect(self.combo_run_change)
+        self.shank_type.connect(self.combo_shank_change)
 
         # resets the update flag
         self.is_updating = False
@@ -333,6 +339,18 @@ class UnitInfoTab(InfoWidget):
         # resets the table view
         self.status_change.emit(self, self.is_filt)
         self.data_change.emit(self)
+
+    def combo_run_change(self, h_combo):
+
+        # if manually updating, then exit
+        if not self.is_updating:
+            self.run_change.emit(self)
+
+    def combo_shank_change(self, h_combo):
+
+        # if manually updating, then exit
+        if not self.is_updating:
+            self.shank_change.emit(self)
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Methods
