@@ -234,11 +234,11 @@ class BombCellSoln(object):
         self.t_unique = bc_pkg_fcn('getClassField', 'tUnique')
 
         # bombcell parameter setup
-        self.p_value = {}
+        # self.p_value = {}
         self.bc_para = bc_pkg_fcn('getClassField', 'bcPara')
         for k, v in self.bc_para.items():
             if not isinstance(v, str):
-                self.p_value[k] = k
+                self.p_map_bc[k] = k
 
         # other fields
         self.meta_data = bc_pkg_fcn('getClassField','metaData')
@@ -249,8 +249,8 @@ class BombCellSoln(object):
             p_val = getattr(self, p_fld_bc)
 
         else:
-            if p_fld_bc in self.p_value:
-                p_fld = self.p_value[p_fld_bc]
+            if p_fld_bc in self.p_map_bc:
+                p_fld = self.p_map_bc[p_fld_bc]
             else:
                 return None
 
