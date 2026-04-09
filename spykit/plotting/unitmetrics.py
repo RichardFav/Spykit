@@ -124,9 +124,22 @@ class UnitMetricPlot(PlotWidget):
     # Parameter Update Functions
     # ---------------------------------------------------------------------------
 
-    def update_plot(self, p_str='i_unit'):
+    def update_plot(self, p_str='reset'):
 
         match p_str:
+            case 'reset':
+                # case is resetting the entire plot
+
+                # plot metric reset
+                self.m_plot[0].get_trace_metrics()
+                self.m_plot[1].get_trace_metrics()
+                self.m_plot[2].init_other_class_fields()
+                self.m_plot[3].get_cc_gram_metrics()
+                self.m_plot[4].reset_plot_metrics()
+
+                # resets the sub-plots
+                self.update_unit_index()
+
             case 'i_unit':
                 # case is the unit index
                 self.update_unit_index()
@@ -330,11 +343,7 @@ class TemplateTrace(UnitPlotLayout):
 
         # field retrieval
         self.n_pts = self.unit_props.get_mem_map_field('n_pts')
-        self.ch_pos = self.unit_props.get_mem_map_field('ch_pos')
-
-        # sets the peak channel indices
-        i_col_cmax = self.unit_props.get_metric_col_index('maxChannels')
-        self.pk_ch = self.unit_props.get_mem_map_field('q_met')[:, i_col_cmax].astype(int)
+        self.get_trace_metrics()
 
         # memory allocation
         self.xi_plt = np.array(range(self.n_pts))
@@ -548,6 +557,13 @@ class TemplateTrace(UnitPlotLayout):
         # returns the colour based on overall feasibility
         return 'white' if np.all(is_ok) else 'red'
 
+    def get_trace_metrics(self):
+
+        # sets the peak channel indices
+        self.ch_pos = self.unit_props.get_mem_map_field('ch_pos')
+        i_col_cmax = self.unit_props.get_metric_col_index('maxChannels')
+        self.pk_ch = self.unit_props.get_mem_map_field('q_met')[:, i_col_cmax].astype(int)
+
 # ----------------------------------------------------------------------------------------------------------------------
 
 """
@@ -597,7 +613,7 @@ class SpatialDecayPlot(UnitPlotLayout):
         self.has_fit = np.zeros(n_unit, dtype=bool)
 
         # other field initialisations
-        self.x_lim = [0, np.max(self.y_decay_sp[:, -1])]
+        # self.x_lim = [0, np.max(self.y_decay_sp[:, -1])]
         self.y_lim = [0, 1.0]
 
     def init_plot_widgets(self):
@@ -768,13 +784,7 @@ class AutoCorrelPlot(UnitPlotLayout):
     def init_other_class_fields(self):
 
         # memory allocation
-        self.cc_gram = np.empty(self.unit_props.n_unit, dtype=object)
-        self.cc_gram_mu = np.zeros(self.unit_props.n_unit, dtype=float)
-
-        # retrieves the
-        q_met = self.unit_props.get_mem_map_field('q_met')
-        self.i_tauR = q_met[:, self.unit_props.get_metric_col_index('RPV_tauR_estimate')].astype(int)
-        self.y_tauR = q_met[:, self.unit_props.get_metric_col_index('fractionRPVs_estimatedTauR')]
+        self.get_cc_gram_metrics()
 
         # ccg bin counts
         self.n_bin = int(self.t_win / self.b_sz)
@@ -973,6 +983,16 @@ class AutoCorrelPlot(UnitPlotLayout):
     # ---------------------------------------------------------------------------
     # Class Getter Functions
     # ---------------------------------------------------------------------------
+
+    def get_cc_gram_metrics(self):
+
+        self.cc_gram = np.empty(self.unit_props.n_unit, dtype=object)
+        self.cc_gram_mu = np.zeros(self.unit_props.n_unit, dtype=float)
+
+        # retrieves the plot metrics
+        q_met = self.unit_props.get_mem_map_field('q_met')
+        self.i_tauR = q_met[:, self.unit_props.get_metric_col_index('RPV_tauR_estimate')].astype(int)
+        self.y_tauR = q_met[:, self.unit_props.get_metric_col_index('fractionRPVs_estimatedTauR')]
 
     def get_title_colour(self):
 
@@ -1235,6 +1255,15 @@ class SpikeActivityPlot(UnitPlotLayout):
 
         # returns the colour based on overall feasibility
         return 'white' if np.all(is_ok) else 'red'
+
+    # ---------------------------------------------------------------------------
+    # Miscellaneous Functions
+    # ---------------------------------------------------------------------------
+
+    def reset_plot_metrics(self):
+
+        self.s_freq[:] = None
+        self.t_spike[:] = None
 
 # ----------------------------------------------------------------------------------------------------------------------
 
