@@ -330,11 +330,12 @@ class SessionWorkBook(QObject):
 
     def get_shank_index(self):
 
-        if self.is_per_shank():
-            return 1
+        if self.is_per_shank() and (self.current_shank is not None):
+            shank_names = self.get_shank_names()
+            return shank_names.index(self.current_shank)
 
         else:
-            return None
+            return 0
 
     def get_shank_count(self):
 
@@ -436,7 +437,7 @@ class SessionWorkBook(QObject):
     def get_mem_map_field(self, p_fld):
 
         i_run = self.get_current_run_index()
-        i_shank = 0 if (self.current_shank is None) else self.current_shank
+        i_shank = self.get_shank_index()
         return self.post_data.get_mem_map_field(i_run, i_shank, p_fld)
 
     def get_metric_table(self):
@@ -457,8 +458,8 @@ class SessionWorkBook(QObject):
     def get_mem_map_files(self, is_flat=True):
 
         # field retrieval
-        is_per_shank = self.is_per_shank()
         is_concat_run = self.is_concat_run()
+        is_per_shank = self.is_per_shank(False)
         bc_dir = self.get_sorting_folder_paths('bombcell')
 
         # finds all the bombcell memory mapping files
@@ -522,6 +523,10 @@ class SessionWorkBook(QObject):
     def set_prep_type(self, new_type):
 
         self.prep_type = new_type
+
+    def set_prep_opt(self, prep_opt):
+
+        self.session.prep_obj.set_prep_opt(prep_opt)
 
     def set_sorting_props(self, new_sort_props):
 
@@ -592,13 +597,16 @@ class SessionWorkBook(QObject):
 
         return (not self.is_raw_run()) and self.session.prep_obj.concat_runs
 
-    def is_per_shank(self):
+    def is_per_shank(self, check_raw=True):
 
         if self.session is None:
             return False
 
-        else:
+        elif check_raw:
             return (not self.is_raw_run()) and self.session.prep_obj.per_shank
+
+        else:
+            return self.session.prep_obj.per_shank
 
     def is_raw_run(self):
 
@@ -1307,7 +1315,7 @@ class PostProcessData(QObject):
 
         if (self.n_mmap == 0):
             self.i_mmap = 0
-            self.n_run_pp, self.n_shank_pp, _ = mm_file.shape
+            self.set_mmap_dim(mm_file)
 
         # reads the stored memory maps
         for i_file in range(mm_file.shape[2]):
@@ -1339,6 +1347,10 @@ class PostProcessData(QObject):
         # determines the unit count (if the first mmap)
         self.n_mmap += 1
         if (self.n_mmap == 1):
+            # sets up the memory map dimensions (if not initialised)
+            if (self.n_run_pp == 0):
+                self.set_mmap_dim(mmap_file_new)
+
             # memory allocation
             self.n_unit_pp = np.zeros((self.n_run_pp, self.n_shank_pp), dtype=int)
             for i_run in range(self.n_run_pp):
@@ -1443,6 +1455,13 @@ class PostProcessData(QObject):
     def set_mmap_index(self, i_mmap_new):
 
         self.i_mmap = i_mmap_new
+
+    def set_mmap_dim(self, mmap_file):
+
+        if mmap_file.ndim == 3:
+            self.n_run_pp, self.n_shank_pp, _ = mmap_file.shape
+        else:
+            self.n_run_pp, self.n_shank_pp = mmap_file.shape
 
     # ---------------------------------------------------------------------------
     # Class Getter Functions

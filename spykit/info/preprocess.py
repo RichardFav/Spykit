@@ -1288,3 +1288,8 @@ class RunPreProcessing(QObject):
 
         else:
             return len(run.items())
+
+    def set_prep_opt(self, prep_opt):
+
+        self.per_shank = prep_opt['per_shank']
+        self.concat_runs = prep_opt['concat_runs']

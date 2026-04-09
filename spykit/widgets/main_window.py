@@ -750,8 +750,8 @@ class MainWindow(QMainWindow):
         # tiny examples
         #  => (CS/SS = Combined/Separated Shank; SR/CR = Separated/Concated Runs)
         # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/Tiny Example/tiny_example.ssf"
-        f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/Tiny Example/tiny_example_1 (CS + SR).ssf"
-        # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/Tiny Example/tiny_example_2 (SS + SR).ssf"
+        # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/Tiny Example/tiny_example_1 (CS + SR).ssf"
+        f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/Tiny Example/tiny_example_2 (SS + SR).ssf"
         # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/Tiny Example/tiny_example_3 (CS + CR).ssf"
         # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/Tiny Example/tiny_example_4 (SS + CR).ssf"
 
@@ -1124,6 +1124,7 @@ class MenuBar(QObject):
             prep_info = self.main_obj.info_manager.get_info_tab('preprocess')
             prep_info.configs.clear()
             prep_info.configs = ses_data['configs']
+            self.main_obj.session_obj.set_prep_opt(ses_data['configs'].prep_opt)
 
             # enables the relavant menu items
             self.set_menu_enabled_blocks('post-preprocess')

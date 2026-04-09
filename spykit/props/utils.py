@@ -247,7 +247,8 @@ class PropManager(QWidget):
         pp_prop = self.main_obj.prop_manager.get_prop_tab('postprocess')
 
         # resets the selected unit index (if it exceeds unit count)
-        if unit_tab.i_unit_sel > unit_tab.get_field('n_unit'):
+        if ((unit_tab.i_unit_sel is not None) and
+                (unit_tab.i_unit_sel > unit_tab.get_field('n_unit'))):
             reset_unit_index = True
             unit_tab.set_row_highlight(False)
             unit_tab.i_unit_sel = unit_tab.get_field('n_unit')
