@@ -1307,10 +1307,10 @@ class PostProcessData(QObject):
 
         if (self.n_mmap == 0):
             self.i_mmap = 0
-            self.n_run_pp, self.n_shank_pp, n_file_pp = mm_file.shape
+            self.n_run_pp, self.n_shank_pp, _ = mm_file.shape
 
         # reads the stored memory maps
-        for i_file in range(n_file_pp):
+        for i_file in range(mm_file.shape[2]):
             if mm_file[0, 0, i_file] == 0:
                 continue
 

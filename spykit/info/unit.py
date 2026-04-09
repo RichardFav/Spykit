@@ -129,6 +129,10 @@ class UnitInfoTab(InfoWidget):
         self.opt_layout.setColumnStretch(1, 20)
         self.opt_layout.setColumnStretch(2, 1)
 
+        # connects the signal/slot functions
+        self.run_type.connect(self.combo_run_change)
+        self.shank_type.connect(self.combo_shank_change)
+
         # adds status filter check combobox
         self.status_filter.item_clicked.connect(self.check_filter_item)
         self.status_filter.setEnabled(False)
@@ -209,6 +213,8 @@ class UnitInfoTab(InfoWidget):
 
         # flag that the widgets are being manually updated
         self.is_updating = True
+        self.run_type.blockSignals(True)
+        self.shank_type.blockSignals(True)
 
         # sets the run type comobobox properties
         self.run_type.addItems(run_list, True)
@@ -220,12 +226,10 @@ class UnitInfoTab(InfoWidget):
         self.shank_type.set_current_index(0)
         self.shank_type.set_enabled(is_per_shank)
 
-        # connects the signal/slot functions
-        self.run_type.connect(self.combo_run_change)
-        self.shank_type.connect(self.combo_shank_change)
-
         # resets the update flag
         self.is_updating = False
+        self.run_type.blockSignals(False)
+        self.shank_type.blockSignals(False)
 
     def set_table_rows(self):
 

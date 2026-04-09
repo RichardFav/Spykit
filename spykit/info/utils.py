@@ -534,7 +534,6 @@ class InfoManager(QWidget):
 
         # updates the table properties
         unit_tab.update_unit_status()
-        unit_tab.set_combobox_props()
 
         # enables the unit tab
         unit_tab.table.show()
@@ -573,6 +572,9 @@ class InfoManager(QWidget):
             table_obj.hideRow(i_row)
             table_obj.item(i_row, i_col_sort).setText(str(i_row))
 
+        # resets the combobox properties
+        unit_tab.set_combobox_props()
+
         # resets the update flag
         self.is_updating = False
 
@@ -597,7 +599,7 @@ class InfoManager(QWidget):
     def unit_combobox_update(self, d_type, tab_obj):
 
         # if manually updating the combobox, then exit
-        if self.is_updating:
+        if tab_obj.is_updating:
             return
 
         match d_type:
