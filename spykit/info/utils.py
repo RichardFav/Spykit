@@ -16,7 +16,7 @@ from spykit.common.common_widget import SearchMixin, QProgressWidget
 # pyqt imports
 from PyQt6.QtWidgets import (QWidget, QTreeWidget, QFrame, QCheckBox, QPushButton, QSizePolicy, QVBoxLayout, QGroupBox,
                              QHeaderView, QTreeWidgetItem, QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox,
-                             QTableWidget, QFormLayout)
+                             QTableWidget, QFormLayout, QApplication)
 from PyQt6.QtCore import Qt, QPointF, QSize, pyqtSignal
 from PyQt6.QtGui import QFont, QColor, QIcon
 
@@ -557,7 +557,7 @@ class InfoManager(QWidget):
 
         for i_row, c_stat in enumerate(unit_tab.df_unit['Unit Type']):
             # sets the table row colour
-            table_obj.showRow(i_row)
+            table_obj.setRowHidden(i_row, False)
             unit_tab.set_table_row_colour(i_row, c_stat.lower())
 
             for i_col in range(table_obj.columnCount()):
@@ -572,9 +572,9 @@ class InfoManager(QWidget):
                     table_obj.item(i_row, i_col).setText(str(value))
 
         # hides the extra table rows
-        for i_row in range(unit_tab.df_unit.shape[0], table_obj.rowCount()):
-            table_obj.hideRow(i_row)
-            table_obj.item(i_row, i_col_sort).setText(str(i_row))
+        for i_row in reversed(range(unit_tab.df_unit.shape[0], table_obj.rowCount())):
+            table_obj.item(i_row, i_col_sort).setText(str(i_row + 1))
+            table_obj.setRowHidden(i_row, True)
 
         # resets the update flag
         self.is_updating = False

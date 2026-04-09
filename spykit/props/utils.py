@@ -10,8 +10,9 @@ import spykit.common.common_func as cf
 import spykit.common.common_widget as cw
 
 # pyqt imports
-from PyQt6.QtWidgets import (QWidget, QLineEdit, QComboBox, QCheckBox, QPushButton, QSizePolicy, QVBoxLayout, QGroupBox,
-                             QHBoxLayout, QFormLayout, QGridLayout, QColorDialog, QTableWidget, QTableWidgetItem)
+from PyQt6.QtWidgets import (QWidget, QLineEdit, QComboBox, QCheckBox, QPushButton, QSizePolicy, QVBoxLayout,
+                             QHBoxLayout, QFormLayout, QGridLayout, QColorDialog, QTableWidget, QTableWidgetItem,
+                             QApplication, QGroupBox)
 from PyQt6.QtCore import Qt, QObject, pyqtSignal
 from PyQt6.QtGui import QStandardItem
 
@@ -240,27 +241,37 @@ class PropManager(QWidget):
             self.main_obj.session_obj.post_data.set_mmap_index(i_mmap)
 
         # field retrieval
+        reset_unit_index = False
         p_manager = self.main_obj.plot_manager
+        unit_tab = self.main_obj.info_manager.get_info_tab('unit')
         pp_prop = self.main_obj.prop_manager.get_prop_tab('postprocess')
 
-        # updates the visible plot views
-        type_r = cf.reverse_dict(p_manager.types)
-        c_id = np.unique(self.get_prop_tab('config').obj_rconfig.c_id)
-        for id in c_id:
-            if (id in type_r) and (type_r[id] in p_manager.pp_views):
-                # updates the post-processing views (if currently viewing)
-                h_view = self.main_obj.plot_manager.get_plot_view(type_r[id])
-                h_view.update_plot()
+        # resets the selected unit index (if it exceeds unit count)
+        if unit_tab.i_unit_sel > unit_tab.get_field('n_unit'):
+            reset_unit_index = True
+            unit_tab.set_row_highlight(False)
+            unit_tab.i_unit_sel = unit_tab.get_field('n_unit')
 
-                match type_r[id]:
-                    case 'waveform':
-                        # case is the waveform plot
-                        pp_prop.get_tab_view(type_r[id]).post_process_change()
+        # updates the visible plot views
+        for pp_v in p_manager.pp_views:
+            # updates the post-processing views (if currently viewing)
+            h_view = self.main_obj.plot_manager.get_plot_view(pp_v)
+
+            if reset_unit_index and hasattr(h_view, 'i_unit'):
+                h_view.reset_unit_index(unit_tab.i_unit_sel)
+
+            # updates the plot view
+            h_view.update_plot()
+
+            match pp_v:
+                case 'waveform':
+                    # case is the waveform plot
+                    pp_prop.get_tab_view(pp_v).post_process_change()
 
         # resets the unit table properties
-        unit_tab = self.main_obj.info_manager.get_info_tab('unit')
         unit_tab.setup_unit_table_data()
         self.main_obj.info_manager.set_unit_table_data()
+        QApplication.processEvents()
 
         # applies the unit status filter
         unit_tab.check_filter_item()

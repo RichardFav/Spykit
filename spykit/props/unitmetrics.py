@@ -95,7 +95,7 @@ class UnitMetricProps(PropWidget):
     def init_other_class_fields(self):
 
         # retrieves the metric table
-        self.q_met = self.main_obj.main_obj.main_obj.session_obj.get_metric_table()
+        self.get_metric_table()
 
         for ch_k, ch_v in self.p_info['ch_fld'].items():
             if ch_v['type'] in 'edit':
@@ -138,9 +138,6 @@ class UnitMetricProps(PropWidget):
 
     def setup_prop_fields(self):
 
-        # field retrieval
-        self.n_unit, _ = self.get_mem_map_field('q_met').shape
-
         # initialisations
         self.p_list_plot = ['Mean Template Waveform', 'Raw Template Waveform',
                             'Spatial Decay', 'Auto-Correlogram', 'Spiking Activity',
@@ -173,7 +170,7 @@ class UnitMetricProps(PropWidget):
 
         match p_str:
             case 'i_unit':
-                min_val, max_val = 1, self.n_unit
+                min_val, max_val = 1, self.get_mem_map_field('q_met').shape[0]
 
         # determines if the new value is valid
         chk_val = cf.check_edit_num(nw_val, min_val=min_val, max_val=max_val, is_int=True)
@@ -232,6 +229,10 @@ class UnitMetricProps(PropWidget):
 
         i_type = int(self.get_mem_map_field('unit_type')[i_unit])
         return self.unit_lbl[i_type]
+
+    def get_metric_table(self):
+
+        self.q_met = self.main_obj.main_obj.main_obj.session_obj.get_metric_table()
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions

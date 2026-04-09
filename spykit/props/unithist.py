@@ -145,7 +145,6 @@ class UnitHistProps(PropWidget):
 
         # field retrieval
         self.p_met_fin = self.p_met[self.can_plot]
-        self.n_unit, _ = self.get_mem_map_field('q_met').shape
 
         # memory allocation
         n_bin0 = 40
@@ -192,7 +191,7 @@ class UnitHistProps(PropWidget):
                 min_val, max_val = 10, 100
 
             case 'i_unit':
-                min_val, max_val = 1, self.n_unit
+                min_val, max_val = 1, self.get_mem_map_field('q_met').shape[0]
 
         # determines if the new value is valid
         chk_val = cf.check_edit_num(nw_val, min_val=min_val, max_val=max_val, is_int=True)

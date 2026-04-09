@@ -1201,8 +1201,11 @@ class MenuBar(QObject):
         # adds the post-processing views
         self.main_obj.prop_manager.add_post_process_views(self)
 
-        # clears any probe unit markers (if already created)
+        # resets the probe unit markers (if already created)
         self.main_obj.plot_manager.get_plot_view('probe').reset_unit_markers()
+        if self.main_obj.session_obj.post_data.n_mmap == 1:
+            unit_tab = self.main_obj.info_manager.get_info_tab('unit')
+            unit_tab.table_cell_click(0, 0)
 
         # updates the post-processing menu item blocks
         self.set_menu_enabled_blocks('post-postprocess')

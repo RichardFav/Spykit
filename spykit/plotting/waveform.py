@@ -289,7 +289,7 @@ class WaveFormPlot(PlotWidget):
         pass
 
     # ---------------------------------------------------------------------------
-    # Miscellaneous Methods
+    # Class Getter Methods
     # ---------------------------------------------------------------------------
 
     def get_field(self, p_fld):
@@ -306,6 +306,21 @@ class WaveFormPlot(PlotWidget):
                 return 1, 2
             case _:
                 return 2, int(np.ceil(n_plt / 2))
+
+    # ---------------------------------------------------------------------------
+    # Class Setter Methods
+    # ---------------------------------------------------------------------------
+
+    def reset_unit_index(self, i_unit_new):
+
+        # flag manual field update
+        self.is_updating = True
+
+        # updates the unit index
+        self.i_unit = i_unit_new
+
+        # resets the update flag
+        self.is_updating = False
 
     # ---------------------------------------------------------------------------
     # Widget Event Callback Functions

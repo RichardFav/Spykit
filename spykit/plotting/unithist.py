@@ -280,6 +280,19 @@ class UnitHistPlot(PlotWidget):
         # updates the plot view
         self.init_plot_view()
 
+    def reset_unit_index(self, i_unit_new):
+
+        # flag manual field update
+        self.is_updating = True
+
+        # updates the unit index
+        self.i_unit = i_unit_new
+        for hp in self.hist:
+            hp.i_unit = i_unit_new
+
+        # resets the update flag
+        self.is_updating = False
+
     # ---------------------------------------------------------------------------
     # Class Getter Functions
     # ---------------------------------------------------------------------------

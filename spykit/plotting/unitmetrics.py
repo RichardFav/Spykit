@@ -130,12 +130,15 @@ class UnitMetricPlot(PlotWidget):
             case 'reset':
                 # case is resetting the entire plot
 
+                # resets the metric table
+                self.unit_props.get_metric_table()
+
                 # plot metric reset
                 self.m_plot[0].get_trace_metrics()
                 self.m_plot[1].get_trace_metrics()
                 self.m_plot[2].init_other_class_fields()
                 self.m_plot[3].get_cc_gram_metrics()
-                self.m_plot[4].reset_plot_metrics()
+                self.m_plot[4].init_other_class_fields()
 
                 # resets the sub-plots
                 self.update_unit_index()
@@ -256,6 +259,19 @@ class UnitMetricPlot(PlotWidget):
 
         # updates the plot view
         self.init_plot_view()
+
+    def reset_unit_index(self, i_unit_new):
+
+        # flag manual field update
+        self.is_updating = True
+
+        # updates the unit index
+        self.i_unit = i_unit_new
+        for mp in self.m_plot:
+            mp.i_unit = i_unit_new
+
+        # resets the update flag
+        self.is_updating = False
 
     # ---------------------------------------------------------------------------
     # Class Getter Functions
@@ -986,13 +1002,14 @@ class AutoCorrelPlot(UnitPlotLayout):
 
     def get_cc_gram_metrics(self):
 
-        self.cc_gram = np.empty(self.unit_props.n_unit, dtype=object)
-        self.cc_gram_mu = np.zeros(self.unit_props.n_unit, dtype=float)
-
         # retrieves the plot metrics
         q_met = self.unit_props.get_mem_map_field('q_met')
         self.i_tauR = q_met[:, self.unit_props.get_metric_col_index('RPV_tauR_estimate')].astype(int)
         self.y_tauR = q_met[:, self.unit_props.get_metric_col_index('fractionRPVs_estimatedTauR')]
+
+        # memory allocation
+        self.cc_gram = np.empty(q_met.shape[0], dtype=object)
+        self.cc_gram_mu = np.zeros(q_met.shape[0], dtype=float)
 
     def get_title_colour(self):
 
@@ -1047,8 +1064,9 @@ class SpikeActivityPlot(UnitPlotLayout):
         self.xi_freq = np.linspace(0, self.t_dur, self.n_bin + 1)
 
         # other class fields
-        self.s_freq = np.empty((self.unit_props.n_unit, 2), dtype=object)
-        self.t_spike = np.empty((self.unit_props.n_unit, 3), dtype=object)
+        n_unit = self.unit_props.get_mem_map_field('q_met').shape[0]
+        self.s_freq = np.empty((n_unit, 2), dtype=object)
+        self.t_spike = np.empty((n_unit, 3), dtype=object)
 
     def init_plot_widgets(self):
 
@@ -1255,15 +1273,6 @@ class SpikeActivityPlot(UnitPlotLayout):
 
         # returns the colour based on overall feasibility
         return 'white' if np.all(is_ok) else 'red'
-
-    # ---------------------------------------------------------------------------
-    # Miscellaneous Functions
-    # ---------------------------------------------------------------------------
-
-    def reset_plot_metrics(self):
-
-        self.s_freq[:] = None
-        self.t_spike[:] = None
 
 # ----------------------------------------------------------------------------------------------------------------------
 
