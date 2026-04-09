@@ -271,7 +271,6 @@ class PropManager(QWidget):
         # resets the unit table properties
         unit_tab.setup_unit_table_data()
         self.main_obj.info_manager.set_unit_table_data()
-        QApplication.processEvents()
 
         # applies the unit status filter
         unit_tab.check_filter_item()

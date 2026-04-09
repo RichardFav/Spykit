@@ -167,7 +167,8 @@ class UnitInfoTab(InfoWidget):
         ch_info = None
         i_shank_sel = None
         unit_id = self.get_unit_indices()
-        n_row = deepcopy(self.table.rowCount())
+        # n_row = deepcopy(self.table.rowCount())
+        n_row = self.df_unit.shape[0]
 
         # determines which items meet the filter selection
         sel_filt = self.status_filter.get_selected_items()
@@ -188,7 +189,7 @@ class UnitInfoTab(InfoWidget):
 
         # retrieves the unit ID's for each row
         unit_id = []
-        for i in range(self.table.rowCount()):
+        for i in range(self.df_unit.shape[0]):
             item = self.table.item(i, self.i_col_unit)
             unit_id.append(int(item.text()))
 
@@ -236,7 +237,7 @@ class UnitInfoTab(InfoWidget):
         self.get_filtered_items()
 
         unit_id = self.get_unit_indices()
-        for i_row in range(self.table.rowCount()):
+        for i_row in range(self.df_unit.shape[0]):
             self.table.setRowHidden(i_row, not self.is_filt[unit_id[i_row] - 1])
 
     def set_row_highlight(self, is_highlight_on, reset_lbl=False):
