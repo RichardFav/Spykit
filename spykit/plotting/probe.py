@@ -964,8 +964,8 @@ class ProbeView(GraphicsObject):
         unit_types = unit_tab.get_unit_type_labels()
 
         # removes any filtered items
-        is_filt = unit_tab.is_filt
-        if is_filt is not None:
+        if unit_tab.is_filt is not None:
+            is_filt = unit_tab.is_filt[:unit_tab.df_unit.shape[0]]
             c_id = c_id[is_filt]
             pk_ch = pk_ch[is_filt]
             unit_types = unit_types[is_filt]

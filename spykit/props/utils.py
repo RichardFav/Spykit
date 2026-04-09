@@ -262,6 +262,9 @@ class PropManager(QWidget):
         unit_tab.setup_unit_table_data()
         self.main_obj.info_manager.set_unit_table_data()
 
+        # applies the unit status filter
+        unit_tab.check_filter_item()
+
         # for i_row, c_stat in enumerate(unit_tab.df_unit['Unit Type']):
         #     # resets the row colour
         #     unit_tab.set_table_row_colour(i_row, c_stat.lower())
@@ -273,6 +276,14 @@ class PropManager(QWidget):
         # clears any probe unit markers
         time.sleep(0.05)
         self.main_obj.plot_manager.get_plot_view('probe').reset_unit_markers()
+
+        if unit_tab.i_unit_sel is not None:
+            # resets the table highlight
+            unit_tab.set_row_highlight(True)
+
+            # resets the row hightlight
+            i_row = np.where(unit_tab.df_unit['Cluster ID#'] == unit_tab.i_unit_sel)[0][0]
+            unit_tab.reset_probe_roi_location(i_row)
 
         if self.main_obj.bombcell_dlg is not None:
             self.main_obj.bombcell_dlg.post_processing_soln_change()
