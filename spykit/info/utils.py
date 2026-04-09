@@ -510,6 +510,10 @@ class InfoManager(QWidget):
 
     def add_unit_table(self):
 
+        # resets the combobox properties
+        unit_tab = self.get_info_tab('unit')
+        unit_tab.set_combobox_props()
+
         t_worker = ThreadWorker(None, self.create_unit_table)
         t_worker.work_finished.connect(self.set_unit_table_data)
         t_worker.start()
@@ -571,9 +575,6 @@ class InfoManager(QWidget):
         for i_row in range(unit_tab.df_unit.shape[0], table_obj.rowCount()):
             table_obj.hideRow(i_row)
             table_obj.item(i_row, i_col_sort).setText(str(i_row))
-
-        # resets the combobox properties
-        unit_tab.set_combobox_props()
 
         # resets the update flag
         self.is_updating = False

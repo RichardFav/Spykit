@@ -265,14 +265,6 @@ class PropManager(QWidget):
         # applies the unit status filter
         unit_tab.check_filter_item()
 
-        # for i_row, c_stat in enumerate(unit_tab.df_unit['Unit Type']):
-        #     # resets the row colour
-        #     unit_tab.set_table_row_colour(i_row, c_stat.lower())
-        #
-        #     # resets the unit classification field
-        #     value = unit_tab.df_unit.iloc[i_row][unit_tab.df_unit.columns[0]]
-        #     unit_tab.table.item(i_row, 0).setText(str(value))
-
         # clears any probe unit markers
         time.sleep(0.05)
         self.main_obj.plot_manager.get_plot_view('probe').reset_unit_markers()
