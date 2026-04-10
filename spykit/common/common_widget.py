@@ -2669,7 +2669,7 @@ class QLabelCheckCombo(QWidget):
 
         # creates the layout widget
         self.layout = QHBoxLayout()
-        self.layout.setSpacing(3)
+        self.layout.setSpacing(1)
         self.layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(self.layout)
 
