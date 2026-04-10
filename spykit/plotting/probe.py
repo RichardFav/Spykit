@@ -508,8 +508,8 @@ class ProbePlot(PlotWidget):
 
         if self.session_info.is_per_shank():
             # case is plotting a specifc shank
-            i_shank = self.session_info.current_shank
-            self.main_view.reset_axes_limits(False, i_shank=i_shank)
+            i_shank = self.session_info.get_shank_index()
+            # self.main_view.reset_axes_limits(False, i_shank=i_shank)
             self.reset_shank_roi(i_shank)
 
             # resets the previous shank index
