@@ -1423,6 +1423,9 @@ class MenuBar(QObject):
             self.main_obj.prop_manager.rename_post_process_solution(f"{mm_name}.dat")
             self.main_obj.session_obj.post_data.rename_post_process(mm_file)
 
+            # sets the other figure properties
+            self.set_menu_enabled('load_postprocessed', True)
+
     def save_config(self):
 
         # retrieves the output data
