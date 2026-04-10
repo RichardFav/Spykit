@@ -424,8 +424,11 @@ class TemplateTrace(UnitPlotLayout):
         self.plot_path.setPath(unit_path)
 
         # updates the waveform trace
-        ii = is_ok[np.where(is_ok == i_ch_w)[0][0]]
-        self.plot_wform.setData(x_sig[ii, :], y_sig[ii, :])
+        if len(is_ok):
+            ii = is_ok[np.where(is_ok == i_ch_w)[0][0]]
+            self.plot_wform.setData(x_sig[ii, :], y_sig[ii, :])
+        else:
+            self.plot_wform.setData([np.nan], [np.nan])
 
         # resets the axes limits
         self.v_box.setXRange(self.x_lim[0], self.x_lim[1], padding=xy_pad)
