@@ -751,12 +751,12 @@ class MainWindow(QMainWindow):
         #  => (CS/SS = Combined/Separated Shank; SR/CR = Separated/Concated Runs)
         # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/Tiny Example/tiny_example.ssf"
         # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/Tiny Example/tiny_example_1 (CS + SR).ssf"
-        f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/Tiny Example/tiny_example_2 (SS + SR).ssf"
+        # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/Tiny Example/tiny_example_2 (SS + SR).ssf"
         # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/Tiny Example/tiny_example_3 (CS + CR).ssf"
         # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/Tiny Example/tiny_example_4 (SS + CR).ssf"
 
         # large examples
-        # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/Large Example/large_example.ssf"
+        f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/Large Example/large_example.ssf"
 
         # loads the session
         self.menu_bar.load_session(f_file, True)

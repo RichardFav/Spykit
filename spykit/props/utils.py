@@ -168,6 +168,7 @@ class PropManager(QWidget):
 
         # field retrieval
         pp_tab = self.get_prop_tab('postprocess')
+        unit_tab = self.main_obj.info_manager.get_info_tab('unit')
         n_views = len(pp_tab.plot_views)
 
         # creates the plot views for each post-processing type
@@ -189,7 +190,7 @@ class PropManager(QWidget):
         m_obj.update_progress_bar('View Setup Complete!', 1)
 
         # updates the other gui properties
-        self.main_obj.info_manager.get_info_tab('unit').update_unit_status()
+        unit_tab.update_unit_status()
         self.set_tab_enabled('postprocess', True)
 
         # updates the progressbars
@@ -274,10 +275,11 @@ class PropManager(QWidget):
         self.main_obj.info_manager.set_unit_table_data()
 
         # applies the unit status filter
+        unit_tab.update_unit_status()
         unit_tab.check_filter_item()
 
         # clears any probe unit markers
-        time.sleep(0.05)
+        time.sleep(0.01)
         self.main_obj.plot_manager.get_plot_view('probe').reset_unit_markers()
 
         if unit_tab.i_unit_sel is not None:

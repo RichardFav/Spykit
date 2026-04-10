@@ -63,6 +63,7 @@ class ProbePlot(PlotWidget):
         # probe class fields
         self.probe = None
         self.probe_dframe = None
+        self.ch_map = None
 
         # plotting widget class fields
         self.main_view = None
@@ -71,6 +72,7 @@ class ProbePlot(PlotWidget):
         self.sub_xhair = None
         self.inset_id = None
         self.i_shank_pr = None
+        self.n_shank = session_info.get_shank_count()
 
         # unit marker objects
         self.l_unit_pen = None
@@ -161,10 +163,24 @@ class ProbePlot(PlotWidget):
             # resets the probe sub-view
             self.sub_view.reset_probe_fields(self.probe)
 
+        # sets up the channel mapping indices
+        ch_map = np.empty(self.n_shank, dtype=object)
+        self.probe_dframe = self.probe.to_dataframe(complete=True)
+        i_sort_ch = self.session_info.channel_data.i_sort
+
+        if self.n_shank == 1:
+            # case is there is a single shank
+            ch_map[0] = i_sort_ch
+        else:
+            # case is there are multiple shanks
+            for i_shank in range(self.n_shank):
+                ii = self.probe_dframe['shank_ids'][i_sort_ch] == str(i_shank + 1)
+                ch_map[i_shank] = i_sort_ch[ii] + 1
+
         # sets up the probe dataframe
         self.main_view.reset_axes_limits(False)
         self.sub_view.reset_axes_limits(False, is_init=True)
-        self.probe_dframe = self.probe.to_dataframe(complete=True)
+        self.sub_view.set_channel_map(ch_map)
 
     def setup_label_text(self, i_channel):
 
@@ -173,10 +189,10 @@ class ProbePlot(PlotWidget):
         status_ch = self.session_info.get_channel_status(i_channel)
         shank_id = self.session_info.get_shank_id(i_channel)
 
-        lbl_str = "Channel #{0}".format(i_channel + 1)
-        lbl_str += "\nDepth = {0}".format(loc_ch[1])
-        lbl_str += "\nStatus = {0}".format(status_ch)
-        lbl_str += "\nShank ID = {0}".format(shank_id)
+        lbl_str = "Channel ID#: {0}".format(i_channel + 1)
+        lbl_str += "\nDepth: {0}".format(loc_ch[1])
+        lbl_str += "\nStatus: {0}".format(status_ch)
+        lbl_str += "\nShank ID: {0}".format(shank_id)
 
         return lbl_str
 
@@ -508,9 +524,6 @@ class ProbePlot(PlotWidget):
 
         self.main_view.roi.setVisible(True)
 
-        # #
-        # vb.setLimits(xMin=_x_lim[0], xMax=_x_lim[1], yMin=_y_lim[0], yMax=_y_lim[1])
-
     def reset_out_line(self, ch_status):
 
         # determines the "out" channels
@@ -757,12 +770,17 @@ class ProbeView(GraphicsObject):
     # pyqtsignal functions
     update_roi = pyqtSignal(object)
 
-    def __init__(self, main_obj, probe, session_info=None, l_wid=1):
+    def __init__(self, main_obj, probe, session_info, l_wid=1):
         super(ProbeView, self).__init__()
 
         # sets the parent object
         self.main_obj = main_obj
         self.setParent(main_obj)
+
+        # other main class fields
+        self.ch_map = None
+        self.probe = probe
+        self.session_info = session_info
 
         # line pen widgets
         self.pen_sel = mkPen(color='k', width=l_wid)
@@ -785,10 +803,9 @@ class ProbeView(GraphicsObject):
         self.x_lim_shank = None
         self.y_lim_shank = None
 
-        #
+        # unit class fields
         self.units = None
         self.unit_tab = None
-        self.session_info = session_info
 
         # plot widgets
         self.picture = QPicture()
@@ -960,8 +977,11 @@ class ProbeView(GraphicsObject):
         # field retrieval
         ch_pos = unit_tab.get_field('ch_pos')
         c_id = np.array(unit_tab.df_unit['Cluster ID#'])
-        pk_ch = np.array(unit_tab.df_unit['Max Channel'])
+        i_shank = self.session_info.get_shank_index()
         unit_types = unit_tab.get_unit_type_labels()
+
+        # sets the channel indices of the peak channels
+        pk_ch = np.array(unit_tab.df_unit['Max Channel'])
 
         # removes any filtered items
         if unit_tab.is_filt is not None:
@@ -1003,10 +1023,11 @@ class ProbeView(GraphicsObject):
                 # sets the offset coordinates
                 ind_new = c_id[np.array(ind_pk[unit_types_pk == ut])]
                 ch_new = ch_unit + self.calc_unit_offset(i_ut, n_unit_types)
+                ch_id = self.ch_map[i_shank][i_pk - 1]
 
                 # sets the unit indices
                 self.units[i][ut_new] = UnitMarker(
-                    self, ch_new, self.unit_rad, i_pk - 1, ut, ind_new, unit_col[ut_new])
+                    self, ch_new, self.unit_rad, ch_id, ut, ind_new, unit_col[ut_new])
                 self.main_obj.addItem(self.units[i][ut_new])
 
     def set_unit_marker_visibility(self, state):
@@ -1165,6 +1186,10 @@ class ProbeView(GraphicsObject):
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
     # ---------------------------------------------------------------------------
+
+    def set_channel_map(self, ch_map_new):
+
+        self.ch_map = ch_map_new
 
     def get_field(self, p_fld):
 
@@ -1355,10 +1380,10 @@ class UnitMarker(pg.QtWidgets.QGraphicsEllipseItem):
 
         # sets the label string
         self.lbl_txt = '\n'.join([
-            'Unit Type: {0}'.format(self.u_type),
-            'Channel Index: {0}'.format(int(self.i_ch + 1)),
-            'Count: {0}'.format(len(self.i_unit)),
-            'Cluster IDs: {0}'.format(unit_str),
+            f'Channel ID: {int(self.i_ch)}',
+            f'Unit Type: {self.u_type}',
+            f'Unit Count: {len(self.i_unit)}',
+            f'Cluster IDs: {unit_str}',
         ])
 
     def set_unit_highlight(self, is_show):

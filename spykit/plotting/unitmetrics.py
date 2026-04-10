@@ -467,7 +467,7 @@ class TemplateTrace(UnitPlotLayout):
 
         # returns the waveforms based on unit/channel indices
         if self.is_raw:
-            return self.unit_props.get_mem_map_field('avg_sig')[i_unit_f, i_ch, :]
+            return self.unit_props.get_raw_traces(i_unit_f, i_ch)
         else:
             return self.unit_props.get_mem_map_field('t_wform')[i_unit_f, :, i_ch]
 

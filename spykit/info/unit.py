@@ -167,11 +167,13 @@ class UnitInfoTab(InfoWidget):
         ch_info = None
         i_shank_sel = None
         unit_id = self.get_unit_indices()
-        # n_row = deepcopy(self.table.rowCount())
         n_row = self.df_unit.shape[0]
 
+        # determines the selected filtered items
+        sel_filt0 = self.status_filter.get_selected_items()
+        sel_filt = [' '.join(x.split()[:-1]) for x in sel_filt0]
+
         # determines which items meet the filter selection
-        sel_filt = self.status_filter.get_selected_items()
         self.is_filt = np.zeros(n_row, dtype=bool)
         for i_row in range(n_row):
             item = self.table.item(i_row, 0)
@@ -220,7 +222,7 @@ class UnitInfoTab(InfoWidget):
         # sets the run type comobobox properties
         self.run_type.addItems(run_list, True)
         self.run_type.set_current_index(0)
-        self.run_type.set_enabled(not is_concat_run)
+        self.run_type.set_enabled((not is_concat_run) and (len(run_list) > 1))
 
         # sets the shank type comobobox properties
         self.shank_type.addItems(s_obj.get_shank_names(), True)
@@ -377,13 +379,13 @@ class UnitInfoTab(InfoWidget):
             self.unit_lbl = ['Noise', 'Good', 'MUA', 'Non-Somatic']
 
         # sets the column headers
-        q_hdr = self.main_obj.session_obj.get_mem_map_field('q_hdr')[0]
+        q_hdr = self.get_field('q_hdr')[0]
         is_ok = np.array([x in bc_var_map for x in q_hdr])
         self.c_hdr = np.array(['Unit Type'] + [bc_var_map[x] for x in q_hdr[is_ok]])
 
         # sets the unit metrics dataframe
         unit_type = self.get_unit_type_labels()
-        q_met = self.main_obj.session_obj.get_mem_map_field('q_met')[:, is_ok]
+        q_met = self.get_field('q_met')[:, is_ok]
         self.df_unit = pd.DataFrame(np.hstack((unit_type.reshape(-1, 1), q_met)), columns=self.c_hdr)
 
         # sets the dtype of specific columns
@@ -394,6 +396,9 @@ class UnitInfoTab(InfoWidget):
 
     def update_unit_status(self):
 
+        # field retrieval
+        unit_type = self.get_field('unit_type')
+
         # initialisations
         self.is_updating = True
         self.set_update_flag.emit(True)
@@ -401,8 +406,10 @@ class UnitInfoTab(InfoWidget):
         # resets the status filter
         self.status_filter.clear()
         self.status_filter.setEnabled(True)
-        for s_filt in self.unit_lbl:
-            self.status_filter.add_item(s_filt, True)
+        for i_filt, s_filt in enumerate(self.unit_lbl):
+            n_unit = sum(unit_type == i_filt)[0]
+            unit_lbl_filt = f"{s_filt} ({n_unit})"
+            self.status_filter.add_item(unit_lbl_filt, True)
 
         # resets the update flag
         self.is_updating = False

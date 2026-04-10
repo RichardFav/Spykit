@@ -234,6 +234,14 @@ class UnitMetricProps(PropWidget):
 
         self.q_met = self.main_obj.main_obj.main_obj.session_obj.get_metric_table()
 
+    def get_raw_traces(self, i_unit_f, i_ch):
+
+        # determines the channel index offset
+        i_shank = self.main_obj.main_obj.session_obj.get_shank_index()
+        i_ch_ofs = self.main_obj.main_obj.session_obj.post_data.i_ch_ofs[i_shank]
+
+        return self.get_mem_map_field('avg_sig')[i_unit_f, i_ch + i_ch_ofs, :]
+
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
     # ---------------------------------------------------------------------------

@@ -145,7 +145,7 @@ class SessionWorkBook(QObject):
 
         return self.channel_data.is_removed
 
-    def get_channel_ids(self, i_ch=None, is_sorted=None):
+    def get_channel_ids(self, i_ch=None, is_sorted=False):
 
         # field retrieval
         ch_id = self.channel_data.channel_ids
@@ -1298,11 +1298,12 @@ class PostProcessData(QObject):
         self.n_unit_pp = []
         self.is_saved = []
 
-        # scale class fields
+        # fixed memory map class fields
         self.i_mmap = 0
         self.n_mmap = 0
         self.n_run_pp = 0
         self.n_shank_pp = 0
+        self.i_ch_ofs = []
 
     # ---------------------------------------------------------------------------
     # Memory Map I/O Functions
@@ -1350,6 +1351,12 @@ class PostProcessData(QObject):
             # sets up the memory map dimensions (if not initialised)
             if (self.n_run_pp == 0):
                 self.set_mmap_dim(mmap_file_new)
+
+            # sets up the shank channel offset indices
+            self.i_ch_ofs = np.zeros(self.n_shank_pp, dtype=int)
+            for i_shank in range(1, self.n_shank_pp):
+                self.get_mem_map_field(0, i_shank - 1, 'n_ch')
+                self.i_ch_ofs[i_shank] = self.i_ch_ofs[i_shank - 1]
 
             # memory allocation
             self.n_unit_pp = np.zeros((self.n_run_pp, self.n_shank_pp), dtype=int)
