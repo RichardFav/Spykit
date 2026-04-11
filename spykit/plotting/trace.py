@@ -23,9 +23,10 @@ from PyQt6.QtWidgets import (QWidget)
 from PyQt6.QtCore import pyqtSignal, Qt, QObject, QPointF
 
 # plot button fields
-b_icon = ['datatip', 'save', 'close']
-b_type = ['toggle', 'button', 'button']
-tt_lbl = ['Show Channel Labels', 'Save Figure', 'Close TraceView']
+b_icon = ['spike', 'datatip', 'save', 'close']
+b_type = ['toggle', 'toggle', 'button', 'button']
+tt_lbl = ['Show Spike Events', 'Show Channel Labels',
+          'Save Figure', 'Close TraceView']
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -150,7 +151,10 @@ class TracePlot(TraceLabelMixin, PlotWidget):
     eps = 1e-6
 
     # list class fields
-    lbl_tt_str = ['Show Channel Labels', 'Hide Channel Labels']
+    lbl_tt_str = {
+        'datatip': ['Show Channel Labels', 'Hide Channel Labels'],
+        'spike': ['Show Spike Events', 'Hide Spike Events'],
+    }
 
     # pen widgets
     l_pen = mkPen(width=3, color='y')
@@ -213,7 +217,8 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.l_pen_status = {}
         self.i_trace = None
         self.y_trace = None
-        self.is_show = False
+        self.show_lbl = False
+        self.show_events = False
 
         # class widgets
         self.c_map = None
@@ -359,7 +364,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
         # creates the linear region
         self.l_reg_x = LinearRegionItem([0, self.x_window], bounds=[0, self.t_dur], span=[0, 1],
-                                        pen=self.l_pen, hoverPen=self.l_pen_hover, swapMode='None')
+                                        pen=self.l_pen, hoverPen=self.l_pen_hover, swapMode='none')
         self.l_reg_x.sigRegionChanged.connect(self.xframe_region_move)
         self.l_reg_x.sigRegionChangeFinished.connect(self.xframe_region_finished)
         self.l_reg_x.mouseDoubleClickEvent = self.xframe_region_double_click
@@ -410,6 +415,9 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
         # resets the zoom limits
         self.reset_zoom_limits()
+
+        # disables the unit button
+        self.set_button_enable('spike', False)
 
     def setup_frame_image(self, axis):
 
@@ -706,7 +714,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         #     self.reset_yaxis_limits()
 
         # # updates the plot labels
-        # if self.is_show and (not is_map):
+        # if self.show_lbl and (not is_map):
         #     self.update_labels()
 
     def reset_frame_image(self):
@@ -834,7 +842,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
             self.heatmap_mouse_move(evnt.position())
 
         # # updates the labels (if currently displaying)
-        # if self.is_show:
+        # if self.show_lbl:
         #     self.update_labels()
 
         # resets the update flag
@@ -890,7 +898,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
     def heatmap_mouse_move(self, p_pos):
 
-        if (self.session_info.session is None) or (not self.is_show):
+        if (self.session_info.session is None) or (not self.show_lbl):
             return
 
         # determines the selected channels
@@ -1072,8 +1080,8 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
         # if not in heatmap mode, or no channels are selected, then exit
         n_channel = self.get_channel_count()
-        # if (not self.get_plot_mode(n_channel)) or (n_channel == 0) or (not self.is_show):
-        if (n_channel == 0) or (not self.is_show):
+        # if (not self.get_plot_mode(n_channel)) or (n_channel == 0) or (not self.show_lbl):
+        if (n_channel == 0) or (not self.show_lbl):
             return
 
         self.hm_roi.show()
@@ -1193,12 +1201,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         # resets the full x-limit field
         self.zx_full = self.t_lim
         t_lim_reg = self.get_prop_xlimits()
-
-        # resets the x-linear region view size
-        self.is_updating = True
-        self.l_reg_x.setRegion((t_lim_reg[0], t_lim_reg[1]))
-        self.v_box[0, 0].setXRange(t_lim_reg[0], t_lim_reg[1], padding=0)
-        self.is_updating = False
+        self.reset_xreg_pos(t_lim_reg)
 
         # updates the previous region limit field
         self.t_lim_prev = t_lim_reg
@@ -1216,6 +1219,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         if not self.is_updating:
             self.zx_full = self.t_lim
 
+            self.reset_xreg_pos()
             self.store_zoom_limits()
             self.update_trace_props()
 
@@ -1245,7 +1249,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
             self.store_zoom_limits()
 
         # # updates the labels (if currently displaying)
-        # if self.is_show:
+        # if self.show_lbl:
         #     self.update_labels()
 
     def yframe_region_double_click(self, evnt=None) -> None:
@@ -1264,14 +1268,22 @@ class TracePlot(TraceLabelMixin, PlotWidget):
     def plot_button_clicked(self, b_str):
 
         match b_str:
+            case 'spike':
+                # case is the spike event toggle button
+                obj_but = self.findChild(cw.QPushButton, name=b_str)
+
+                # updates the tooltip string
+                self.show_events = obj_but.isChecked()
+                obj_but.setToolTip(self.lbl_tt_str[b_str][int(self.show_events)])
+
             case 'datatip':
                 # case is the label toggle button
                 is_map = self.get_plot_mode()
                 obj_but = self.findChild(cw.QPushButton, name=b_str)
 
                 # updates the tooltip string
-                self.is_show = obj_but.isChecked()
-                obj_but.setToolTip(self.lbl_tt_str[int(self.is_show)])
+                self.show_lbl = obj_but.isChecked()
+                obj_but.setToolTip(self.lbl_tt_str[b_str][int(self.show_lbl)])
 
             case 'save':
                 # case is the figure save button
@@ -1330,6 +1342,17 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         else:
             self.inset_tr = np.array([x in self.inset_id for x in self.plot_id])
 
+    def reset_xreg_pos(self, t_lim_reg=None):
+
+        if t_lim_reg is None:
+            t_lim_reg = self.get_prop_xlimits()
+
+        # resets the x-linear region view size
+        self.is_updating = True
+        self.l_reg_x.setRegion((t_lim_reg[0], t_lim_reg[1]))
+        self.v_box[0, 0].setXRange(t_lim_reg[0], t_lim_reg[1], padding=0)
+        self.is_updating = False
+
     # ---------------------------------------------------------------------------
     # Parameter Object Setter Functions
     # ---------------------------------------------------------------------------
@@ -1344,6 +1367,11 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.trace_props = trace_props_new
         self.reset_colour_map()
         trace_props_new.set_trace_view(self)
+
+    def set_button_enable(self, b_str, state):
+
+        obj_but = self.findChild(cw.QPushButton, name=b_str)
+        obj_but.setEnabled(state)
 
     # ---------------------------------------------------------------------------
     # Other Getter Functions

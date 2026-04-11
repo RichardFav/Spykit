@@ -40,7 +40,7 @@ from spikewrap.configs._backend import canon
 
 # widget dimensions
 x_gap = 15
-info_width = 340
+info_width = 350
 
 # object dimensions
 dlg_width = 1650

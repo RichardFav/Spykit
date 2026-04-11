@@ -158,6 +158,8 @@ icon_path = {
     'tick': os.path.join(icon_dir, 'tick_icon.png'),
     'trace_on': os.path.join(icon_dir, 'trace_on_icon.png'),
     'trace_off': os.path.join(icon_dir, 'trace_off_icon.png'),
+    'spike_on': os.path.join(icon_dir, 'spike_on_icon.png'),
+    'spike_off': os.path.join(icon_dir, 'spike_off_icon.png'),
     'star_on': os.path.join(icon_dir, 'star_on_icon.png'),
     'star_off': os.path.join(icon_dir, 'star_off_icon.png'),
     'cell_on': os.path.join(icon_dir, 'cell_on_icon.png'),

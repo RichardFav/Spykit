@@ -98,7 +98,7 @@ class WaveFormPlot(PlotWidget):
         self.plot_layout.addWidget(self.bg_widget)
 
         # creates the background widget
-        self.plot_layout.setSpacing(5)
+        self.plot_layout.setSpacing(10)
         self.plot_layout.setDimOffset(36, 1)
 
         # sets the plot button callback functions
@@ -250,7 +250,7 @@ class WaveFormPlot(PlotWidget):
 
     def update_plot_title(self, i_type):
 
-        t_str = '{0} Unit Waveforms'.format(self.unit_lbl[i_type])
+        t_str = '{0} Units'.format(self.unit_lbl[i_type])
         self.h_plot[i_type].setTitle(t_str, size=self.title_size, bold=True)
 
     # ---------------------------------------------------------------------------
