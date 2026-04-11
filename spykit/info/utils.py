@@ -529,12 +529,14 @@ class InfoManager(QWidget):
 
         # table data retrieval
         unit_tab.setup_unit_table_data()
+        c_hdr_unit = deepcopy(unit_tab.c_hdr)
+        c_hdr_unit[c_hdr_unit.index('Max Channel')] = 'Channel ID#'
 
         # table creation
         n_row_max = np.max(self.main_obj.session_obj.post_data.n_unit_pp)
         table_dim = (n_row_max, unit_tab.df_unit.shape[1])
         self.setup_info_table(
-            unit_tab.df_unit, 'unit', unit_tab.c_hdr, set_values=False, table_dim=table_dim)
+            unit_tab.df_unit, 'unit', c_hdr_unit, set_values=False, table_dim=table_dim)
 
         # updates the table properties
         unit_tab.update_unit_status()
