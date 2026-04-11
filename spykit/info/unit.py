@@ -68,9 +68,9 @@ class UnitInfoTab(InfoWidget):
     }
 
     # object dimensions
+    i_col_unit = 0
+    i_col_type = 1
     but_height = 16
-    i_col_type = 0
-    i_col_unit = 2
 
     def __init__(self, t_str, main_obj):
         super(UnitInfoTab, self).__init__(t_str, main_obj)
@@ -176,7 +176,7 @@ class UnitInfoTab(InfoWidget):
         # determines which items meet the filter selection
         self.is_filt = np.zeros(n_row, dtype=bool)
         for i_row in range(n_row):
-            item = self.table.item(i_row, 0)
+            item = self.table.item(i_row, self.i_col_type)
             self.is_filt[unit_id[i_row] - 1] = item.text() in sel_filt
 
         # resets the row highlight (based on filter selection - if selected)
@@ -381,12 +381,13 @@ class UnitInfoTab(InfoWidget):
         # sets the column headers
         q_hdr = self.get_field('q_hdr')[0]
         is_ok = np.array([x in bc_var_map for x in q_hdr])
-        self.c_hdr = np.array(['Unit Type'] + [bc_var_map[x] for x in q_hdr[is_ok]])
+        c_hdr0 = np.array(['Unit Type'] + [bc_var_map[x] for x in q_hdr[is_ok]])
 
         # sets the unit metrics dataframe
         unit_type = self.get_unit_type_labels()
         q_met = self.get_field('q_met')[:, is_ok]
-        self.df_unit = pd.DataFrame(np.hstack((unit_type.reshape(-1, 1), q_met)), columns=self.c_hdr)
+        self.df_unit = pd.DataFrame(np.hstack((unit_type.reshape(-1, 1), q_met)), columns=c_hdr0)
+        self.reorder_unit_dataframe(c_hdr0)
 
         # sets the dtype of specific columns
         for i_ch in int_col:
@@ -432,3 +433,13 @@ class UnitInfoTab(InfoWidget):
         # force runs the cell click callback
         self.table_cell_click(i_row, i_col)
         self.table.verticalScrollBar().setValue(i_row)
+
+    def reorder_unit_dataframe(self, c_hdr0):
+
+        # sets the fixed column header array
+        c_hdr_nw = ['Cluster ID#', 'Unit Type', 'Max Channel',
+                    'Spike Count', 'Peak Count', 'Trough Count']
+        self.c_hdr = c_hdr_nw + list(set(c_hdr0) - set(c_hdr_nw))
+
+        # re-orders the dataframe
+        self.df_unit = self.df_unit.reindex(columns=self.c_hdr)

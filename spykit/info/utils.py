@@ -548,7 +548,7 @@ class InfoManager(QWidget):
     def set_unit_table_data(self, thread_data=None):
 
         # field retrieval
-        i_col_sort = 2
+        i_col_sort = 0
         unit_tab = self.get_info_tab('unit')
         table_obj = self.get_table_widget('unit')
 
