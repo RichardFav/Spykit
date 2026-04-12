@@ -4,10 +4,10 @@ import numpy as np
 from functools import partial as pfcn
 
 # spike pipeline imports
+import spykit.props.prop_type as pt
 import spykit.common.common_func as cf
 import spykit.common.common_widget as cw
 from spykit.props.utils import PropWidget, PropPara
-import spykit.props.prop_type as pt
 
 # pyqt imports
 from PyQt6.QtWidgets import (QVBoxLayout, QHBoxLayout, QGroupBox, QSizePolicy)

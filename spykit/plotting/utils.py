@@ -148,7 +148,7 @@ class PlotManager(QWidget):
                 # case is the trace view
                 plot_new.reset_highlight.connect(self.probe_highlight)
                 plot_new.set_gen_props(self.get_prop_tab('general'))
-                plot_new.set_trace_props(self.get_prop_tab(p_type))
+                plot_new.set_trace_props(self.get_prop_tab('traceview'))
 
             case 'trigger':
                 # case is the trigger view

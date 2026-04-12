@@ -327,7 +327,16 @@ class PropManager(QWidget):
         n_run = self.main_obj.session_obj.session.get_run_count()
 
         # retrieves the parameter values for each info type
-        for pt, pv in p_para.items():
+        for pt0, pv in p_para.items():
+            match pt0:
+                case 'trace':
+                    # case is the trace view
+                    pt = 'traceview'
+
+                case _:
+                    # case is the other tab type
+                    pt = pt0
+
             # retrieves the property tab object and parameter fields
             p_tab = self.get_prop_tab(pt)
             p_tab.is_updating = True
@@ -411,9 +420,17 @@ class PropManager(QWidget):
 
     def get_prop_tab(self, tab_type):
 
-        if tab_type in self.t_types:
+        if tab_type in ['traceview', 'traceunit']:
+            # case is the trace property/unit property tabs
+            tr_tab = self.tabs[self.t_types.index('trace')]
+            return tr_tab.get_tab_view(tab_type)
+
+        elif tab_type in self.t_types:
+            # case is the main tab types
             return self.tabs[self.t_types.index(tab_type)]
+
         else:
+            # case is an invalid tab type
             return None
 
     def set_tab_enabled(self, i_tab, s_flag):

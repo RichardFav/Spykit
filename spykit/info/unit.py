@@ -186,7 +186,7 @@ class UnitInfoTab(InfoWidget):
     def get_field(self, p_fld):
 
         return self.main_obj.session_obj.get_mem_map_field(p_fld)
-#
+
     def get_unit_indices(self):
 
         # retrieves the unit ID's for each row

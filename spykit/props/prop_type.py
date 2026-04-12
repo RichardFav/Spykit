@@ -3,6 +3,8 @@ import os
 
 # spikewrap/spikeinterface module imports
 from spykit.props.trace import TraceProps
+from spykit.props.traceprops import TraceViewProps
+# from spykit.props.traceunits import TraceUnitProps
 from spykit.props.trigger import TriggerProps
 from spykit.props.config import ConfigProps
 from spykit.props.general import GeneralProps
@@ -15,6 +17,8 @@ from spykit.props.upset import UpSetProps
 # list of all plot types
 prop_types = {
     'trace': TraceProps,                    # trace property type
+    'traceview': TraceViewProps,            # trace view property type
+    # 'traceunit': TraceUnitProps,            # trace unit property type
     'trigger': TriggerProps,                # sync property type
     'config': ConfigProps,                  # region configuration property type
     'general': GeneralProps,                # general property type
@@ -25,9 +29,11 @@ prop_types = {
     'upset': UpSetProps,                    # unit upset property type
 }
 
-# list of plot title names
+# list of property tab names
 prop_names = {
     'trace': 'Trace',
+    'traceview': 'Properties',
+    'traceunit': 'Unit Spikes',
     'trigger': 'Trigger',
     'config': 'Configuration',
     'general': 'General',
