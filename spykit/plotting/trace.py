@@ -435,40 +435,52 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
         # field retrieval
         reset_type = 0
+        reset_xlimits = True
         t_lim_p = self.get_prop_xlimits()
+
+        # field retrieval
+        t_span_0 = np.round(self.trace_props.get('t_span'), cf.n_dp)
+        t_start_0 = np.round(self.trace_props.get('t_start'), cf.n_dp)
+        t_finish_0 = np.round(self.trace_props.get('t_finish'), cf.n_dp)
 
         # parameter specific updates
         match p_str:
-            case 't_span':
-                # case is the window time-span
+            case p_str if p_str in ['t_start', 't_span']:
+                # case is the window start time/span
 
-                # updates the signal limits
-                t_span0, t_span1 = deepcopy(self.x_window), self.trace_props.get('t_span')
-                dt_span = (t_span1 - t_span0) / 2.
-                if self.t_lim[0] < dt_span:
-                    # limits exceed the experiment start
-                    self.t_lim = np.array([0, t_span1])
+                # determines if the window finish time/span is feasible
+                t_finish_1 = t_start_0 + t_span_0
+                if t_finish_1 > self.t_dur:
+                    # if not, reset the finish time
+                    t_finish_1 = self.t_dur
 
-                elif self.t_lim[1] > (self.t_dur - dt_span):
-                    # limits exceed the experiment finish
-                    self.t_lim = np.array([(self.t_dur - t_span1), self.t_dur])
+                    # recalculates the window time span
+                    t_span_1 = self.t_dur - t_start_0
+                    self.x_window = t_span_1
+                    self.trace_props.reset_para_field('t_span', t_span_1)
 
-                else:
-                    # otherwise, update the limits as per normal
-                    self.t_lim += + dt_span * np.array([-1., 1.])
+                # resets the finish time fields
+                self.t_lim = np.round([t_start_0, t_finish_1], cf.n_dp)
+                self.trace_props.reset_para_field('t_finish', t_finish_1)
 
-                # rounds the values to reasonable values
-                self.t_lim = np.round(self.t_lim, cf.n_dp)
+            case 't_finish':
+                # case is the window finish time
 
-                # resets the trace properties
-                reset_type = 0
-                self.x_window = t_span1
-                self.zx_full = deepcopy(self.t_lim)
+                # determines if the window start time/span is feasible
+                t_start_1 = t_finish_0 - t_span_0
 
-                # updates the start/finish parameters
-                t_lim_p = np.round(self.get_prop_xlimits(), cf.n_dp)
-                self.trace_props.reset_para_field('t_start', t_lim_p[0])
-                self.trace_props.reset_para_field('t_finish', t_lim_p[1])
+                if t_start_1 < 0:
+                    # if not, reset the start time
+                    t_start_1 = 0
+
+                    # recalculates the window time span
+                    t_span_1 = t_finish_0
+                    self.x_window = t_span_1
+                    self.trace_props.reset_para_field('t_span', t_span_1)
+
+                # resets the finish time fields
+                self.t_lim = np.round([t_start_1, t_finish_0], cf.n_dp)
+                self.trace_props.reset_para_field('t_start', t_start_1)
 
             # case p_str if p_str in ['t_start', 't_finish']:
             #     # case is the start/finish time
@@ -477,7 +489,16 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
             case p_str if p_str in ['c_lim_lo', 'c_lim_hi']:
                 # case is lower/upper colour limits
+                reset_xlimits = False
                 setattr(self, p_str, self.trace_props.get(p_str))
+
+        if reset_xlimits:
+            # resets the trace properties
+            self.x_window = np.diff(self.t_lim)
+            self.zx_full = deepcopy(self.t_lim)
+
+            # updates the start/finish parameters
+            t_lim_p = np.round(self.get_prop_xlimits(), cf.n_dp)
 
         # resets the zoom/previous limit fields
         self.t_lim_prev = deepcopy(t_lim_p)
@@ -1104,6 +1125,9 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
     def reset_xaxis_limits(self):
 
+        # flag that the regions are being manually updated
+        self.is_updating = True
+
         # updates the time limits
         self.h_plot[0, 0].setXRange(self.t_lim[0], self.t_lim[1], padding=0)
         self.l_reg_x.setRegion(self.t_lim)
@@ -1114,6 +1138,9 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
         # updates the trace properties
         self.update_trace_props()
+
+        # resets the update flag
+        self.is_updating = False
 
     def reset_yzoom_limits(self):
 

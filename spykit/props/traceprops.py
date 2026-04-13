@@ -144,42 +144,42 @@ class TraceViewProps(PropWidget):
 
     def edit_update(self, p_str):
 
-        # flag that property values are being updated manually
-        self.p_props.is_updating = True
+        # # flag that property values are being updated manually
+        # self.p_props.is_updating = True
 
-        # updates the dependent field(s)
-        fld_update = []
-        match p_str:
-            case 't_start':
-                fld_update = ['t_finish']
-                t_finish = np.round(self.get('t_start') + self.get('t_span'), cf.n_dp)
-                self.set_n('t_finish', t_finish)
+        # # updates the dependent field(s)
+        # fld_update = []
+        # match p_str:
+        #     case 't_start':
+        #         fld_update = ['t_finish']
+        #         t_finish = np.round(self.get('t_start') + self.get('t_span'), cf.n_dp)
+        #         self.set_n('t_finish', t_finish)
+        #
+        #     case 't_finish':
+        #         fld_update = ['t_span']
+        #         t_span = np.round(self.get('t_finish') - self.get('t_start'), cf.n_dp)
+        #         self.set_n('t_span', t_span)
+        #
+        #     case 't_span':
+        #         if (self.t_dur - self.get('t_start')) < self.get('t_span'):
+        #             # case is the span can't fit within the signal
+        #             t_start = np.round(self.t_dur - self.get('t_span'), cf.n_dp)
+        #             self.set_n('t_finish', self.t_dur)
+        #             self.set_n('t_start', t_start)
+        #             fld_update = ['t_start', 't_finish']
+        #
+        #         else:
+        #             fld_update = ['t_finish']
+        #             t_finish = np.round(self.get('t_start') + self.get('t_span'), cf.n_dp)
+        #             self.set_n('t_finish', t_finish)
 
-            case 't_finish':
-                fld_update = ['t_span']
-                t_span = np.round(self.get('t_finish') - self.get('t_start'), cf.n_dp)
-                self.set_n('t_span', t_span)
+        # # resets the parameter fields
+        # for pf in fld_update:
+        #     edit_obj = self.findChild(cw.QLineEdit, name=pf)
+        #     edit_obj.setText(str(self.get(pf)))
 
-            case 't_span':
-                if (self.t_dur - self.get('t_start')) < self.get('t_span'):
-                    # case is the span can't fit within the signal
-                    t_start = np.round(self.t_dur - self.get('t_span'), cf.n_dp)
-                    self.set_n('t_finish', self.t_dur)
-                    self.set_n('t_start', t_start)
-                    fld_update = ['t_start', 't_finish']
-
-                else:
-                    fld_update = ['t_finish']
-                    t_finish = np.round(self.get('t_start') + self.get('t_span'), cf.n_dp)
-                    self.set_n('t_finish', t_finish)
-
-        # resets the parameter fields
-        for pf in fld_update:
-            edit_obj = self.findChild(cw.QLineEdit, name=pf)
-            edit_obj.setText(str(self.get(pf)))
-
-        # resets the property check flag
-        self.p_props.is_updating = False
+        # # resets the property check flag
+        # self.p_props.is_updating = False
 
         # resets the plot views
         if self.is_init:

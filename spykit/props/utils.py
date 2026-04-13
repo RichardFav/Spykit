@@ -1099,6 +1099,13 @@ class PropWidget(QWidget):
             else:
                 h_widget.setText('%g' % p_val)
 
+        elif isinstance(h_widget, cw.QLabelEdit):
+            if isinstance(p_val, str):
+                h_widget.set_text(p_val)
+
+            else:
+                h_widget.set_text('%g' % p_val)
+
         # flag that manual update is taking place
         self.is_updating = False
 
@@ -1117,18 +1124,18 @@ class PropWidget(QWidget):
 
             case 't_start':
                 # case is the start time
+                p_min = 0
                 if hasattr(self.p_props, 't_span'):
-                    p_min = 0
-                    p_max = np.round(self.get('t_finish') - cw.t_span_min, cf.n_dp)
+                    p_max = self.t_dur - cw.t_span_min
 
                 else:
-                    p_min, p_max = 0, np.round(self.get('t_finish'), cf.n_dp)
+                    p_max = np.round(self.get('t_finish'), cf.n_dp)
 
             case 't_finish':
-                # case is the start time
-                p_max = np.round(self.t_dur, cf.n_dp)
+                # case is the finish time
+                p_max = self.t_dur
                 if hasattr(self.p_props, 't_span'):
-                    p_min = np.round(self.get('t_start') + cw.t_span_min, cf.n_dp)
+                    p_min = cw.t_span_min
 
                 else:
                     p_min = np.round(self.get('t_start'), cf.n_dp)
