@@ -300,8 +300,8 @@ class UnitHistPlot(PlotWidget):
     def get_all_hist_metrics(self):
 
         # field retrieval
-        self.q_met = self.unit_props.get_mem_map_field('q_met')
-        self.q_hdr = self.unit_props.get_mem_map_field('q_hdr')
+        self.q_met = self.unit_props.get_field('q_met')
+        self.q_hdr = self.unit_props.get_field('q_hdr')
 
         # memory allocation
         self.q_met_hist = np.empty(self.n_met, dtype=object)
@@ -687,79 +687,79 @@ class UnitHist(UnitPlotLayout):
         match self.p_str:
             case 'nPeaks':
                 # case is the peak count
-                self.p_met[1] = self.unit_props.get_mem_map_field('maxNPeaks')
+                self.p_met[1] = self.unit_props.get_field('maxNPeaks')
 
             case 'nTroughs':
                 # case is the trough count
-                self.p_met[1] = self.unit_props.get_mem_map_field('maxNTroughs')
+                self.p_met[1] = self.unit_props.get_field('maxNTroughs')
 
             case 'scndPeakToTroughRatio':
                 # case is the 2nd peak/trough ratio
-                self.p_met[1] = self.unit_props.get_mem_map_field('maxScndPeakToTroughRatio_noise')
+                self.p_met[1] = self.unit_props.get_field('maxScndPeakToTroughRatio_noise')
 
             case 'peak1ToPeak2Ratio':
                 # case is the 1st peak/2nd peak ratio
-                self.p_met[1] = self.unit_props.get_mem_map_field('maxPeak1ToPeak2Ratio_nonSomatic')
+                self.p_met[1] = self.unit_props.get_field('maxPeak1ToPeak2Ratio_nonSomatic')
 
             case 'mainPeakToTroughRatio':
                 # case is the main peak/trough ratio
-                self.p_met[1] = self.unit_props.get_mem_map_field('maxMainPeakToTroughRatio_nonSomatic')
+                self.p_met[1] = self.unit_props.get_field('maxMainPeakToTroughRatio_nonSomatic')
 
             case 'fractionRPVs_estimatedTauR':
                 # case is the RPV tauR estimate fraction
-                self.p_met[1] = self.unit_props.get_mem_map_field('maxRPVviolations')
+                self.p_met[1] = self.unit_props.get_field('maxRPVviolations')
 
             case 'percentageSpikesMissing_gaussian':
                 # case is the % spike missings (gaussian)
-                self.p_met[1] = self.unit_props.get_mem_map_field('maxPercSpikesMissing')
+                self.p_met[1] = self.unit_props.get_field('maxPercSpikesMissing')
 
             case 'nSpikes':
                 # case is the spike count
-                self.p_met[0] = self.unit_props.get_mem_map_field('minNumSpikes')
+                self.p_met[0] = self.unit_props.get_field('minNumSpikes')
 
             case 'rawAmplitude':
                 # case is the raw amplitude
-                self.p_met[0] = self.unit_props.get_mem_map_field('minAmplitude')
+                self.p_met[0] = self.unit_props.get_field('minAmplitude')
 
             case 'spatialDecaySlope':
                 # case is the spatial decay slope
-                if self.unit_props.get_mem_map_field('spDecayLinFit'):
+                if self.unit_props.get_field('spDecayLinFit'):
                     # case is linear spatial decay fit
-                    self.p_met[0] = self.unit_props.get_mem_map_field('minSpatialDecaySlope')
+                    self.p_met[0] = self.unit_props.get_field('minSpatialDecaySlope')
 
                 else:
                     # case is non-linear spatial decay fit
-                    self.p_met[0] = self.unit_props.get_mem_map_field('minSpatialDecaySlopeExp')
-                    self.p_met[1] = self.unit_props.get_mem_map_field('maxSpatialDecaySlopeExp')
+                    self.p_met[0] = self.unit_props.get_field('minSpatialDecaySlopeExp')
+                    self.p_met[1] = self.unit_props.get_field('maxSpatialDecaySlopeExp')
 
             case 'waveformDuration_peakTrough':
                 # case is the waveform duration peak/trough ratio
-                self.p_met[0] = self.unit_props.get_mem_map_field('minWvDuration')
-                self.p_met[1] = self.unit_props.get_mem_map_field('maxWvDuration')
+                self.p_met[0] = self.unit_props.get_field('minWvDuration')
+                self.p_met[1] = self.unit_props.get_field('maxWvDuration')
 
             case 'waveformBaselineFlatness':
                 # case is the waveform baseline flatness
-                self.p_met[1] = self.unit_props.get_mem_map_field('maxWvBaselineFraction')
+                self.p_met[1] = self.unit_props.get_field('maxWvBaselineFraction')
 
             case 'presenceRatio':
                 # case is the presence ratio
-                self.p_met[0] = self.unit_props.get_mem_map_field('minPresenceRatio')
+                self.p_met[0] = self.unit_props.get_field('minPresenceRatio')
 
             case 'signalToNoiseRatio':
                 # case is the signal-to-noise ratio
-                self.p_met[0] = self.unit_props.get_mem_map_field('minSNR')
+                self.p_met[0] = self.unit_props.get_field('minSNR')
 
             case 'maxDriftEstimate':
                 # case is the maximum drift estimate
-                self.p_met[1] = self.unit_props.get_mem_map_field('maxDrift')
+                self.p_met[1] = self.unit_props.get_field('maxDrift')
 
             case 'isoD':
                 # case is the iso-distance
-                self.p_met[1] = self.unit_props.get_mem_map_field('isoDmin')
+                self.p_met[1] = self.unit_props.get_field('isoDmin')
 
             case 'Lratio':
                 # case is the l-Ratio
-                self.p_met[0] = self.unit_props.get_mem_map_field('lratioMax')
+                self.p_met[0] = self.unit_props.get_field('lratioMax')
 
     def get_hist_plot_data(self):
 

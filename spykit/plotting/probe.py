@@ -1017,7 +1017,7 @@ class ProbeView(GraphicsObject):
                 # memory allocation
                 ut_new = ut.lower()
                 if ut_new not in unit_col:
-                    unit_col[ut_new] = unit_tab.row_col[ut_new]
+                    unit_col[ut_new] = cw.unit_col[ut_new]
                     unit_col[ut_new].setAlpha(255)
 
                 # sets the offset coordinates

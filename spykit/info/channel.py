@@ -28,15 +28,6 @@ class ChannelInfoTab(InfoWidget):
     mouse_leave = pyqtSignal(object)
     force_reset_flags = pyqtSignal(object)
 
-    row_col = {
-        'good': cf.get_colour_value('g', 128),
-        'dead': cf.get_colour_value('r', 128),
-        'noise': cf.get_colour_value('y', 128),
-        'out': cf.get_colour_value('c', 128),
-        'rejected': cf.get_colour_value('dg', 128),
-        'removed': cf.get_colour_value('k', 128),
-    }
-
     # table cell item flags
     item_flag = {
         True: Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsSelectable,
@@ -182,7 +173,7 @@ class ChannelInfoTab(InfoWidget):
     def set_table_row_colour(self, i_row, c_stat):
 
         for i_col in range(self.table.columnCount()):
-            self.table.item(i_row, i_col).setBackground(self.row_col[c_stat])
+            self.table.item(i_row, i_col).setBackground(cw.status_col[c_stat])
 
     def set_table_row_enabled(self, i_row, state):
 

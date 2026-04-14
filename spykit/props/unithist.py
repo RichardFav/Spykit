@@ -125,10 +125,7 @@ class UnitHistProps(PropWidget):
         self.check_update('opt_config')
 
         # sets up the unit type fields
-        if bool(self.get_mem_map_field('splitGoodAndMua_NonSomatic')):
-            self.unit_lbl = ['Noise', 'Somatic Good', 'Somatic MUA', 'Non-somatic Good', 'Non-somatic MUA']
-        else:
-            self.unit_lbl = ['Noise', 'Good', 'MUA', 'Non-Somatic']
+        self.unit_lbl = cw.get_unit_labels(self.get_field('splitGoodAndMua_NonSomatic'))
 
         # sets up the font objects
         self.title_main_font = cw.create_font_obj(
@@ -191,7 +188,7 @@ class UnitHistProps(PropWidget):
                 min_val, max_val = 10, 100
 
             case 'i_unit':
-                min_val, max_val = 1, self.get_mem_map_field('q_met').shape[0]
+                min_val, max_val = 1, self.get_field('q_met').shape[0]
 
         # determines if the new value is valid
         chk_val = cf.check_edit_num(nw_val, min_val=min_val, max_val=max_val, is_int=True)
@@ -321,36 +318,36 @@ class UnitHistProps(PropWidget):
                 case 'RPV tauR Estimate':
                     # case is the RPV tau estimate
                     self.can_plot[i] = (
-                            self.get_mem_map_field('tauR_valuesMin') != self.get_mem_map_field('tauR_valuesMax'))
+                            self.get_field('tauR_valuesMin') != self.get_field('tauR_valuesMax'))
 
                 case 'Spatial Decay':
                     # case is spatial decay
-                    self.can_plot[i] = self.get_mem_map_field('computeSpatialDecay') == 1
+                    self.can_plot[i] = self.get_field('computeSpatialDecay') == 1
 
                 case pm if pm in ['Raw Amplitude', 'SNR']:
                     # case is the raw signal metrics
-                    self.can_plot[i] = bool(self.get_mem_map_field('extractRaw'))
+                    self.can_plot[i] = bool(self.get_field('extractRaw'))
 
                 case pm if pm in ['Max Drift', 'Cumulative Drift']:
                     # case is the drift metrics
-                    self.can_plot[i] = bool(self.get_mem_map_field('computeDrift'))
+                    self.can_plot[i] = bool(self.get_field('computeDrift'))
 
                 case pm if pm in ['Isolation Distance', 'L-Ratio']:
                     # case is the distance metrics
-                    self.can_plot[i] = (bool(self.get_mem_map_field('computeDistanceMetrics'))
-                                   and not np.isnan(self.get_mem_map_field('isoDmin')))
+                    self.can_plot[i] = (bool(self.get_field('computeDistanceMetrics'))
+                                   and not np.isnan(self.get_field('isoDmin')))
 
                 case '% Spike Missing (Sym)':
                     # redundant fields?
                     self.can_plot[i] = False
 
-    def get_mem_map_field(self, p_fld):
+    def get_field(self, p_fld):
 
         return self.main_obj.main_obj.session_obj.get_mem_map_field(p_fld)
 
     def get_unit_type(self, i_unit):
 
-        i_type = int(self.get_mem_map_field('unit_type')[i_unit])
+        i_type = int(self.get_field('unit_type')[i_unit])
         return self.unit_lbl[i_type]
 
     # ---------------------------------------------------------------------------
@@ -393,4 +390,4 @@ class UnitHistProps(PropWidget):
 
     def get_metric_col_index(self, h_str):
 
-        return np.where(self.get_mem_map_field('q_hdr') == h_str)[1][0]
+        return np.where(self.get_field('q_hdr') == h_str)[1][0]

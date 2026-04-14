@@ -1197,6 +1197,7 @@ class MenuBar(QObject):
             self.main_obj.added_post_process(mm_name)
 
         # updates the unit information tab
+        self.main_obj.prop_manager.add_spike_table()
         self.main_obj.info_manager.add_unit_table()
 
         # adds the post-processing views

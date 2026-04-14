@@ -144,7 +144,7 @@ class WaveFormProps(PropWidget):
 
         match p_str:
             case 'i_unit':
-                min_val, max_val = 1, self.get_mem_map_field('q_met').shape[0]
+                min_val, max_val = 1, self.get_field('q_met').shape[0]
 
         # determines if the new value is valid
         chk_val = cf.check_edit_num(nw_val, min_val=min_val, max_val=max_val, is_int=True)
@@ -230,18 +230,15 @@ class WaveFormProps(PropWidget):
     def get_unit_label(self):
 
         # sets up the unit type fields
-        if bool(self.main_obj.get_field('splitGoodAndMua_NonSomatic')):
-            return ['Noise', 'Somatic Good', 'Somatic MUA', 'Non-somatic Good', 'Non-somatic MUA']
-        else:
-            return ['Noise', 'Good', 'MUA', 'Non-Somatic']
+        return cw.get_unit_labels(self.get_field('splitGoodAndMua_NonSomatic'))
 
     def get_para_value(self, p_str):
 
         return getattr(self.p_props, p_str)
 
-    def get_mem_map_field(self, p_fld):
+    def get_field(self, p_fld):
 
-        return self.main_obj.main_obj.session_obj.get_mem_map_field(p_fld)
+        return self.main_obj.main_obj.main_obj.session_obj.get_mem_map_field(p_fld)
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Methods

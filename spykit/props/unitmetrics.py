@@ -122,10 +122,7 @@ class UnitMetricProps(PropWidget):
         self.f_layout.setSpacing(5)
 
         # sets up the unit type fields
-        if bool(self.get_mem_map_field('splitGoodAndMua_NonSomatic')):
-            self.unit_lbl = ['Noise', 'Somatic Good', 'Somatic MUA', 'Non-somatic Good', 'Non-somatic MUA']
-        else:
-            self.unit_lbl = ['Noise', 'Good', 'MUA', 'Non-Somatic']
+        self.unit_lbl = cw.get_unit_labels(self.get_field('splitGoodAndMua_NonSomatic'))
 
         # sets up the title/label font sizes
         self.title_sub_size = '{0}pt'.format(self.title_sub_size0)
@@ -170,7 +167,7 @@ class UnitMetricProps(PropWidget):
 
         match p_str:
             case 'i_unit':
-                min_val, max_val = 1, self.get_mem_map_field('q_met').shape[0]
+                min_val, max_val = 1, self.get_field('q_met').shape[0]
 
         # determines if the new value is valid
         chk_val = cf.check_edit_num(nw_val, min_val=min_val, max_val=max_val, is_int=True)
@@ -221,18 +218,18 @@ class UnitMetricProps(PropWidget):
 
         return getattr(self.p_props, p_fld)
 
-    def get_mem_map_field(self, p_fld):
+    def get_field(self, p_fld):
 
         return self.main_obj.main_obj.session_obj.get_mem_map_field(p_fld)
 
     def get_unit_type(self, i_unit):
 
-        i_type = int(self.get_mem_map_field('unit_type')[i_unit])
+        i_type = int(self.get_field('unit_type')[i_unit])
         return self.unit_lbl[i_type]
 
     def get_metric_table_values(self):
 
-        self.q_met = self.main_obj.main_obj.main_obj.session_obj.get_metric_table()
+        self.q_met = self.main_obj.main_obj.main_obj.session_obj.get_metric_table_values()
 
     def get_raw_traces(self, i_unit_f, i_ch):
 
@@ -240,7 +237,7 @@ class UnitMetricProps(PropWidget):
         i_shank = self.main_obj.main_obj.session_obj.get_shank_index()
         i_ch_ofs = self.main_obj.main_obj.session_obj.post_data.i_ch_ofs[i_shank]
 
-        return self.get_mem_map_field('avg_sig')[i_unit_f, i_ch + i_ch_ofs, :]
+        return self.get_field('avg_sig')[i_unit_f, i_ch + i_ch_ofs, :]
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
@@ -277,4 +274,4 @@ class UnitMetricProps(PropWidget):
 
     def get_metric_col_index(self, h_str):
 
-        return np.where(self.get_mem_map_field('q_hdr') == h_str)[1][0]
+        return np.where(self.get_field('q_hdr') == h_str)[1][0]

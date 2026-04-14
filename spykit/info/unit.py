@@ -49,18 +49,6 @@ class UnitInfoTab(InfoWidget):
     mouse_move = pyqtSignal(object)
     mouse_leave = pyqtSignal(object)
 
-    row_col = {
-        'noise': cf.get_colour_value('r', 128),
-        'good': cf.get_colour_value('g', 128),
-        'somatic good': cf.get_colour_value('g', 128),
-        'mua': cf.get_colour_value('c', 128),
-        'somatic mua': cf.get_colour_value('c', 128),
-        'non-somatic': cf.get_colour_value('y', 128),
-        'non-somatic good': cf.get_colour_value('y', 128),
-        'non-somatic mua': cf.get_colour_value('m', 128),
-        'selected': cf.get_colour_value([217, 255, 251], 128),
-    }
-
     # table cell item flags
     item_flag = {
         True: Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsSelectable,
@@ -204,7 +192,7 @@ class UnitInfoTab(InfoWidget):
     def set_table_row_colour(self, i_row, c_stat):
 
         for i_col in range(self.table.columnCount()):
-            self.table.item(i_row, i_col).setBackground(self.row_col[c_stat])
+            self.table.item(i_row, i_col).setBackground(cw.unit_col[c_stat])
 
     def set_combobox_props(self):
 
@@ -373,10 +361,7 @@ class UnitInfoTab(InfoWidget):
     def setup_unit_table_data(self):
 
         # sets up the unit type fields
-        if self.get_field('splitGoodAndMua_NonSomatic'):
-            self.unit_lbl = ['Noise', 'Somatic Good', 'Somatic MUA', 'Non-somatic Good', 'Non-somatic MUA']
-        else:
-            self.unit_lbl = ['Noise', 'Good', 'MUA', 'Non-Somatic']
+        self.unit_lbl = cw.get_unit_labels(self.get_field('splitGoodAndMua_NonSomatic'))
 
         # sets the column headers
         q_hdr = self.get_field('q_hdr')[0]

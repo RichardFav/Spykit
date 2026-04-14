@@ -29,7 +29,6 @@ x_gap_h = 2
 class TraceProps(PropWidget):
     # field properties
     type = 'trace'
-    # trace_views = ['traceview']
     trace_views = ['traceview', 'tracespike']
 
     # widget dimensions
@@ -92,7 +91,7 @@ class TraceProps(PropWidget):
     def init_trace_tabs(self):
 
         # creates the post-processing plot views
-        for pf in self.trace_views:
+        for i_pf, pf in enumerate(self.trace_views):
             # creates the tab widget (based on type)
             t_lbl = pt.prop_names[pf]
             tab_constructor = pt.prop_types[pf]
@@ -101,6 +100,9 @@ class TraceProps(PropWidget):
 
             # adds the tab to the tab group
             self.tab_group_tr.addTab(tab_widget, t_lbl)
+
+        # sets the other tab properties
+        self.set_tab_visible('tracespike', False)
 
     # ---------------------------------------------------------------------------
     # Special Widget Event Functions
@@ -111,7 +113,7 @@ class TraceProps(PropWidget):
         pass
 
     # ---------------------------------------------------------------------------
-    # Miscellaneous Functions
+    # Class Setter Functions
     # ---------------------------------------------------------------------------
 
     def set_trace_view(self, p_view):
@@ -120,6 +122,15 @@ class TraceProps(PropWidget):
         for pf in self.trace_views:
             p_tab = self.tabs[self.trace_views.index(pf)]
             p_tab.set_trace_view(p_view)
+
+    def set_tab_visible(self, t_type, state):
+
+        i_tab = self.trace_views.index(t_type)
+        self.tab_group_tr.setTabVisible(i_tab, state)
+
+    # ---------------------------------------------------------------------------
+    # Class Getter Functions
+    # ---------------------------------------------------------------------------
 
     def get_tab_view(self, p_type):
 

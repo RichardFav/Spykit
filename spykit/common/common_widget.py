@@ -247,6 +247,29 @@ hist_map = {
     'Lratio': 'L-Ratio'
 }
 
+# channel status colour
+status_col = {
+    'good': cf.get_colour_value('g', 128),
+    'dead': cf.get_colour_value('r', 128),
+    'noise': cf.get_colour_value('y', 128),
+    'out': cf.get_colour_value('c', 128),
+    'rejected': cf.get_colour_value('dg', 128),
+    'removed': cf.get_colour_value('k', 128),
+}
+
+# unit type colour
+unit_col = {
+    'noise': cf.get_colour_value('r', 128),
+    'good': cf.get_colour_value('g', 128),
+    'somatic good': cf.get_colour_value('g', 128),
+    'mua': cf.get_colour_value('c', 128),
+    'somatic mua': cf.get_colour_value('c', 128),
+    'non-somatic': cf.get_colour_value('y', 128),
+    'non-somatic good': cf.get_colour_value('y', 128),
+    'non-somatic mua': cf.get_colour_value('m', 128),
+    'selected': cf.get_colour_value([217, 255, 251], 128),
+}
+
 # widget dimensions
 x_gap = 5
 row_height = 16.5
@@ -3874,6 +3897,13 @@ def get_def_dir(d_type):
     else:
         # case is the default file doesn't exist
         return resource_dir
+
+def get_unit_labels(is_split_nonsomatic):
+
+    if is_split_nonsomatic:
+        return ['Noise', 'Somatic Good', 'Somatic MUA', 'Non-somatic Good', 'Non-somatic MUA']
+    else:
+        return ['Noise', 'Good', 'MUA', 'Non-Somatic']
 
 # ----------------------------------------------------------------------------------------------------------------------
 

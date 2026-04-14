@@ -347,7 +347,7 @@ class UpSetPlot(PlotWidget):
 
         # field retrieval
         p = self.get_field
-        q_met = self.session_info.get_metric_table()
+        q_met = self.session_info.get_metric_table_values()
         unit_tab = self.session_info.main_obj.info_manager.get_info_tab('unit')
         unit_lbl = unit_tab.get_unit_type_labels()
 

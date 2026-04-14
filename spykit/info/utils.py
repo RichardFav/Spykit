@@ -592,8 +592,12 @@ class InfoManager(QWidget):
 
     def unit_status_update(self, tab_obj):
 
-        # resets the table rows based on the selection
+        # resets the unit table rows
         tab_obj.set_table_rows()
+
+        # resets the unit spike table rows
+        tab_spike = self.main_obj.prop_manager.get_prop_tab('tracespike')
+        tab_spike.set_table_rows(tab_obj.is_filt)
 
         # updates the unit markers
         probe_view = self.get_probe_plot_view()

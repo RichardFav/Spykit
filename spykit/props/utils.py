@@ -8,6 +8,7 @@ from functools import partial as pfcn
 import spykit.props.prop_type as ppt
 import spykit.common.common_func as cf
 import spykit.common.common_widget as cw
+from spykit.threads.utils import ThreadWorker
 
 # pyqt imports
 from PyQt6.QtWidgets import (QWidget, QLineEdit, QComboBox, QCheckBox, QPushButton, QSizePolicy, QVBoxLayout,
@@ -273,6 +274,7 @@ class PropManager(QWidget):
         # resets the unit table properties
         unit_tab.setup_unit_table_data()
         self.main_obj.info_manager.set_unit_table_data()
+        self.set_spike_table_data()
 
         # applies the unit status filter
         unit_tab.update_unit_status()
@@ -410,7 +412,47 @@ class PropManager(QWidget):
             p_tab.is_updating = False
 
     # ---------------------------------------------------------------------------
-    # Miscellaneous Functions
+    # Unit Spike Table Setup Functions
+    # ---------------------------------------------------------------------------
+
+    def add_spike_table(self):
+
+        t_worker = ThreadWorker(None, self.create_spike_table)
+        t_worker.work_finished.connect(self.set_spike_table_data)
+        t_worker.start()
+
+        # pause for a little bit...
+        time.sleep(0.05)
+
+    def create_spike_table(self, _):
+
+        # field retrieval
+        spike_tab = self.get_prop_tab('tracespike')
+
+        # disables the table
+        self.set_tab_enabled('tracespike', False)
+        spike_tab.table.hide()
+
+        # sets up the unit spike table
+        spike_tab.setup_spike_table()
+
+        # enables the unit spike tab
+        spike_tab.table.show()
+        self.set_tab_enabled('tracespike', True)
+
+        return []
+
+    def set_spike_table_data(self, thread_data=None):
+
+        # field retrieval
+        spike_tab = self.get_prop_tab('tracespike')
+
+        # sets up the
+        spike_tab.set_spike_table_data()
+        self.get_prop_tab('trace').set_tab_visible('tracespike', True)
+
+    # ---------------------------------------------------------------------------
+    # Class Getter Functions
     # ---------------------------------------------------------------------------
 
     def get_run_index(self):
@@ -433,13 +475,28 @@ class PropManager(QWidget):
             # case is an invalid tab type
             return None
 
-    def set_tab_enabled(self, i_tab, s_flag):
+    # ---------------------------------------------------------------------------
+    # Class Setter Functions
+    # ---------------------------------------------------------------------------
+
+    def set_tab_enabled(self, i_tab, s_flag, is_trace_tab=False):
 
         if isinstance(i_tab, str):
-            i_tab = self.t_types.index(i_tab)
+            if i_tab in ['traceview', 'tracespike']:
+                is_trace_tab = True
+                trace_tab = self.get_prop_tab('trace')
+                i_tab = trace_tab.trace_views.index(i_tab)
+
+            else:
+                i_tab = self.t_types.index(i_tab)
 
         # updates the table flag
-        self.tab_group_props.setTabEnabled(i_tab, s_flag)
+        if is_trace_tab:
+            trace_tab = self.get_prop_tab('trace')
+            trace_tab.tab_group_tr.setTabEnabled(i_tab, s_flag)
+
+        else:
+            self.tab_group_props.setTabEnabled(i_tab, s_flag)
 
     def set_tab_visible(self, i_tab, s_flag):
 
@@ -459,6 +516,10 @@ class PropManager(QWidget):
         # sets the group style sheets
         self.tab_group_props.setStyleSheet(info_groupbox_style)
         self.group_props.setStyleSheet(info_groupbox_style)
+
+    # ---------------------------------------------------------------------------
+    # Miscellaneous Functions
+    # ---------------------------------------------------------------------------
 
     @staticmethod
     def reset_para_field(p_tab, p_name, p_type, p_val, i_run=None):

@@ -440,7 +440,7 @@ class SessionWorkBook(QObject):
         i_shank = self.get_shank_index()
         return self.post_data.get_mem_map_field(i_run, i_shank, p_fld)
 
-    def get_metric_table(self):
+    def get_metric_table_values(self):
 
         q_hdr = self.get_mem_map_field('q_hdr')[0]
         q_met = self.get_mem_map_field('q_met')

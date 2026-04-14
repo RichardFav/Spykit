@@ -131,7 +131,7 @@ class UnitMetricPlot(PlotWidget):
                 # case is resetting the entire plot
 
                 # resets the metric table
-                self.unit_props.get_metric_table()
+                self.unit_props.get_metric_table_values()
 
                 # plot metric reset
                 self.m_plot[0].get_trace_metrics()
@@ -358,7 +358,7 @@ class TemplateTrace(UnitPlotLayout):
     def init_other_class_fields(self):
 
         # field retrieval
-        self.n_pts = self.unit_props.get_mem_map_field('n_pts')
+        self.n_pts = self.unit_props.get_field('n_pts')
         self.get_trace_metrics()
 
         # memory allocation
@@ -472,7 +472,7 @@ class TemplateTrace(UnitPlotLayout):
         if self.is_raw:
             return self.unit_props.get_raw_traces(i_unit_f, i_ch)
         else:
-            return self.unit_props.get_mem_map_field('t_wform')[i_unit_f, :, i_ch]
+            return self.unit_props.get_field('t_wform')[i_unit_f, :, i_ch]
 
     def get_neighbouring_channels(self, i_pk_ch):
 
@@ -521,7 +521,7 @@ class TemplateTrace(UnitPlotLayout):
 
         # initialisations
         i_unit_f = self.i_unit - 1
-        p_value = self.unit_props.get_mem_map_field
+        p_value = self.unit_props.get_field
 
         if self.is_raw:
             # memory allocation
@@ -579,9 +579,9 @@ class TemplateTrace(UnitPlotLayout):
     def get_trace_metrics(self):
 
         # sets the peak channel indices
-        self.ch_pos = self.unit_props.get_mem_map_field('ch_pos')
+        self.ch_pos = self.unit_props.get_field('ch_pos')
         i_col_cmax = self.unit_props.get_metric_col_index('maxChannels')
-        self.pk_ch = self.unit_props.get_mem_map_field('q_met')[:, i_col_cmax].astype(int)
+        self.pk_ch = self.unit_props.get_field('q_met')[:, i_col_cmax].astype(int)
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -619,11 +619,11 @@ class SpatialDecayPlot(UnitPlotLayout):
         i_col_sp = self.unit_props.get_metric_col_index('spatialDecaySlope')
 
         # field retrieval
-        self.x_decay_sp = self.unit_props.get_mem_map_field('x_decay_sp')
-        self.y_decay_sp = self.unit_props.get_mem_map_field('y_decay_sp')
-        self.k_decay_sp = self.unit_props.get_mem_map_field('k_decay_sp')
-        self.h_decay_sp = self.unit_props.get_mem_map_field('q_met')[:, i_col_sp]
-        self.is_lin_fit = bool(self.unit_props.get_mem_map_field('spDecayLinFit'))
+        self.x_decay_sp = self.unit_props.get_field('x_decay_sp')
+        self.y_decay_sp = self.unit_props.get_field('y_decay_sp')
+        self.k_decay_sp = self.unit_props.get_field('k_decay_sp')
+        self.h_decay_sp = self.unit_props.get_field('q_met')[:, i_col_sp]
+        self.is_lin_fit = bool(self.unit_props.get_field('spDecayLinFit'))
 
         # memory allocation
         n_unit = len(self.k_decay_sp)
@@ -757,7 +757,7 @@ class SpatialDecayPlot(UnitPlotLayout):
 
         # initialisations
         i_unit_f = self.i_unit - 1
-        p_value = self.unit_props.get_mem_map_field
+        p_value = self.unit_props.get_field
 
         # metric retrieval
         sd_slope = self.unit_props.q_met['spatialDecaySlope'][i_unit_f]
@@ -957,8 +957,8 @@ class AutoCorrelPlot(UnitPlotLayout):
         i_unit_f = self.i_unit - 1
 
         # retrieves the spike time for the current unit
-        t_spike = self.unit_props.get_mem_map_field('t_spike')
-        spk_cluster = self.unit_props.get_mem_map_field('spk_cluster')
+        t_spike = self.unit_props.get_field('t_spike')
+        spk_cluster = self.unit_props.get_field('spk_cluster')
         t_unit = t_spike[spk_cluster == self.i_unit] * 1000
 
         # calculates the fine unit cc-gram
@@ -1006,7 +1006,7 @@ class AutoCorrelPlot(UnitPlotLayout):
     def get_cc_gram_metrics(self):
 
         # retrieves the plot metrics
-        q_met = self.unit_props.get_mem_map_field('q_met')
+        q_met = self.unit_props.get_field('q_met')
         self.i_tauR = q_met[:, self.unit_props.get_metric_col_index('RPV_tauR_estimate')].astype(int)
         self.y_tauR = q_met[:, self.unit_props.get_metric_col_index('fractionRPVs_estimatedTauR')]
 
@@ -1018,7 +1018,7 @@ class AutoCorrelPlot(UnitPlotLayout):
 
         # initialisations
         i_unit_f = self.i_unit - 1
-        p_value = self.unit_props.get_mem_map_field
+        p_value = self.unit_props.get_field
 
         # metric feasibility checks
         is_ok = self.unit_props.q_met['fractionRPVs_estimatedTauR'][i_unit_f] <= p_value('maxRPVviolations')
@@ -1067,7 +1067,7 @@ class SpikeActivityPlot(UnitPlotLayout):
         self.xi_freq = np.linspace(0, self.t_dur, self.n_bin + 1)
 
         # other class fields
-        n_unit = self.unit_props.get_mem_map_field('q_met').shape[0]
+        n_unit = self.unit_props.get_field('q_met').shape[0]
         self.s_freq = np.empty((n_unit, 2), dtype=object)
         self.t_spike = np.empty((n_unit, 3), dtype=object)
 
@@ -1167,15 +1167,15 @@ class SpikeActivityPlot(UnitPlotLayout):
 
         if self.t_spike[i_unit_f, 0] is None:
             # retrieves the units spike
-            t_spike = self.unit_props.get_mem_map_field('t_spike')
-            is_unit = self.unit_props.get_mem_map_field('spk_cluster') == self.i_unit
+            t_spike = self.unit_props.get_field('t_spike')
+            is_unit = self.unit_props.get_field('spk_cluster') == self.i_unit
             self.t_spike[i_unit_f, 0] = t_spike[is_unit]
-            self.t_spike[i_unit_f, 1] = self.unit_props.get_mem_map_field('t_amp')[is_unit]
+            self.t_spike[i_unit_f, 1] = self.unit_props.get_field('t_amp')[is_unit]
 
             # determines the spike feasibility
             t_spike_isi = np.diff(self.t_spike[i_unit_f, 0])
             self.t_spike[i_unit_f, 2] = np.ones(len(self.t_spike[i_unit_f, 0]), dtype=bool)
-            self.t_spike[i_unit_f, 2][:-1] = t_spike_isi >= self.unit_props.get_mem_map_field('tauR_valuesMin')
+            self.t_spike[i_unit_f, 2][:-1] = t_spike_isi >= self.unit_props.get_field('tauR_valuesMin')
 
             # calculates the spiking frequency
             n_count, x = np.histogram(
@@ -1264,7 +1264,7 @@ class SpikeActivityPlot(UnitPlotLayout):
         # initialisations
         i_unit_f = self.i_unit - 1
         is_ok = np.ones(2, dtype=bool)
-        p_value = self.unit_props.get_mem_map_field
+        p_value = self.unit_props.get_field
 
         # metric retrieval
         n_spike = self.unit_props.q_met['nSpikes'][i_unit_f]
@@ -1424,9 +1424,9 @@ class SpikeAmplitudeHist(UnitPlotLayout):
         i_unit_f = self.i_unit - 1
 
         # retrieves the plot values
-        x_bin = self.unit_props.get_mem_map_field('x_bin_amp')[i_unit_f, :]
-        y_bin = self.unit_props.get_mem_map_field('y_bin_amp')[i_unit_f, :]
-        y_fit = self.unit_props.get_mem_map_field('y_gauss_amp')[i_unit_f, :]
+        x_bin = self.unit_props.get_field('x_bin_amp')[i_unit_f, :]
+        y_bin = self.unit_props.get_field('y_bin_amp')[i_unit_f, :]
+        y_fit = self.unit_props.get_field('y_gauss_amp')[i_unit_f, :]
 
         # returns the non-NaN values
         ii = ~np.isnan(x_bin)
@@ -1436,8 +1436,8 @@ class SpikeAmplitudeHist(UnitPlotLayout):
 
         # initialisations
         i_unit_f = self.i_unit - 1
-        p_value = self.unit_props.get_mem_map_field
-        x_bin = self.unit_props.get_mem_map_field('x_bin_amp')[i_unit_f, :]
+        p_value = self.unit_props.get_field
+        x_bin = self.unit_props.get_field('x_bin_amp')[i_unit_f, :]
 
         if np.all(np.isnan(x_bin)):
             # case is there are no feasible amplitudes
