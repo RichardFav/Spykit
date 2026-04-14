@@ -95,7 +95,7 @@ class UnitMetricProps(PropWidget):
     def init_other_class_fields(self):
 
         # retrieves the metric table
-        self.get_metric_table()
+        self.get_metric_table_values()
 
         for ch_k, ch_v in self.p_info['ch_fld'].items():
             if ch_v['type'] in 'edit':
@@ -145,7 +145,7 @@ class UnitMetricProps(PropWidget):
 
         # sets up the subgroup fields
         p_tmp = {
-            'i_unit': self.create_para_field('Cluster ID#', 'edit', 1),
+            'i_unit': self.create_para_field('Cluster Unit ID#', 'edit', 1),
             'show_metric': self.create_para_field('Show Metrics', 'checkbox', True),
             'show_grid': self.create_para_field('Show Plot Gridlines', 'checkbox', False),
             'r_cfig': self.create_para_field('', 'rconfig', None, p_list=self.p_list_plot),
@@ -230,7 +230,7 @@ class UnitMetricProps(PropWidget):
         i_type = int(self.get_mem_map_field('unit_type')[i_unit])
         return self.unit_lbl[i_type]
 
-    def get_metric_table(self):
+    def get_metric_table_values(self):
 
         self.q_met = self.main_obj.main_obj.main_obj.session_obj.get_metric_table()
 

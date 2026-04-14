@@ -154,7 +154,7 @@ class UnitHistProps(PropWidget):
 
         # sets up the subgroup fields
         p_tmp = {
-            'i_unit': self.create_para_field('Cluster ID#', 'edit', 1),
+            'i_unit': self.create_para_field('Cluster Unit ID#', 'edit', 1),
             'hist_type': self.create_para_field('Metric', 'checklist', show_hist, p_list=self.p_met_fin),
             'opt_config': self.create_para_field('Use Optimal Configuration?', 'checkbox', True),
             'n_r': self.create_para_field('Row Count', 'edit', n_row),

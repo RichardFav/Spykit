@@ -420,7 +420,7 @@ class PropManager(QWidget):
 
     def get_prop_tab(self, tab_type):
 
-        if tab_type in ['traceview', 'traceunit']:
+        if tab_type in ['traceview', 'tracespike']:
             # case is the trace property/unit property tabs
             tr_tab = self.tabs[self.t_types.index('trace')]
             return tr_tab.get_tab_view(tab_type)

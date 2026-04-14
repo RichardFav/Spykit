@@ -29,8 +29,8 @@ x_gap_h = 2
 class TraceProps(PropWidget):
     # field properties
     type = 'trace'
-    trace_views = ['traceview']
-    # trace_views = ['traceview', 'traceunit']
+    # trace_views = ['traceview']
+    trace_views = ['traceview', 'tracespike']
 
     # widget dimensions
     dx_gap = 15

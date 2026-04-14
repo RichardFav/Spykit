@@ -530,6 +530,7 @@ class InfoManager(QWidget):
         # table data retrieval
         unit_tab.setup_unit_table_data()
         c_hdr_unit = deepcopy(unit_tab.c_hdr)
+        c_hdr_unit[c_hdr_unit.index('Cluster ID#')] = 'Unit ID#'
         c_hdr_unit[c_hdr_unit.index('Max Channel')] = 'Channel ID#'
 
         # table creation
@@ -660,6 +661,7 @@ class InfoManager(QWidget):
             # updates the table header font
             table_obj.horizontalHeaderItem(i_col).setFont(self.table_hdr_font)
 
+            # creates all table items for current column
             value0 = data.iloc[0][data.columns[i_col]]
             for i_row in range(table_dim[0]):
                 # creates the widget item
@@ -681,7 +683,7 @@ class InfoManager(QWidget):
                         value = data.iloc[i_row][data.columns[i_col]]
                         item.setText(str(value))
 
-                # ads the item to the table
+                # adds the item to the table
                 item.setTextAlignment(cf.align_type['center'])
                 table_obj.setItem(i_row, i_col, item)
 
