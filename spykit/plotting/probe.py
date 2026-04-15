@@ -729,6 +729,36 @@ class ProbePlot(PlotWidget):
             # updates the roi positions
             self.main_view.reset_inset_roi(p_0=p_new, p_sz=sz_new)
 
+    def reset_unit_roi_position(self, i_ch_unit, ch_pos, type_lbl):
+
+        # field retrieval
+        r_pos = self.main_view.roi.pos()
+        r_sz = self.main_view.roi.size()
+        ax_rng = self.h_plot[0, 0].getViewBox().viewRange()
+
+        # calculates the x-location of the probeview ROI
+        i_shank = self.session_info.get_shank_index()
+        x_lim_new, _ = self.main_view.get_init_roi_limits(i_shank)
+        x_roi = np.mean(x_lim_new)
+
+        # resets the ROI position
+        r_pos.setX(self.reset_roi_coord(x_roi, r_sz[0], ax_rng[0]))
+        r_pos.setY(self.reset_roi_coord(ch_pos[1], r_sz[1], ax_rng[1]))
+        self.main_view.roi.setPos(r_pos)
+
+        # removes any currently selected highlights
+        self.reset_selected_unit_highlight(i_ch_unit, type_lbl)
+
+    @staticmethod
+    def reset_roi_coord(p, r_dim, ax_lim):
+
+        if (p - r_dim / 2) < ax_lim[0]:
+            return ax_lim[0]
+        elif (p + r_dim / 2) > ax_lim[1]:
+            return ax_lim[1] - r_dim
+        else:
+            return p - r_dim / 2
+
     # ---------------------------------------------------------------------------
     # Static Methods
     # ---------------------------------------------------------------------------

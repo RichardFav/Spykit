@@ -303,36 +303,11 @@ class UnitInfoTab(InfoWidget):
         i_ch_unit = self.df_unit['Max Channel'][self.i_unit_sel - 1]
         ch_pos = self.get_field('ch_pos')[i_ch_unit - 1, :]
 
+        # resets the roi position
         probe_view = self.main_obj.plot_manager.get_plot_view('probe')
         if probe_view is not None:
-            # field retrieval
-            r_pos = probe_view.main_view.roi.pos()
-            r_sz = probe_view.main_view.roi.size()
-            ax_rng = probe_view.h_plot[0, 0].getViewBox().viewRange()
-
-            # calculates the x-location of the probeview ROI
-            i_shank = self.main_obj.session_obj.get_shank_index()
-            x_lim_new, _ = probe_view.main_view.get_init_roi_limits(i_shank)
-            x_roi = np.mean(x_lim_new)
-
-            # resets the ROI position
-            r_pos.setX(self.reset_roi_coord(x_roi, r_sz[0], ax_rng[0]))
-            r_pos.setY(self.reset_roi_coord(ch_pos[1], r_sz[1], ax_rng[1]))
-            probe_view.main_view.roi.setPos(r_pos)
-
-            # removes any currently selected highlights
             type_lbl = self.table.item(i_row, self.i_col_type).text().lower()
-            probe_view.reset_selected_unit_highlight(i_ch_unit, type_lbl)
-
-    @staticmethod
-    def reset_roi_coord(p, r_dim, ax_lim):
-
-        if (p - r_dim / 2) < ax_lim[0]:
-            return ax_lim[0]
-        elif (p + r_dim / 2) > ax_lim[1]:
-            return ax_lim[1] - r_dim
-        else:
-            return p - r_dim / 2
+            probe_view.reset_unit_roi_position(i_ch_unit, ch_pos, type_lbl)
 
     # ---------------------------------------------------------------------------
     # Widget Event Functions
