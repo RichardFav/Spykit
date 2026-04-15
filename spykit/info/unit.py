@@ -310,8 +310,13 @@ class UnitInfoTab(InfoWidget):
             r_sz = probe_view.main_view.roi.size()
             ax_rng = probe_view.h_plot[0, 0].getViewBox().viewRange()
 
+            # calculates the x-location of the probeview ROI
+            i_shank = self.main_obj.session_obj.get_shank_index()
+            x_lim_new, _ = probe_view.main_view.get_init_roi_limits(i_shank)
+            x_roi = np.mean(x_lim_new)
+
             # resets the ROI position
-            r_pos.setX(self.reset_roi_coord(ch_pos[0], r_sz[0], ax_rng[0]))
+            r_pos.setX(self.reset_roi_coord(x_roi, r_sz[0], ax_rng[0]))
             r_pos.setY(self.reset_roi_coord(ch_pos[1], r_sz[1], ax_rng[1]))
             probe_view.main_view.roi.setPos(r_pos)
 
