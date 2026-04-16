@@ -149,6 +149,7 @@ class PlotManager(QWidget):
                 plot_new.reset_highlight.connect(self.probe_highlight)
                 plot_new.set_gen_props(self.get_prop_tab('general'))
                 plot_new.set_trace_props(self.get_prop_tab('traceview'))
+                plot_new.set_spike_props(self.get_prop_tab('tracespike'))
 
             case 'trigger':
                 # case is the trigger view

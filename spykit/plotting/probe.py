@@ -1011,7 +1011,7 @@ class ProbeView(GraphicsObject):
         unit_types = unit_tab.get_unit_type_labels()
 
         # sets the channel indices of the peak channels
-        pk_ch = np.array(unit_tab.df_unit['Max Channel'])
+        pk_ch = unit_tab.i_pk_ch
 
         # removes any filtered items
         if unit_tab.is_filt is not None:

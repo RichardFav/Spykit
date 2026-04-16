@@ -72,7 +72,7 @@ class TraceLabelMixin:
 
             # updates the locations of the labels so they overlap with the traces
             tr_id = self.plot_id[self.i_trace]
-            # tr_id = self.session_info.get_selected_channels()[self.i_trace]
+            # tr_id = self.session_obj.get_selected_channels()[self.i_trace]
             for i_tr in range(n_trace):
                 self.labels[i_tr].setPos(self.t_lim[0], self.y_trace[i_tr])
                 self.labels[i_tr].setText('#ID: {0}'.format(tr_id[i_tr]))
@@ -163,13 +163,13 @@ class TracePlot(TraceLabelMixin, PlotWidget):
     l_pen_inset = mkPen(color=cf.get_colour_value('r'), width=1)
     l_pen_high = mkPen(color=cf.get_colour_value('y'), width=1)
 
-    def __init__(self, session_info):
+    def __init__(self, session_obj):
         TraceLabelMixin.__init__(self)
         super(TracePlot, self).__init__('trace', b_icon=b_icon, b_type=b_type, tt_lbl=tt_lbl)
 
         # main class fields
-        self.session_info = session_info
-        s_props = self.session_info.session_props
+        self.session_obj = session_obj
+        s_props = self.session_obj.session_props
 
         # experiment properties
         self.t_dur = s_props.get_value('t_dur')
@@ -193,6 +193,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         # property class fields
         self.gen_props = None
         self.trace_props = None
+        self.spike_props = None
 
         # axes limits
         self.y_lim = []
@@ -212,6 +213,8 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         # trace label class fields
         self.n_plt = 0
         self.n_show = 0
+        self.i_frm0 = None
+        self.i_frm1 = None
         self.t_start_ofs = 0
         self.labels = []
         self.l_pen_status = {}
@@ -230,6 +233,9 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.image_item = ImageItem()
         self.ximage_item = ImageItem()
         self.yimage_item = ImageItem()
+
+        #
+        self.unit_mark = {}
 
         # creates the label object
         self.hm_label = TextItem(
@@ -296,7 +302,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
         # sets the axis limits
         self.v_box[0, 0].setXRange(self.t_lim[0], self.t_lim[1], padding=0)
-        self.v_box[0, 0].setLimits(xMin=0, xMax=self.session_info.session_props.t_dur, yMin=0, yMax=self.y_lim_tr)
+        self.v_box[0, 0].setLimits(xMin=0, xMax=self.session_obj.session_props.t_dur, yMin=0, yMax=self.y_lim_tr)
         self.v_box[0, 0].setMouseMode(self.v_box[0, 0].RectMode)
         self.v_box[0, 0].wheelEvent = self.mouse_wheel_move
 
@@ -596,7 +602,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
         # retrieves the currently selected channels
         depth_sort = self.trace_props.get('sort_by') == 'Depth'
-        i_channel = self.session_info.get_selected_channels()
+        i_channel = self.session_obj.get_selected_channels()
         is_map = self.get_plot_mode(len(i_channel))
         self.n_plt = len(i_channel)
         self.reset_plot_items()
@@ -638,26 +644,26 @@ class TracePlot(TraceLabelMixin, PlotWidget):
             # field retrieval
             use_diff = self.use_diff_signal()
             plot_id_orig = deepcopy(self.plot_id)
-            s_freq = self.session_info.session_props.s_freq
+            s_freq = self.session_obj.session_props.s_freq
 
             # sets the frame range indices
             t_lim_p = self.get_prop_xlimits()
-            i_frm0 = int((self.t_lim[0] + self.t_start_ofs) * s_freq)
-            i_frm1 = int((self.t_lim[1] + self.t_start_ofs) * s_freq)
-            n_frm = (i_frm1 - i_frm0) - int(use_diff)
+            self.i_frm0 = int((self.t_lim[0] + self.t_start_ofs) * s_freq)
+            self.i_frm1 = int((self.t_lim[1] + self.t_start_ofs) * s_freq)
+            n_frm = (self.i_frm1 - self.i_frm0) - int(use_diff)
             if n_frm == 0:
                 return
 
             # retrieves the plot indices
-            channel_id, self.plot_id = self.session_info.get_channel_ids(i_channel, depth_sort)
+            channel_id, self.plot_id = self.session_obj.get_channel_ids(i_channel, depth_sort)
             if not np.array_equal(self.plot_id, plot_id_orig):
                 # if there is a change, then update the inset trace indices
                 self.reset_inset_traces_indices()
 
             # sets up the y-data array
-            y0 = self.session_info.get_traces(
-                start_frame=i_frm0,
-                end_frame=i_frm1,
+            y0 = self.session_obj.get_traces(
+                start_frame=self.i_frm0,
+                end_frame=self.i_frm1,
                 channel_ids=channel_id,
                 return_scaled=self.trace_props.get('scale_signal'),
             )
@@ -709,6 +715,11 @@ class TracePlot(TraceLabelMixin, PlotWidget):
                 else:
                     self.update_trace(self.main_trace, ~self.inset_tr)
                     self.update_trace(self.inset_trace, self.inset_tr)
+
+                # spike marker update
+                if (self.spike_props is not None):
+                # if (self.spike_props is not None) and self.show_events:
+                    self.spike_props.reset_spike_markers()
 
         else:
             # resets the zoom limits
@@ -919,11 +930,11 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
     def heatmap_mouse_move(self, p_pos):
 
-        if (self.session_info.session is None) or (not self.show_lbl):
+        if (self.session_obj.session is None) or (not self.show_lbl):
             return
 
         # determines the selected channels
-        i_channel = self.session_info.get_selected_channels()
+        i_channel = self.session_obj.get_selected_channels()
         n_channel = len(i_channel)
 
         # if not in heatmap mode, or no channels are selected, then exit
@@ -1072,16 +1083,16 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
     def setup_label_text(self, i_channel):
 
-        probe = self.session_info.get_raw_recording_probe()
-        loc_ch = self.session_info.get_channel_location(i_channel, probe)
-        status_ch = self.session_info.get_channel_status(i_channel)
+        probe = self.session_obj.get_raw_recording_probe()
+        loc_ch = self.session_obj.get_channel_location(i_channel, probe)
+        status_ch = self.session_obj.get_channel_status(i_channel)
         self.hm_roi.setPen(self.l_pen_status[status_ch])
 
         return f"Channel ID: {i_channel}\nStatus: {status_ch}\nDepth: {loc_ch[1]}"
 
     def heatmap_leave(self, evnt):
 
-        if self.session_info.session is None:
+        if self.session_obj.session is None:
             return
 
         self.leave_fcn(evnt)
@@ -1094,7 +1105,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
     def heatmap_enter(self, evnt):
 
-        if self.session_info.session is None:
+        if self.session_obj.session is None:
             return
 
         self.enter_fcn(evnt)
@@ -1341,9 +1352,9 @@ class TracePlot(TraceLabelMixin, PlotWidget):
                 self.highlight_trace.setVisible(True)
 
             # determines the index of the curve that corresponds to the contact ID
-            i_sel_ch = self.session_info.get_selected_channels()
+            i_sel_ch = self.session_obj.get_selected_channels()
             if i_contact in i_sel_ch:
-                i_sort_plt = np.argsort(np.argsort(self.session_info.channel_data.i_sort_rev[i_sel_ch]))
+                i_sort_plt = np.argsort(np.argsort(self.session_obj.channel_data.i_sort_rev[i_sel_ch]))
                 self.i_sel_tr = i_sort_plt[i_sel_ch == i_contact][0]
                 self.highlight_trace.setData(self.x_tr[0, :], self.y_tr[self.i_sel_tr, :])
 
@@ -1395,6 +1406,14 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.reset_colour_map()
         trace_props_new.set_trace_view(self)
 
+    def set_spike_props(self, spike_props_new):
+
+        if self.spike_props is not None:
+            self.spike_props.clear_spike_markers()
+
+        self.spike_props = spike_props_new
+        spike_props_new.set_trace_view(self)
+
     def set_button_enable(self, b_str, state):
 
         obj_but = self.findChild(cw.QPushButton, name=b_str)
@@ -1403,6 +1422,10 @@ class TracePlot(TraceLabelMixin, PlotWidget):
     # ---------------------------------------------------------------------------
     # Other Getter Functions
     # ---------------------------------------------------------------------------
+
+    def get_field(self, p_fld):
+
+        return self.session_obj.get_mem_map_field(p_fld)
 
     def get_plot_mode(self, n_channel=None):
 
@@ -1414,11 +1437,11 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
     def get_channel_count(self):
 
-        return len(self.session_info.get_selected_channels())
+        return len(self.session_obj.get_selected_channels())
 
     def get_run_index(self):
 
-        return self.session_info.session.get_run_index(self.session_info.current_run)
+        return self.session_obj.session.get_run_index(self.session_obj.current_run)
 
     def use_diff_signal(self):
 

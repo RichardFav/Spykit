@@ -14,6 +14,9 @@ from PyQt6.QtWidgets import QAbstractItemView, QHeaderView, QTableWidgetItem
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QFont
 
+# pyqtgraph modules
+import pyqtgraph as pg
+
 # ----------------------------------------------------------------------------------------------------------------------
 
 # widget dimensions
@@ -57,12 +60,130 @@ class TraceSpikePara(PropPara):
 
 # ----------------------------------------------------------------------------------------------------------------------
 
+class TraceSpikeMixin:
+    # plot properties
+    sym = 'o'
+    sym_size = 10
+
+    # ---------------------------------------------------------------------------
+    # Spike Marker Functions
+    # ---------------------------------------------------------------------------
+
+    def create_spike_markers(self):
+
+        for i_lbl, u_lbl in enumerate(self.unit_lbl):
+            # initialises plot marker indices
+            u_lbl_lo = u_lbl.lower()
+            self.i_unit_sp[u_lbl_lo] = []
+
+            # creates plot marker
+            l_pen_spike = pg.mkPen(color=cw.unit_col[u_lbl_lo])
+            l_brush_spike = pg.mkBrush(color=cw.unit_col[u_lbl_lo])
+            self.h_spike[u_lbl_lo] = self.trace_view.plot_item.plot(
+                [np.nan],
+                [np.nan],
+                pen=None,
+                symbol=self.sym,
+                symbolSize=self.sym_size,
+                symbolPen=l_pen_spike,
+                symbolBrush=l_brush_spike
+            )
+
+            self.trace_view.h_plot[0, 0].addItem(self.h_spike[u_lbl_lo])
+
+    def clear_spike_markers(self):
+
+        for i_lbl, u_lbl in enumerate(self.unit_lbl):
+            # clear plot marker indices
+            u_lbl_lo = u_lbl.lower()
+            self.i_unit_sp[u_lbl_lo] = []
+
+            # clears the plot item
+            self.trace_view.h_plot[0, 0].removeItem(self.h_spike[u_lbl_lo])
+
+    # ---------------------------------------------------------------------------
+    # Spike Channel Functions
+    # ---------------------------------------------------------------------------
+
+    def toggle_unit_index(self, u_type, i_unit):
+
+        if i_unit in self.i_unit_sp[u_type]:
+            # adds the new item
+            self.i_unit_sp[u_type].append().sort()
+
+        else:
+            # removes existing item
+            i_unit_ind = self.i_unit_sp[u_type].index(i_unit)
+            self.i_unit_sp[u_type].pop(i_unit_ind).sort()
+
+        # updates the spike markers
+        self.update_unit_spike_markers(u_type)
+
+    def update_unit_spike_markers(self, u_type):
+
+        #
+        pass
+
+    def hide_spike_markers(self):
+
+        pass
+
+    def reset_spike_markers(self):
+
+        # initialisations
+        spk_channel_win = None
+
+        # initialises the previous frame
+        i_frm_nw = np.array([self.trace_view.i_frm0, self.trace_view.i_frm1])
+        if self.i_frm_pr is not None:
+            # case is previous frame index data
+            if np.array_equal(self.i_frm_pr, i_frm_nw):
+                # if no change in frame indices then exit
+                return
+
+            # previous index comparison
+            a = 1
+
+        else:
+            # otherwise, determine the first spike greater than the lower limit
+            i_spk0 = np.searchsorted(self.i_spike, i_frm_nw[0], 'left')
+            if self.i_spike[i_spk0] < i_frm_nw[1]:
+                # if this value is less than the upper limit, then determine the spikes within the window
+                i_spk1 = np.searchsorted(self.i_spike[i_spk0:], i_frm_nw[1], 'left') + i_spk0
+                spk_cluster_win = self.spk_cluster[i_spk0:i_spk1]
+                spk_channel_win = np.array(self.data['Channel'][spk_cluster_win - 1])
+
+        if spk_channel_win is not None:
+            # determines the selected channels which have spikes within the trace window
+            in_win = np.isin(spk_channel_win, self.trace_view.session_obj.get_selected_channels())
+            if np.any(in_win):
+                # if spikes within the window, then update the
+                spk_cluster_win = spk_cluster_win[in_win]
+                spk_channel_win = spk_channel_win[in_win]
+                i_spike_win = self.i_spike[i_spk0:i_spk1][in_win]
+
+                #
+                pass
+            else:
+                # otherwise, clear the spike markers
+                self.hide_spike_markers()
+
+        else:
+            # otherwise, clear the spike markers
+            self.hide_spike_markers()
+
+        # resets the previous frame indices
+        self.i_frm_pr = i_frm_nw
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+
 """
     TraceSpikeProps:
 """
 
 
-class TraceSpikeProps(PropWidget):
+class TraceSpikeProps(TraceSpikeMixin, PropWidget):
     # field properties
     type = 'tracespike'
     c_hdr_0 = ['clusterID', 'maxChannels', 'nSpikes']
@@ -79,6 +200,7 @@ class TraceSpikeProps(PropWidget):
     def __init__(self, main_obj):
         # sets the input arguments
         self.main_obj = main_obj
+        TraceSpikeMixin.__init__(self)
 
         # initialises the property widget
         self.setup_prop_fields()
@@ -96,11 +218,23 @@ class TraceSpikeProps(PropWidget):
         # other class fields
         self.plot_view = None
         self.is_updating = False
+        self.is_marker_init = False
+
+        # other class fields
+        self.h_spike = {}
+        self.i_unit_sp = {}
+        self.i_frm_pr = None
 
         # initialises the other class fields
         self.init_other_class_fields()
 
     def init_other_class_fields(self):
+
+        # column indices
+        self.i_col_tupe = self.c_hdr.index('Unit Type')
+        self.i_col_unit = self.c_hdr.index('Unit')
+        self.i_col_ch = self.c_hdr.index('Channel')
+        self.i_col_count = self.c_hdr.index('Count')
 
         # sets the parameter layout properties
         self.f_layout.setSpacing(5)
@@ -148,14 +282,20 @@ class TraceSpikeProps(PropWidget):
 
     def setup_spike_table(self):
 
-        # sets up the unit type fields
+        # unit selection memory allocation
+        self.n_unit_pp = self.main_obj.main_obj.main_obj.session_obj.post_data.n_unit_pp
+        self.is_filt = np.empty(self.n_unit_pp.shape, dtype=object)
+        for i_pp, n_pp in enumerate(self.n_unit_pp.flat):
+            self.is_filt[np.unravel_index(i_pp, self.is_filt.shape)] = np.zeros(n_pp, dtype=bool)
+
+        # memory mapped field retrieval
+        self.spk_cluster = self.get_field('spk_cluster')[:, 0]
+        self.i_spike = self.get_field('i_spike')[:, 0].astype(np.uint32)
         self.unit_lbl = cw.get_unit_labels(self.get_field('splitGoodAndMua_NonSomatic'))
 
-        # table creation
-        n_row_max = np.max(self.main_obj.main_obj.main_obj.session_obj.post_data.n_unit_pp)
+        # table dimensioning
+        n_row_max = np.max(self.n_unit_pp)
         table_dim = (n_row_max, len(self.c_hdr))
-
-        # if the table/data shape is equal then exit
         if (self.table.rowCount(), self.table.columnCount()) == table_dim:
             return
 
@@ -188,12 +328,10 @@ class TraceSpikeProps(PropWidget):
                 if isinstance(value0, bool):
                     # case is a boolean field
                     item.setFlags(self.check_item_flag)
-                    # item.setCheckState(cf.chk_state[values[i_row]])
 
                 else:
                     # case is a string field
                     item.setFlags(self.norm_item_flag)
-                    # item.setText(str(values[i_row]))
 
                 # adds the item to the table
                 item.setTextAlignment(cf.align_type['center'])
@@ -209,6 +347,11 @@ class TraceSpikeProps(PropWidget):
 
         # flag that manual update is taking place
         self.is_updating = True
+
+        # initialises the spike markers
+        if not self.is_marker_init:
+            self.create_spike_markers()
+            self.is_marker_init = True
 
         for i_row, c_stat in enumerate(self.data['Unit Type']):
             # sets the table row colour
@@ -280,12 +423,27 @@ class TraceSpikeProps(PropWidget):
     # Class Getter Functions
     # ---------------------------------------------------------------------------
 
+    def get_table_data_frame(self):
+
+        # retrieves the raw metric data frame
+        q_met_df = self.main_obj.main_obj.main_obj.session_obj.get_metric_table_values()[self.c_hdr_0].astype(int)
+
+        # field retrieval
+        i_shank = self.main_obj.main_obj.session_obj.get_shank_index()
+        probe_view = self.main_obj.main_obj.main_obj.plot_manager.get_plot_view('probe')
+
+        # re-maps the channel indices to the probe map
+        self.i_pk_ch = q_met_df['maxChannels'].astype(int)
+        q_met_df['maxChannels'] = probe_view.sub_view.ch_map[i_shank][self.i_pk_ch - 1]
+
+        return q_met_df
+
     def get_metric_table_values(self):
 
         # field retrieval
         unit_type = self.get_unit_type_labels().reshape(-1, 1)
         show_spike = np.zeros((self.get_field('n_unit'), 1), dtype=bool)
-        q_met_df = self.main_obj.main_obj.main_obj.session_obj.get_metric_table_values()[self.c_hdr_0].astype(int)
+        q_met_df = self.get_table_data_frame()
 
         # sets the final metric dataframe
         self.data = pd.DataFrame(np.hstack((show_spike, unit_type, q_met_df), dtype=object), columns=self.c_hdr)
@@ -315,4 +473,7 @@ class TraceSpikeProps(PropWidget):
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
     # ---------------------------------------------------------------------------
+
+
+
 

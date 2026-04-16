@@ -67,6 +67,7 @@ class UnitInfoTab(InfoWidget):
         self.main_obj = main_obj
 
         # field initialisations
+        self.i_pk_ch = None
         self.df_unit = None
         self.data_flds = None
         self.i_unit_sel = None
@@ -300,7 +301,7 @@ class UnitInfoTab(InfoWidget):
             return
 
         # channel position/index
-        i_ch_unit = self.df_unit['Max Channel'][self.i_unit_sel - 1]
+        i_ch_unit = self.i_pk_ch[self.i_unit_sel - 1]
         ch_pos = self.get_field('ch_pos')[i_ch_unit - 1, :]
 
         # resets the roi position
@@ -338,6 +339,19 @@ class UnitInfoTab(InfoWidget):
     # Miscellaneous Methods
     # ---------------------------------------------------------------------------
 
+    def remap_channel_indices(self, q_hdr, q_met):
+
+        # field retrieval
+        i_col_ch = np.where(q_hdr == 'maxChannels')[0][0]
+        i_shank = self.main_obj.session_obj.get_shank_index()
+        probe_view = self.main_obj.plot_manager.get_plot_view('probe')
+
+        # re-maps the channel indices to the probe map
+        self.i_pk_ch = q_met[:, i_col_ch].astype(int)
+        q_met[:, i_col_ch] = probe_view.sub_view.ch_map[i_shank][self.i_pk_ch - 1]
+
+        return q_met
+
     def setup_unit_table_data(self):
 
         # sets up the unit type fields
@@ -350,7 +364,7 @@ class UnitInfoTab(InfoWidget):
 
         # sets the unit metrics dataframe
         unit_type = self.get_unit_type_labels()
-        q_met = self.get_field('q_met')[:, is_ok]
+        q_met = self.remap_channel_indices(q_hdr, self.get_field('q_met')[:, is_ok])
         self.df_unit = pd.DataFrame(np.hstack((unit_type.reshape(-1, 1), q_met)), columns=c_hdr0)
         self.reorder_unit_dataframe(c_hdr0)
 
