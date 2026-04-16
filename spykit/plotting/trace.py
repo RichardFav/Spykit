@@ -1409,7 +1409,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
     def set_spike_props(self, spike_props_new):
 
         if self.spike_props is not None:
-            self.spike_props.clear_spike_markers()
+            self.spike_props.delete_spike_markers()
 
         self.spike_props = spike_props_new
         spike_props_new.set_trace_view(self)

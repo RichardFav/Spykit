@@ -170,7 +170,7 @@ class ProbePlot(PlotWidget):
 
         if self.n_shank == 1:
             # case is there is a single shank
-            ch_map[0] = i_sort_ch
+            ch_map[0] = i_sort_ch + 1
         else:
             # case is there are multiple shanks
             for i_shank in range(self.n_shank):
