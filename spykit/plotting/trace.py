@@ -1088,7 +1088,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         status_ch = self.session_obj.get_channel_status(i_channel)
         self.hm_roi.setPen(self.l_pen_status[status_ch])
 
-        return f"Channel ID: {i_channel}\nStatus: {status_ch}\nDepth: {loc_ch[1]}"
+        return f"Channel ID: {i_channel + 1}\nStatus: {status_ch}\nDepth: {loc_ch[1]}"
 
     def heatmap_leave(self, evnt):
 

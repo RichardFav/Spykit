@@ -61,6 +61,10 @@ class TraceSpikePara(PropPara):
 
 # ----------------------------------------------------------------------------------------------------------------------
 
+"""
+    TraceSpikeMixin:
+"""
+
 class TraceSpikeMixin:
     # plot properties
     sym = 'o'
@@ -182,17 +186,18 @@ class TraceSpikeMixin:
         use_diff = int(self.trace_view.use_diff_signal())
         i_spike_unit = self.i_spike_win[self.in_win][is_unit] - self.trace_view.i_frm0
         spike_channel_unit = self.spk_channel_win[self.in_win][is_unit] - 1
-        # spike_cluster_unit = self.spk_cluster_win[self.in_win][is_unit] - 1
+        spike_cluster_unit = self.spk_cluster_win[self.in_win][is_unit] - 1
 
         # sets the spike coordinates for each unique unit cluster
         spk_ch, i_spk_ch = np.unique(spike_channel_unit, return_inverse=True)
         for i_spk, spk in enumerate(spk_ch):
             # if not selected within the table, then continue
-            if not self.is_filt[self.i_run, self.i_shank][i_spk]:
+            ii = i_spk_ch == i_spk
+            i_spk_unit = spike_cluster_unit[ii]
+            if not self.is_filt[self.i_run, self.i_shank][i_spk_unit[0]]:
                 continue
 
             # retrieves the spike x-coordinates
-            ii = i_spk_ch == i_spk
             x_spk = np.append(x_spk, self.trace_view.x_tr[0, i_spike_unit[ii] - use_diff])
 
             # retrieves the spike y-oordinates
@@ -429,10 +434,31 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
     # Class Property Widget Setup Functions
     # ---------------------------------------------------------------------------
 
+    def setup_unit_spike_info(self):
+
+        # exit if already setup
+        if self.i_spike_info[self.i_run, self.i_shank] is not None:
+            return
+
+        # field retrieval
+        n_spike = np.array(self.data['Count'])
+        i_spike = self.get_field('i_spike')[:, 0]
+        spk_clust = self.get_field('spk_cluster')[:, 0]
+
+        # sets up the spike info field
+        self.i_spike_info[self.i_run, self.i_shank] = {
+            'i_ofs': np.append([0], np.cumsum(n_spike[:-1])),
+            'i_spike': i_spike[np.lexsort((i_spike, spk_clust))],
+        }
+
     def setup_spike_table(self):
 
-        # unit selection memory allocation
+        # memory allocation
+        self.n_unit = self.get_field('n_unit')
         self.n_unit_pp = self.main_obj.main_obj.main_obj.session_obj.post_data.n_unit_pp
+        self.i_spike_info = np.empty(self.n_unit_pp.shape, dtype=object)
+
+        # unit selection memory allocation
         self.is_filt = np.empty(self.n_unit_pp.shape, dtype=object)
         for i_pp, n_pp in enumerate(self.n_unit_pp.flat):
             self.is_filt[np.unravel_index(i_pp, self.is_filt.shape)] = np.zeros((n_pp, 1), dtype=bool)
@@ -493,6 +519,7 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
 
         # field retrieval
         self.get_metric_table_values()
+        self.setup_unit_spike_info()
 
         # flag that manual update is taking place
         self.is_updating = True
@@ -576,7 +603,8 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
 
         # field reset
         item_chk = self.table.item(i_row, i_col)
-        self.is_filt[self.i_run, self.i_shank][i_row] = (
+        i_unit = int(self.table.item(i_row, self.i_col_unit).text()) - 1
+        self.is_filt[self.i_run, self.i_shank][i_unit] = (
             item_chk.checkState() == cf.chk_state[True])
 
         # updates the spike markers
