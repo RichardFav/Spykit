@@ -210,6 +210,35 @@ class TraceSpikeMixin:
         else:
             self.h_spike[u_lbl.lower()].setData(x=[np.nan], y=[np.nan])
 
+    def reset_spike_trace_view(self):
+
+        # field retrieval
+        i_unit = self.get_unit_index(self.i_row_sel) - 1
+        i_spike = int(self.get_para_value('i_spike')) - 1
+        sp_info = self.i_spike_info[self.i_run, self.i_shank]
+
+        # determines the time frame of the corresponding spike
+        d_frm = self.trace_view.i_frm1 - self.trace_view.i_frm0
+        ix_spike = int(sp_info['i_spike'][sp_info['i_ofs'][i_unit] + i_spike])
+
+        if ix_spike < d_frm / 2:
+            # case is being below the lower limit
+            ix_lim_nw = np.array([0, d_frm])
+
+        elif ix_spike > (self.n_sample - d_frm / 2):
+            # case is above the upper limit
+            ix_lim_nw = self.n_sample - np.array([d_frm, 0])
+
+        else:
+            # case is in the middle of the plot region
+            ix_lim_nw = ix_spike + (d_frm / 2) * np.array([-1, 1])
+
+        # updates the trace view
+        t_lim_nw = np.round(ix_lim_nw / self.s_freq, cf.n_dp)
+        self.trace_view.trace_props.set('t_start', t_lim_nw[0])
+        self.trace_view.trace_props.edit_start.setText('%g' % t_lim_nw[0])
+        self.trace_view.trace_props.reset_trace_props('t_start')
+
     def reset_spike_markers(self):
 
         # initialisations
@@ -218,7 +247,11 @@ class TraceSpikeMixin:
 
         # initialises the previous frame
         i_frm_nw = np.array([self.trace_view.i_frm0, self.trace_view.i_frm1])
-        if self.i_frm_pr is not None:
+        if np.all(i_frm_nw == None):
+            # no trace is selected
+            return
+
+        elif self.i_frm_pr is not None:
             # previous index comparison
             if not np.array_equal(i_frm_nw, self.i_frm_pr):
                 reset_win = True
@@ -369,6 +402,7 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
         self.h_spike = {}
         self.i_unit_sp = {}
         self.i_frm_pr = None
+        self.i_row_sel = None
 
         self.in_win = None
         self.i_ch_sel = None
@@ -417,6 +451,7 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
 
         # table function callback function
         self.table.cellChanged.connect(self.table_cell_changed)
+        self.table.currentCellChanged.connect(self.table_cell_clicked)
         self.table.blockSignals(True)
 
     def setup_prop_fields(self):
@@ -570,7 +605,7 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
         match p_str:
             case 'i_spike':
                 # case is the spike index
-                min_val, max_val = 1, 30
+                min_val, max_val = 1, self.data.iloc[self.i_row_sel]['Count']
 
             case 'm_size':
                 # case is the marker size
@@ -580,13 +615,13 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
         chk_val = cf.check_edit_num(nw_val, min_val=min_val, max_val=max_val, is_int=True)
         if chk_val[1] is None:
             # updates the parameter value
-            setattr(self, p_str, int(chk_val[0]))
+            self.set_para_value(p_str, int(chk_val[0]))
 
             # performs the parameter specific update
             match p_str:
                 case 'i_spike':
                     # case is the spike index
-                    pass
+                    self.reset_spike_trace_view()
 
                 case 'm_size':
                     # case is the marker size
@@ -594,18 +629,37 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
 
         else:
             # otherwise, reset the previous value
-            h_edit.set_text('%g' % getattr(self, p_str))
+            h_edit.set_text('%g' % self.get_para_value(p_str))
+
+    def table_cell_clicked(self, i_row, i_col):
+
+        if self.is_updating:
+            return
+
+        # field retrieval
+        i_unit = self.get_unit_index(i_row) - 1
+        is_unit_sel = self.is_filt[self.i_run, self.i_shank][i_unit, 0]
+
+        # sets the table
+        self.toggle_row_highlight(i_row)
+        self.edit_spike.set_enabled(is_unit_sel)
 
     def table_cell_changed(self, i_row, i_col):
 
         if self.is_updating:
             return
 
-        # field reset
+        # field retrieval
+        i_unit = self.get_unit_index(i_row) - 1
         item_chk = self.table.item(i_row, i_col)
-        i_unit = int(self.table.item(i_row, self.i_col_unit).text()) - 1
-        self.is_filt[self.i_run, self.i_shank][i_unit] = (
-            item_chk.checkState() == cf.chk_state[True])
+
+        # updates the filter flag
+        new_state = item_chk.checkState() == cf.chk_state[True]
+        self.is_filt[self.i_run, self.i_shank][i_unit] = new_state
+
+        # resets the other widget properties
+        self.toggle_row_highlight(i_row)
+        self.edit_spike.set_enabled(new_state)
 
         # updates the spike markers
         self.reset_spike_markers()
@@ -614,9 +668,22 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
     # Class Setter Functions
     # ---------------------------------------------------------------------------
 
+    def toggle_row_highlight(self, i_row):
+
+        if self.i_row_sel is not None:
+            if self.i_row_sel == i_row:
+                # if no change then exit
+                return
+            else:
+                # removes any previous highlights
+                self.set_row_highlight(False)
+
+        self.set_row_highlight(True, i_row)
+
     def set_trace_view(self, trace_view_new):
 
         self.trace_view = trace_view_new
+        self.n_sample = self.main_obj.main_obj.session_obj.session_props.n_samples
 
     def set_para_value(self, p_fld, p_val):
 
@@ -624,13 +691,33 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
 
     def set_table_row_colour(self, i_row, c_stat):
 
+        # blocks the table signals for updating
+        self.table.blockSignals(True)
+
         for i_col in range(self.table.columnCount()):
-            self.table.item(i_row, i_col).setBackground(cw.unit_col[c_stat])
+            self.table.item(i_row, i_col).setBackground(cw.unit_col[c_stat.lower()])
+
+        # removes signal block
+        self.table.blockSignals(False)
 
     def set_table_rows(self, is_filt):
 
         for i_row in range(self.data.shape[0]):
             self.table.setRowHidden(i_row, not is_filt[i_row])
+
+    def set_row_highlight(self, is_highlight_on, i_row_sel=None):
+
+        if is_highlight_on:
+            # row highlight is turned on
+            self.set_table_row_colour(i_row_sel, 'selected')
+            self.i_row_sel = i_row_sel
+
+        else:
+            # row highlight is turned off
+            i_unit = int(self.table.item(self.i_row_sel, self.i_col_unit).text()) - 1
+            c_stat = self.data['Unit Type'].iloc[i_unit]
+            self.set_table_row_colour(self.i_row_sel, c_stat)
+            self.i_row_sel = None
 
     # ---------------------------------------------------------------------------
     # Class Getter Functions
@@ -683,6 +770,10 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
             unit_id.append(int(item.text()))
 
         return np.array(unit_id)
+
+    def get_unit_index(self, i_row):
+
+        return int(self.table.item(i_row, self.i_col_unit).text())
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
