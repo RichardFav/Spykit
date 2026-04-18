@@ -121,6 +121,7 @@ class SessionWorkBook(QObject):
 
         # inserts the "status" column
         n_row, n_col = p_dframe.shape
+        p_dframe['channel_ids'] += 1
         p_dframe.insert(0, 'status', np.array(['***'] * n_row))
         p_dframe.insert(0, 'keep', ch_keep)
 

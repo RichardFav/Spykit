@@ -195,8 +195,8 @@ class MainWindow(QMainWindow):
             self.prop_manager.add_config_view(p_view)
 
         # initial region configuration
-        c_id = np.zeros((4, 3), dtype=int)
-        c_id[:, :2] = self.plot_manager.get_plot_index('trace')
+        c_id = np.zeros((4, 5), dtype=int)
+        c_id[:, :4] = self.plot_manager.get_plot_index('trace')
         c_id[:, -1] = self.plot_manager.get_plot_index('probe')
 
         if self.session_obj.session.sync_ch is not None:
@@ -373,10 +373,19 @@ class MainWindow(QMainWindow):
 
     def update_channel(self, i_row):
 
+        # resets the probe views
         self.session_obj.toggle_channel_flag(i_row, is_keep=False)
         self.plot_manager.reset_probe_views()
         self.plot_manager.reset_trace_views(2)
 
+        # updates the trace spike markers (if removing channel selection)
+        if not self.session_obj.channel_data.is_selected[i_row]:
+            if self.session_obj.post_data.n_mmap > 0:
+                # clears the selected spike table unit associated with the current channel
+                spike_tab = self.prop_manager.get_prop_tab('tracespike')
+                spike_tab.clear_table_channel_selections(i_row + 1)
+
+        # resets the channel table header row checkbox state
         t_type = self.info_manager.table_tab_lbl[0]
         self.info_manager.update_header_checkbox_state(t_type)
 

@@ -227,7 +227,7 @@ class ChannelInfoTab(InfoWidget):
     def get_table_device_id(self, i_row_sel):
 
         i_row_sel = np.min([self.table.rowCount() - 1, i_row_sel])
-        return int(self.table.item(i_row_sel, self.i_channel_col).text())
+        return int(self.table.item(i_row_sel, self.i_channel_col).text()) - 1
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions

@@ -588,6 +588,24 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
         self.table.blockSignals(False)
         self.is_updating = False
 
+    def clear_table_channel_selections(self, i_row_ch):
+
+        # determines which units match the channel index
+        i_ch_match = np.where(np.array(self.data['Channel'] == i_row_ch))[0]
+        if len(i_ch_match):
+            # block signals to the table
+            self.table.blockSignals(True)
+
+            # removes the check from the items
+            for i_row in i_ch_match[:-1]:
+                self.table.item(i_row, 0).setCheckState(cf.chk_state[False])
+
+            # block signals to the table
+            self.table.blockSignals(False)
+
+            # updates the last unit to be delected (should run callback)
+            self.table.item(i_ch_match[-1], 0).setCheckState(cf.chk_state[False])
+
     # ---------------------------------------------------------------------------
     # Parameter Update Event Functions
     # ---------------------------------------------------------------------------
@@ -652,10 +670,18 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
         # field retrieval
         i_unit = self.get_unit_index(i_row) - 1
         item_chk = self.table.item(i_row, i_col)
+        i_row_ch = int(self.table.item(i_row, self.i_col_ch).text()) - 1
 
         # updates the filter flag
         new_state = item_chk.checkState() == cf.chk_state[True]
         self.is_filt[self.i_run, self.i_shank][i_unit] = new_state
+
+        # ensures the channel is selected
+        if new_state:
+            ch_tab = self.main_obj.main_obj.main_obj.info_manager.get_info_tab('channel')
+            item_chk_ch = ch_tab.table.item(i_row_ch, 0)
+            if item_chk_ch.checkState() == cf.chk_state[False]:
+                item_chk_ch.setCheckState(cf.chk_state[True])
 
         # resets the other widget properties
         self.toggle_row_highlight(i_row)
