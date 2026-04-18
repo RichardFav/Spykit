@@ -362,6 +362,14 @@ def get_colour_value(col_id, alpha=255, n_col_new=None):
             # case is blue
             return QColor(0, 0, 255, alpha)
 
+        case col_id if col_id in ['light-blue', 'lb']:
+            # case is blue
+            return QColor(128, 192, 255, alpha)
+
+        case col_id if col_id in ['orange', 'o']:
+            # case is blue
+            return QColor(255, 128, 0, alpha)
+
         case col_id if col_id in ['yellow', 'y']:
             # case is green
             return QColor(255, 255, 0, alpha)

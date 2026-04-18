@@ -249,25 +249,25 @@ hist_map = {
 
 # channel status colour
 status_col = {
-    'good': cf.get_colour_value('g', 128),
-    'dead': cf.get_colour_value('r', 128),
-    'noise': cf.get_colour_value('y', 128),
-    'out': cf.get_colour_value('c', 128),
-    'rejected': cf.get_colour_value('dg', 128),
-    'removed': cf.get_colour_value('k', 128),
+    'good': lambda x: cf.get_colour_value('g', x),
+    'dead': lambda x: cf.get_colour_value('r', x),
+    'noise': lambda x: cf.get_colour_value('y', x),
+    'out': lambda x: cf.get_colour_value('c', x),
+    'rejected': lambda x: cf.get_colour_value('dg', x),
+    'removed': lambda x: cf.get_colour_value('k', x),
 }
 
 # unit type colour
 unit_col = {
-    'noise': cf.get_colour_value('r', 128),
-    'good': cf.get_colour_value('g', 128),
-    'somatic good': cf.get_colour_value('g', 128),
-    'mua': cf.get_colour_value('c', 128),
-    'somatic mua': cf.get_colour_value('c', 128),
-    'non-somatic': cf.get_colour_value('y', 128),
-    'non-somatic good': cf.get_colour_value('y', 128),
-    'non-somatic mua': cf.get_colour_value('m', 128),
-    'selected': cf.get_colour_value([217, 255, 251], 128),
+    'noise': lambda x: cf.get_colour_value('r', x),
+    'good': lambda x: cf.get_colour_value('g', x),
+    'somatic good': lambda x: cf.get_colour_value('g', x),
+    'mua': lambda x: cf.get_colour_value('c', x),
+    'somatic mua': lambda x: cf.get_colour_value('c', x),
+    'non-somatic': lambda x: cf.get_colour_value('m', x),
+    'non-somatic good': lambda x: cf.get_colour_value('m', x),
+    'non-somatic mua': lambda x: cf.get_colour_value('o', x),
+    'selected': lambda x: cf.get_colour_value([217, 255, 251], x),
 }
 
 # widget dimensions
@@ -3904,6 +3904,12 @@ def get_unit_labels(is_split_nonsomatic):
         return ['Noise', 'Somatic Good', 'Somatic MUA', 'Non-somatic Good', 'Non-somatic MUA']
     else:
         return ['Noise', 'Good', 'MUA', 'Non-Somatic']
+
+def get_status_col(s_type, alpha=128):
+    return status_col[s_type.lower()](alpha)
+
+def get_unit_col(u_type, alpha=128):
+    return unit_col[u_type.lower()](alpha)
 
 # ----------------------------------------------------------------------------------------------------------------------
 

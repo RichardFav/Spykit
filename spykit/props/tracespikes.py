@@ -85,7 +85,7 @@ class TraceSpikeMixin:
             self.i_unit_sp[u_lbl_lo] = []
 
             # creates plot marker
-            # l_brush_spike = pg.mkBrush(color=cw.unit_col[u_lbl_lo])
+            # l_brush_spike = pg.mkBrush(color=cw.get_unit_col(u_lbl_lo))
 
             self.h_spike[u_lbl_lo] = pg.ScatterPlotItem(
                 [np.nan],
@@ -93,7 +93,7 @@ class TraceSpikeMixin:
                 symbol=self.sym,
                 size=self.get_para_value('m_size'),
                 pen=self.l_pen_spike,
-                brush=cw.unit_col[u_lbl_lo],
+                brush=cw.get_unit_col(u_lbl_lo, 255),
                 hoverPen='w',
                 hoverable=True,
             )
@@ -105,7 +105,7 @@ class TraceSpikeMixin:
             #     symbol=self.sym,
             #     symbolSize=self.get_para_value('m_size'),
             #     symbolPen=self.l_pen_spike,
-            #     symbolBrush=cw.unit_col[u_lbl_lo]
+            #     symbolBrush=cw.get_unit_col(u_lbl_lo)
             # )
 
             self.trace_view.h_plot[0, 0].addItem(self.h_spike[u_lbl_lo])
@@ -780,11 +780,12 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
 
     def set_table_row_colour(self, i_row, c_stat):
 
-        # blocks the table signals for updating
+        # blocks the table signals
         self.table.blockSignals(True)
 
+        # sets the table row colour
         for i_col in range(self.table.columnCount()):
-            self.table.item(i_row, i_col).setBackground(cw.unit_col[c_stat.lower()])
+            self.table.item(i_row, i_col).setBackground(cw.get_unit_col(c_stat))
 
         # removes signal block
         self.table.blockSignals(False)

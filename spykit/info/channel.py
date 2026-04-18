@@ -173,7 +173,7 @@ class ChannelInfoTab(InfoWidget):
     def set_table_row_colour(self, i_row, c_stat):
 
         for i_col in range(self.table.columnCount()):
-            self.table.item(i_row, i_col).setBackground(cw.status_col[c_stat])
+            self.table.item(i_row, i_col).setBackground(cw.get_status_col(c_stat))
 
     def set_table_row_enabled(self, i_row, state):
 
