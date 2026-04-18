@@ -86,17 +86,30 @@ class TraceSpikeMixin:
 
             # creates plot marker
             # l_brush_spike = pg.mkBrush(color=cw.unit_col[u_lbl_lo])
-            self.h_spike[u_lbl_lo] = self.trace_view.plot_item.plot(
+
+            self.h_spike[u_lbl_lo] = pg.ScatterPlotItem(
                 [np.nan],
                 [np.nan],
-                pen=None,
                 symbol=self.sym,
-                symbolSize=self.get_para_value('m_size'),
-                symbolPen=self.l_pen_spike,
-                symbolBrush=cw.unit_col[u_lbl_lo]
+                size=self.get_para_value('m_size'),
+                pen=self.l_pen_spike,
+                brush=cw.unit_col[u_lbl_lo],
+                hoverPen='w',
+                hoverable=True,
             )
 
+            # self.h_spike[u_lbl_lo] = self.trace_view.plot_item.plot(
+            #     [np.nan],
+            #     [np.nan],
+            #     pen=None,
+            #     symbol=self.sym,
+            #     symbolSize=self.get_para_value('m_size'),
+            #     symbolPen=self.l_pen_spike,
+            #     symbolBrush=cw.unit_col[u_lbl_lo]
+            # )
+
             self.trace_view.h_plot[0, 0].addItem(self.h_spike[u_lbl_lo])
+            self.h_spike[u_lbl_lo].sigHovered.connect(self.on_spike_hover)
 
     def delete_spike_markers(self):
 
@@ -134,14 +147,16 @@ class TraceSpikeMixin:
         # resets the marker size
         m_size = int(self.get_para_value('m_size'))
         for i_lbl, u_lbl in enumerate(self.unit_lbl):
-            self.h_spike[u_lbl.lower()].setData(symbolSize=m_size)
+            self.h_spike[u_lbl.lower()].setData(size=m_size)
 
         # resets the spike markers
         self.reset_spike_markers()
 
     def update_spike_markers(self):
 
-        #
+        # retrieves the indices of the unit types within the window span
+        self.x_spk, self.y_spk = np.array([]), np.array([])
+        self.i_spk, self.ch_spk = np.array([]), np.array([])
         unit_type_win = np.array(self.data['Unit Type'][self.spk_cluster_win[self.in_win] - 1])
 
         # clear spike window fields
@@ -158,6 +173,36 @@ class TraceSpikeMixin:
 
         # flag the markers are not cleared
         self.markers_cleared = False
+
+    def on_spike_hover(self, item, points, evnt):
+
+        if not len(points):
+            # Clear tooltip when not hovering over a point
+            item.setToolTip("")
+            return
+
+        # determines the index of the hover item
+        d_spk = np.sqrt((self.x_spk - evnt.pos().x()) ** 2 +
+                        (self.y_spk - evnt.pos().y()) ** 2)
+        i_spk_hover = np.argmin(d_spk)
+        x_spike = self.x_spk[i_spk_hover]
+        i_unit = int(self.i_spk[i_spk_hover])
+        i_channel = int(self.ch_spk[i_spk_hover])
+
+        # determines the spike index
+        spk_info = self.i_spike_info[self.i_run, self.i_shank]
+        i_ofs = spk_info['i_ofs'][i_unit]
+        i_spk_unit = spk_info['i_spike'][i_ofs:(i_ofs+spk_info['n_spike'][i_unit]+1)]
+        ind_spike = np.argmin(np.abs(i_spk_unit - self.x_spk[i_spk_hover] * self.s_freq))
+
+        # Get the data from the first point in the list (usually what's under the cursor)
+        item.setToolTip(
+            f"Unit ID#: {i_unit + 1}\n" \
+            f"Channel ID#: {i_channel + 1}\n" \
+            f"Unit Type: {self.data.iloc[i_unit]['Unit Type']}\n" \
+            f"Spike Index: {ind_spike + 1}\n" \
+            f"Spike Time (s): {np.round(x_spike, cf.n_dp)}"
+        )
 
     # ---------------------------------------------------------------------------
     # Spike Channel Functions
@@ -180,7 +225,8 @@ class TraceSpikeMixin:
     def update_unit_spike_markers(self, u_lbl, is_unit):
 
         # memory allocation
-        x_spk, y_spk = np.array([]), np.array([])
+        x_spk_nw, y_spk_nw = np.array([]), np.array([])
+        i_spk_nw, ch_spk_nw = np.array([]), np.array([])
 
         # field retrieval
         use_diff = int(self.trace_view.use_diff_signal())
@@ -190,23 +236,32 @@ class TraceSpikeMixin:
 
         # sets the spike coordinates for each unique unit cluster
         spk_ch, i_spk_ch = np.unique(spike_channel_unit, return_inverse=True)
-        for i_spk, spk in enumerate(spk_ch):
+        for i_ch, spk in enumerate(spk_ch):
             # if not selected within the table, then continue
-            ii = i_spk_ch == i_spk
+            ii = i_spk_ch == i_ch
             i_spk_unit = spike_cluster_unit[ii]
             if not self.is_filt[self.i_run, self.i_shank][i_spk_unit[0]]:
                 continue
 
             # retrieves the spike x-coordinates
-            x_spk = np.append(x_spk, self.trace_view.x_tr[0, i_spike_unit[ii] - use_diff])
+            i_spk_nw = np.append(i_spk_nw, i_spk_unit * np.ones(sum(ii), dtype=int))
+            x_spk_nw = np.append(x_spk_nw, self.trace_view.x_tr[0, i_spike_unit[ii] - use_diff])
+            ch_spk_nw = np.append(ch_spk_nw, spk * np.ones(sum(ii), dtype=int))
 
             # retrieves the spike y-oordinates
             i_ch = np.where(self.i_ch_sel == spk)[0][0]
-            y_spk = np.append(y_spk, self.trace_view.y_tr[i_ch, i_spike_unit[ii] - use_diff])
+            y_spk_nw = np.append(y_spk_nw, self.trace_view.y_tr[i_ch, i_spike_unit[ii] - use_diff])
 
         # updates the unit's spike marker coordinates
-        if len(x_spk):
-            self.h_spike[u_lbl.lower()].setData(x=x_spk, y=y_spk)
+        if len(x_spk_nw):
+            # appends the new data fields
+            self.x_spk = np.append(self.x_spk, x_spk_nw)
+            self.y_spk = np.append(self.y_spk, y_spk_nw)
+            self.i_spk = np.append(self.i_spk, i_spk_nw)
+            self.ch_spk = np.append(self.ch_spk, ch_spk_nw)
+
+            #
+            self.h_spike[u_lbl.lower()].setData(x=x_spk_nw, y=y_spk_nw)
         else:
             self.h_spike[u_lbl.lower()].setData(x=[np.nan], y=[np.nan])
 
@@ -482,6 +537,7 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
 
         # sets up the spike info field
         self.i_spike_info[self.i_run, self.i_shank] = {
+            'n_spike': n_spike,
             'i_ofs': np.append([0], np.cumsum(n_spike[:-1])),
             'i_spike': i_spike[np.lexsort((i_spike, spk_clust))],
         }
@@ -656,11 +712,18 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
 
         # field retrieval
         i_unit = self.get_unit_index(i_row) - 1
+        i_spike = int(self.get_para_value('i_spike'))
+        n_spike_unit = self.data.iloc[i_unit]['Count']
         is_unit_sel = self.is_filt[self.i_run, self.i_shank][i_unit, 0]
 
         # sets the table
         self.toggle_row_highlight(i_row)
         self.edit_spike.set_enabled(is_unit_sel)
+
+        # resets the spike count
+        if i_spike > n_spike_unit:
+            self.edit_spike.set_text(str(n_spike_unit))
+            self.edit_update('i_spike')
 
     def table_cell_changed(self, i_row, i_col):
 
