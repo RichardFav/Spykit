@@ -130,22 +130,13 @@ class TraceSpikeMixin:
             # clears the plot item
             self.h_spike[u_lbl_lo].setData(x=[np.nan], y=[np.nan])
 
-    def reset_marker_size(self):
-
-        # resets the marker size
-        m_size = int(self.get_para_value('m_size'))
-        for i_lbl, u_lbl in enumerate(self.unit_lbl):
-            self.h_spike[u_lbl.lower()].setData(size=m_size)
-
-        # resets the spike markers
-        self.reset_spike_markers()
-
     def update_spike_markers(self):
 
         # retrieves the indices of the unit types within the window span
         self.x_spk, self.y_spk = np.array([]), np.array([])
         self.i_spk, self.ch_spk = np.array([]), np.array([])
-        unit_type_win = np.array(self.data['Unit Type'][self.spk_cluster_win[self.in_win] - 1])
+        unit_type_win = np.array(self.get_data('Unit Type')[
+                                     self.spk_cluster_win[self.in_win] - 1])
 
         # clear spike window fields
         for i_lbl, u_lbl in enumerate(self.unit_lbl):
@@ -182,12 +173,13 @@ class TraceSpikeMixin:
         i_ofs = spk_info['i_ofs'][i_unit]
         i_spk_unit = spk_info['i_spike'][i_ofs:(i_ofs+spk_info['n_spike'][i_unit]+1)]
         ind_spike = np.argmin(np.abs(i_spk_unit - self.x_spk[i_spk_hover] * self.s_freq))
+        unit_type = self.get_data('Unit Type')[i_unit]
 
         # Get the data from the first point in the list (usually what's under the cursor)
         item.setToolTip(
             f"Unit ID#: {i_unit + 1}\n" \
             f"Channel ID#: {i_channel + 1}\n" \
-            f"Unit Type: {self.data.iloc[i_unit]['Unit Type']}\n" \
+            f"Unit Type: {unit_type}\n" \
             f"Spike Index: {ind_spike + 1}\n" \
             f"Spike Time (s): {np.round(x_spike, cf.n_dp)}"
         )
@@ -319,8 +311,9 @@ class TraceSpikeMixin:
         if (self.i_spk1 is not None) and self.trace_view.show_spikes:
             # reset if chande in lower/upper limits
             if reset_win:
+                ch_id = self.get_data('Channel')
                 self.spk_cluster_win = self.spk_cluster[self.i_spk0:self.i_spk1]
-                self.spk_channel_win = np.array(self.data['Channel'][self.spk_cluster_win - 1])
+                self.spk_channel_win = np.array(ch_id[self.spk_cluster_win - 1])
                 self.i_spike_win = self.i_spike[self.i_spk0:self.i_spk1]
 
             # determines the selected channels which have spikes within the trace window
@@ -393,6 +386,17 @@ class TraceSpikeMixin:
             # check if the last spike is within the limits
             if self.i_spike[self.i_spk1] < i_frm_win[0]:
                 self.i_spk1 = None
+
+    def reset_marker_size(self):
+
+        # resets the marker size
+        m_size = int(self.get_para_value('m_size'))
+        for i_lbl, u_lbl in enumerate(self.unit_lbl):
+            self.h_spike[u_lbl.lower()].setData(size=m_size)
+
+        # resets the spike markers
+        self.reset_spike_markers()
+
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -519,7 +523,7 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
             return
 
         # field retrieval
-        n_spike = np.array(self.data['Count'])
+        n_spike = np.array(self.get_data('Count'))
         i_spike = self.get_field('i_spike')[:, 0]
         spk_clust = self.get_field('spk_cluster')[:, 0]
 
@@ -535,6 +539,7 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
         # memory allocation
         self.n_unit = self.get_field('n_unit')
         self.n_unit_pp = self.main_obj.main_obj.main_obj.session_obj.post_data.n_unit_pp
+        self.data = np.empty(self.n_unit_pp.shape, dtype=object)
         self.i_spike_info = np.empty(self.n_unit_pp.shape, dtype=object)
 
         # unit selection memory allocation
@@ -573,12 +578,13 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
         obj_but.setChecked(True)
         self.trace_view.plot_button_clicked('spike')
 
+        data_t = self.get_data()
         for i_col in range(table_dim[1]):
             # updates the table header font
             self.table.horizontalHeaderItem(i_col).setFont(self.table_hdr_font)
 
             # creates all table items for current column
-            value0 = self.data.iloc[0][self.data.columns[i_col]]
+            value0 = data_t.iloc[0][data_t.columns[i_col]]
             for i_row in range(table_dim[0]):
                 # creates the widget item
                 item = QTableWidgetItem()
@@ -605,6 +611,8 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
         # field retrieval
         self.get_metric_table_values()
         self.setup_unit_spike_info()
+        data_f = self.get_data()
+        unit_type = self.get_data('Unit Type')
 
         # flag that manual update is taking place
         self.is_updating = True
@@ -614,14 +622,14 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
             self.create_spike_markers()
             self.is_marker_init = True
 
-        for i_row, c_stat in enumerate(self.data['Unit Type']):
+        for i_row, c_stat in enumerate(unit_type):
             # sets the table row colour
             self.table.setRowHidden(i_row, False)
             self.set_table_row_colour(i_row, c_stat.lower())
 
             for i_col in range(self.table.columnCount()):
                 # sets the item value (based on the field values)
-                value = self.data.iloc[i_row][self.data.columns[i_col]]
+                value = data_f[data_f.columns[i_col]][i_row]
                 if isinstance(value, bool):
                     # case is a boolean field
                     self.table.item(i_row, i_col).setCheckState(cf.chk_state[value])
@@ -631,7 +639,7 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
                     self.table.item(i_row, i_col).setText(str(value))
 
         # hides the extra table rows
-        for i_row in reversed(range(self.data.shape[0], self.table.rowCount())):
+        for i_row in reversed(range(len(unit_type), self.table.rowCount())):
             self.table.setRowHidden(i_row, True)
 
         # resets the update flag
@@ -641,7 +649,7 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
     def clear_table_channel_selections(self, i_row_ch):
 
         # determines which units match the channel index
-        i_ch_match = np.where(np.array(self.data['Channel'] == i_row_ch))[0]
+        i_ch_match = np.where(np.array(self.get_data('Channel') == i_row_ch))[0]
         if len(i_ch_match):
             # block signals to the table
             self.table.blockSignals(True)
@@ -673,7 +681,7 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
         match p_str:
             case 'i_spike':
                 # case is the spike index
-                min_val, max_val = 1, self.data.iloc[self.i_row_sel]['Count']
+                min_val, max_val = 1, self.get_data('Count')[self.i_row_sel]
 
             case 'm_size':
                 # case is the marker size
@@ -710,7 +718,7 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
         # field retrieval
         i_unit = self.get_unit_index(i_row) - 1
         i_spike = int(self.get_para_value('i_spike'))
-        n_spike_unit = self.data.iloc[i_unit]['Count']
+        n_spike_unit = self.get_data('Count')[i_unit]
         is_unit_sel = self.is_filt[self.i_run, self.i_shank][i_unit, 0]
 
         # sets the table
@@ -737,6 +745,7 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
         # updates the filter flag
         new_state = item_chk.checkState() == cf.chk_state[True]
         self.is_filt[self.i_run, self.i_shank][i_unit] = new_state
+        self.set_data('', i_unit, new_state)
 
         # ensures the channel is selected
         if new_state:
@@ -791,7 +800,7 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
 
     def set_table_rows(self, is_filt):
 
-        for i_row in range(self.data.shape[0]):
+        for i_row in range(self.get_data().shape[0]):
             self.table.setRowHidden(i_row, not is_filt[i_row])
 
     def set_row_highlight(self, is_highlight_on, i_row_sel=None):
@@ -804,9 +813,13 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
         else:
             # row highlight is turned off
             i_unit = int(self.table.item(self.i_row_sel, self.i_col_unit).text()) - 1
-            c_stat = self.data['Unit Type'].iloc[i_unit]
+            c_stat = self.get_data('Unit Type')[i_unit]
             self.set_table_row_colour(self.i_row_sel, c_stat)
             self.i_row_sel = None
+
+    def set_data(self, p_fld, i_unit, p_val):
+
+        self.data[self.i_run, self.i_shank][p_fld][i_unit] = p_val
 
     # ---------------------------------------------------------------------------
     # Class Getter Functions
@@ -830,13 +843,17 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
 
     def get_metric_table_values(self):
 
+        # if the table data is already setup, then exit
+        if self.get_data() is not None:
+            return
+
         # field retrieval
         unit_type = self.get_unit_type_labels().reshape(-1, 1)
         show_spike = self.is_filt[self.i_run, self.i_shank]
         q_met_df = self.get_table_data_frame()
 
         # sets the final metric dataframe
-        self.data = pd.DataFrame(np.hstack((show_spike, unit_type, q_met_df), dtype=object), columns=self.c_hdr)
+        self.data[self.i_run, self.i_shank] = pd.DataFrame(np.hstack((show_spike, unit_type, q_met_df), dtype=object), columns=self.c_hdr)
 
     def get_unit_type_labels(self):
 
@@ -854,7 +871,7 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
 
         # retrieves the unit ID's for each row
         unit_id = []
-        for i in range(self.data.shape[0]):
+        for i in range(self.get_data().shape[0]):
             item = self.table.item(i, self.i_col_unit)
             unit_id.append(int(item.text()))
 
@@ -864,10 +881,26 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
 
         return int(self.table.item(i_row, self.i_col_unit).text())
 
+    def get_data(self, p_fld=None):
+
+        if p_fld is None:
+            return self.data[self.i_run, self.i_shank]
+        else:
+            return self.data[self.i_run, self.i_shank][p_fld]
+
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
     # ---------------------------------------------------------------------------
 
+    def update_run_shank_fields(self):
 
+        # resets the run/shank indices
+        self.i_run = self.main_obj.main_obj.session_obj.get_current_run_index()
+        self.i_shank = self.main_obj.main_obj.session_obj.get_shank_index()
 
+        # resets the table data
+        self.set_spike_table_data()
 
+        # resets the spike markers
+        self.i_frm_pr = None
+        self.reset_spike_markers()

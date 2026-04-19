@@ -276,6 +276,10 @@ class PropManager(QWidget):
         self.main_obj.info_manager.set_unit_table_data()
         self.set_spike_table_data()
 
+        # updates the run/shank information fields
+        spike_props = self.main_obj.prop_manager.get_prop_tab('tracespike')
+        spike_props.update_run_shank_fields()
+
         # applies the unit status filter
         unit_tab.update_unit_status()
         unit_tab.check_filter_item()
