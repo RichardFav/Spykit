@@ -285,7 +285,8 @@ class InfoManager(QWidget):
             case 'shank':
                 # resets the current shank
                 self.update_current_shank(tab_obj)
-                self.main_obj.session_obj.reset_current_session(True)
+                has_prep = self.main_obj.session_obj.session.has_prep()
+                self.main_obj.session_obj.reset_current_session(has_prep)
 
         # updates the current preprocessing data type
         if tab_obj.data_flds is not None:
@@ -301,6 +302,7 @@ class InfoManager(QWidget):
 
                 # field retrieval
                 is_concat = self.session_obj.is_concat_run()
+                has_pp = self.session_obj.post_data.n_mmap > 0
 
                 # resets the channel statuses
                 ch_status = self.session_obj.session.bad_ch[0]
@@ -309,7 +311,7 @@ class InfoManager(QWidget):
                 tab_obj.is_updating = True
 
                 # run/concatenation types (based on selection)
-                is_per_shank = self.session_obj.is_per_shank()
+                is_per_shank = self.session_obj.is_per_shank(not has_pp)
 
                 # resets the run index (if displaying a concatenated run)
                 if is_concat:
@@ -482,15 +484,22 @@ class InfoManager(QWidget):
         for t in status_tab.t_worker:
             t.force_quit()
 
-    def init_channel_comboboxes(self):
+    def init_channel_comboboxes(self, data_list=None, run_list=None, shank_list=None):
 
         # field reinitialisation
         self.i_run_pr = 0
 
-        # combobox fields
-        data_list = ['Raw']
-        run_list = self.session_obj.session.get_run_names()
-        shank_list = self.session_obj.get_shank_names()
+        # sets the trace type list
+        if data_list is None:
+            data_list = ['Raw']
+
+        # run list
+        if run_list is None:
+            run_list = self.session_obj.session.get_run_names()
+
+        # shank list
+        if shank_list is None:
+            shank_list = self.session_obj.get_shank_names()
 
         # flag that manual updating is taking place
         self.is_updating = True
@@ -880,6 +889,18 @@ class InfoManager(QWidget):
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
     # ---------------------------------------------------------------------------
+
+    def reset_shank_run_info(self):
+
+        # field retrieval
+        ch_tab = self.get_info_tab('channel')
+        is_per_shank = self.session_obj.is_per_shank()
+        shank_list = self.session_obj.get_shank_names(is_per_shank)
+        data_list = ch_tab.data_type.itemText()
+
+        # resets the channel comboboxes
+        self.init_channel_comboboxes(data_list=data_list, shank_list=shank_list)
+        time.sleep(0.05)
 
     def set_tab_enabled(self, i_tab, s_flag):
 

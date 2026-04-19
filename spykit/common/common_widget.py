@@ -2417,6 +2417,9 @@ class QLabelCombo(QWidget):
         for t in items:
             self.addItem(t)
 
+    def itemText(self):
+
+        return [self.obj_cbox.itemText(x) for x in range(self.count())]
 
 # ----------------------------------------------------------------------------------------------------------------------
 

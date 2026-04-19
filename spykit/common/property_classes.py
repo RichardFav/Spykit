@@ -88,7 +88,7 @@ class SessionWorkBook(QObject):
             else:
                 probe_rec = self.get_raw_recording_probe()
 
-        elif is_raw or (not self.session.has_prep()):
+        elif (is_raw or (not self.session.has_prep())) and (self.post_data.n_mmap == 0):
             probe_rec = self.get_raw_recording_probe()
 
         else:

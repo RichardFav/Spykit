@@ -239,6 +239,7 @@ class ChannelInfoTab(InfoWidget):
         self.is_updating = True
         self.set_update_flag.emit(True)
         ch_avail = self.get_avail_channel_fcn(is_raw=True)
+        ch_status = {key: val.capitalize() for key, val in ch_status.items()}
 
         # updates the table with the new information
         ch_list, i_rmv = [], []
@@ -249,17 +250,19 @@ class ChannelInfoTab(InfoWidget):
                 # case is the channel is available
                 self.set_table_row_colour(i_row, c_stat if is_keep[i_row] else 'rejected')
                 self.set_table_row_enabled(i_row, True)
-                item.setText(c_stat)
 
-                if c_stat not in ch_list:
-                    ch_list.append(c_stat)
+                c_stat_cap = c_stat.capitalize()
+                item.setText(c_stat_cap)
+
+                if c_stat_cap not in ch_list:
+                    ch_list.append(c_stat_cap)
 
             else:
                 # case is the item has been removed
                 i_rmv.append(i_row)
                 self.set_table_row_colour(i_row, 'removed')
                 self.set_table_row_enabled(i_row, False)
-                item.setText('removed')
+                item.setText('Removed')
 
         if len(i_rmv):
             self.force_reset_flags.emit(i_rmv)
