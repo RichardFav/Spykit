@@ -85,8 +85,6 @@ class TraceSpikeMixin:
             self.i_unit_sp[u_lbl_lo] = []
 
             # creates plot marker
-            # l_brush_spike = pg.mkBrush(color=cw.get_unit_col(u_lbl_lo))
-
             self.h_spike[u_lbl_lo] = pg.ScatterPlotItem(
                 [np.nan],
                 [np.nan],
@@ -97,16 +95,6 @@ class TraceSpikeMixin:
                 hoverPen='w',
                 hoverable=True,
             )
-
-            # self.h_spike[u_lbl_lo] = self.trace_view.plot_item.plot(
-            #     [np.nan],
-            #     [np.nan],
-            #     pen=None,
-            #     symbol=self.sym,
-            #     symbolSize=self.get_para_value('m_size'),
-            #     symbolPen=self.l_pen_spike,
-            #     symbolBrush=cw.get_unit_col(u_lbl_lo)
-            # )
 
             self.trace_view.h_plot[0, 0].addItem(self.h_spike[u_lbl_lo])
             self.h_spike[u_lbl_lo].sigHovered.connect(self.on_spike_hover)
@@ -328,7 +316,7 @@ class TraceSpikeMixin:
             reset_win = True
             self.reset_spike_index_limits(i_frm_nw)
 
-        if (self.i_spk1 is not None):
+        if (self.i_spk1 is not None) and self.trace_view.show_spikes:
             # reset if chande in lower/upper limits
             if reset_win:
                 self.spk_cluster_win = self.spk_cluster[self.i_spk0:self.i_spk1]
@@ -579,6 +567,12 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
         self.get_metric_table_values()
         self.table.setHorizontalHeaderLabels(self.c_hdr)
 
+        # enables the buttonf
+        obj_but = self.trace_view.findChild(cw.QPushButton, name='spike')
+        obj_but.setEnabled(True)
+        obj_but.setChecked(True)
+        self.trace_view.plot_button_clicked('spike')
+
         for i_col in range(table_dim[1]):
             # updates the table header font
             self.table.horizontalHeaderItem(i_col).setFont(self.table_hdr_font)
@@ -705,10 +699,13 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
             # otherwise, reset the previous value
             h_edit.set_text('%g' % self.get_para_value(p_str))
 
-    def table_cell_clicked(self, i_row, i_col):
+    def table_cell_clicked(self, i_row=None, i_col=None):
 
         if self.is_updating:
             return
+
+        elif i_row is None:
+            i_row = self.i_row_sel
 
         # field retrieval
         i_unit = self.get_unit_index(i_row) - 1
@@ -718,12 +715,14 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
 
         # sets the table
         self.toggle_row_highlight(i_row)
-        self.edit_spike.set_enabled(is_unit_sel)
+        self.edit_spike.set_enabled(is_unit_sel and self.trace_view.show_spikes)
 
         # resets the spike count
         if i_spike > n_spike_unit:
             self.edit_spike.set_text(str(n_spike_unit))
-            self.edit_update('i_spike')
+            if self.trace_view.show_spikes:
+                self.set_para_value('i_spike', n_spike_unit)
+                # self.edit_update('i_spike')
 
     def table_cell_changed(self, i_row, i_col):
 

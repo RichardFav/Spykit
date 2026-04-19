@@ -221,7 +221,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.i_trace = None
         self.y_trace = None
         self.show_lbl = False
-        self.show_events = False
+        self.show_spikes = False
 
         # class widgets
         self.c_map = None
@@ -718,7 +718,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
                 # spike marker update
                 if (self.spike_props is not None):
-                # if (self.spike_props is not None) and self.show_events:
+                # if (self.spike_props is not None) and self.show_spikes:
                     self.spike_props.reset_spike_markers()
 
         else:
@@ -1311,8 +1311,12 @@ class TracePlot(TraceLabelMixin, PlotWidget):
                 obj_but = self.findChild(cw.QPushButton, name=b_str)
 
                 # updates the tooltip string
-                self.show_events = obj_but.isChecked()
-                obj_but.setToolTip(self.lbl_tt_str[b_str][int(self.show_events)])
+                self.show_spikes = obj_but.isChecked()
+                obj_but.setToolTip(self.lbl_tt_str[b_str][int(self.show_spikes)])
+
+                # resets the spike markers
+                self.spike_props.reset_spike_markers()
+                self.spike_props.table_cell_clicked()
 
             case 'datatip':
                 # case is the label toggle button

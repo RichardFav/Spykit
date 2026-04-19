@@ -333,7 +333,10 @@ class SessionWorkBook(QObject):
 
         if self.is_per_shank() and (self.current_shank is not None):
             shank_names = self.get_shank_names()
-            return shank_names.index(self.current_shank)
+            if isinstance(self.current_shank, int):
+                return self.current_shank
+            else:
+                return shank_names.index(self.current_shank)
 
         else:
             return 0
