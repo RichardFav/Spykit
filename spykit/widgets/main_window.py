@@ -363,14 +363,6 @@ class MainWindow(QMainWindow):
         self.plot_manager.update_plot_config(c_id)
         self.reset_prop_tab_visible(c_id)
 
-    def reset_prop_tab_visible(self, c_id):
-
-        # resets the tab visibility
-        prop_views = self.plot_manager.get_prop_views(c_id)
-        for pv in self.plot_manager.prop_views:
-            if pv in self.prop_manager.t_types:
-                self.prop_manager.set_tab_visible(pv, pv in prop_views)
-
     def update_channel(self, i_row):
 
         # resets the probe views
@@ -418,6 +410,14 @@ class MainWindow(QMainWindow):
     def update_unit_header(self, i_state):
 
         a = 1
+
+    def reset_prop_tab_visible(self, c_id):
+
+        # resets the tab visibility
+        prop_views = self.plot_manager.get_prop_views(c_id)
+        for pv in self.plot_manager.prop_views:
+            if pv in self.prop_manager.t_types:
+                self.prop_manager.set_tab_visible(pv, pv in prop_views)
 
     # ---------------------------------------------------------------------------
     # Preprocessing Functions
@@ -475,6 +475,75 @@ class MainWindow(QMainWindow):
         # if there is a change in spike-sorting then
         if ss_change:
             self.menu_bar.clear_bomb_cell(prompt_user=False)
+
+    # ---------------------------------------------------------------------------
+    # Obsolete Preprocessing Functions
+    # ---------------------------------------------------------------------------
+
+    def run_preproccessing(self, prep_obj):
+
+        # runs the session pre-processing
+        prep_tab = self.info_manager.get_info_tab('preprocess')
+        if isinstance(prep_obj, tuple):
+            # case is running from the Preprocessing dialog
+            prep_task, prep_opt = prep_obj
+            per_shank, concat_runs = prep_opt
+            pp_config = prep_tab.setup_config_dict(prep_task)
+
+        else:
+            # case is running from loading session
+            pp_config = prep_obj.setup_config_dicts()
+
+        # runs the preprocessing
+        self.session_obj.session.run_preprocessing(pp_config, per_shank, concat_runs)
+        self.session_obj.reset_current_session(True)
+
+        # resets the preprocessing data type combobox
+        pp_data_flds = self.session_obj.get_current_prep_data_names()
+        task_flds = deepcopy(pp_data_flds[-1].split('-')[1:])
+
+        # if removing channels, then delete this from the preprocessing fields
+        task_name = [pp_flds[x] for x in task_flds]
+        has_remove = [(x == 'remove_channels') for x in task_flds]
+        if np.any(np.asarray(has_remove)):
+            # determines the instances where channels were removed
+            for i_rmv in np.flip(np.where(has_remove)[0]):
+                pp_data_flds.pop(i_rmv)
+                task_name.pop(i_rmv)
+
+        # updates the channel data types
+        channel_tab = self.info_manager.get_info_tab('channel')
+        channel_tab.reset_data_types(task_name, pp_data_flds)
+        # self.bad_channel_change()
+
+        # updates the trace views
+        self.plot_manager.reset_trace_views()
+        self.menu_bar.set_menu_enabled_blocks('post-preprocess')
+
+    def setup_preprocessing_worker(self, prep_task, prep_opt=None, delay_start=False):
+
+        # pauses for things to catch up...
+        t_worker = ThreadWorker(self, self.run_preprocessing_worker, (prep_task, prep_opt))
+        t_worker.work_finished.connect(self.preprocessing_complete)
+
+        if delay_start:
+            QTimer.singleShot(20, pfcn(self.start_preprocessing_timer, t_worker))
+
+        else:
+            t_worker.start()
+
+    def run_preprocessing_worker(self, prep_obj):
+
+        self.run_preproccessing(prep_obj)
+
+    def preprocessing_complete(self):
+
+        self.worker_job_finished('preprocess')
+
+    @staticmethod
+    def start_preprocessing_timer(t_worker):
+
+        t_worker.start()
 
     # ---------------------------------------------------------------------------
     # Postprocessing Functions
@@ -601,75 +670,6 @@ class MainWindow(QMainWindow):
                 mm_file.pop()
 
     # ---------------------------------------------------------------------------
-    # Obsolete Preprocessing Functions
-    # ---------------------------------------------------------------------------
-
-    def run_preproccessing(self, prep_obj):
-
-        # runs the session pre-processing
-        prep_tab = self.info_manager.get_info_tab('preprocess')
-        if isinstance(prep_obj, tuple):
-            # case is running from the Preprocessing dialog
-            prep_task, prep_opt = prep_obj
-            per_shank, concat_runs = prep_opt
-            pp_config = prep_tab.setup_config_dict(prep_task)
-
-        else:
-            # case is running from loading session
-            pp_config = prep_obj.setup_config_dicts()
-
-        # runs the preprocessing
-        self.session_obj.session.run_preprocessing(pp_config, per_shank, concat_runs)
-        self.session_obj.reset_current_session(True)
-
-        # resets the preprocessing data type combobox
-        pp_data_flds = self.session_obj.get_current_prep_data_names()
-        task_flds = deepcopy(pp_data_flds[-1].split('-')[1:])
-
-        # if removing channels, then delete this from the preprocessing fields
-        task_name = [pp_flds[x] for x in task_flds]
-        has_remove = [(x == 'remove_channels') for x in task_flds]
-        if np.any(np.asarray(has_remove)):
-            # determines the instances where channels were removed
-            for i_rmv in np.flip(np.where(has_remove)[0]):
-                pp_data_flds.pop(i_rmv)
-                task_name.pop(i_rmv)
-
-        # updates the channel data types
-        channel_tab = self.info_manager.get_info_tab('channel')
-        channel_tab.reset_data_types(task_name, pp_data_flds)
-        # self.bad_channel_change()
-
-        # updates the trace views
-        self.plot_manager.reset_trace_views()
-        self.menu_bar.set_menu_enabled_blocks('post-preprocess')
-
-    def setup_preprocessing_worker(self, prep_task, prep_opt=None, delay_start=False):
-
-        # pauses for things to catch up...
-        t_worker = ThreadWorker(self, self.run_preprocessing_worker, (prep_task, prep_opt))
-        t_worker.work_finished.connect(self.preprocessing_complete)
-
-        if delay_start:
-            QTimer.singleShot(20, pfcn(self.start_preprocessing_timer, t_worker))
-
-        else:
-            t_worker.start()
-
-    def run_preprocessing_worker(self, prep_obj):
-
-        self.run_preproccessing(prep_obj)
-
-    def preprocessing_complete(self):
-
-        self.worker_job_finished('preprocess')
-
-    @staticmethod
-    def start_preprocessing_timer(t_worker):
-
-        t_worker.start()
-
-    # ---------------------------------------------------------------------------
     # Session Related Functions
     # ---------------------------------------------------------------------------
 
@@ -760,15 +760,15 @@ class MainWindow(QMainWindow):
         #  => (CS/SS = Combined/Separated Shank; SR/CR = Separated/Concated Runs)
         # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/Tiny Example/tiny_example.ssf"
         # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/Tiny Example/tiny_example_1 (CS + SR).ssf"
-        f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/Tiny Example/tiny_example_2 (SS + SR).ssf"
+        # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/Tiny Example/tiny_example_2 (SS + SR).ssf"
         # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/Tiny Example/tiny_example_3 (CS + CR).ssf"
         # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/Tiny Example/tiny_example_4 (SS + CR).ssf"
 
         # large examples
-        # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/Large Example/large_example.ssf"
+        f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/Large Example/large_example.ssf"
 
         # loads the session
-        self.menu_bar.load_session(f_file, False)
+        self.menu_bar.load_session(f_file, True)
 
         # retrieves the configuration tab object
         config_tab = self.prop_manager.get_prop_tab('config')

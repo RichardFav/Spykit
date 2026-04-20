@@ -635,3 +635,9 @@ def flat_list(l):
         return [item for sublist in l for item in sublist]
     else:
         return l
+
+
+def map_bombcell_channels(i_pk_ch0, ch_pos):
+
+    ia = np.lexsort((ch_pos[:, 0], ch_pos[:, 1]))
+    return np.array([next((i for i, y in enumerate(ia) if (y == (x - 1)))) for x in i_pk_ch0]) + 1, ch_pos[ia, :]

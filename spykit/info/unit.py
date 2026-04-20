@@ -302,13 +302,13 @@ class UnitInfoTab(InfoWidget):
 
         # channel position/index
         i_ch_unit = self.i_pk_ch[self.i_unit_sel - 1]
-        ch_pos = self.get_field('ch_pos')[i_ch_unit - 1, :]
+        ch_pos_unit = self.ch_pos[self.i_pk_ch[self.i_unit_sel - 1] - 1, :]
 
         # resets the roi position
         probe_view = self.main_obj.plot_manager.get_plot_view('probe')
         if probe_view is not None:
             type_lbl = self.table.item(i_row, self.i_col_type).text().lower()
-            probe_view.reset_unit_roi_position(i_ch_unit, ch_pos, type_lbl)
+            probe_view.reset_unit_roi_position(i_ch_unit, ch_pos_unit, type_lbl)
 
     # ---------------------------------------------------------------------------
     # Widget Event Functions
@@ -323,13 +323,13 @@ class UnitInfoTab(InfoWidget):
         self.status_change.emit(self, self.is_filt)
         self.data_change.emit(self)
 
-    def combo_run_change(self, h_combo):
+    def combo_run_change(self, _):
 
         # if manually updating, then exit
         if not self.is_updating:
             self.run_change.emit(self)
 
-    def combo_shank_change(self, h_combo):
+    def combo_shank_change(self, _):
 
         # if manually updating, then exit
         if not self.is_updating:
@@ -342,12 +342,16 @@ class UnitInfoTab(InfoWidget):
     def remap_channel_indices(self, q_hdr, q_met):
 
         # field retrieval
+        ch_pos0 = self.get_field('ch_pos')
         i_col_ch = np.where(q_hdr == 'maxChannels')[0][0]
         i_shank = self.main_obj.session_obj.get_shank_index()
         probe_view = self.main_obj.plot_manager.get_plot_view('probe')
 
+        # re-maps the bombcell channel indices by height
+        i_pk_ch0 = q_met[:, i_col_ch].astype(int)
+        self.i_pk_ch, self.ch_pos = cf.map_bombcell_channels(i_pk_ch0, ch_pos0)
+
         # re-maps the channel indices to the probe map
-        self.i_pk_ch = q_met[:, i_col_ch].astype(int)
         q_met[:, i_col_ch] = probe_view.sub_view.ch_map[i_shank][self.i_pk_ch - 1]
 
         return q_met
@@ -411,7 +415,7 @@ class UnitInfoTab(InfoWidget):
 
         # force runs the cell click callback
         self.table_cell_click(i_row, i_col)
-        self.table.verticalScrollBar().setValue(i_row)
+        self.table.verticalScrollBar().setValue(i_row - np.sum(~self.is_filt[:i_row]))
 
     def reorder_unit_dataframe(self, c_hdr0):
 

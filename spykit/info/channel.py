@@ -148,7 +148,6 @@ class ChannelInfoTab(InfoWidget):
 
         # if manually updating, then exit
         if not self.is_updating:
-            nw_text = h_combo.currentText()
             self.shank_change.emit(self)
 
     def combo_status_change(self, h_combo):

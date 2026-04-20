@@ -368,6 +368,12 @@ class InfoManager(QWidget):
                 # resets the previous run index
                 self.i_run_pr = tab_obj.run_type.current_index()
 
+                # resets the unit tab run index
+                if self.main_obj.session_obj.post_data.n_mmap > 0:
+                    unit_tab = self.main_obj.info_manager.get_info_tab('unit')
+                    unit_tab.run_type.set_current_index(self.i_run_pr)
+                    unit_tab.combo_run_change(None)
+
             case 'shank':
                 # resets the channel statuses
                 tab_obj.set_table_rows()
@@ -376,6 +382,12 @@ class InfoManager(QWidget):
                 # resets the trace/trigger view
                 self.main_obj.plot_manager.reset_trace_views(2)
                 self.main_obj.plot_manager.reset_probe_views()
+
+                # resets the unit tab shank index
+                if self.main_obj.session_obj.post_data.n_mmap > 0:
+                    unit_tab = self.main_obj.info_manager.get_info_tab('unit')
+                    unit_tab.shank_type.set_current_index(self.i_shank_pr)
+                    unit_tab.combo_shank_change(None)
 
         # resets the update flags
         self.is_updating = False

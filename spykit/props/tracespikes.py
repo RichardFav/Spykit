@@ -219,18 +219,25 @@ class TraceSpikeMixin:
         for i_ch, spk in enumerate(spk_ch):
             # if not selected within the table, then continue
             ii = i_spk_ch == i_ch
-            i_spk_unit = spike_cluster_unit[ii]
-            if not self.is_filt[self.i_run, self.i_shank][i_spk_unit[0]]:
+            if ~np.any(ii):
                 continue
 
-            # retrieves the spike x-coordinates
-            i_spk_nw = np.append(i_spk_nw, i_spk_unit * np.ones(sum(ii), dtype=int))
-            x_spk_nw = np.append(x_spk_nw, self.trace_view.x_tr[0, i_spike_unit[ii] - use_diff])
-            ch_spk_nw = np.append(ch_spk_nw, spk * np.ones(sum(ii), dtype=int))
+            #
+            i_spike_ch = i_spike_unit[ii]
+            spike_cluster_ch = spike_cluster_unit[ii]
+            for j_ch in np.unique(spike_cluster_ch):
+                if not self.is_filt[self.i_run, self.i_shank][j_ch]:
+                    continue
 
-            # retrieves the spike y-oordinates
-            i_ch = np.where(self.i_ch_sel == spk)[0][0]
-            y_spk_nw = np.append(y_spk_nw, self.trace_view.y_tr[i_ch, i_spike_unit[ii] - use_diff])
+                # retrieves the spike x-coordinates
+                jj = spike_cluster_ch == j_ch
+                i_spk_nw = np.append(i_spk_nw, i_spike_ch[jj].astype(int))
+                x_spk_nw = np.append(x_spk_nw, self.trace_view.x_tr[0, i_spike_ch[jj] - use_diff])
+                ch_spk_nw = np.append(ch_spk_nw, j_ch * np.ones(sum(jj), dtype=int))
+
+                # retrieves the spike y-oordinates
+                i_ch = np.where(self.trace_view.plot_id == spk)[0][0]
+                y_spk_nw = np.append(y_spk_nw, self.trace_view.y_tr[i_ch, i_spike_ch[jj] - use_diff])
 
         # updates the unit's spike marker coordinates
         if len(x_spk_nw):
@@ -317,8 +324,7 @@ class TraceSpikeMixin:
                 self.i_spike_win = self.i_spike[self.i_spk0:self.i_spk1]
 
             # determines the selected channels which have spikes within the trace window
-            self.i_ch_sel = self.trace_view.session_obj.get_selected_channels()
-            self.in_win = np.isin(self.spk_channel_win - 1, self.i_ch_sel)
+            self.in_win = np.isin(self.spk_channel_win - 1, self.trace_view.plot_id)
             if np.any(self.in_win):
                 # if spikes within the window, then update the
                 self.update_spike_markers()
@@ -452,7 +458,6 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
         self.i_row_sel = None
 
         self.in_win = None
-        self.i_ch_sel = None
         self.i_spike_win = None
         self.spk_cluster_win = None
         self.spk_channel_win = None
@@ -534,6 +539,8 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
             'i_spike': i_spike[np.lexsort((i_spike, spk_clust))],
         }
 
+        pass
+
     def setup_spike_table(self):
 
         # memory allocation
@@ -548,8 +555,6 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
             self.is_filt[np.unravel_index(i_pp, self.is_filt.shape)] = np.zeros((n_pp, 1), dtype=bool)
 
         # memory mapped field retrieval
-        self.spk_cluster = self.get_field('spk_cluster')[:, 0]
-        self.i_spike = self.get_field('i_spike')[:, 0].astype(np.uint32)
         self.unit_lbl = cw.get_unit_labels(self.get_field('splitGoodAndMua_NonSomatic'))
 
         # table dimensioning
@@ -569,6 +574,7 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
         self.table.setColumnCount(table_dim[1])
 
         # sets the table header view
+        self.update_spike_data_fields()
         self.get_metric_table_values()
         self.table.setHorizontalHeaderLabels(self.c_hdr)
 
@@ -831,12 +837,16 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
         q_met_df = self.main_obj.main_obj.main_obj.session_obj.get_metric_table_values()[self.c_hdr_0].astype(int)
 
         # field retrieval
+        ch_pos0 = self.get_field('ch_pos')
         self.i_run = self.main_obj.main_obj.session_obj.get_current_run_index()
         self.i_shank = self.main_obj.main_obj.session_obj.get_shank_index()
         probe_view = self.main_obj.main_obj.main_obj.plot_manager.get_plot_view('probe')
 
+        # re-maps the bombcell channel indices by height
+        i_pk_ch0 = q_met_df['maxChannels'].astype(int)
+        self.i_pk_ch, self.ch_pos = cf.map_bombcell_channels(i_pk_ch0, ch_pos0)
+
         # re-maps the channel indices to the probe map
-        self.i_pk_ch = q_met_df['maxChannels'].astype(int)
         q_met_df['maxChannels'] = probe_view.sub_view.ch_map[self.i_shank][self.i_pk_ch - 1]
 
         return q_met_df
@@ -892,6 +902,11 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
     # Miscellaneous Functions
     # ---------------------------------------------------------------------------
 
+    def update_spike_data_fields(self):
+
+        self.spk_cluster = self.get_field('spk_cluster')[:, 0]
+        self.i_spike = self.get_field('i_spike')[:, 0].astype(np.uint32)
+
     def update_run_shank_fields(self):
 
         # resets the run/shank indices
@@ -899,6 +914,7 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
         self.i_shank = self.main_obj.main_obj.session_obj.get_shank_index()
 
         # resets the table data
+        self.update_spike_data_fields()
         self.set_spike_table_data()
 
         # resets the spike markers
