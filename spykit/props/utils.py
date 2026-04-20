@@ -13,7 +13,7 @@ from spykit.threads.utils import ThreadWorker
 # pyqt imports
 from PyQt6.QtWidgets import (QWidget, QLineEdit, QComboBox, QCheckBox, QPushButton, QSizePolicy, QVBoxLayout,
                              QHBoxLayout, QFormLayout, QGridLayout, QColorDialog, QTableWidget, QTableWidgetItem,
-                             QApplication, QGroupBox)
+                             QApplication, QGroupBox, QSpinBox)
 from PyQt6.QtCore import Qt, QObject, pyqtSignal
 from PyQt6.QtGui import QStandardItem
 
@@ -724,6 +724,9 @@ class PropWidget(QWidget):
         elif isinstance(h_widget, QPushButton):
             self.pushbutton_para_update(h_widget)
 
+        elif isinstance(h_widget, QSpinBox):
+            self.spinbox_para_update(h_widget)
+
         elif isinstance(h_widget, cw.QButtonPair):
             self.buttonpair_para_update(h_widget, args[0])
 
@@ -818,6 +821,15 @@ class PropWidget(QWidget):
 
         # toggles the button value
         self.set(p_str, self.get(p_str) ^ (2 ** i_button))
+
+    def spinbox_para_update(self, h_spin):
+
+        # field retrieval
+        p_str = h_spin.objectName()
+        nw_val = h_spin.value()
+
+        # updates the parameter field
+        self.set(p_str, nw_val)
 
     def button_color_pick(self, h_button):
 
@@ -995,6 +1007,29 @@ class PropWidget(QWidget):
                 else:
                     # case is another layout type
                     layout.addRow(pair_obj)
+
+            case 'spinbox':
+                # case is a spinbox pair
+
+                # sets the editbox string
+                lbl_str = '{0}: '.format(ps['name'])
+                spinbox_value = int(ps['value'])
+
+                # creates the label/editbox widget combo
+                obj_lblspin = cw.QLabelSpinbox(None, lbl_str, spinbox_value, name=p_name, font_lbl=cw.font_lbl)
+
+                if isinstance(layout, QGridLayout):
+                    # case is adding to a QGridlayout
+                    layout.addWidget(obj_lblspin.obj_lbl, i_row, 0, 1, 1)
+                    layout.addWidget(obj_lblspin.obj_spinbox, i_row, 1, 1, 2)
+
+                else:
+                    # case is another layout type
+                    obj_lblspin.obj_lbl.setFixedWidth(self.lbl_width)
+                    layout.addRow(obj_lblspin)
+
+                # sets the widget callback function
+                obj_lblspin.connect(cb_fcn)
 
             case 'table':
                 # case is a table widget

@@ -24,7 +24,7 @@ from PyQt6.QtWidgets import (QWidget, QHBoxLayout, QGridLayout, QVBoxLayout, QPu
                              QApplication, QTreeView, QFrame, QRadioButton, QAbstractItemView, QStylePainter,
                              QStyleOptionComboBox, QStyle, QProxyStyle, QItemDelegate, QTreeWidget, QTreeWidgetItem,
                              QHeaderView, QStyleOptionButton, QTableWidgetItem, QProgressBar, QSpacerItem,
-                             QStyledItemDelegate, QDialog, QTableWidget, QListWidget)
+                             QStyledItemDelegate, QDialog, QTableWidget, QListWidget, QSpinBox, QAbstractSpinBox)
 from PyQt6.QtCore import (Qt, QRect, QRectF, QMimeData, pyqtSignal, QItemSelectionModel, QAbstractTableModel,
                           QSizeF, QSize, QObject, QVariant, QTimeLine, QEvent, QPoint, QPointF)
 from PyQt6.QtGui import (QFont, QDrag, QCursor, QStandardItemModel, QStandardItem, QPalette, QPixmap, QImage,
@@ -76,9 +76,19 @@ table_style = """
 
 # editbox style sheet
 edit_style_sheet = """
-    border: 1px solid; 
-    border-radius: 2px; 
     padding-left: 5px;
+    border-radius: 2px; 
+    border: 1px solid; 
+"""
+
+# spinbox style sheet
+spinbox_style_sheet = """
+    QSpinBox {
+        padding-left: 1px;
+        padding-right: 15px;     
+        border-radius: 2px; 
+        border: 1px solid;
+    }
 """
 
 # combobox style sheet
@@ -2231,6 +2241,62 @@ class QLabelEdit(QWidget):
         cb_fcn = functools.partial(cb_fcn0, self.obj_edit)
         self.obj_edit.editingFinished.connect(cb_fcn)
 
+# ----------------------------------------------------------------------------------------------------------------------
+
+"""
+    QLabelSpinbox:
+"""
+
+class QLabelSpinbox(QWidget):
+    def __init__(self, parent=None, lbl_str=None, spinbox_str=None, font_lbl=None, name=None, y_ofs=4):
+        super(QLabelSpinbox, self).__init__(parent)
+
+        # creates the layout widget
+        self.layout = QHBoxLayout()
+        self.layout.setSpacing(0)
+        self.layout.setContentsMargins(0, 0, 0, 0)
+        self.setLayout(self.layout)
+        self.setObjectName(name)
+
+        # creates the label/editbox widget combo
+        self.obj_lbl = create_text_label(None, lbl_str, font=font_lbl)
+        self.obj_spinbox = create_spin_box(None, spinbox_str, name=name, align='left')
+        self.layout.addWidget(self.obj_lbl)
+        self.layout.addWidget(self.obj_spinbox)
+
+        # sets up the label properties
+        self.obj_lbl.adjustSize()
+        self.obj_lbl.setContentsMargins(0, y_ofs, 0, 0)
+
+        # sets up the editbox properties
+        self.obj_spinbox.setFixedHeight(cf.edit_height)
+        self.obj_spinbox.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.PlusMinus)
+        self.obj_spinbox.setStyleSheet(spinbox_style_sheet)
+        self.set_step_size(1)
+
+    def get_value(self):
+        return self.obj_spinbox.value()
+
+    def set_value(self, spinbox_value):
+        self.obj_spinbox.setValue(spinbox_value)
+
+    def set_range(self, y_min, y_max):
+        self.obj_spinbox.setRange(y_min, y_max)
+
+    def set_step_size(self, s_size):
+        self.obj_spinbox.setSingleStep(s_size)
+
+    def set_tooltip(self, tt_str):
+        self.obj_lbl.setToolTip(tt_str)
+
+    def set_enabled(self, state):
+        self.obj_lbl.setEnabled(state)
+        self.obj_spinbox.setEnabled(state)
+
+    def connect(self, cb_fcn0):
+        cb_fcn = functools.partial(cb_fcn0, self.obj_spinbox)
+        self.obj_spinbox.editingFinished.connect(cb_fcn)
+        self.obj_spinbox.valueChanged.connect(cb_fcn)
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -3709,6 +3775,27 @@ def create_line_edit(parent, text, font=None, align='center', name=None):
     # returns the object
     return h_ledit
 
+
+def create_spin_box(parent, value, font=None, align='center', name=None):
+
+    # sets the label font properties
+    if font is None:
+        font = create_font_obj()
+
+    # creates the spinbox object
+    h_sbox = QSpinBox(parent)
+
+    # sets the label properties
+    h_sbox.setFont(font)
+    h_sbox.setValue(value)
+    h_sbox.setAlignment(cf.align_type[align])
+
+    # sets the object name string
+    if name is not None:
+        h_sbox.setObjectName(name)
+
+    # returns the object
+    return h_sbox
 
 def create_push_button(parent, text, font=None, name=None):
     # creates a default font object (if not provided)

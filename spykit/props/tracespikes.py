@@ -10,7 +10,7 @@ import spykit.common.common_widget as cw
 from spykit.props.utils import PropWidget, PropPara
 
 # pyqt imports
-from PyQt6.QtWidgets import QAbstractItemView, QHeaderView, QTableWidgetItem
+from PyQt6.QtWidgets import QAbstractItemView, QSpinBox, QHeaderView, QTableWidgetItem
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QFont
 
@@ -31,6 +31,7 @@ x_gap = 5
 class TraceSpikePara(PropPara):
     # pyqtSignal functions
     edit_update = pyqtSignal(str)
+    spinbox_update = pyqtSignal(str)
 
     def __init__(self, p_info):
 
@@ -44,19 +45,19 @@ class TraceSpikePara(PropPara):
     # ---------------------------------------------------------------------------
 
     @staticmethod
+    def _spinbox_update(p_str, _self):
+
+        if not _self.is_updating:
+            _self.spinbox_update.emit(p_str)
+
+    @staticmethod
     def _edit_update(p_str, _self):
 
         if not _self.is_updating:
             _self.edit_update.emit(p_str)
 
-    @staticmethod
-    def _check_update(p_str, _self):
-
-        if not _self.is_updating:
-            _self.check_update.emit(p_str)
-
     # trace property observer properties
-    i_spike = cf.ObservableProperty(pfcn(_edit_update, 'i_spike'))
+    i_spike = cf.ObservableProperty(pfcn(_spinbox_update, 'i_spike'))
     m_size = cf.ObservableProperty(pfcn(_edit_update, 'm_size'))
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -443,7 +444,7 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
         # self.unit_label = cw.QLabelText(None, lbl_str="Selected Unit:", text_str='N/A',
         #                                 font_lbl=cw.font_lbl, font_txt=cw.font_lbl)
         self.table = cw.QInfoTable(None, self.type, False)
-        self.edit_spike = self.findChild(cw.QLabelEdit, name='i_spike')
+        self.spinbox_spike = self.findChild(cw.QLabelSpinbox, name='i_spike')
 
         # other class fields
         self.plot_view = None
@@ -481,6 +482,7 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
 
         # connects the editbox slot functions
         self.p_props.edit_update.connect(self.edit_update)
+        self.p_props.spinbox_update.connect(self.spinbox_update)
         for ch_k, ch_v in self.p_info['ch_fld'].items():
             if ch_v['type'] in 'edit':
                 setattr(self, ch_k, self.get_para_value(ch_k))
@@ -499,7 +501,7 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
         table_hdr.setStretchLastSection(True)
 
         # sets the other widget properties
-        self.edit_spike.set_enabled(False)
+        self.spinbox_spike.set_enabled(False)
 
         # table function callback function
         self.table.cellChanged.connect(self.table_cell_changed)
@@ -510,7 +512,7 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
 
         # sets up the subgroup fields
         p_tmp = {
-            'i_spike': self.create_para_field('Unit Spike Index', 'edit', 1),
+            'i_spike': self.create_para_field('Unit Spike Index', 'spinbox', 1),
             'm_size': self.create_para_field('Spike Marker Size', 'edit', 15),
         }
 
@@ -685,10 +687,6 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
         nw_val = h_edit.get_text()
 
         match p_str:
-            case 'i_spike':
-                # case is the spike index
-                min_val, max_val = 1, self.get_data('Count')[self.i_row_sel]
-
             case 'm_size':
                 # case is the marker size
                 min_val, max_val = 5, 30
@@ -701,10 +699,6 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
 
             # performs the parameter specific update
             match p_str:
-                case 'i_spike':
-                    # case is the spike index
-                    self.reset_spike_trace_view()
-
                 case 'm_size':
                     # case is the marker size
                     self.reset_marker_size()
@@ -712,6 +706,15 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
         else:
             # otherwise, reset the previous value
             h_edit.set_text('%g' % self.get_para_value(p_str))
+
+    def spinbox_update(self, p_str):
+
+        # updates the parameter value
+        nw_val = self.spinbox_spike.get_value()
+        self.set_para_value(p_str, int(nw_val))
+
+        # resets the spike trace view
+        self.reset_spike_trace_view()
 
     def table_cell_clicked(self, i_row=None, i_col=None):
 
@@ -729,11 +732,12 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
 
         # sets the table
         self.toggle_row_highlight(i_row)
-        self.edit_spike.set_enabled(is_unit_sel and self.trace_view.show_spikes)
+        self.spinbox_spike.set_range(1, self.get_data('Count')[i_row])
+        self.spinbox_spike.set_enabled(is_unit_sel and self.trace_view.show_spikes)
 
         # resets the spike count
         if i_spike > n_spike_unit:
-            self.edit_spike.set_text(str(n_spike_unit))
+            self.spinbox_spike.set_value(n_spike_unit)
             if self.trace_view.show_spikes:
                 self.set_para_value('i_spike', n_spike_unit)
                 # self.edit_update('i_spike')
@@ -762,7 +766,8 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
 
         # resets the other widget properties
         self.toggle_row_highlight(i_row)
-        self.edit_spike.set_enabled(new_state)
+        self.spinbox_spike.set_enabled(new_state)
+        self.spinbox_spike.set_range(1, self.get_data('Count')[i_row])
 
         # updates the spike markers
         self.reset_spike_markers()
