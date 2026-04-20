@@ -231,9 +231,9 @@ class TraceSpikeMixin:
 
                 # retrieves the spike x-coordinates
                 jj = spike_cluster_ch == j_ch
-                i_spk_nw = np.append(i_spk_nw, i_spike_ch[jj].astype(int))
+                i_spk_nw = np.append(i_spk_nw, j_ch * np.ones(sum(jj), dtype=int))
                 x_spk_nw = np.append(x_spk_nw, self.trace_view.x_tr[0, i_spike_ch[jj] - use_diff])
-                ch_spk_nw = np.append(ch_spk_nw, j_ch * np.ones(sum(jj), dtype=int))
+                ch_spk_nw = np.append(ch_spk_nw, spk * np.ones(sum(jj), dtype=int))
 
                 # retrieves the spike y-oordinates
                 i_ch = np.where(self.trace_view.plot_id == spk)[0][0]
