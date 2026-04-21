@@ -116,6 +116,9 @@ class TraceViewProps(PropWidget):
         # sets the colourmap chooser slot function
         self.cmap_chooser.colour_selected.connect(self.colour_selected)
 
+        # updates the other properties
+        self.check_update('scale_signal')
+
         # flag initialisation is complete
         self.is_init = True
 
@@ -131,7 +134,7 @@ class TraceViewProps(PropWidget):
             'c_lim_lo': self.create_para_field('Lower Voltage Limit', 'edit', -200),
             'c_lim_hi': self.create_para_field('Upper Voltage Limit', 'edit', 200),
             'sort_by': self.create_para_field('Sort Signals By', 'combobox', self.sort_list[0], p_list=self.sort_list),
-            'scale_signal': self.create_para_field('Scale Signals', 'checkbox', True),
+            'scale_signal': self.create_para_field('Auto-Scale Trace Signals', 'checkbox', True),
             'c_map': self.create_para_field('Colormap', 'colormapchooser', 'RdBu'),
         }
 
@@ -193,6 +196,13 @@ class TraceViewProps(PropWidget):
 
     def check_update(self, p_str):
 
+        match p_str:
+            case 'scale_signal':
+                # resets the enabled property
+                scale_signal = self.p_props.scale_signal
+                self.set_widget_enable('c_lim_lo', not scale_signal)
+                self.set_widget_enable('c_lim_hi', not scale_signal)
+
         # resets the plot views
         if self.is_init:
             self.reset_trace_props(p_str)
@@ -224,3 +234,8 @@ class TraceViewProps(PropWidget):
 
         if self.trace_view is not None:
             self.trace_view.reset_trace_props(p_str)
+
+    def set_widget_enable(self, p_str, state):
+
+        h_widget = self.findChild(cw.QLabelEdit, name=p_str)
+        h_widget.set_enabled(state)

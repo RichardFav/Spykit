@@ -129,7 +129,8 @@ class TraceSpikeMixin:
             u_lbl_lo = u_lbl.lower()
 
             # clears the plot item
-            self.h_spike[u_lbl_lo].setData(x=[np.nan], y=[np.nan])
+            if u_lbl_lo in self.h_spike:
+                self.h_spike[u_lbl_lo].setData(x=[np.nan], y=[np.nan])
 
     def update_spike_markers(self):
 
@@ -671,6 +672,32 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
 
             # updates the last unit to be delected (should run callback)
             self.table.item(i_ch_match[-1], 0).setCheckState(cf.chk_state[False])
+
+
+    def clear_all_channel_selections(self):
+
+        # field retrieval
+        n_run, n_shank = self.is_filt.shape
+
+        # block signals to the table
+        self.table.blockSignals(True)
+
+        # removes the filter flags
+        for i_run in range(n_run):
+            for i_shank in range(n_shank):
+                # removes the check from the items
+                unit_on = np.where(self.is_filt[i_run, i_shank])[0]
+                for i_row in unit_on:
+                    self.table.item(i_row, 0).setCheckState(cf.chk_state[False])
+                    self.is_filt[i_run, i_shank][i_row] = False
+
+        # block signals to the table
+        self.table.blockSignals(False)
+
+        # resets the spike view
+        self.reset_spike_trace_view()
+        self.set_row_highlight(False)
+        self.spinbox_spike.set_enabled(False)
 
     # ---------------------------------------------------------------------------
     # Parameter Update Event Functions

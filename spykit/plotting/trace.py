@@ -665,7 +665,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
                 start_frame=self.i_frm0,
                 end_frame=self.i_frm1,
                 channel_ids=channel_id,
-                return_scaled=self.trace_props.get('scale_signal'),
+                # return_scaled=self.trace_props.get('scale_signal'),
             )
 
             # calculates the signal difference (if using difference calc)
@@ -694,11 +694,29 @@ class TracePlot(TraceLabelMixin, PlotWidget):
                 self.x_tr = np.empty((self.n_plt, n_frm))
                 self.x_tr[:] = np.linspace(self.t_lim[0], self.t_lim[1], n_frm)
 
-                y0 = np.minimum(np.maximum(y0, self.c_lim_lo), self.c_lim_hi)
+                if self.trace_props.get('scale_signal'):
+                    # calculates the overall scale values
+                    y_lo = np.floor(np.min(y0[:]))
+                    y_hi = np.ceil(np.max(y0[:]))
+
+                    # resets the lower limit
+                    if y_lo < self.c_lim_lo:
+                        self.c_lim_lo = y_lo
+                        self.trace_props.reset_para_field('c_lim_lo', y_lo)
+
+                    # resets the upper limit
+                    if y_hi > self.c_lim_hi:
+                        self.c_lim_hi = y_hi
+                        self.trace_props.reset_para_field('c_lim_hi', y_hi)
+
+                else:
+                    # case is using fixed lower/upper limits
+                    y_lo, y_hi = self.c_lim_lo, self.c_lim_hi
+                    y0 = np.minimum(np.maximum(y0, self.c_lim_lo), self.c_lim_hi)
 
                 for i in range(self.n_plt):
                     # determines the signal range values
-                    y_scl = (y0[:, i] - self.c_lim_lo) / (self.c_lim_hi - self.c_lim_lo)
+                    y_scl = (y0[:, i] - y_lo) / (y_hi - y_lo)
 
                     # calculates the scaled traces
                     self.y_tr[i, :] = (i * self.y_gap + self.y_ofs) + (1 - self.y_ofs) * y_scl
@@ -717,8 +735,8 @@ class TracePlot(TraceLabelMixin, PlotWidget):
                     self.update_trace(self.inset_trace, self.inset_tr)
 
                 # spike marker update
-                if (self.spike_props is not None):
-                # if (self.spike_props is not None) and self.show_spikes:
+                # if (self.spike_props is not None):
+                if (self.spike_props is not None) and self.show_spikes:
                     self.spike_props.reset_spike_markers()
 
         else:
