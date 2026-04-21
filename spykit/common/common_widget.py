@@ -3723,12 +3723,16 @@ class QTableWidgetItemSortable(QTableWidgetItem):
     @staticmethod
     def convert_text(t_str):
 
-        try:
-            t_value = float(t_str)
-            return t_value
+        if len(t_str):
+            try:
+                t_value = float(t_str)
+                return t_value
 
-        except ValueError:
-            return t_str
+            except ValueError:
+                return t_str
+
+        else:
+            return np.nan
 
 
 # ----------------------------------------------------------------------------------------------------------------------

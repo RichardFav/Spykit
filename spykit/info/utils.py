@@ -452,24 +452,14 @@ class InfoManager(QWidget):
         # determines the channel index (from the hovered channel)
         pos = evnt.position().toPoint()
         i_row_ch = int(ch_tab.table.itemAt(pos).row())
-
         ch_id = ch_tab.get_table_device_id(i_row_ch)
-        if self.i_probe_ch == ch_id:
-            # if there is no change in the highlighted channel, then exit
-            return
 
-        # shows the main view channel label
-        # if not probe_view.main_view.ch_highlight.isVisible():
-        probe_view.show_channel_highlights()
-
-        # resets the channel label position
-        probe_view.reset_channel_highlights(ch_id)
+        # updates the probe view (if change in channel index)
+        if self.i_probe_ch != ch_id:
+            probe_view.show_channel_highlights()
+            probe_view.reset_channel_highlights(ch_id)
 
     def channel_mouse_leave(self, evnt):
-
-        # # if the probe channel is not showing, then exit
-        # if self.i_probe_ch is None:
-        #     return
 
         # retrieves the probe view
         probe_view = self.get_probe_plot_view()

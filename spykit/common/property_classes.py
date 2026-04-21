@@ -236,9 +236,10 @@ class SessionWorkBook(QObject):
     def get_current_recording_probe(self, use_per_shank=False):
 
         if use_per_shank:
-            return self.session.get_session_runs(self.current_run, None, self.prep_type, self.current_shank)
+            i_shank = self.get_shank_index()
+            return self.session.get_session_runs(self.current_run, None, self.prep_type, i_shank)
         else:
-            return self.session.get_session_runs(self.current_run, 'grouped', self.prep_type, self.current_shank)
+            return self.session.get_session_runs(self.current_run, 'grouped', self.prep_type, None)
 
     def get_run_durations(self):
 
