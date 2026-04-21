@@ -480,9 +480,9 @@ class InfoManager(QWidget):
         self.session_obj.channel_data.is_selected[i_rmv] = False
         self.session_obj.channel_data.is_keep[i_rmv] = False
 
-    def get_avail_channel(self, is_raw=False):
+    def get_avail_channel(self, is_raw=False, use_per_shank=False):
 
-        return self.session_obj.get_avail_channel(is_raw=is_raw)
+        return self.session_obj.get_avail_channel(is_raw=is_raw, use_per_shank=use_per_shank)
 
     def start_recalc(self, p_props):
 
@@ -912,6 +912,9 @@ class InfoManager(QWidget):
 
         # resets the channel comboboxes
         self.init_channel_comboboxes(data_list=data_list, shank_list=shank_list)
+        self.session_obj.current_shank = 0
+
+        # pauses for update...
         time.sleep(0.05)
 
     def set_tab_enabled(self, i_tab, s_flag):

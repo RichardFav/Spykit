@@ -199,10 +199,15 @@ class ChannelInfoTab(InfoWidget):
         i_shank_sel = None
         n_row = deepcopy(self.table.rowCount())
 
+        if self.main_obj.session_obj.post_data is None:
+            check_raw = True
+        else:
+            check_raw = self.main_obj.session_obj.post_data.n_mmap == 0
+
         # field retrieval
-        if self.main_obj.session_obj.is_per_shank():
+        if self.main_obj.session_obj.is_per_shank(check_raw):
             ch_name_0 = self.main_obj.session_obj.get_channel_ids()[0]
-            ch_name_sh = self.main_obj.session_obj.get_avail_channel()
+            ch_name_sh = self.main_obj.session_obj.get_avail_channel(use_per_shank=True)
             i_shank_sel = self.shank_type.current_index()
             ch_id_shank = np.intersect1d(ch_name_0, ch_name_sh, return_indices=True)[1]
 

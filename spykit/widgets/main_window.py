@@ -398,7 +398,6 @@ class MainWindow(QMainWindow):
         self.plot_manager.reset_probe_views()
         self.plot_manager.reset_trace_views(2)
 
-
     def update_inset_channel(self, inset_id):
 
         self.session_obj.set_channel_indices(inset_id)
@@ -775,7 +774,7 @@ class MainWindow(QMainWindow):
         # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/Large Example/large_example.ssf"
 
         # loads the session
-        self.menu_bar.load_session(f_file, True)
+        self.menu_bar.load_session(f_file, False)
 
         # retrieves the configuration tab object
         config_tab = self.prop_manager.get_prop_tab('config')
@@ -1225,6 +1224,10 @@ class MenuBar(QObject):
         if self.main_obj.session_obj.post_data.n_mmap == 1:
             unit_tab = self.main_obj.info_manager.get_info_tab('unit')
             unit_tab.table_cell_click(0, 0)
+
+        # re-filters the table
+        ch_tab = self.main_obj.info_manager.get_info_tab('channel')
+        self.main_obj.info_manager.channel_combobox_update('shank', ch_tab)
 
         # updates the post-processing menu item blocks
         self.set_menu_enabled_blocks('post-postprocess')

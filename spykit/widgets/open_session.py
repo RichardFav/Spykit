@@ -1018,7 +1018,7 @@ class SessionProbe(QWidget):
     # array class fields
     dim_lbl = ['L:', 'B:', 'W:', 'H:']
     dim_ttip = ['Left', 'Bottom', 'Width', 'Height']
-    def_col = ['contact_ids', 'shank_ids', 'device_channel_indices']
+    def_col = ['contact_ids', 'shank_ids']
     info_lbl = ['Subject Name', 'Title',
                 'Session Name', 'Manufacturer',
                 'Sample Count', 'Model',

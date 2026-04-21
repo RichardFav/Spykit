@@ -46,7 +46,8 @@ class SessionWorkBook(QObject):
     added_post_process = pyqtSignal(str)
 
     # array class fields
-    c_hdr_ch = ['', 'Keep?', 'Status', 'Channel ID#', 'Contact ID#', 'Channel Index', 'X-Coord', 'Y-Coord', 'Shank ID']
+    # c_hdr_ch = ['', 'Keep?', 'Status', 'Channel ID#', 'Contact ID#', 'Channel Index', 'X-Coord', 'Y-Coord', 'Shank ID']
+    c_hdr_ch = ['', 'Keep?', 'Status', 'Channel ID#', 'Contact ID#', 'X-Coord', 'Y-Coord', 'Shank ID']
 
     def __init__(self, main_obj):
         super(SessionWorkBook, self).__init__()
@@ -77,7 +78,7 @@ class SessionWorkBook(QObject):
     # Class Getter Functions
     # ---------------------------------------------------------------------------
 
-    def get_avail_channel(self, is_raw=False, use_last_rec=False):
+    def get_avail_channel(self, is_raw=False, use_last_rec=False, use_per_shank=False):
 
         if use_last_rec:
             if len(self.session._s._pp_runs):
@@ -92,7 +93,7 @@ class SessionWorkBook(QObject):
             probe_rec = self.get_raw_recording_probe()
 
         else:
-            probe_rec = self.get_current_recording_probe()
+            probe_rec = self.get_current_recording_probe(use_per_shank)
 
         return probe_rec.get_channel_ids()
 
@@ -112,7 +113,8 @@ class SessionWorkBook(QObject):
     def get_info_data_frame(self, probe=None):
 
         # array fields
-        c_list = ['keep', 'status', 'channel_ids', 'contact_ids',  'device_channel_indices', 'x', 'y', 'shank_ids']
+        # c_list = ['keep', 'status', 'channel_ids', 'contact_ids',  'device_channel_indices', 'x', 'y', 'shank_ids']
+        c_list = ['keep', 'status', 'channel_ids', 'contact_ids', 'x', 'y', 'shank_ids']
 
         # retrieves the necessary channel information data
         ch_info = self.get_channel_info(probe)
@@ -231,9 +233,12 @@ class SessionWorkBook(QObject):
 
         return self.session_props.n_samples
 
-    def get_current_recording_probe(self):
+    def get_current_recording_probe(self, use_per_shank=False):
 
-        return self.session.get_session_runs(self.current_run, self.current_ses, self.prep_type, self.current_shank)
+        if use_per_shank:
+            return self.session.get_session_runs(self.current_run, None, self.prep_type, self.current_shank)
+        else:
+            return self.session.get_session_runs(self.current_run, self.current_ses, self.prep_type, self.current_shank)
 
     def get_run_durations(self):
 
@@ -243,7 +248,7 @@ class SessionWorkBook(QObject):
 
         # retrieves the durations of each raw run
         for i_run in range(n_run):
-            probe = self.session.get_session_runs(i_run, i_run, pp_type='raw')
+            probe = self.session.get_session_runs(i_run, 'grouped', pp_type='raw')
             t_dur[i_run] = probe.get_duration()
 
         return t_dur
@@ -1075,7 +1080,7 @@ class SessionObject(QObject):
             i_run = self.get_run_index(i_run)
 
         if (pp_type is None) or (pp_type.endswith('raw')):
-            if run_type is None:
+            if isinstance(run_type, int) or (run_type is None):
                 # case is the run type is not specified
                 run = self._s._raw_runs[i_run]
                 if i_shank is None:
