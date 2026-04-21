@@ -17,6 +17,7 @@ from pyqtgraph import (ViewBox, RectROI, InfiniteLine, ColorMap, colormap, TextI
 
 # custom module import
 import spykit.common.common_func as cf
+from spykit.threads.utils import ThreadWorker
 
 # pyqt6 module import
 from PyQt6.QtWidgets import (QWidget, QHBoxLayout, QGridLayout, QVBoxLayout, QPushButton, QGroupBox, QTabWidget,
@@ -26,7 +27,7 @@ from PyQt6.QtWidgets import (QWidget, QHBoxLayout, QGridLayout, QVBoxLayout, QPu
                              QHeaderView, QStyleOptionButton, QTableWidgetItem, QProgressBar, QSpacerItem,
                              QStyledItemDelegate, QDialog, QTableWidget, QListWidget, QSpinBox, QAbstractSpinBox)
 from PyQt6.QtCore import (Qt, QRect, QRectF, QMimeData, pyqtSignal, QItemSelectionModel, QAbstractTableModel,
-                          QSizeF, QSize, QObject, QVariant, QTimeLine, QEvent, QPoint, QPointF)
+                          QSizeF, QSize, QObject, QVariant, QTimeLine, QEvent, QPoint, QPointF, QTimer)
 from PyQt6.QtGui import (QFont, QDrag, QCursor, QStandardItemModel, QStandardItem, QPalette, QPixmap, QImage,
                          QTextDocument, QAbstractTextDocumentLayout, QIcon, QColor, QMouseEvent, QGuiApplication)
 
@@ -2906,11 +2907,15 @@ class QProgressWidget(QWidget):
         self.prog_bar = QProgressBar(self, minimum=0, maximum=self.p_max, textVisible=False)
         self.time_line = QTimeLine(self.t_period)
 
-        # other class fields
-        self.n_jobs = 0
-        self.pr_max = 1.0
+        # other array class fields
         self.job_name = []
         self.job_desc = []
+        self.t_worker = None
+
+        # other class scalar/boolean fields
+        self.n_jobs = 0
+        self.pr_max = 1.0
+        self.t_pause = 0.1
         self.is_running = False
         self.p_max_r = self.p_max + 2 * self.dp_max
 
@@ -3091,8 +3096,60 @@ class QProgressWidget(QWidget):
     def stop_timer(self):
 
         self.time_line.stop()
+        self.time_line.setCurrentTime(0)
         self.is_running = False
 
+    def set_interderminate_state(self, state):
+
+        if state:
+            self.prog_bar.setRange(0, 0)
+
+        else:
+            self.prog_bar.setRange(0, self.p_max)
+            self.prog_bar.setValue(0)
+
+    def start_thread(self, desc_str='Running Task...'):
+
+        self.t_worker = ThreadWorker(None, self.thread_prog_func, work_para=(desc_str))
+        # self.t_worker.work_progress.connect(self.update_prog_thread)
+        self.t_worker.start()
+
+    def stop_thread(self):
+
+        # stops the worker thread
+        self.t_worker.force_quit()
+        time.sleep(self.t_pause)
+
+        #
+        self.set_interderminate_state(False)
+
+        # # resets the other labels
+        # self.prog_bar.setValue(0)
+        # self.lbl_obj.setText(self.get_status_text())
+        # self.lbl_obj.setToolTip(self.get_next_task())
+
+    # def update_prog_thread(self, desc_txt, pr_val):
+    #
+    #     # updates the text/tooltip strings
+    #     self.update_prog_labels(desc_txt)
+    #     self.prog_update(pr_val)
+    #
+    #     #
+    #     self.update()
+    #     self.repaint()
+    #     QApplication.processEvents()
+
+    def thread_prog_func(self, desc_str):
+
+        # initialisations
+        self.set_interderminate_state(True)
+
+    def thread_prog_timer(self, desc_str):
+
+        #
+        self.n_count += 1
+        pr_val = (self.n_count * self.t_int) / self.p_max % 1
+        self.t_worker.work_progress.emit(desc_str, pr_val)
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -3219,6 +3276,15 @@ class QDialogProgress(QWidget):
         if self.time_line is not None:
             self.time_line.stop()
             self.is_running = False
+
+    def set_interderminate_state(self, state):
+
+        if state:
+            self.prog_bar.setRange(0, 0)
+
+        else:
+            self.prog_bar.setRange(0, self.p_max)
+            self.prog_bar.setValue(0)
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions

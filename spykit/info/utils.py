@@ -17,7 +17,7 @@ from spykit.common.common_widget import SearchMixin, QProgressWidget
 from PyQt6.QtWidgets import (QWidget, QTreeWidget, QFrame, QCheckBox, QPushButton, QSizePolicy, QVBoxLayout, QGroupBox,
                              QHeaderView, QTreeWidgetItem, QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox,
                              QTableWidget, QFormLayout, QApplication)
-from PyQt6.QtCore import Qt, QPointF, QSize, pyqtSignal
+from PyQt6.QtCore import Qt, QPointF, QSize, pyqtSignal, QPersistentModelIndex
 from PyQt6.QtGui import QFont, QColor, QIcon
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -208,6 +208,9 @@ class InfoManager(QWidget):
         else:
             self.is_updating = True
 
+        # # starts the progress widget
+        # self.prog_widget.start_thread('Updating Channel Info')
+
         # field retrieval
         trace_view = self.main_obj.plot_manager.get_plot_view('trace')
         trig_view = self.main_obj.plot_manager.get_plot_view('trigger')
@@ -389,6 +392,9 @@ class InfoManager(QWidget):
                     unit_tab.shank_type.set_current_index(self.i_shank_pr)
                     unit_tab.combo_shank_change(None)
 
+        # # starts the progress widget
+        # self.prog_widget.stop_thread()
+
         # resets the update flags
         self.is_updating = False
         tab_obj.is_updating = False
@@ -444,8 +450,10 @@ class InfoManager(QWidget):
             i_row_tot = i_row_ofs + i_row_sel
 
         # determines the channel index (from the hovered channel)
-        ch_id = ch_tab.get_table_device_id(i_row_tot)
+        pos = evnt.position().toPoint()
+        i_row_ch = int(ch_tab.table.itemAt(pos).row())
 
+        ch_id = ch_tab.get_table_device_id(i_row_ch)
         if self.i_probe_ch == ch_id:
             # if there is no change in the highlighted channel, then exit
             return
@@ -631,16 +639,21 @@ class InfoManager(QWidget):
         if tab_obj.is_updating:
             return
 
+        # field retrieval
+        channel_tab = self.main_obj.info_manager.get_info_tab('channel')
+
         match d_type:
             case 'run':
                 # case is altering the session run
                 run_name = tab_obj.run_type.current_text()
                 self.main_obj.session_obj.set_current_run(run_name)
+                channel_tab.run_type.set_current_text(run_name)
 
             case 'shank':
                 # case is altering the recording shank
                 shank_name = tab_obj.shank_type.current_text()
                 self.main_obj.session_obj.set_current_shank(shank_name)
+                channel_tab.shank_type.set_current_text(shank_name)
 
         # field retrieval
         self.main_obj.prop_manager.post_process_change()
@@ -660,6 +673,7 @@ class InfoManager(QWidget):
     def setup_info_table(self, data, t_type, c_hdr, set_values=True, table_dim=None):
 
         # retrieves the table widget
+        i_col_ch = c_hdr.index('Channel ID#')
         table_obj = self.get_table_widget(t_type)
 
         # table dimensions (if not provided externally)
@@ -779,7 +793,7 @@ class InfoManager(QWidget):
 
         info_c = it.info_types[t_type.split()[0].lower()]
         i_tab = next(i for i, x in enumerate(self.tabs) if isinstance(x, info_c))
-        return self.tabs[i_tab].findChild(QTableWidget)
+        return self.tabs[i_tab].table
 
     def update_table_value(self, t_type, i_row, value):
 

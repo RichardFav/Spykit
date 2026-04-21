@@ -774,7 +774,7 @@ class MainWindow(QMainWindow):
         # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/Large Example/large_example.ssf"
 
         # loads the session
-        self.menu_bar.load_session(f_file, False)
+        self.menu_bar.load_session(f_file, True)
 
         # retrieves the configuration tab object
         config_tab = self.prop_manager.get_prop_tab('config')

@@ -11,7 +11,7 @@ from spykit.common.common_widget import QLabelCombo, QLabelCheckCombo, font_lbl
 
 # pyqt imports
 from PyQt6.QtWidgets import QWidget, QGridLayout
-from PyQt6.QtCore import (Qt, QSize, pyqtSignal)
+from PyQt6.QtCore import Qt, QSize, pyqtSignal, QPersistentModelIndex
 
 # ----------------------------------------------------------------------------------------------------------------------
 

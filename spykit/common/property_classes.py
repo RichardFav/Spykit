@@ -238,7 +238,7 @@ class SessionWorkBook(QObject):
         if use_per_shank:
             return self.session.get_session_runs(self.current_run, None, self.prep_type, self.current_shank)
         else:
-            return self.session.get_session_runs(self.current_run, self.current_ses, self.prep_type, self.current_shank)
+            return self.session.get_session_runs(self.current_run, 'grouped', self.prep_type, self.current_shank)
 
     def get_run_durations(self):
 
