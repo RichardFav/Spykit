@@ -305,6 +305,9 @@ class PropManager(QWidget):
 
         # resets the unit table properties
         df_unit_nw, c_hdr_nw, unit_lbl_nw = unit_tab.setup_unit_table_data(True)
+
+        #
+        unit_tab.df_unit, unit_tab.c_hdr, unit_tab.unit_lbl = df_unit_nw, c_hdr_nw, unit_lbl_nw
         self.main_obj.info_manager.set_unit_table_data()
 
         # returns the data
@@ -317,6 +320,7 @@ class PropManager(QWidget):
 
         # updates the class fields
         unit_tab.df_unit, unit_tab.c_hdr, unit_tab.unit_lbl = thread_data
+        time.sleep(0.05)
 
         # applies the unit status filter
         unit_tab.update_unit_status()
