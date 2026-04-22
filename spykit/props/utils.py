@@ -234,6 +234,9 @@ class PropManager(QWidget):
 
     def post_process_change(self, i_mmap=None):
 
+        # REMOVE ME LATER
+        t0 = time.time()
+
         if i_mmap is None:
             # retrieves the current memory map index (if not provided)
             i_mmap = self.main_obj.session_obj.post_data.i_mmap
@@ -256,36 +259,70 @@ class PropManager(QWidget):
             unit_tab.i_unit_sel = unit_tab.get_field('n_unit')
 
         # updates the visible plot views
+        c_views = self.main_obj.plot_manager.get_current_view_names()
         for pp_v in p_manager.pp_views:
             # updates the post-processing views (if currently viewing)
             h_view = self.main_obj.plot_manager.get_plot_view(pp_v)
-
             if reset_unit_index and hasattr(h_view, 'i_unit'):
                 h_view.reset_unit_index(unit_tab.i_unit_sel)
 
             # updates the plot view
-            h_view.update_plot()
+            if pp_v in c_views:
+                h_view.update_plot()
+            else:
+                h_view.update_reqd = True
 
             match pp_v:
                 case 'waveform':
                     # case is the waveform plot
                     pp_prop.get_tab_view(pp_v).post_process_change()
 
-        # resets the unit table properties
-        unit_tab.setup_unit_table_data()
-        self.main_obj.info_manager.set_unit_table_data()
+        # unit table reset thread worker
+        t_worker_unit = ThreadWorker(None, self.reset_unit_table)
+        t_worker_unit.work_finished.connect(self.unit_table_update_complete)
+        t_worker_unit.start()
+
+        # spike table reset thread worker
+        t_worker_spike = ThreadWorker(None, self.reset_spike_table)
+        t_worker_unit.work_finished.connect(self.spike_table_update_complete)
+        t_worker_spike.start()
+
+        if self.main_obj.bombcell_dlg is not None:
+            self.main_obj.bombcell_dlg.post_processing_soln_change()
+
+    # ---------------------------------------------------------------------------
+    # Table Reset Functions
+    # --------------------------------------------------------------------------
+
+    def reset_spike_table(self, _):
+
         self.set_spike_table_data()
 
-        # updates the run/shank information fields
-        spike_props = self.main_obj.prop_manager.get_prop_tab('tracespike')
-        spike_props.update_run_shank_fields()
+    def reset_unit_table(self, _):
+
+        # field retrieval
+        unit_tab = self.main_obj.info_manager.get_info_tab('unit')
+
+        # resets the unit table properties
+        df_unit_nw, c_hdr_nw, unit_lbl_nw = unit_tab.setup_unit_table_data(True)
+        self.main_obj.info_manager.set_unit_table_data()
+
+        # returns the data
+        return df_unit_nw, c_hdr_nw, unit_lbl_nw
+
+    def unit_table_update_complete(self, thread_data):
+
+        # field retrieval
+        unit_tab = self.main_obj.info_manager.get_info_tab('unit')
+
+        # updates the class fields
+        unit_tab.df_unit, unit_tab.c_hdr, unit_tab.unit_lbl = thread_data
 
         # applies the unit status filter
         unit_tab.update_unit_status()
-        unit_tab.check_filter_item()
+        unit_tab.check_filter_item(False)
 
         # clears any probe unit markers
-        time.sleep(0.01)
         self.main_obj.plot_manager.get_plot_view('probe').reset_unit_markers()
 
         if unit_tab.i_unit_sel is not None:
@@ -296,8 +333,13 @@ class PropManager(QWidget):
             i_row = np.where(unit_tab.df_unit['Cluster ID#'] == unit_tab.i_unit_sel)[0][0]
             unit_tab.reset_probe_roi_location(i_row)
 
-        if self.main_obj.bombcell_dlg is not None:
-            self.main_obj.bombcell_dlg.post_processing_soln_change()
+    def spike_table_update_complete(self):
+
+        # field retrieval
+        spike_props = self.main_obj.prop_manager.get_prop_tab('tracespike')
+
+        # updates the run/shank information fields
+        spike_props.update_run_shank_fields()
 
     # ---------------------------------------------------------------------------
     # Property Parameter Get/Set Functions

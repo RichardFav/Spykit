@@ -237,9 +237,6 @@ class InfoManager(QWidget):
         else:
             self.is_updating = True
 
-        # # starts the progress widget
-        # self.prog_widget.start_thread('Updating Channel Info')
-
         # field retrieval
         trace_view = self.main_obj.plot_manager.get_plot_view('trace')
         trig_view = self.main_obj.plot_manager.get_plot_view('trigger')
@@ -404,7 +401,6 @@ class InfoManager(QWidget):
                 if self.main_obj.session_obj.post_data.n_mmap > 0:
                     unit_tab = self.main_obj.info_manager.get_info_tab('unit')
                     unit_tab.run_type.set_current_index(self.i_run_pr)
-                    unit_tab.combo_run_change(None)
 
             case 'shank':
                 # resets the channel statuses
@@ -419,10 +415,6 @@ class InfoManager(QWidget):
                 if self.main_obj.session_obj.post_data.n_mmap > 0:
                     unit_tab = self.main_obj.info_manager.get_info_tab('unit')
                     unit_tab.shank_type.set_current_index(self.i_shank_pr)
-                    unit_tab.combo_shank_change(None)
-
-        # # starts the progress widget
-        # self.prog_widget.stop_thread()
 
         # resets the update flags
         self.is_updating = False
@@ -511,22 +503,6 @@ class InfoManager(QWidget):
         time.sleep(0.05)
 
     # ---------------------------------------------------------------------------
-    # Channel Status Event Functions
-    # ---------------------------------------------------------------------------
-
-    def start_recalc(self, p_props):
-
-        status_tab = self.get_info_tab('status')
-        p_props_final = dict(ChainMap(*list(p_props.values())))
-        status_tab.t_worker = self.session_obj.session.recalc_bad_channel_detect(p_props_final)
-
-    def cancel_recalc(self):
-
-        status_tab = self.get_info_tab('status')
-        for t in status_tab.t_worker:
-            t.force_quit()
-
-    # ---------------------------------------------------------------------------
     # Unit Tab Event Functions
     # ---------------------------------------------------------------------------
 
@@ -562,9 +538,9 @@ class InfoManager(QWidget):
 
             case 'shank':
                 # case is altering the recording shank
-                shank_name = tab_obj.shank_type.current_text()
-                self.main_obj.session_obj.set_current_shank(shank_name)
-                channel_tab.shank_type.set_current_text(shank_name)
+                shank_index = tab_obj.shank_type.current_index()
+                self.main_obj.session_obj.set_current_shank(shank_index)
+                channel_tab.shank_type.set_current_index(shank_index)
 
         # field retrieval
         self.main_obj.prop_manager.post_process_change()
@@ -658,6 +634,22 @@ class InfoManager(QWidget):
         # sets the table sorting properties
         if thread_data is not None:
             self.set_other_table_props(table_obj, 'unit', i_col_sort)
+
+    # ---------------------------------------------------------------------------
+    # Channel Status Event Functions
+    # ---------------------------------------------------------------------------
+
+    def start_recalc(self, p_props):
+
+        status_tab = self.get_info_tab('status')
+        p_props_final = dict(ChainMap(*list(p_props.values())))
+        status_tab.t_worker = self.session_obj.session.recalc_bad_channel_detect(p_props_final)
+
+    def cancel_recalc(self):
+
+        status_tab = self.get_info_tab('status')
+        for t in status_tab.t_worker:
+            t.force_quit()
 
     # ---------------------------------------------------------------------------
     # Table Widget Functions

@@ -1011,9 +1011,9 @@ class ProbeView(GraphicsObject):
             self.clear_view_unit_markers()
 
         # field retrieval
-        c_id = np.array(unit_tab.df_unit['Cluster ID#'])
         i_shank = self.session_info.get_shank_index()
         unit_types = unit_tab.get_unit_type_labels()
+        c_id = np.array(unit_tab.df_unit['Cluster ID#'])
 
         # sets the channel indices of the peak channels
         pk_ch, ch_pos = unit_tab.i_pk_ch, unit_tab.ch_pos

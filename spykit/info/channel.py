@@ -279,6 +279,7 @@ class ChannelInfoTab(InfoWidget):
             sel_filt = self.status_filter.get_selected_items()
 
         # resets the status filter
+        self.status_filter.blockSignals(True)
         self.status_filter.clear()
         self.status_filter.setEnabled(True)
         for s_filt in ch_list:
@@ -287,6 +288,7 @@ class ChannelInfoTab(InfoWidget):
         # resets the update flag
         self.is_updating = False
         self.set_update_flag.emit(False)
+        self.status_filter.blockSignals(False)
 
     def reset_combobox_fields(self, cb_type, cb_list):
 

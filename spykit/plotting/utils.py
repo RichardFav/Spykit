@@ -350,6 +350,11 @@ class PlotManager(QWidget):
 
         return prop_viewing
 
+    def get_current_view_names(self):
+
+        type_rev = cf.rev_dict(self.types)
+        return [type_rev[x] for x in np.unique(self.grid_id)]
+
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
     # ---------------------------------------------------------------------------

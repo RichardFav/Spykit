@@ -314,14 +314,15 @@ class UnitInfoTab(InfoWidget):
     # Widget Event Functions
     # ---------------------------------------------------------------------------
 
-    def check_filter_item(self):
+    def check_filter_item(self, update_data=True):
 
         # retrieves the filtered items
         self.get_filtered_items()
 
         # resets the table view
         self.status_change.emit(self, self.is_filt)
-        self.data_change.emit(self)
+        if update_data:
+            self.data_change.emit(self)
 
     def combo_run_change(self, _):
 
@@ -356,10 +357,10 @@ class UnitInfoTab(InfoWidget):
 
         return q_met
 
-    def setup_unit_table_data(self):
+    def setup_unit_table_data(self, return_fields=False):
 
         # sets up the unit type fields
-        self.unit_lbl = cw.get_unit_labels(self.get_field('splitGoodAndMua_NonSomatic'))
+        unit_lbl_nw = cw.get_unit_labels(self.get_field('splitGoodAndMua_NonSomatic'))
 
         # sets the column headers
         q_hdr = self.get_field('q_hdr')[0]
@@ -367,16 +368,24 @@ class UnitInfoTab(InfoWidget):
         c_hdr0 = np.array(['Unit Type'] + [bc_var_map[x] for x in q_hdr[is_ok]])
 
         # sets the unit metrics dataframe
-        unit_type = self.get_unit_type_labels()
+        unit_type = self.get_unit_type_labels(unit_lbl_nw)
         q_met = self.remap_channel_indices(q_hdr, self.get_field('q_met')[:, is_ok])
-        self.df_unit = pd.DataFrame(np.hstack((unit_type.reshape(-1, 1), q_met)), columns=c_hdr0)
-        self.reorder_unit_dataframe(c_hdr0)
+        df_unit_0 = pd.DataFrame(np.hstack((unit_type.reshape(-1, 1), q_met)), columns=c_hdr0)
+        df_unit_nw, c_hdr_nw = self.reorder_unit_dataframe(df_unit_0, c_hdr0)
 
         # sets the dtype of specific columns
         for i_ch in int_col:
             if i_ch in bc_var_map:
                 p_fld = bc_var_map[i_ch]
-                self.df_unit[p_fld] = self.df_unit[p_fld].astype(float).astype(int)
+                df_unit_nw[p_fld] = df_unit_nw[p_fld].astype(float).astype(int)
+
+        if return_fields:
+            # case is returning the new fields (will be updated elsewhere)
+            return df_unit_nw, c_hdr_nw, unit_lbl_nw
+
+        else:
+            # otherwise, update the class fields
+            self.df_unit, self.c_hdr, self.unit_lbl = df_unit_nw, c_hdr_nw, unit_lbl_nw
 
     def update_unit_status(self):
 
@@ -386,6 +395,7 @@ class UnitInfoTab(InfoWidget):
         # initialisations
         self.is_updating = True
         self.set_update_flag.emit(True)
+        self.status_filter.blockSignals(True)
 
         # resets the status filter
         self.status_filter.clear()
@@ -398,10 +408,14 @@ class UnitInfoTab(InfoWidget):
         # resets the update flag
         self.is_updating = False
         self.set_update_flag.emit(False)
+        self.status_filter.blockSignals(False)
 
-    def get_unit_type_labels(self):
+    def get_unit_type_labels(self, unit_lbl_nw=None):
 
-        return np.array([self.unit_lbl[x[0]] for x in self.get_field('unit_type')])
+        if unit_lbl_nw is None:
+            unit_lbl_nw = self.unit_lbl
+
+        return np.array([unit_lbl_nw[x[0]] for x in self.get_field('unit_type')])
 
     def reset_selected_cell(self, i_row):
 
@@ -417,12 +431,12 @@ class UnitInfoTab(InfoWidget):
         self.table_cell_click(i_row, i_col)
         self.table.verticalScrollBar().setValue(i_row - np.sum(~self.is_filt[:i_row]))
 
-    def reorder_unit_dataframe(self, c_hdr0):
+    def reorder_unit_dataframe(self, df_unit_0, c_hdr0):
 
         # sets the fixed column header array
         c_hdr_nw = ['Cluster ID#', 'Unit Type', 'Max Channel',
                     'Spike Count', 'Peak Count', 'Trough Count']
-        self.c_hdr = c_hdr_nw + list(set(c_hdr0) - set(c_hdr_nw))
+        c_hdr = c_hdr_nw + list(set(c_hdr0) - set(c_hdr_nw))
 
         # re-orders the dataframe
-        self.df_unit = self.df_unit.reindex(columns=self.c_hdr)
+        return df_unit_0.reindex(columns=c_hdr), c_hdr

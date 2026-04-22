@@ -627,6 +627,11 @@ def calc_ccgram(ts1, ts2, win_sz0=50, bin_size=1, return_freq=True):
         return hh[0], (hh[1][:-1] + hh[1][1:]) / 2
 
 
+def rev_dict(orig_dict):
+
+    return {value: key for key, value in orig_dict.items()}
+
+
 def flat_list(l):
 
     if len(l) == 0:

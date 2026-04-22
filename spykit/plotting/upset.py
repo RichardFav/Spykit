@@ -79,6 +79,7 @@ class UpSetPlot(PlotWidget):
         self.is_init = True
         self.has_plot = False
         self.show_grid = False
+        self.update_reqd = False
 
         # resets the initialisation flag
         self.is_init = False
@@ -288,6 +289,9 @@ class UpSetPlot(PlotWidget):
         self.update_plot_title()
         self.update_axes_grid()
 
+        # flag that plot update is not required
+        self.update_reqd = False
+
     def update_axes_grid(self):
 
         self.h_plot[0].showGrid(y=self.show_grid)
@@ -333,7 +337,8 @@ class UpSetPlot(PlotWidget):
 
     def show_view(self):
 
-        pass
+        if self.update_reqd:
+            self.update_plot()
 
     def hide_view(self):
 
