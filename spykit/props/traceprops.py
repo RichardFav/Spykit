@@ -78,7 +78,7 @@ class TraceViewProps(PropWidget):
     type = 'traceview'
 
     # parameters
-    t_span0 = 0.1
+    t_span0 = 0.02
     sort_list = ['Depth', 'Channel ID']
     sig_list = ['Difference', 'Absolute']
     plot_list = ['Trace', 'Heatmap', 'Auto']

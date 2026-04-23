@@ -2865,6 +2865,28 @@ class QCheckboxHTML(QWidget):
     def get_check(self):
         return self.h_chk.isChecked()
 
+# ----------------------------------------------------------------------------------------------------------------------
+
+"""
+    QEditCombo:
+"""
+
+class QEditCombo(QComboBox):
+    def __init__(self, parent=None, p_val=None, p_list=None, font=None):
+        super(QEditCombo, self).__init__(parent)
+
+        # sets up the combobox widget
+        self.setEditable(True)
+        self.setFont(create_font_obj())
+        self.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
+
+        # sets up the line-edit widget
+        self.obj_edit = create_line_edit(None, p_val, font=font, align='left')
+        self.obj_edit.setPlaceholderText("Enter Value")
+        self.setLineEdit(self.obj_edit)
+
+        if p_list is not None:
+            self.addItems(p_list)
 
 # ----------------------------------------------------------------------------------------------------------------------
 

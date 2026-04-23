@@ -1,0 +1,432 @@
+# module import
+import os
+import time
+import numpy as np
+from pathlib import Path
+from copy import deepcopy
+from functools import partial as pfcn
+
+# spike pipeline imports
+import spykit.common.common_func as cf
+import spykit.common.common_widget as cw
+
+# pyqt6 module import
+from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QWidget, QGroupBox,
+                             QLabel, QFrame, QSpacerItem, QSizePolicy, QToolBar, QLineEdit)
+from PyQt6.QtCore import Qt, QSize, QEvent, pyqtSignal
+from PyQt6.QtGui import QFont, QAction, QIcon
+
+# widget dimensions
+x_gap = 5
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+"""
+    FilterWidget:
+"""
+
+
+class FilterWidget(QWidget):
+    # pyqtsignal funcions
+    widget_clicked = pyqtSignal()
+
+    # widget dimensions
+    widget_hght = 22
+
+    # widget style-sheet
+    combo_style = """
+        QComboBox { 
+            border: 1px solid; 
+            padding: 1px 5px;
+        }
+        QComboBox QAbstractItemView {
+            background-color: rgba(255, 255, 255, 255);
+            selection-background-color: rgba(0, 120, 215, 200);
+        }
+        QComboBox QLineEdit {
+            padding: 1px 10px;        
+        }
+    """
+
+    def __init__(self, main_obj, f_lbl):
+        super(FilterWidget, self).__init__()
+
+        # input arguments
+        self.f_lbl = f_lbl
+        self.main_obj = main_obj
+        f_lbl_txt = f"  {self.f_lbl}  "
+
+        # other class widgets
+        self.filt_combo = None
+        self.filt_layout = QVBoxLayout()
+        self.filt_lbl = cw.create_text_label(
+            None, f_lbl_txt, font=cw.font_lbl, align='center')
+
+        # boolean class fields
+        self.is_combo = f_lbl != 'Comparison Value'
+
+        # creates the filter widget
+        self.init_class_fields()
+        self.init_filter_widgets()
+
+    def init_class_fields(self):
+
+        # layout properties
+        self.setLayout(self.filt_layout)
+        self.filt_layout.setContentsMargins(0, 0, 0, 0)
+        self.filt_layout.setSpacing(0)
+
+        # label properties
+        self.filt_lbl.setFixedHeight(self.widget_hght)
+        self.filt_layout.addWidget(self.filt_lbl)
+
+    def init_filter_widgets(self):
+
+        if self.is_combo:
+            # case is a combobox widget
+            match self.f_lbl:
+                case 'Operator':
+                    # case is the inter-filter operator
+                    p_list = ['AND', 'OR']
+
+                case 'Filter Metric':
+                    # case is the filter metric
+                    p_list = ['Test']
+
+                case 'Condition':
+                    # case is the filter condition
+                    p_list = ['<', '≤', '=', '>', '≥', 'is not NaN']
+
+            self.filt_combo = cw.create_combo_box(None, text=[''] + p_list)
+
+        else:
+            # case is a edit-dropdown widget
+            match self.f_lbl:
+                case 'Comparison Value':
+                    # case is the inter-filter operator
+                    p_list = ['Test']
+
+            self.filt_combo = cw.QEditCombo(None, None, [''] + p_list)
+
+        # adds the widget to the layout
+        self.filt_combo.setObjectName(self.f_lbl)
+        self.filt_combo.setFixedHeight(self.widget_hght)
+        self.filt_layout.addWidget(self.filt_combo)
+        self.filt_combo.setStyleSheet(self.combo_style)
+
+        # installs an event filter
+        self.filt_combo.installEventFilter(self)
+
+        # center aligns the combobox item
+        for i in range(len(p_list) + 1):
+            self.filt_combo.setItemData(
+                i, Qt.AlignmentFlag.AlignCenter, Qt.ItemDataRole.TextAlignmentRole)
+
+    def mousePressEvent(self, evnt):
+
+        self.widget_clicked.emit()
+        super().mousePressEvent(evnt)
+
+    def eventFilter(self, obj, event):
+
+        # if the widget is clicked, then emit a signal
+        if event.type() == QEvent.Type.MouseButtonPress:
+            self.widget_clicked.emit()
+
+        return super().eventFilter(obj, event)
+
+    # ----------------------------------------------------------------------------------------------------------------------
+
+"""
+    FilterBlock:
+"""
+
+class FilterBlock(QFrame):
+    # pyqtsignal funcions
+    frame_clicked = pyqtSignal(int)
+
+    # fixes array fields
+    t_lbl = ['Operator', 'Filter Metric', 'Condition', 'Comparison Value']
+
+    def __init__(self, main_obj, i_filt_nw):
+        super(FilterBlock, self).__init__()
+
+        # input arguments
+        self.main_obj = main_obj
+        self.i_filt = i_filt_nw
+
+        # other class widget fields
+        self.filt_widget = []
+        self.main_layout = QHBoxLayout()
+        self.spacer = None
+
+        # creates the filter block widget
+        self.create_filter_block()
+
+    def create_filter_block(self):
+
+        # sets the frame properties
+        self.setObjectName('filtFrame')
+        self.setFrameShape(QFrame.Shape.Box)
+        self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Maximum)
+        self.set_frame_highlight(False)
+
+        # layout properties
+        self.setLayout(self.main_layout)
+        self.main_layout.setSpacing(x_gap)
+        self.main_layout.setContentsMargins(x_gap, x_gap, x_gap, x_gap)
+
+        for tl in self.t_lbl:
+            # creates the new filter widget
+            f_widget_nw = FilterWidget(self.main_obj, tl)
+            f_widget_nw.widget_clicked.connect(self.widget_clicked_event)
+
+            # adds the widget to the main class widget
+            self.filt_widget.append(f_widget_nw)
+            self.main_layout.addWidget(f_widget_nw)
+
+        # creates the spacer item
+        sz_hint = self.filt_widget[0].sizeHint()
+        self.filt_widget[0].setFixedSize(sz_hint.width(), sz_hint.height())
+        self.spacer = QSpacerItem(sz_hint.width() + x_gap, sz_hint.height(),
+                                  QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+
+        #
+        if self.i_filt == 0:
+            self.set_filter_level()
+
+    def set_filter_level(self, i_filt_nw=None):
+
+        if i_filt_nw is not None:
+            self.i_filt = i_filt_nw
+
+        if self.i_filt == 0:
+            # "hides" the operator field
+            self.main_layout.removeWidget(self.filt_widget[0])
+            self.filt_widget[0].setParent(None)
+            self.main_layout.insertItem(0, self.spacer)
+
+        else:
+            # "shows" the operator field
+            self.main_layout.removeItem(self.spacer)
+            self.main_layout.insertWidget(0, self.filt_widget[0])
+            self.filt_widget[0].setVisible(True)
+
+    def set_frame_highlight(self, is_on):
+
+        if is_on:
+            self.setStyleSheet("""
+                #filtFrame {
+                    border: 2px solid red;
+                }
+            """)
+
+        else:
+            self.setStyleSheet("""
+                #filtFrame {
+                    border: 2px solid black;
+                }
+            """)
+
+    def widget_clicked_event(self):
+
+        self.frame_clicked.emit(self.i_filt)
+
+    def mousePressEvent(self, event):
+
+        # Triggered when the frame is clicked
+        self.frame_clicked.emit(self.i_filt)
+        super().mousePressEvent(event)
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+"""
+    FilterManagerMixin:
+"""
+
+class FilterManagerMixin:
+
+    # ---------------------------------------------------------------------------
+    # Filter Block Functions
+    # ---------------------------------------------------------------------------
+
+    def add_filter_block(self, reset_spacer=True):
+
+        # removes the spacer item
+        if reset_spacer:
+            self.filt_layout.removeItem(self.spacer)
+
+        # creates the new filter object
+        obj_filt_nw = FilterBlock(self.main_obj, self.n_filt)
+        obj_filt_nw.frame_clicked.connect(self.frame_click_event)
+        self.filt_layout.addWidget(obj_filt_nw)
+
+        # updates the other fields
+        self.n_filt += 1
+        self.obj_filt.append(obj_filt_nw)
+
+        # re-adds the spacer itme
+        if reset_spacer:
+            self.filt_layout.insertItem(self.n_filt, self.spacer)
+
+    def remove_filter_block(self, i_blk):
+
+        # resets the filter index
+        for i in range((i_blk + 1), self.n_filt):
+            self.obj_filt[i].set_filter_level(i - 1)
+
+        # deletes the filter block
+        self.obj_filt[i_blk].delete()
+        self.obj_filt[i_blk].pop()
+
+    def clear_filter_blocks(self):
+
+        # deletes all filter blocks
+        for i in reversed(range(self.n_filt)):
+            self.obj_filt[i].delete()
+            self.obj_filt[i].pop()
+            self.n_filt -= 1
+
+    def move_filter_block(self, i_blk, m_dir):
+
+        pass
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+"""
+    UnitFilterDialog:
+"""
+
+class UnitFilterDialog(FilterManagerMixin, QDialog):
+    # widget dimensions
+    x_gap = 5
+    n_filt_max = 6
+
+    # font objects
+    tool_name = ['add', 'remove', 'close']
+    tool_lbl = ['Add Filter', 'Remove Filter', 'Clear All Filters']
+    font_hdr = cw.create_font_obj(size=10, is_bold=True, font_weight=QFont.Weight.Bold)
+
+    def __init__(self, main_obj):
+        FilterManagerMixin.__init__(self)
+        super(UnitFilterDialog, self).__init__()
+
+        # input arguments
+        self.main_obj = main_obj
+
+        # class widget setup
+        self.tool_bar = QToolBar(self)
+        self.filt_group = QGroupBox("FILTER CONDITIONS")
+
+        # class layout setup
+        self.main_layout = QVBoxLayout()
+        self.filt_layout = QVBoxLayout()
+
+        # memory allocation
+        self.n_filt = 0
+        self.i_filt_sel = None
+        self.obj_filt = []
+
+        # initialises the class fields/objects
+        self.init_class_fields()
+        self.init_tool_bar()
+        self.init_class_objects()
+
+    # ---------------------------------------------------------------------------
+    # Class Initialisation Functions
+    # ---------------------------------------------------------------------------
+
+    def init_class_fields(self):
+
+        # main widget properties
+        self.setLayout(self.main_layout)
+        self.setWindowTitle('Unit Metric Filter')
+
+        # sets up the groupbox widget
+        self.main_layout.addWidget(self.tool_bar)
+        self.main_layout.addWidget(self.filt_group)
+        self.filt_group.setLayout(self.filt_layout)
+        self.filt_group.setFont(self.font_hdr)
+
+        # layout spacing
+        self.filt_layout.setSpacing(x_gap)
+        self.filt_layout.setContentsMargins(x_gap, x_gap, x_gap, x_gap)
+
+    def init_tool_bar(self):
+
+        # sets the toolbar properties
+        self.tool_bar.setMovable(False)
+        self.tool_bar.setStyleSheet(cw.toolbar_style)
+        self.tool_bar.setIconSize(QSize(cf.but_height + 1, cf.but_height + 1))
+
+        # adds the toolbar action widget
+        for t_n, t_l in zip(self.tool_name, self.tool_lbl):
+            # creates the action item
+            h_icon = QIcon(cw.icon_path[t_n])
+            h_action = QAction(h_icon, t_l, self)
+            self.tool_bar.addAction(h_action)
+
+            # sets the action object properties
+            cb_fcn = pfcn(self.tool_bar_event, t_n)
+            h_action.setParent(self.tool_bar)
+            h_action.triggered.connect(cb_fcn)
+            h_action.setObjectName(t_n)
+
+    def init_class_objects(self):
+
+        # adds the first filter block
+        self.add_filter_block(False)
+
+        # creates the group height
+        sz_hint_grp = self.filt_group.sizeHint()
+        sz_hint_blk = self.obj_filt[0].sizeHint()
+        hght_spacer = sz_hint_blk.height() * (self.n_filt_max - 1)
+        hght_grp = hght_spacer + sz_hint_grp.height()
+        self.filt_group.setFixedHeight(hght_grp)
+
+        # creates the spacer item
+        self.spacer = QSpacerItem(sz_hint_blk.width(), hght_spacer,
+                                  QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Maximum)
+
+        # REMOVE ME LATER
+        self.add_filter_block()
+        self.add_filter_block()
+
+    # ---------------------------------------------------------------------------
+    # Widget Event Functions
+    # ---------------------------------------------------------------------------
+
+    def tool_bar_event(self, t_type):
+
+        match t_type:
+            case 'add':
+                # case is adding a filter
+                pass
+
+            case 'remove':
+                # case is removing a filter
+                pass
+
+            case 'close':
+                # case is clearing all filters
+                pass
+
+    def frame_click_event(self, i_filt_nw):
+
+        # removes any existing highlight
+        if self.i_filt_sel is not None:
+            self.obj_filt[self.i_filt_sel].set_frame_highlight(False)
+
+        # adds the newly clicked filter highlight
+        self.i_filt_sel = i_filt_nw
+        self.obj_filt[i_filt_nw].set_frame_highlight(True)
+
+    # ---------------------------------------------------------------------------
+    # Class Getter Functions
+    # ---------------------------------------------------------------------------
+
+    def get_field(self, p_fld):
+
+        return self.main_obj.session_obj.get_mem_map_field(p_fld)
+
+

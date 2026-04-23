@@ -759,9 +759,9 @@ class ProbePlot(PlotWidget):
     def reset_roi_coord(p, r_dim, ax_lim):
 
         if (p - r_dim / 2) < ax_lim[0]:
-            return ax_lim[0]
+            return ax_lim[0] + r_dim / 2
         elif (p + r_dim / 2) > ax_lim[1]:
-            return ax_lim[1] - r_dim
+            return ax_lim[1] - r_dim / 2
         else:
             return p - r_dim / 2
 
