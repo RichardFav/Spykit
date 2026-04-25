@@ -37,7 +37,7 @@ class FilterWidget(QWidget):
     # widget style-sheet
     combo_style = """
         QComboBox { 
-            padding: 1px 5px;        
+            padding: 2px 5px;        
             border: 1px solid; 
         }
         QComboBox QAbstractItemView {
@@ -45,7 +45,7 @@ class FilterWidget(QWidget):
             selection-background-color: rgba(0, 120, 215, 200);
         }
         QComboBox QLineEdit {
-            padding: 1px 5px;        
+            padding: 2px 5px;        
         }
     """
 
@@ -99,7 +99,8 @@ class FilterWidget(QWidget):
 
                 case 'Condition':
                     # case is the filter condition
-                    p_list = ['<', '≤', '=', '>', '≥', 'is not NaN']
+                    p_list = ['Less Than', 'Less Than/Equal To', 'Greater Than',
+                              'Greater Than/Equal To', 'Is Not NaN']
 
             self.filt_combo = cw.create_combo_box(None, text=[''] + p_list)
 
@@ -131,9 +132,9 @@ class FilterWidget(QWidget):
                 self.filt_combo.setItemData(
                     i, Qt.AlignmentFlag.AlignLeft, Qt.ItemDataRole.TextAlignmentRole)
 
+        # resizes the combobox (ensures item text fits)
         sz_combo = self.filt_combo.sizeHint()
         self.filt_combo.setFixedWidth(sz_combo.width() + self.combo_pad)
-        a = 1
 
     def mousePressEvent(self, evnt):
 
@@ -156,8 +157,9 @@ class FilterWidget(QWidget):
 
 class FilterBlock(QFrame):
     # pyqtsignal funcions
-    frame_clicked = pyqtSignal(int)
     groupbox_click = pyqtSignal()
+    frame_clicked = pyqtSignal(int)
+    menu_update = pyqtSignal(str, bool)
 
     # fixes array fields
     t_lbl = ['Operator', 'Filter Metric', 'Condition', 'Comparison Value']
@@ -254,7 +256,7 @@ class FilterBlock(QFrame):
                 }
             """)
 
-    def filter_update(self, i_filt, _):
+    def filter_update(self, i_filt, *args):
 
         # retrieves the current text
         nw_text = self.filt_widget[i_filt].filt_combo.currentText()
@@ -273,12 +275,12 @@ class FilterBlock(QFrame):
                 elif self.filt_opt[i_filt] is None:
                     # case is there is no previous value
                     self.filt_widget[i_filt].filt_combo.setCurrentText("")
+                    return
 
                 else:
                     # otherwise, set the previous valid value
                     self.filt_widget[i_filt].filt_combo.setCurrentText(self.filt_opt[i_filt])
-
-
+                    return
 
             else:
                 # case is the other filter type
@@ -286,6 +288,9 @@ class FilterBlock(QFrame):
         else:
             # case is the field is empty
             self.filt_opt[i_filt] = None
+
+        # updates the menu item properties
+        self.menu_update.emit('add', self.is_filter_complete())
 
     def widget_clicked_event(self):
 
@@ -296,6 +301,14 @@ class FilterBlock(QFrame):
         # Triggered when the frame is clicked
         self.frame_clicked.emit(self.i_filt)
         super().mousePressEvent(event)
+
+    def is_filter_complete(self):
+
+        if self.i_filt == 0:
+            return ~np.any(self.filt_opt[1:] == None)
+
+        else:
+            return ~np.any(self.filt_opt == None)
 
     def get_param_value(self, nw_text):
 
@@ -332,6 +345,8 @@ class FilterManagerMixin:
         # creates the new filter object
         obj_filt_nw = FilterBlock(self.main_obj, self.n_filt)
         obj_filt_nw.frame_clicked.connect(self.frame_click_event)
+        obj_filt_nw.menu_update.connect(self.menu_update_event)
+
         obj_filt_nw.map_func = self.get_field
         self.filt_layout.addWidget(obj_filt_nw)
 
@@ -509,6 +524,11 @@ class UnitFilterDialog(FilterManagerMixin, QDialog):
         # adds the newly clicked filter highlight
         self.i_filt_sel = i_filt_nw
         self.obj_filt[i_filt_nw].set_frame_highlight(True)
+
+    def menu_update_event(self, t_type, state):
+
+        h_action = self.findChild(QAction, name=t_type)
+        h_action.setEnabled(state)
 
     # ---------------------------------------------------------------------------
     # Class Setter Functions

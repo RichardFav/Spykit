@@ -2919,7 +2919,7 @@ class QEditCombo(QComboBox):
     def connect(self, cb_fcn):
 
         self.currentIndexChanged.connect(cb_fcn)
-        self.editTextChanged.connect(cb_fcn)
+        self.lineEdit().editingFinished.connect(cb_fcn)
 
 # ----------------------------------------------------------------------------------------------------------------------
 
