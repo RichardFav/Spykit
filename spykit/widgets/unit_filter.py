@@ -72,6 +72,10 @@ class FilterWidget(QWidget):
         self.init_class_fields()
         self.init_filter_widgets()
 
+    # ---------------------------------------------------------------------------
+    # Class Widget Initialisation Functions
+    # ---------------------------------------------------------------------------
+
     def init_class_fields(self):
 
         # layout properties
@@ -125,7 +129,7 @@ class FilterWidget(QWidget):
 
         # center aligns the combobox item
         for i in range(len(p_list) + 1):
-            if self.f_lbl in ['Operator', 'Condition']:
+            if self.f_lbl == 'Operator':
                 self.filt_combo.setItemData(
                     i, Qt.AlignmentFlag.AlignCenter, Qt.ItemDataRole.TextAlignmentRole)
             else:
@@ -135,6 +139,10 @@ class FilterWidget(QWidget):
         # resizes the combobox (ensures item text fits)
         sz_combo = self.filt_combo.sizeHint()
         self.filt_combo.setFixedWidth(sz_combo.width() + self.combo_pad)
+
+    # ---------------------------------------------------------------------------
+    # Class Widget Event Functions
+    # ---------------------------------------------------------------------------
 
     def mousePressEvent(self, evnt):
 
@@ -161,6 +169,9 @@ class FilterBlock(QFrame):
     frame_clicked = pyqtSignal(int)
     menu_update = pyqtSignal(str, bool)
 
+    # scalar class fields
+    n_fld = 4
+
     # fixes array fields
     t_lbl = ['Operator', 'Filter Metric', 'Condition', 'Comparison Value']
 
@@ -176,10 +187,14 @@ class FilterBlock(QFrame):
         self.map_func = None
         self.filt_widget = []
         self.main_layout = QHBoxLayout()
-        self.filt_opt = np.empty(4, dtype=object)
+        self.filt_opt = np.empty(self.n_fld, dtype=object)
 
         # creates the filter block widget
         self.create_filter_block()
+
+    # ---------------------------------------------------------------------------
+    # Class Widget Initialisation Functions
+    # ---------------------------------------------------------------------------
 
     def create_filter_block(self):
 
@@ -223,38 +238,9 @@ class FilterBlock(QFrame):
         if self.i_filt == 0:
             self.set_filter_level()
 
-    def set_filter_level(self, i_filt_nw=None):
-
-        if i_filt_nw is not None:
-            self.i_filt = i_filt_nw
-
-        if self.i_filt == 0:
-            # "hides" the operator field
-            self.main_layout.removeWidget(self.filt_widget[0])
-            self.filt_widget[0].setParent(None)
-            self.main_layout.insertItem(0, self.spacer)
-
-        else:
-            # "shows" the operator field
-            self.main_layout.removeItem(self.spacer)
-            self.main_layout.insertWidget(0, self.filt_widget[0])
-            self.filt_widget[0].setVisible(True)
-
-    def set_frame_highlight(self, is_on):
-
-        if is_on:
-            self.setStyleSheet("""
-                #filtFrame {
-                    border: 2px solid red;
-                }
-            """)
-
-        else:
-            self.setStyleSheet("""
-                #filtFrame {
-                    border: 2px solid black;
-                }
-            """)
+    # ---------------------------------------------------------------------------
+    # Class Widget Event Functions
+    # ---------------------------------------------------------------------------
 
     def filter_update(self, i_filt, *args):
 
@@ -302,13 +288,9 @@ class FilterBlock(QFrame):
         self.frame_clicked.emit(self.i_filt)
         super().mousePressEvent(event)
 
-    def is_filter_complete(self):
-
-        if self.i_filt == 0:
-            return ~np.any(self.filt_opt[1:] == None)
-
-        else:
-            return ~np.any(self.filt_opt == None)
+    # ---------------------------------------------------------------------------
+    # Class Setter Functions
+    # ---------------------------------------------------------------------------
 
     def get_param_value(self, nw_text):
 
@@ -323,6 +305,66 @@ class FilterBlock(QFrame):
 
         else:
             return nw_text
+
+    # ---------------------------------------------------------------------------
+    # Class Setter Functions
+    # ---------------------------------------------------------------------------
+
+    def set_frame_highlight(self, is_on):
+
+        if is_on:
+            self.setStyleSheet("""
+                #filtFrame {
+                    border: 2px solid red;
+                }
+            """)
+
+        else:
+            self.setStyleSheet("""
+                #filtFrame {
+                    border: 2px solid black;
+                }
+            """)
+
+    def set_filter_level(self, i_filt_nw=None):
+
+        if i_filt_nw is not None:
+            self.i_filt = i_filt_nw
+
+        if self.i_filt == 0:
+            # "hides" the operator field
+            self.main_layout.removeWidget(self.filt_widget[0])
+            self.filt_widget[0].setParent(None)
+            self.main_layout.insertItem(0, self.spacer)
+
+        else:
+            # "shows" the operator field
+            self.main_layout.removeItem(self.spacer)
+            self.main_layout.insertWidget(0, self.filt_widget[0])
+            self.filt_widget[0].setVisible(True)
+
+    # ---------------------------------------------------------------------------
+    # Miscellaneous Functions
+    # ---------------------------------------------------------------------------
+
+    def clear_block(self):
+
+        for i in range(self.n_fld):
+            # resets the field options
+            self.filt_opt[i] = None
+
+            # clears the filter widget fields
+            self.filt_widget[i].blockSignals(True)
+            self.filt_widget[i].setCurrentIndex(0)
+            self.filt_widget[i].blockSignals(False)
+
+    def is_filter_complete(self):
+
+        if self.i_filt == 0:
+            return ~np.any(self.filt_opt[1:] == None)
+
+        else:
+            return ~np.any(self.filt_opt == None)
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -342,19 +384,20 @@ class FilterManagerMixin:
         if reset_spacer:
             self.filt_layout.removeItem(self.spacer)
 
-        # creates the new filter object
+        # creates and adds the new filter object
         obj_filt_nw = FilterBlock(self.main_obj, self.n_filt)
-        obj_filt_nw.frame_clicked.connect(self.frame_click_event)
-        obj_filt_nw.menu_update.connect(self.menu_update_event)
-
-        obj_filt_nw.map_func = self.get_field
         self.filt_layout.addWidget(obj_filt_nw)
+
+        # sets the slot/function handles
+        obj_filt_nw.frame_clicked.connect(self.frame_click_event)
+        obj_filt_nw.menu_update.connect(self.set_toolbar_props)
+        obj_filt_nw.map_func = self.get_field
 
         # updates the other fields
         self.n_filt += 1
         self.obj_filt.append(obj_filt_nw)
 
-        # re-adds the spacer itme
+        # re-adds the spacer item
         if reset_spacer:
             self.filt_layout.insertItem(self.n_filt, self.spacer)
 
@@ -372,9 +415,13 @@ class FilterManagerMixin:
 
         # deletes all filter blocks
         for i in reversed(range(self.n_filt)):
-            self.obj_filt[i].delete()
-            self.obj_filt[i].pop()
-            self.n_filt -= 1
+            if i == 0:
+                self.obj_filt[i].clear_block()
+
+            else:
+                self.obj_filt[i].delete()
+                self.obj_filt[i].pop()
+                self.n_filt -= 1
 
     def move_filter_block(self, i_blk, m_dir):
 
@@ -392,9 +439,10 @@ class UnitFilterDialog(FilterManagerMixin, QDialog):
     n_filt_max = 6
 
     # font objects
-    tool_name = ['add', 'remove', 'close', None, 'tick', 'restart']
-    tool_lbl = ['Add Filter', 'Remove Filter', 'Clear All Filters',
-                None, 'Apply Filter', 'Reset Original']
+    tool_name = ['add', 'remove', 'close', None, 'tick',
+                 'restart', None, 'arrow_up', 'arrow_down']
+    tool_lbl = ['Add Filter', 'Remove Filter', 'Clear All Filters', None,
+                'Apply Filter', 'Reset Original', None, 'Move Up', 'Move Down']
     font_hdr = cw.create_font_obj(size=10, is_bold=True, font_weight=QFont.Weight.Bold)
 
     def __init__(self, main_obj):
@@ -483,13 +531,10 @@ class UnitFilterDialog(FilterManagerMixin, QDialog):
         # creates the spacer item
         self.spacer = QSpacerItem(sz_hint_blk.width(), hght_spacer,
                                   QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Maximum)
-
-        # REMOVE ME LATER
-        self.add_filter_block()
-        self.add_filter_block()
+        self.filt_layout.addItem(self.spacer)
 
     # ---------------------------------------------------------------------------
-    # Widget Event Functions
+    # Class Widget Event Functions
     # ---------------------------------------------------------------------------
 
     def tool_bar_event(self, t_type):
@@ -497,7 +542,8 @@ class UnitFilterDialog(FilterManagerMixin, QDialog):
         match t_type:
             case 'add':
                 # case is adding a filter
-                pass
+                self.add_filter_block()
+                self.set_toolbar_props(t_type, False)
 
             case 'remove':
                 # case is removing a filter
@@ -515,6 +561,14 @@ class UnitFilterDialog(FilterManagerMixin, QDialog):
                 # case is resetting the original filter
                 pass
 
+            case 'arrow_up':
+                # case is moving the filter up
+                pass
+
+            case 'arrow_down':
+                # case is moving the filter up
+                pass
+
     def frame_click_event(self, i_filt_nw):
 
         # removes any existing highlight
@@ -525,19 +579,6 @@ class UnitFilterDialog(FilterManagerMixin, QDialog):
         self.i_filt_sel = i_filt_nw
         self.obj_filt[i_filt_nw].set_frame_highlight(True)
 
-    def menu_update_event(self, t_type, state):
-
-        h_action = self.findChild(QAction, name=t_type)
-        h_action.setEnabled(state)
-
-    # ---------------------------------------------------------------------------
-    # Class Setter Functions
-    # ---------------------------------------------------------------------------
-
-    def set_toolbar_props(self):
-
-        pass
-
     # ---------------------------------------------------------------------------
     # Class Getter Functions
     # ---------------------------------------------------------------------------
@@ -546,4 +587,11 @@ class UnitFilterDialog(FilterManagerMixin, QDialog):
 
         return self.main_obj.session_obj.get_mem_map_field(p_fld)
 
+    # ---------------------------------------------------------------------------
+    # Class Setter Functions
+    # ---------------------------------------------------------------------------
 
+    def set_toolbar_props(self, t_type, state):
+
+        h_action = self.findChild(QAction, name=t_type)
+        h_action.setEnabled(state)
