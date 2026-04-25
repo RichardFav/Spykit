@@ -258,6 +258,34 @@ hist_map = {
     'Lratio': 'L-Ratio'
 }
 
+# bombcell classification parameter name mapping dictionary
+param_map = {
+    'maxNPeaks': 'Maximum Peak Count',
+    'maxNTroughs': 'Maximum Trough Count',
+    'minWvDuration': 'Minimum Waveform Duration',
+    'maxWvDuration': 'Maximum Waveform Duration',
+    'minSpatialDecaySlope': 'Minimum Spatial Decay Slope',
+    'minSpatialDecaySlopeExp': 'Minimum Spatial Decay Slope',
+    'maxSpatialDecaySlopeExp': 'Maximum Spatial Decay Slope',
+    'maxWvBaselineFraction': 'Maximum Waveform Baseline Fraction',
+    'maxScndPeakToTroughRatio_noise': 'Maximum 2nd Peak/Trough Ratio',
+    'maxPeak1ToPeak2Ratio_nonSomatic': 'Maximum Inter-Peak Ratio',
+    'maxMainPeakToTroughRatio_nonSomatic': 'Maximum Main Peak/Trough Ratio',
+    'minWidthFirstPeak_nonSomatic': 'Minimum Main Peak Duration',
+    'minWidthMainTrough_nonSomatic': 'Minimum Main Trough Duration',
+    'minTroughToPeak2Ratio_nonSomatic': 'Minimum Trough/Main Peak Ratio',
+    'isoDmin': 'Minimum Isolation Distance',
+    'lratioMax': 'Maximum l-Ratio Value',
+    'ssMin': 'Minimum Silhouette Score',
+    'minAmplitude': 'Minimum Waveform Amplitude',
+    'maxRPVviolations': 'Maximum RPV Fraction',
+    'maxPercSpikesMissing': 'Maximum Missing Spike %age.',
+    'minNumSpikes': 'Minimum Spike Count',
+    'maxDrift': 'Maximum Drift Distance',
+    'minPresenceRatio': 'Minimum Presence Ratio',
+    'minSNR': 'Minimum SNR',
+}
+
 # channel status colour
 status_col = {
     'good': lambda x: cf.get_colour_value('g', x),
@@ -2887,6 +2915,11 @@ class QEditCombo(QComboBox):
 
         if p_list is not None:
             self.addItems(p_list)
+
+    def connect(self, cb_fcn):
+
+        self.currentIndexChanged.connect(cb_fcn)
+        self.editTextChanged.connect(cb_fcn)
 
 # ----------------------------------------------------------------------------------------------------------------------
 

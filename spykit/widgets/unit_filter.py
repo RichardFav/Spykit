@@ -31,20 +31,21 @@ class FilterWidget(QWidget):
     widget_clicked = pyqtSignal()
 
     # widget dimensions
-    widget_hght = 22
+    combo_pad = 10
+    widget_hght = 20
 
     # widget style-sheet
     combo_style = """
         QComboBox { 
+            padding: 1px 5px;        
             border: 1px solid; 
-            padding: 1px 5px;
         }
         QComboBox QAbstractItemView {
             background-color: rgba(255, 255, 255, 255);
             selection-background-color: rgba(0, 120, 215, 200);
         }
         QComboBox QLineEdit {
-            padding: 1px 10px;        
+            padding: 1px 5px;        
         }
     """
 
@@ -57,6 +58,8 @@ class FilterWidget(QWidget):
         f_lbl_txt = f"  {self.f_lbl}  "
 
         # other class widgets
+        self.hist_map = None
+        self.param_map = None
         self.filt_combo = None
         self.filt_layout = QVBoxLayout()
         self.filt_lbl = cw.create_text_label(
@@ -91,7 +94,8 @@ class FilterWidget(QWidget):
 
                 case 'Filter Metric':
                     # case is the filter metric
-                    p_list = ['Test']
+                    self.hist_map = cf.rev_dict(cw.hist_map)
+                    p_list = list(self.hist_map.keys())
 
                 case 'Condition':
                     # case is the filter condition
@@ -104,7 +108,8 @@ class FilterWidget(QWidget):
             match self.f_lbl:
                 case 'Comparison Value':
                     # case is the inter-filter operator
-                    p_list = ['Test']
+                    self.param_map = cf.rev_dict(cw.param_map)
+                    p_list = list(self.param_map.keys())
 
             self.filt_combo = cw.QEditCombo(None, None, [''] + p_list)
 
@@ -119,8 +124,16 @@ class FilterWidget(QWidget):
 
         # center aligns the combobox item
         for i in range(len(p_list) + 1):
-            self.filt_combo.setItemData(
-                i, Qt.AlignmentFlag.AlignCenter, Qt.ItemDataRole.TextAlignmentRole)
+            if self.f_lbl in ['Operator', 'Condition']:
+                self.filt_combo.setItemData(
+                    i, Qt.AlignmentFlag.AlignCenter, Qt.ItemDataRole.TextAlignmentRole)
+            else:
+                self.filt_combo.setItemData(
+                    i, Qt.AlignmentFlag.AlignLeft, Qt.ItemDataRole.TextAlignmentRole)
+
+        sz_combo = self.filt_combo.sizeHint()
+        self.filt_combo.setFixedWidth(sz_combo.width() + self.combo_pad)
+        a = 1
 
     def mousePressEvent(self, evnt):
 
@@ -135,7 +148,7 @@ class FilterWidget(QWidget):
 
         return super().eventFilter(obj, event)
 
-    # ----------------------------------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------
 
 """
     FilterBlock:
@@ -144,6 +157,7 @@ class FilterWidget(QWidget):
 class FilterBlock(QFrame):
     # pyqtsignal funcions
     frame_clicked = pyqtSignal(int)
+    groupbox_click = pyqtSignal()
 
     # fixes array fields
     t_lbl = ['Operator', 'Filter Metric', 'Condition', 'Comparison Value']
@@ -156,9 +170,11 @@ class FilterBlock(QFrame):
         self.i_filt = i_filt_nw
 
         # other class widget fields
+        self.spacer = None
+        self.map_func = None
         self.filt_widget = []
         self.main_layout = QHBoxLayout()
-        self.spacer = None
+        self.filt_opt = np.empty(4, dtype=object)
 
         # creates the filter block widget
         self.create_filter_block()
@@ -176,10 +192,20 @@ class FilterBlock(QFrame):
         self.main_layout.setSpacing(x_gap)
         self.main_layout.setContentsMargins(x_gap, x_gap, x_gap, x_gap)
 
-        for tl in self.t_lbl:
+        for i_tl, tl in enumerate(self.t_lbl):
             # creates the new filter widget
             f_widget_nw = FilterWidget(self.main_obj, tl)
             f_widget_nw.widget_clicked.connect(self.widget_clicked_event)
+
+            # sets the parameter group
+            cb_cbox = pfcn(self.filter_update, i_tl)
+            if tl == 'Comparison Value':
+                # case is the comparison value filter option
+                f_widget_nw.filt_combo.connect(cb_cbox)
+
+            else:
+                # case is the other filter options
+                f_widget_nw.filt_combo.currentIndexChanged.connect(cb_cbox)
 
             # adds the widget to the main class widget
             self.filt_widget.append(f_widget_nw)
@@ -191,7 +217,7 @@ class FilterBlock(QFrame):
         self.spacer = QSpacerItem(sz_hint.width() + x_gap, sz_hint.height(),
                                   QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
 
-        #
+        # removes the "operator" groupbox (if first level)
         if self.i_filt == 0:
             self.set_filter_level()
 
@@ -228,6 +254,39 @@ class FilterBlock(QFrame):
                 }
             """)
 
+    def filter_update(self, i_filt, _):
+
+        # retrieves the current text
+        nw_text = self.filt_widget[i_filt].filt_combo.currentText()
+
+        if len(nw_text):
+            # case is the field is not empty
+            if i_filt == 3:
+                # case is the numeric field
+
+                # determines if the new value is valid
+                nw_text = self.get_param_value(nw_text)
+                chk_val = cf.check_edit_num(nw_text)
+                if chk_val[1] is None:
+                    self.filt_opt[i_filt] = nw_text
+
+                elif self.filt_opt[i_filt] is None:
+                    # case is there is no previous value
+                    self.filt_widget[i_filt].filt_combo.setCurrentText("")
+
+                else:
+                    # otherwise, set the previous valid value
+                    self.filt_widget[i_filt].filt_combo.setCurrentText(self.filt_opt[i_filt])
+
+
+
+            else:
+                # case is the other filter type
+                self.filt_opt[i_filt] = nw_text
+        else:
+            # case is the field is empty
+            self.filt_opt[i_filt] = None
+
     def widget_clicked_event(self):
 
         self.frame_clicked.emit(self.i_filt)
@@ -237,6 +296,20 @@ class FilterBlock(QFrame):
         # Triggered when the frame is clicked
         self.frame_clicked.emit(self.i_filt)
         super().mousePressEvent(event)
+
+    def get_param_value(self, nw_text):
+
+        if nw_text in self.filt_widget[-1].param_map:
+            p_value = '%g' % self.map_func(self.filt_widget[-1].param_map[nw_text])
+
+            self.filt_widget[-1].filt_combo.blockSignals(True)
+            self.filt_widget[-1].filt_combo.setCurrentText(p_value)
+            self.filt_widget[-1].filt_combo.blockSignals(False)
+
+            return p_value
+
+        else:
+            return nw_text
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -259,6 +332,7 @@ class FilterManagerMixin:
         # creates the new filter object
         obj_filt_nw = FilterBlock(self.main_obj, self.n_filt)
         obj_filt_nw.frame_clicked.connect(self.frame_click_event)
+        obj_filt_nw.map_func = self.get_field
         self.filt_layout.addWidget(obj_filt_nw)
 
         # updates the other fields
@@ -303,8 +377,9 @@ class UnitFilterDialog(FilterManagerMixin, QDialog):
     n_filt_max = 6
 
     # font objects
-    tool_name = ['add', 'remove', 'close']
-    tool_lbl = ['Add Filter', 'Remove Filter', 'Clear All Filters']
+    tool_name = ['add', 'remove', 'close', None, 'tick', 'restart']
+    tool_lbl = ['Add Filter', 'Remove Filter', 'Clear All Filters',
+                None, 'Apply Filter', 'Reset Original']
     font_hdr = cw.create_font_obj(size=10, is_bold=True, font_weight=QFont.Weight.Bold)
 
     def __init__(self, main_obj):
@@ -361,16 +436,22 @@ class UnitFilterDialog(FilterManagerMixin, QDialog):
 
         # adds the toolbar action widget
         for t_n, t_l in zip(self.tool_name, self.tool_lbl):
-            # creates the action item
-            h_icon = QIcon(cw.icon_path[t_n])
-            h_action = QAction(h_icon, t_l, self)
-            self.tool_bar.addAction(h_action)
+            if t_n is None:
+                # case is a separator line
+                self.tool_bar.addSeparator()
 
-            # sets the action object properties
-            cb_fcn = pfcn(self.tool_bar_event, t_n)
-            h_action.setParent(self.tool_bar)
-            h_action.triggered.connect(cb_fcn)
-            h_action.setObjectName(t_n)
+            else:
+                # creates the action item
+                h_icon = QIcon(cw.icon_path[t_n])
+                h_action = QAction(h_icon, t_l, self)
+                self.tool_bar.addAction(h_action)
+
+                # sets the action object properties
+                cb_fcn = pfcn(self.tool_bar_event, t_n)
+                h_action.setParent(self.tool_bar)
+                h_action.triggered.connect(cb_fcn)
+                h_action.setObjectName(t_n)
+                h_action.setEnabled(False)
 
     def init_class_objects(self):
 
@@ -411,6 +492,14 @@ class UnitFilterDialog(FilterManagerMixin, QDialog):
                 # case is clearing all filters
                 pass
 
+            case 'tick':
+                # case is applying the filters
+                pass
+
+            case 'restart':
+                # case is resetting the original filter
+                pass
+
     def frame_click_event(self, i_filt_nw):
 
         # removes any existing highlight
@@ -420,6 +509,14 @@ class UnitFilterDialog(FilterManagerMixin, QDialog):
         # adds the newly clicked filter highlight
         self.i_filt_sel = i_filt_nw
         self.obj_filt[i_filt_nw].set_frame_highlight(True)
+
+    # ---------------------------------------------------------------------------
+    # Class Setter Functions
+    # ---------------------------------------------------------------------------
+
+    def set_toolbar_props(self):
+
+        pass
 
     # ---------------------------------------------------------------------------
     # Class Getter Functions
