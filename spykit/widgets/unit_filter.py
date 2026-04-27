@@ -11,13 +11,22 @@ import spykit.common.common_func as cf
 import spykit.common.common_widget as cw
 
 # pyqt6 module import
-from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QWidget, QGroupBox,
+from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QWidget, QGroupBox, QMessageBox,
                              QLabel, QFrame, QSpacerItem, QSizePolicy, QToolBar, QLineEdit)
 from PyQt6.QtCore import Qt, QSize, QEvent, pyqtSignal
 from PyQt6.QtGui import QFont, QAction, QIcon
 
 # widget dimensions
 x_gap = 5
+
+# filter condition dictionary
+filt_cond = {
+    'Less Than': '<',
+    'Less Than/Equal To': '<=',
+    'Greater Than': '>',
+    'Greater Than/Equal To': '>=',
+    'Is Not NaN': None
+}
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -103,8 +112,7 @@ class FilterWidget(QWidget):
 
                 case 'Condition':
                     # case is the filter condition
-                    p_list = ['Less Than', 'Less Than/Equal To', 'Greater Than',
-                              'Greater Than/Equal To', 'Is Not NaN']
+                    p_list = list(filt_cond.keys())
 
             self.filt_combo = cw.create_combo_box(None, text=[''] + p_list)
 
@@ -357,7 +365,7 @@ class FilterBlock(QFrame):
 
             # clears the filter widget fields
             self.filt_widget[i].blockSignals(True)
-            self.filt_widget[i].setCurrentIndex(0)
+            self.filt_widget[i].filt_combo.setCurrentIndex(0)
             self.filt_widget[i].blockSignals(False)
 
         # updates the menu item properties
@@ -370,6 +378,13 @@ class FilterBlock(QFrame):
 
         else:
             return ~np.any(self.filt_opt == None)
+
+    def delete(self):
+
+        for fw in self.filt_widget:
+            fw.deleteLater()
+
+        self.deleteLater()
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -406,17 +421,35 @@ class FilterManagerMixin:
         if reset_spacer:
             self.filt_layout.insertItem(self.n_filt, self.spacer)
 
-    def remove_filter_block(self, i_blk):
+    def remove_filter_block(self):
+
+        # removes the frame highlight
+        self.obj_filt[self.i_filt_sel].set_frame_highlight(False)
 
         # resets the filter index
-        for i in range((i_blk + 1), self.n_filt):
+        for i in range((self.i_filt_sel + 1), self.n_filt):
             self.obj_filt[i].set_filter_level(i - 1)
 
         # deletes the filter block
-        self.obj_filt[i_blk].delete()
-        self.obj_filt[i_blk].pop()
+        self.filt_layout.removeItem(self.spacer)
+        self.obj_filt[self.i_filt_sel].delete()
+        self.obj_filt.pop(self.i_filt_sel)
 
-    def clear_filter_blocks(self):
+        # resets the other class fields
+        self.n_filt -= 1
+        self.i_filt_sel = None
+
+        # re-adds the spacer item
+        self.filt_layout.insertItem(self.n_filt, self.spacer)
+
+    def clear_all_filter_blocks(self):
+
+        # prompts the user to confirm field clearing
+        q_str = 'Are you sure you want to clear all the filter fields?'
+        u_choice = QMessageBox.question(self, 'Clear Filter Fields?', q_str, cf.q_yes_no, cf.q_yes)
+        if u_choice == cf.q_no:
+            # exit if the user cancelled
+            return
 
         # deletes all filter blocks
         for i in reversed(range(self.n_filt)):
@@ -425,12 +458,25 @@ class FilterManagerMixin:
 
             else:
                 self.obj_filt[i].delete()
-                self.obj_filt[i].pop()
+                self.obj_filt.pop(i)
                 self.n_filt -= 1
 
-    def move_filter_block(self, i_blk, m_dir):
+    def move_filter_block(self, m_dir):
 
-        pass
+        # swaps the filter blocks
+        self.filt_layout.removeWidget(self.obj_filt[self.i_filt_sel])
+        self.filt_layout.insertWidget(self.i_filt_sel + m_dir, self.obj_filt[self.i_filt_sel])
+
+        # resets the filter block arrays
+        self.obj_filt[self.i_filt_sel + m_dir], self.obj_filt[self.i_filt_sel] = (
+            self.obj_filt[self.i_filt_sel], self.obj_filt[self.i_filt_sel + m_dir])
+
+        # resets the filter levels
+        self.obj_filt[self.i_filt_sel].set_filter_level(self.i_filt_sel)
+        self.obj_filt[self.i_filt_sel + m_dir].set_filter_level(self.i_filt_sel + m_dir)
+
+        # resets the filter index
+        self.i_filt_sel += m_dir
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -465,10 +511,15 @@ class UnitFilterDialog(FilterManagerMixin, QDialog):
         self.main_layout = QVBoxLayout()
         self.filt_layout = QVBoxLayout()
 
-        # memory allocation
+        # field retrieval
+        self.hist_map = cf.rev_dict(cw.hist_map)
+        self.q_met = self.main_obj.session_obj.get_metric_table_values()
+
+        # other class fields
         self.n_filt = 0
-        self.i_filt_sel = None
         self.obj_filt = []
+        self.is_filt0 = None
+        self.i_filt_sel = None
 
         # initialises the class fields/objects
         self.init_class_fields()
@@ -484,6 +535,11 @@ class UnitFilterDialog(FilterManagerMixin, QDialog):
         # main widget properties
         self.setLayout(self.main_layout)
         self.setWindowTitle('Unit Metric Filter')
+
+        # retrieves the current filtered items
+        unit_tab = self.main_obj.info_manager.get_info_tab('unit')
+        unit_tab.get_filtered_items()
+        self.is_filt0 = deepcopy(unit_tab.is_filt)
 
         # sets up the groupbox widget
         self.main_layout.addWidget(self.tool_bar)
@@ -551,15 +607,15 @@ class UnitFilterDialog(FilterManagerMixin, QDialog):
 
             case 'remove':
                 # case is removing a filter
-                pass
+                self.remove_filter_block()
 
             case 'close':
                 # case is clearing all filters
-                pass
+                self.clear_all_filter_blocks()
 
             case 'tick':
                 # case is applying the filters
-                pass
+                self.apply_unit_filter()
 
             case 'restart':
                 # case is resetting the original filter
@@ -567,11 +623,11 @@ class UnitFilterDialog(FilterManagerMixin, QDialog):
 
             case 'arrow_up':
                 # case is moving the filter up
-                pass
+                self.move_filter_block(-1)
 
             case 'arrow_down':
-                # case is moving the filter up
-                pass
+                # case is moving the filter down
+                self.move_filter_block(1)
 
         # updates the toolbar properties
         self.update_toolbar_props()
@@ -631,9 +687,51 @@ class UnitFilterDialog(FilterManagerMixin, QDialog):
 
         return self.main_obj.session_obj.get_mem_map_field(p_fld)
 
+    def get_filter_array(self):
+
+        return np.vstack([x.filt_opt for x in self.obj_filt])
+
     # ---------------------------------------------------------------------------
     # Class Setter Functions
     # ---------------------------------------------------------------------------
+
+    def apply_unit_filter(self):
+
+        # field retrieval
+        filt_opt_all = self.get_filter_array()
+
+        for i_filt in range(self.n_filt):
+            # applies the current filter block
+            is_filt_nw = self.filter_units(filt_opt_all[i_filt, :])
+
+            if i_filt == 0:
+                # case is the first filter row
+                is_filt = np.logical_and(is_filt_nw, self.is_filt0)
+
+            else:
+                # case is the other filter rows
+                if filt_opt_all[i_filt, 0] == 'OR':
+                    is_filt = np.logical_or(is_filt, is_filt_nw)
+                else:
+                    is_filt = np.logical_and(is_filt, is_filt_nw)
+
+        # returns the filtered index array
+        pass
+
+    def filter_units(self, filt_opt):
+
+        # field retrieval
+        filt_val = float(filt_opt[3])
+        q_met_filt = np.array(self.q_met[self.hist_map[filt_opt[1]]])
+
+        # applies the filter to the metric values
+        if filt_opt[2] == 'Is Not NaN':
+            # case is non-NaN values
+            return ~np.isnan(q_met_filt)
+
+        else:
+            # case is using a mathematical operator
+            return eval(f'q_met_filt {filt_cond[filt_opt[2]]} filt_val')
 
     def set_toolbar_enabled(self, t_type, state):
 
