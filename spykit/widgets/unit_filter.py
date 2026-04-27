@@ -12,12 +12,13 @@ import spykit.common.common_widget as cw
 
 # pyqt6 module import
 from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QWidget, QGroupBox, QMessageBox,
-                             QLabel, QFrame, QSpacerItem, QSizePolicy, QToolBar, QLineEdit)
+                             QLabel, QFrame, QSpacerItem, QSizePolicy, QToolBar, QLineEdit, QMenuBar)
 from PyQt6.QtCore import Qt, QSize, QEvent, pyqtSignal
 from PyQt6.QtGui import QFont, QAction, QIcon
 
 # widget dimensions
 x_gap = 5
+n_filt_fld = 4
 
 # filter condition dictionary
 filt_cond = {
@@ -175,10 +176,7 @@ class FilterBlock(QFrame):
     # pyqtsignal funcions
     groupbox_click = pyqtSignal()
     frame_clicked = pyqtSignal(int)
-    toolbar_update = pyqtSignal()
-
-    # scalar class fields
-    n_fld = 4
+    toolbar_update = pyqtSignal(bool)
 
     # fixes array fields
     t_lbl = ['Operator', 'Filter Metric', 'Condition', 'Comparison Value']
@@ -195,7 +193,7 @@ class FilterBlock(QFrame):
         self.map_func = None
         self.filt_widget = []
         self.main_layout = QHBoxLayout()
-        self.filt_opt = np.empty(self.n_fld, dtype=object)
+        self.filt_opt = np.empty(n_filt_fld, dtype=object)
 
         # creates the filter block widget
         self.create_filter_block()
@@ -284,7 +282,7 @@ class FilterBlock(QFrame):
             self.filt_opt[i_filt] = None
 
         # updates the menu item properties
-        self.toolbar_update.emit()
+        self.toolbar_update.emit(True)
 
     def widget_clicked_event(self):
 
@@ -306,11 +304,7 @@ class FilterBlock(QFrame):
 
         if nw_text in self.filt_widget[-1].param_map:
             p_value = '%g' % self.map_func(self.filt_widget[-1].param_map[nw_text])
-
-            self.filt_widget[-1].filt_combo.blockSignals(True)
-            self.filt_widget[-1].filt_combo.setCurrentText(p_value)
-            self.filt_widget[-1].filt_combo.blockSignals(False)
-
+            self.set_filt_widget_value(p_value, n_filt_fld - 1)
             return p_value
 
         else:
@@ -353,13 +347,26 @@ class FilterBlock(QFrame):
             self.main_layout.insertWidget(0, self.filt_widget[0])
             self.filt_widget[0].setVisible(True)
 
+    def set_filter_options(self, filt_opt_nw):
+
+        for i_fld in range(n_filt_fld):
+            if filt_opt_nw[i_fld] is not None:
+                self.filt_opt[i_fld] = filt_opt_nw[i_fld]
+                self.set_filt_widget_value(filt_opt_nw[i_fld], i_fld)
+
+    def set_filt_widget_value(self, p_value, i_fld):
+
+        self.filt_widget[i_fld].filt_combo.blockSignals(True)
+        self.filt_widget[i_fld].filt_combo.setCurrentText(p_value)
+        self.filt_widget[i_fld].filt_combo.blockSignals(False)
+
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
     # ---------------------------------------------------------------------------
 
     def clear_block(self):
 
-        for i in range(self.n_fld):
+        for i in range(n_filt_fld):
             # resets the field options
             self.filt_opt[i] = None
 
@@ -485,15 +492,20 @@ class FilterManagerMixin:
 """
 
 class UnitFilterDialog(FilterManagerMixin, QDialog):
+    # pyqtsignal functions
+    apply_filter = pyqtsignal(object)
+
     # widget dimensions
     x_gap = 5
     n_filt_max = 6
 
-    # font objects
-    tool_name = ['add', 'remove', 'close', None, 'tick',
+    # toolbar properties
+    tool_name = ['open', 'save', None, 'add', 'remove', 'close', None, 'tick',
                  'restart', None, 'arrow_up', 'arrow_down']
-    tool_lbl = ['Add Filter', 'Remove Filter', 'Clear All Filters', None,
-                'Apply Filter', 'Reset Original', None, 'Move Up', 'Move Down']
+    tool_lbl = ['Open Filter', 'Save Filter', None, 'Add Filter', 'Remove Filter', 'Clear All Filters',
+                None, 'Apply Filter', 'Reset Original', None, 'Move Up', 'Move Down']
+
+    # font objects
     font_hdr = cw.create_font_obj(size=10, is_bold=True, font_weight=QFont.Weight.Bold)
 
     def __init__(self, main_obj):
@@ -503,6 +515,15 @@ class UnitFilterDialog(FilterManagerMixin, QDialog):
         # input arguments
         self.main_obj = main_obj
 
+        # other class fields
+        self.filt_opt = np.empty((1, n_filt_fld), dtype=object)
+
+        # field retrieval
+        self.hist_map = cf.rev_dict(cw.hist_map)
+        self.q_met = self.main_obj.session_obj.get_metric_table_values()
+
+    def open_dialog(self):
+
         # class widget setup
         self.tool_bar = QToolBar(self)
         self.filt_group = QGroupBox("FILTER CONDITIONS")
@@ -511,20 +532,18 @@ class UnitFilterDialog(FilterManagerMixin, QDialog):
         self.main_layout = QVBoxLayout()
         self.filt_layout = QVBoxLayout()
 
-        # field retrieval
-        self.hist_map = cf.rev_dict(cw.hist_map)
-        self.q_met = self.main_obj.session_obj.get_metric_table_values()
-
         # other class fields
         self.n_filt = 0
         self.obj_filt = []
-        self.is_filt0 = None
         self.i_filt_sel = None
 
         # initialises the class fields/objects
         self.init_class_fields()
         self.init_tool_bar()
         self.init_class_objects()
+
+        # shows the dialog window
+        self.show()
 
     # ---------------------------------------------------------------------------
     # Class Initialisation Functions
@@ -537,9 +556,9 @@ class UnitFilterDialog(FilterManagerMixin, QDialog):
         self.setWindowTitle('Unit Metric Filter')
 
         # retrieves the current filtered items
-        unit_tab = self.main_obj.info_manager.get_info_tab('unit')
-        unit_tab.get_filtered_items()
-        self.is_filt0 = deepcopy(unit_tab.is_filt)
+        # unit_tab = self.main_obj.info_manager.get_info_tab('unit')
+        # unit_tab.get_filtered_items()
+        # self.is_filt0 = deepcopy(unit_tab.is_filt)
 
         # sets up the groupbox widget
         self.main_layout.addWidget(self.tool_bar)
@@ -575,12 +594,13 @@ class UnitFilterDialog(FilterManagerMixin, QDialog):
                 h_action.setParent(self.tool_bar)
                 h_action.triggered.connect(cb_fcn)
                 h_action.setObjectName(t_n)
-                h_action.setEnabled(False)
+                h_action.setEnabled(t_n == 'open')
 
     def init_class_objects(self):
 
         # adds the first filter block
         self.add_filter_block(False)
+        self.obj_filt[0].set_filter_options(self.filt_opt[0, :])
 
         # creates the group height
         sz_hint_grp = self.filt_group.sizeHint()
@@ -594,6 +614,11 @@ class UnitFilterDialog(FilterManagerMixin, QDialog):
                                   QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Maximum)
         self.filt_layout.addItem(self.spacer)
 
+        # creates the other filter blocks
+        for i_filt in range(1, self.filt_opt.shape[0]):
+            self.add_filter_block()
+            self.obj_filt[i_filt].set_filter_options(self.filt_opt[i_filt, :])
+
     # ---------------------------------------------------------------------------
     # Class Widget Event Functions
     # ---------------------------------------------------------------------------
@@ -601,6 +626,14 @@ class UnitFilterDialog(FilterManagerMixin, QDialog):
     def tool_bar_event(self, t_type):
 
         match t_type:
+            case 'open':
+                # case is opening a filter
+                pass
+
+            case 'save':
+                # case is saving a filter
+                pass
+
             case 'add':
                 # case is adding a filter
                 self.add_filter_block()
@@ -630,7 +663,7 @@ class UnitFilterDialog(FilterManagerMixin, QDialog):
                 self.move_filter_block(1)
 
         # updates the toolbar properties
-        self.update_toolbar_props()
+        self.update_toolbar_props(False)
 
     def frame_click_event(self, i_filt_nw):
 
@@ -643,17 +676,17 @@ class UnitFilterDialog(FilterManagerMixin, QDialog):
         self.obj_filt[i_filt_nw].set_frame_highlight(True)
 
         # updates the toolbar properties
-        self.update_toolbar_props()
+        self.update_toolbar_props(False)
 
     # ---------------------------------------------------------------------------
     # Dialog Toolbar Functions
     # ---------------------------------------------------------------------------
 
-    def update_toolbar_props(self):
+    def update_toolbar_props(self, update_opt):
 
         # add/apply filter toolbar items
         all_filt_set = self.is_all_filter_complete()
-        for tn in ['add', 'tick']:
+        for tn in ['add', 'tick', 'save']:
            self.set_toolbar_enabled(tn, all_filt_set)
 
         # remove filter toolbar item
@@ -679,6 +712,10 @@ class UnitFilterDialog(FilterManagerMixin, QDialog):
                               ((self.i_filt_sel + 1) < self.n_filt))
         self.set_toolbar_enabled('arrow_down', can_move_down_filt)
 
+        # updates the
+        if update_opt:
+            self.get_filter_options()
+
     # ---------------------------------------------------------------------------
     # Class Getter Functions
     # ---------------------------------------------------------------------------
@@ -687,9 +724,9 @@ class UnitFilterDialog(FilterManagerMixin, QDialog):
 
         return self.main_obj.session_obj.get_mem_map_field(p_fld)
 
-    def get_filter_array(self):
+    def get_filter_options(self):
 
-        return np.vstack([x.filt_opt for x in self.obj_filt])
+        self.filt_opt = np.vstack([x.filt_opt for x in self.obj_filt])
 
     # ---------------------------------------------------------------------------
     # Class Setter Functions
@@ -697,16 +734,21 @@ class UnitFilterDialog(FilterManagerMixin, QDialog):
 
     def apply_unit_filter(self):
 
-        # field retrieval
-        filt_opt_all = self.get_filter_array()
+        # if the filter hasn't been completed, then accept all units
+        if not self.is_all_filter_complete():
+            return np.ones(self.get_field('n_unit'), dtype=bool)
+
+        # # retrieves the filter array
+        # self.get_filter_options()
 
         for i_filt in range(self.n_filt):
             # applies the current filter block
-            is_filt_nw = self.filter_units(filt_opt_all[i_filt, :])
+            is_filt_nw = self.filter_units(self.filt_opt[i_filt, :])
 
             if i_filt == 0:
                 # case is the first filter row
-                is_filt = np.logical_and(is_filt_nw, self.is_filt0)
+                is_filt = is_filt_nw
+                # is_filt = np.logical_and(is_filt_nw, self.is_filt0)
 
             else:
                 # case is the other filter rows
@@ -715,8 +757,7 @@ class UnitFilterDialog(FilterManagerMixin, QDialog):
                 else:
                     is_filt = np.logical_and(is_filt, is_filt_nw)
 
-        # returns the filtered index array
-        pass
+        self.apply_filter.emit(is_filt)
 
     def filter_units(self, filt_opt):
 

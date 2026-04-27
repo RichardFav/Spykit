@@ -818,6 +818,9 @@ class MenuBar(QObject):
         self.menu_bar = None
         self.tool_bar = None
 
+        # REMOVE ME LATER
+        self.filt_dlg = None
+
         # initialises the class fields
         self.init_class_fields()
 
@@ -1643,9 +1646,10 @@ class MenuBar(QObject):
 
     def run_filter_test(self):
 
-        h_dlg = UnitFilterDialog(self.main_obj)
-        h_dlg.exec()
-        a = 1
+        if self.filt_dlg is None:
+            self.filt_dlg = UnitFilterDialog(self.main_obj)
+
+        self.filt_dlg.open_dialog()
 
     # ---------------------------------------------------------------------------
     # File I/O Functions
