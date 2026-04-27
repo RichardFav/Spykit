@@ -167,7 +167,7 @@ class FilterBlock(QFrame):
     # pyqtsignal funcions
     groupbox_click = pyqtSignal()
     frame_clicked = pyqtSignal(int)
-    menu_update = pyqtSignal(str, bool)
+    toolbar_update = pyqtSignal()
 
     # scalar class fields
     n_fld = 4
@@ -276,7 +276,7 @@ class FilterBlock(QFrame):
             self.filt_opt[i_filt] = None
 
         # updates the menu item properties
-        self.menu_update.emit('add', self.is_filter_complete())
+        self.toolbar_update.emit()
 
     def widget_clicked_event(self):
 
@@ -286,6 +286,8 @@ class FilterBlock(QFrame):
 
         # Triggered when the frame is clicked
         self.frame_clicked.emit(self.i_filt)
+
+        # runs the widget event function
         super().mousePressEvent(event)
 
     # ---------------------------------------------------------------------------
@@ -358,6 +360,9 @@ class FilterBlock(QFrame):
             self.filt_widget[i].setCurrentIndex(0)
             self.filt_widget[i].blockSignals(False)
 
+        # updates the menu item properties
+        self.toolbar_update.emit()
+
     def is_filter_complete(self):
 
         if self.i_filt == 0:
@@ -390,7 +395,7 @@ class FilterManagerMixin:
 
         # sets the slot/function handles
         obj_filt_nw.frame_clicked.connect(self.frame_click_event)
-        obj_filt_nw.menu_update.connect(self.set_toolbar_props)
+        obj_filt_nw.toolbar_update.connect(self.update_toolbar_props)
         obj_filt_nw.map_func = self.get_field
 
         # updates the other fields
@@ -543,7 +548,6 @@ class UnitFilterDialog(FilterManagerMixin, QDialog):
             case 'add':
                 # case is adding a filter
                 self.add_filter_block()
-                self.set_toolbar_props(t_type, False)
 
             case 'remove':
                 # case is removing a filter
@@ -569,6 +573,9 @@ class UnitFilterDialog(FilterManagerMixin, QDialog):
                 # case is moving the filter up
                 pass
 
+        # updates the toolbar properties
+        self.update_toolbar_props()
+
     def frame_click_event(self, i_filt_nw):
 
         # removes any existing highlight
@@ -578,6 +585,43 @@ class UnitFilterDialog(FilterManagerMixin, QDialog):
         # adds the newly clicked filter highlight
         self.i_filt_sel = i_filt_nw
         self.obj_filt[i_filt_nw].set_frame_highlight(True)
+
+        # updates the toolbar properties
+        self.update_toolbar_props()
+
+    # ---------------------------------------------------------------------------
+    # Dialog Toolbar Functions
+    # ---------------------------------------------------------------------------
+
+    def update_toolbar_props(self):
+
+        # add/apply filter toolbar items
+        all_filt_set = self.is_all_filter_complete()
+        for tn in ['add', 'tick']:
+           self.set_toolbar_enabled(tn, all_filt_set)
+
+        # remove filter toolbar item
+        can_remove_filt = ((self.i_filt_sel is not None) and
+                           (self.n_filt > 1))
+        self.set_toolbar_enabled('remove', can_remove_filt)
+
+        # clear all filters toolbar item
+        can_clear_filt = self.has_any_filter_set()
+        self.set_toolbar_enabled('close', can_clear_filt)
+
+        # reset original toolbar item
+        can_reset_filt = False
+        self.set_toolbar_enabled('restart', can_reset_filt)
+
+        # move filter up toolbar item
+        can_move_up_filt = ((self.i_filt_sel is not None) and
+                            (self.i_filt_sel > 0))
+        self.set_toolbar_enabled('arrow_up', can_move_up_filt)
+
+        # move filter down toolbar item
+        can_move_down_filt = ((self.i_filt_sel is not None) and
+                              ((self.i_filt_sel + 1) < self.n_filt))
+        self.set_toolbar_enabled('arrow_down', can_move_down_filt)
 
     # ---------------------------------------------------------------------------
     # Class Getter Functions
@@ -591,7 +635,15 @@ class UnitFilterDialog(FilterManagerMixin, QDialog):
     # Class Setter Functions
     # ---------------------------------------------------------------------------
 
-    def set_toolbar_props(self, t_type, state):
+    def set_toolbar_enabled(self, t_type, state):
 
         h_action = self.findChild(QAction, name=t_type)
         h_action.setEnabled(state)
+
+    def is_all_filter_complete(self):
+
+        return np.all([x.is_filter_complete() for x in self.obj_filt])
+
+    def has_any_filter_set(self):
+
+        return (self.n_filt > 1) or np.any(self.obj_filt[0].filt_opt != None)
