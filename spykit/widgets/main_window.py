@@ -1649,7 +1649,7 @@ class MenuBar(QObject):
         if self.filt_dlg is None:
             self.filt_dlg = UnitFilterDialog(self.main_obj)
 
-        self.filt_dlg.open_dialog()
+        self.filt_dlg.show_dialog()
 
     # ---------------------------------------------------------------------------
     # File I/O Functions

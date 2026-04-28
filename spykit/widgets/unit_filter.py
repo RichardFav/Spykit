@@ -350,9 +350,17 @@ class FilterBlock(QFrame):
     def set_filter_options(self, filt_opt_nw):
 
         for i_fld in range(n_filt_fld):
-            if filt_opt_nw[i_fld] is not None:
-                self.filt_opt[i_fld] = filt_opt_nw[i_fld]
+            self.filt_opt[i_fld] = filt_opt_nw[i_fld]
+            if filt_opt_nw[i_fld] is None:
+                self.set_filt_widget_index(0, i_fld)
+            else:
                 self.set_filt_widget_value(filt_opt_nw[i_fld], i_fld)
+
+    def set_filt_widget_index(self, p_index, i_fld):
+
+        self.filt_widget[i_fld].filt_combo.blockSignals(True)
+        self.filt_widget[i_fld].filt_combo.setCurrentIndex(p_index)
+        self.filt_widget[i_fld].filt_combo.blockSignals(False)
 
     def set_filt_widget_value(self, p_value, i_fld):
 
@@ -376,7 +384,7 @@ class FilterBlock(QFrame):
             self.filt_widget[i].blockSignals(False)
 
         # updates the menu item properties
-        self.toolbar_update.emit()
+        self.toolbar_update.emit(False)
 
     def is_filter_complete(self):
 
@@ -428,6 +436,9 @@ class FilterManagerMixin:
         if reset_spacer:
             self.filt_layout.insertItem(self.n_filt, self.spacer)
 
+        # resets the toolbar properties
+        self.update_toolbar_props(False)
+
     def remove_filter_block(self):
 
         # removes the frame highlight
@@ -442,12 +453,18 @@ class FilterManagerMixin:
         self.obj_filt[self.i_filt_sel].delete()
         self.obj_filt.pop(self.i_filt_sel)
 
+        # deletes the filter option
+        self.filt_opt = np.delete(self.filt_opt, self.i_filt_sel, 0)
+
+        # re-adds the spacer item
+        self.filt_layout.insertItem(self.n_filt, self.spacer)
+
         # resets the other class fields
         self.n_filt -= 1
         self.i_filt_sel = None
 
-        # re-adds the spacer item
-        self.filt_layout.insertItem(self.n_filt, self.spacer)
+        # resets the toolbar properties
+        self.update_toolbar_props(False)
 
     def clear_all_filter_blocks(self):
 
@@ -462,11 +479,17 @@ class FilterManagerMixin:
         for i in reversed(range(self.n_filt)):
             if i == 0:
                 self.obj_filt[i].clear_block()
+                self.filt_opt[0, :] = None
 
             else:
+                self.filt_opt = np.delete(self.filt_opt, i, 0)
                 self.obj_filt[i].delete()
                 self.obj_filt.pop(i)
+
                 self.n_filt -= 1
+
+        # resets the toolbar properties
+        self.update_toolbar_props(False)
 
     def move_filter_block(self, m_dir):
 
@@ -475,15 +498,61 @@ class FilterManagerMixin:
         self.filt_layout.insertWidget(self.i_filt_sel + m_dir, self.obj_filt[self.i_filt_sel])
 
         # resets the filter block arrays
-        self.obj_filt[self.i_filt_sel + m_dir], self.obj_filt[self.i_filt_sel] = (
-            self.obj_filt[self.i_filt_sel], self.obj_filt[self.i_filt_sel + m_dir])
+        self.reorder_array_elements(self.obj_filt, m_dir)
+        self.reorder_array_elements(self.filt_opt, m_dir)
 
         # resets the filter levels
         self.obj_filt[self.i_filt_sel].set_filter_level(self.i_filt_sel)
         self.obj_filt[self.i_filt_sel + m_dir].set_filter_level(self.i_filt_sel + m_dir)
 
-        # resets the filter index
+        # resets the filter index and toolbar properties
         self.i_filt_sel += m_dir
+        self.update_toolbar_props(False)
+
+    def reset_filter_blocks(self):
+
+        # field retrieval
+        n_filt0 = self.filt_opt0.shape[0]
+
+        # removes block highlight
+        self.remove_block_highlight()
+
+        # resets the original filter blocks
+        for i_filt in range(n_filt0):
+            # adds a filter block (if required)
+            if i_filt == self.n_filt:
+                self.add_filter_block()
+
+            # resets the original filter options
+            self.obj_filt[i_filt].set_filter_options(self.filt_opt0[i_filt, :])
+
+        if n_filt0 < self.n_filt:
+            # removes any extraneous filter blocks
+            for i_filt in reversed(range(n_filt0, self.n_filt)):
+                self.i_filt_sel = i_filt
+                self.remove_filter_block()
+
+            # resets the selected block index
+            self.i_filt_sel = None
+
+        # resets the filter options and toolbar properties
+        self.filt_opt = deepcopy(self.filt_opt0)
+        self.update_toolbar_props(False)
+
+    # ---------------------------------------------------------------------------
+    # Miscellaneous Functions
+    # ---------------------------------------------------------------------------
+
+    def reorder_array_elements(self, A, m_dir):
+
+        if isinstance(A, list):
+            A[self.i_filt_sel + m_dir], A[self.i_filt_sel] = (
+                A[self.i_filt_sel], A[self.i_filt_sel + m_dir])
+        else:
+            A[[self.i_filt_sel + m_dir, self.i_filt_sel]] = (
+                A[[self.i_filt_sel, self.i_filt_sel + m_dir]])
+
+        return A
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -493,7 +562,7 @@ class FilterManagerMixin:
 
 class UnitFilterDialog(FilterManagerMixin, QDialog):
     # pyqtsignal functions
-    apply_filter = pyqtsignal(object)
+    apply_filter = pyqtSignal(object)
 
     # widget dimensions
     x_gap = 5
@@ -516,13 +585,12 @@ class UnitFilterDialog(FilterManagerMixin, QDialog):
         self.main_obj = main_obj
 
         # other class fields
+        self.filt_opt0 = None
         self.filt_opt = np.empty((1, n_filt_fld), dtype=object)
 
         # field retrieval
         self.hist_map = cf.rev_dict(cw.hist_map)
         self.q_met = self.main_obj.session_obj.get_metric_table_values()
-
-    def open_dialog(self):
 
         # class widget setup
         self.tool_bar = QToolBar(self)
@@ -541,9 +609,6 @@ class UnitFilterDialog(FilterManagerMixin, QDialog):
         self.init_class_fields()
         self.init_tool_bar()
         self.init_class_objects()
-
-        # shows the dialog window
-        self.show()
 
     # ---------------------------------------------------------------------------
     # Class Initialisation Functions
@@ -600,7 +665,6 @@ class UnitFilterDialog(FilterManagerMixin, QDialog):
 
         # adds the first filter block
         self.add_filter_block(False)
-        self.obj_filt[0].set_filter_options(self.filt_opt[0, :])
 
         # creates the group height
         sz_hint_grp = self.filt_group.sizeHint()
@@ -614,10 +678,16 @@ class UnitFilterDialog(FilterManagerMixin, QDialog):
                                   QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Maximum)
         self.filt_layout.addItem(self.spacer)
 
-        # creates the other filter blocks
-        for i_filt in range(1, self.filt_opt.shape[0]):
-            self.add_filter_block()
-            self.obj_filt[i_filt].set_filter_options(self.filt_opt[i_filt, :])
+    def show_dialog(self):
+
+        # creates a copy of the filter options
+        self.filt_opt0 = deepcopy(self.filt_opt)
+
+        # resets the toolbar properties
+        self.update_toolbar_props(False)
+
+        # displays the dialog window
+        self.show()
 
     # ---------------------------------------------------------------------------
     # Class Widget Event Functions
@@ -652,7 +722,7 @@ class UnitFilterDialog(FilterManagerMixin, QDialog):
 
             case 'restart':
                 # case is resetting the original filter
-                pass
+                self.reset_filter_blocks()
 
             case 'arrow_up':
                 # case is moving the filter up
@@ -684,6 +754,10 @@ class UnitFilterDialog(FilterManagerMixin, QDialog):
 
     def update_toolbar_props(self, update_opt):
 
+        # updates the filter options
+        if update_opt:
+            self.get_filter_options()
+
         # add/apply filter toolbar items
         all_filt_set = self.is_all_filter_complete()
         for tn in ['add', 'tick', 'save']:
@@ -699,7 +773,7 @@ class UnitFilterDialog(FilterManagerMixin, QDialog):
         self.set_toolbar_enabled('close', can_clear_filt)
 
         # reset original toolbar item
-        can_reset_filt = False
+        can_reset_filt = not np.array_equal(self.filt_opt, self.filt_opt0)
         self.set_toolbar_enabled('restart', can_reset_filt)
 
         # move filter up toolbar item
@@ -712,24 +786,8 @@ class UnitFilterDialog(FilterManagerMixin, QDialog):
                               ((self.i_filt_sel + 1) < self.n_filt))
         self.set_toolbar_enabled('arrow_down', can_move_down_filt)
 
-        # updates the
-        if update_opt:
-            self.get_filter_options()
-
     # ---------------------------------------------------------------------------
-    # Class Getter Functions
-    # ---------------------------------------------------------------------------
-
-    def get_field(self, p_fld):
-
-        return self.main_obj.session_obj.get_mem_map_field(p_fld)
-
-    def get_filter_options(self):
-
-        self.filt_opt = np.vstack([x.filt_opt for x in self.obj_filt])
-
-    # ---------------------------------------------------------------------------
-    # Class Setter Functions
+    # Unit Filtering Functions
     # ---------------------------------------------------------------------------
 
     def apply_unit_filter(self):
@@ -774,15 +832,47 @@ class UnitFilterDialog(FilterManagerMixin, QDialog):
             # case is using a mathematical operator
             return eval(f'q_met_filt {filt_cond[filt_opt[2]]} filt_val')
 
-    def set_toolbar_enabled(self, t_type, state):
+    def has_any_filter_set(self):
 
-        h_action = self.findChild(QAction, name=t_type)
-        h_action.setEnabled(state)
+        return (self.n_filt > 1) or np.any(self.obj_filt[0].filt_opt != None)
 
     def is_all_filter_complete(self):
 
         return np.all([x.is_filter_complete() for x in self.obj_filt])
 
-    def has_any_filter_set(self):
+    # ---------------------------------------------------------------------------
+    # Class Getter Functions
+    # ---------------------------------------------------------------------------
 
-        return (self.n_filt > 1) or np.any(self.obj_filt[0].filt_opt != None)
+    def get_field(self, p_fld):
+
+        return self.main_obj.session_obj.get_mem_map_field(p_fld)
+
+    def get_filter_options(self):
+
+        self.filt_opt = np.vstack([x.filt_opt for x in self.obj_filt])
+
+    # ---------------------------------------------------------------------------
+    # Class Setter Functions
+    # ---------------------------------------------------------------------------
+
+    def set_toolbar_enabled(self, t_type, state):
+
+        h_action = self.findChild(QAction, name=t_type)
+        h_action.setEnabled(state)
+
+    # ---------------------------------------------------------------------------
+    # Miscellaneous Functions
+    # ---------------------------------------------------------------------------
+
+    def remove_block_highlight(self):
+
+        # removes the frame highlight (if selected)
+        if self.i_filt_sel is not None:
+            self.obj_filt[self.i_filt_sel].set_frame_highlight(False)
+            self.i_filt_sel = None
+
+    def closeEvent(self, event):
+
+        self.remove_block_highlight()
+        event.accept()
