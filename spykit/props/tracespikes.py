@@ -8,6 +8,7 @@ from functools import partial as pfcn
 import spykit.common.common_func as cf
 import spykit.common.common_widget as cw
 from spykit.props.utils import PropWidget, PropPara
+from spykit.widgets.unit_filter import UnitFilterDialog
 
 # pyqt imports
 from PyQt6.QtWidgets import QAbstractItemView, QSpinBox, QHeaderView, QTableWidgetItem
@@ -427,6 +428,15 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
     norm_item_flag = Qt.ItemFlag.ItemIsEnabled
     check_item_flag = norm_item_flag | Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsSelectable
 
+    # editbox style sheet
+    button_style_sheet = """
+        border-radius: 2px; 
+        border: 1px solid; 
+    """
+
+    # widget dimensions
+    hght_but = 22
+
     def __init__(self, main_obj):
         # sets the input arguments
         self.main_obj = main_obj
@@ -445,19 +455,24 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
         # self.unit_label = cw.QLabelText(None, lbl_str="Selected Unit:", text_str='N/A',
         #                                 font_lbl=cw.font_lbl, font_txt=cw.font_lbl)
         self.table = cw.QInfoTable(None, self.type, False)
+        self.filt_but = cw.create_push_button(None, 'Open Unit Filter', cw.font_lbl)
         self.spinbox_spike = self.findChild(cw.QLabelSpinbox, name='i_spike')
 
-        # other class fields
-        self.plot_view = None
+        # boolean class fields
         self.is_updating = False
         self.is_marker_init = False
         self.markers_cleared = False
+
+        # other class fields
+        self.filt_dlg = None
+        self.plot_view = None
 
         # other class fields
         self.h_spike = {}
         self.i_unit_sp = {}
         self.i_frm_pr = None
         self.i_row_sel = None
+        self.type_filt = None
 
         self.in_win = None
         self.i_spike_win = None
@@ -471,7 +486,7 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
     def init_other_class_fields(self):
 
         # column indices
-        self.i_col_tupe = self.c_hdr.index('Unit Type')
+        self.i_col_type = self.c_hdr.index('Unit Type')
         self.i_col_unit = self.c_hdr.index('Unit')
         self.i_col_ch = self.c_hdr.index('Channel')
         self.i_col_count = self.c_hdr.index('Count')
@@ -480,6 +495,7 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
         self.f_layout.setSpacing(5)
         # self.f_layout.addWidget(self.unit_label)
         self.f_layout.addWidget(self.table)
+        self.f_layout.addWidget(self.filt_but)
 
         # connects the editbox slot functions
         self.p_props.edit_update.connect(self.edit_update)
@@ -501,13 +517,18 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
         table_hdr.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
         table_hdr.setStretchLastSection(True)
 
-        # sets the other widget properties
-        self.spinbox_spike.set_enabled(False)
-
         # table function callback function
         self.table.cellChanged.connect(self.table_cell_changed)
         self.table.currentCellChanged.connect(self.table_cell_clicked)
         self.table.blockSignals(True)
+
+        # sets the filter button properties
+        self.filt_but.setFixedHeight(self.hght_but)
+        self.filt_but.setStyleSheet(self.button_style_sheet)
+        self.filt_but.clicked.connect(self.open_filt_dlg)
+
+        # sets the other widget properties
+        self.spinbox_spike.set_enabled(False)
 
     def setup_prop_fields(self):
 
@@ -673,7 +694,6 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
             # updates the last unit to be delected (should run callback)
             self.table.item(i_ch_match[-1], 0).setCheckState(cf.chk_state[False])
 
-
     def clear_all_channel_selections(self):
 
         # field retrieval
@@ -743,6 +763,14 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
         # resets the spike trace view
         self.reset_spike_trace_view()
 
+    def open_filt_dlg(self):
+
+        if self.filt_dlg is None:
+            self.filt_dlg = UnitFilterDialog(self.main_obj)
+            self.filt_dlg.apply_filter.connect(self.apply_unit_filter)
+
+        self.filt_dlg.show_dialog()
+
     def table_cell_clicked(self, i_row=None, i_col=None):
 
         if self.is_updating:
@@ -800,20 +828,16 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
         self.reset_spike_markers()
 
     # ---------------------------------------------------------------------------
-    # Class Setter Functions
+    # Unit Filter Functions
     # ---------------------------------------------------------------------------
 
-    def toggle_row_highlight(self, i_row):
+    def apply_unit_filter(self):
 
-        if self.i_row_sel is not None:
-            if self.i_row_sel == i_row:
-                # if no change then exit
-                return
-            else:
-                # removes any previous highlights
-                self.set_row_highlight(False)
+        self.set_table_rows()
 
-        self.set_row_highlight(True, i_row)
+    # ---------------------------------------------------------------------------
+    # Class Setter Functions
+    # ---------------------------------------------------------------------------
 
     def set_trace_view(self, trace_view_new):
 
@@ -836,10 +860,24 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
         # removes signal block
         self.table.blockSignals(False)
 
-    def set_table_rows(self, is_filt):
+    def set_table_rows(self, type_filt_nw=None):
 
-        for i_row in range(self.get_data().shape[0]):
-            self.table.setRowHidden(i_row, not is_filt[i_row])
+        # field retrieval
+        n_row = self.get_data().shape[0]
+
+        if type_filt_nw is not None:
+            self.type_filt = type_filt_nw
+        elif self.type_filt is None:
+            self.type_filt = np.ones(self.get_data().shape[0], dtype=bool)
+
+        if self.filt_dlg is None:
+            unit_filt = np.ones(n_row, dtype=bool)
+        else:
+            unit_filt = self.filt_dlg.get_filtered_units()
+
+        tot_filt = np.logical_and(self.type_filt, unit_filt)
+        for i_row in range(n_row):
+            self.table.setRowHidden(i_row, not tot_filt[i_row])
 
     def set_row_highlight(self, is_highlight_on, i_row_sel=None):
 
@@ -933,6 +971,18 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
     # ---------------------------------------------------------------------------
+
+    def toggle_row_highlight(self, i_row):
+
+        if self.i_row_sel is not None:
+            if self.i_row_sel == i_row:
+                # if no change then exit
+                return
+            else:
+                # removes any previous highlights
+                self.set_row_highlight(False)
+
+        self.set_row_highlight(True, i_row)
 
     def update_spike_data_fields(self):
 

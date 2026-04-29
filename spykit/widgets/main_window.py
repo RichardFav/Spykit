@@ -34,7 +34,7 @@ from spykit.widgets.open_session import OpenSession
 from spykit.widgets.default_dir import DefaultDir
 from spykit.widgets.save_prep import SavePrep
 from spykit.widgets.spike_sorting import SpikeSortingDialog
-from spykit.widgets.unit_filter import UnitFilterDialog
+# from spykit.widgets.unit_filter import UnitFilterDialog
 
 # spikewrap module import
 from spikewrap.configs._backend import canon
@@ -963,9 +963,9 @@ class MenuBar(QObject):
         # ---------------------------------------------------------------------------
 
         # initialisations
-        p_str = ['run_bombcell', 'clear_bombcell', 'filter_test']
-        p_lbl = ['Run BombCell', 'Clear Postprocessing', 'Filter Test']
-        cb_fcn = [self.run_bomb_cell, self.clear_bomb_cell, self.run_filter_test]
+        p_str = ['run_bombcell', 'clear_bombcell']
+        p_lbl = ['Run BombCell', 'Clear Postprocessing']
+        cb_fcn = [self.run_bomb_cell, self.clear_bomb_cell]
 
         # adds the preprocessing menu items
         self.add_menu_items(h_menu_posp, p_lbl, cb_fcn, p_str, False)
@@ -1643,13 +1643,6 @@ class MenuBar(QObject):
             # re-runs the solution file selection callback function
             pp_tab = self.main_obj.prop_manager.get_prop_tab('postprocess')
             pp_tab.soln_combo_change(pp_tab.soln_combo.obj_cbox)
-
-    def run_filter_test(self):
-
-        if self.filt_dlg is None:
-            self.filt_dlg = UnitFilterDialog(self.main_obj)
-
-        self.filt_dlg.show_dialog()
 
     # ---------------------------------------------------------------------------
     # File I/O Functions

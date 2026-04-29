@@ -460,8 +460,8 @@ class FilterManagerMixin:
         self.filt_layout.insertItem(self.n_filt, self.spacer)
 
         # resets the other class fields
-        self.n_filt -= 1
         self.i_filt_sel = None
+        self.n_filt -= 1
 
         # resets the toolbar properties
         self.update_toolbar_props(False)
@@ -485,11 +485,11 @@ class FilterManagerMixin:
                 self.filt_opt = np.delete(self.filt_opt, i, 0)
                 self.obj_filt[i].delete()
                 self.obj_filt.pop(i)
-
                 self.n_filt -= 1
 
         # resets the toolbar properties
         self.update_toolbar_props(False)
+        self.apply_filter.emit()
 
     def move_filter_block(self, m_dir):
 
@@ -552,8 +552,6 @@ class FilterManagerMixin:
             A[[self.i_filt_sel + m_dir, self.i_filt_sel]] = (
                 A[[self.i_filt_sel, self.i_filt_sel + m_dir]])
 
-        return A
-
 # ----------------------------------------------------------------------------------------------------------------------
 
 """
@@ -562,7 +560,7 @@ class FilterManagerMixin:
 
 class UnitFilterDialog(FilterManagerMixin, QDialog):
     # pyqtsignal functions
-    apply_filter = pyqtSignal(object)
+    apply_filter = pyqtSignal()
 
     # widget dimensions
     x_gap = 5
@@ -586,11 +584,13 @@ class UnitFilterDialog(FilterManagerMixin, QDialog):
 
         # other class fields
         self.filt_opt0 = None
+        # self.session_obj = self.main_obj.session_obj
+        self.session_obj = self.main_obj.main_obj.session_obj
         self.filt_opt = np.empty((1, n_filt_fld), dtype=object)
 
         # field retrieval
         self.hist_map = cf.rev_dict(cw.hist_map)
-        self.q_met = self.main_obj.session_obj.get_metric_table_values()
+        self.q_met = self.session_obj.get_metric_table_values()
 
         # class widget setup
         self.tool_bar = QToolBar(self)
@@ -718,7 +718,7 @@ class UnitFilterDialog(FilterManagerMixin, QDialog):
 
             case 'tick':
                 # case is applying the filters
-                self.apply_unit_filter()
+                self.apply_filter.emit()
 
             case 'restart':
                 # case is resetting the original filter
@@ -790,32 +790,29 @@ class UnitFilterDialog(FilterManagerMixin, QDialog):
     # Unit Filtering Functions
     # ---------------------------------------------------------------------------
 
-    def apply_unit_filter(self):
+    def get_filtered_units(self):
 
-        # if the filter hasn't been completed, then accept all units
-        if not self.is_all_filter_complete():
-            return np.ones(self.get_field('n_unit'), dtype=bool)
+        if self.is_all_filter_complete():
+            # case is all filter options are set up correctly
+            for i_filt in range(self.n_filt):
+                # applies the current filter block
+                is_filt_nw = self.filter_units(self.filt_opt[i_filt, :])
 
-        # # retrieves the filter array
-        # self.get_filter_options()
+                if i_filt == 0:
+                    # case is the first filter row
+                    is_filt = is_filt_nw
 
-        for i_filt in range(self.n_filt):
-            # applies the current filter block
-            is_filt_nw = self.filter_units(self.filt_opt[i_filt, :])
-
-            if i_filt == 0:
-                # case is the first filter row
-                is_filt = is_filt_nw
-                # is_filt = np.logical_and(is_filt_nw, self.is_filt0)
-
-            else:
-                # case is the other filter rows
-                if filt_opt_all[i_filt, 0] == 'OR':
-                    is_filt = np.logical_or(is_filt, is_filt_nw)
                 else:
-                    is_filt = np.logical_and(is_filt, is_filt_nw)
+                    # case is the other filter rows
+                    if filt_opt_all[i_filt, 0] == 'OR':
+                        is_filt = np.logical_or(is_filt, is_filt_nw)
+                    else:
+                        is_filt = np.logical_and(is_filt, is_filt_nw)
+        else:
+            # otherwise, set accept all units (no filtering)
+            is_filt = np.ones(self.get_field('n_unit'), dtype=bool)
 
-        self.apply_filter.emit(is_filt)
+        return is_filt
 
     def filter_units(self, filt_opt):
 
@@ -846,7 +843,7 @@ class UnitFilterDialog(FilterManagerMixin, QDialog):
 
     def get_field(self, p_fld):
 
-        return self.main_obj.session_obj.get_mem_map_field(p_fld)
+        return self.session_obj.get_mem_map_field(p_fld)
 
     def get_filter_options(self):
 
