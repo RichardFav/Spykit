@@ -907,6 +907,7 @@ class BombCellSolver(BombCellPara, QDialog):
 
         # initialises the bombcell fields
         self.init_bomb_cell()
+        self.setModal(True)
 
     # ---------------------------------------------------------------------------
     # Class Widget Initialisation Functions
@@ -1163,6 +1164,10 @@ class BombCellSolver(BombCellPara, QDialog):
         # resets the button properties
         self.is_running = False
         self.set_button_props(True)
+
+        # resets the progressbar
+        time.sleep(0.5)
+        self.prog_bar.set_progbar_state(False)
 
     def run_solver(self):
 
