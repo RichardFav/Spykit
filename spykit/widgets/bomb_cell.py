@@ -313,100 +313,6 @@ class BombCellSolver(QDialog):
         }
     """
 
-    def __init__(self, main_obj, expt_dir=None):
-        super(BombCellSolver, self).__init__(main_obj)
-
-        # input arguments
-        self.main_obj = main_obj
-        self.expt_dir = expt_dir
-
-        # class widgets
-        self.h_tab_para = []
-        self.cont_button = []
-        self.fspec_group = QGroupBox("EXPERIMENT PARENT FOLDER")
-        self.para_group = QGroupBox("SOLVER PARAMETERS")
-        self.para_tab = cw.create_tab_group(None)
-        self.prog_bar = cw.QDialogProgress(font=cw.font_lbl, is_task=True)
-        self.progress_frame = QFrame()
-        self.button_frame = QFrame()
-        self.solver_timer = QTimer()
-
-        # class layouts
-        self.main_layout = QVBoxLayout()
-        self.fspec_layout = QHBoxLayout()
-        self.para_layout = QVBoxLayout()
-        self.progress_layout = QVBoxLayout()
-        self.button_layout = QHBoxLayout()
-
-        # boolean class fields
-        self.has_bc = False
-        self.init_complete = False
-        self.is_updating = False
-        self.is_running = False
-        self.can_close = False
-        self.is_new_soln = False
-
-        # folder/file path fields
-        self.mmap_file = None
-
-        # other class fields
-        self.i_tab = 0
-        self.i_run = 1
-        self.i_unit = 0
-        self.bc_pkg = None
-        self.bc_para_c = None
-        self.hght_dlg = 6 * self.x_gap + (self.hght_fspec + self.hght_para + self.hght_button)
-
-        # initialises the class fields
-        self.init_class_fields()
-        self.init_fspec_group()
-        self.init_para_group()
-        self.init_progress_frame()
-        self.init_cont_buttons()
-
-        # initialises the bombcell fields
-        self.init_bomb_cell()
-
-        # sets the widget style sheets
-        self.set_style_sheets()
-
-    # ---------------------------------------------------------------------------
-    # Class Property Widget Setup Functions
-    # ---------------------------------------------------------------------------
-
-    def init_class_fields(self):
-
-        # sets the dialog window properties
-        self.setFixedSize(self.width_dlg, self.hght_dlg)
-        self.setWindowTitle('BombCell Solver')
-        self.setLayout(self.main_layout)
-
-        # adds the main group widgets to the dialog
-        self.main_layout.addWidget(self.fspec_group)
-        self.main_layout.addWidget(self.para_group)
-        self.main_layout.addWidget(self.progress_frame)
-        self.main_layout.addWidget(self.button_frame)
-
-        # solver timer callback function
-        self.solver_timer.timeout.connect(self.solver_timer_fcn)
-
-    def init_bomb_cell(self):
-
-        # updates the progressbar
-        self.prog_bar.set_label("Initialising BombCell")
-        self.prog_bar.set_progbar_state(True)
-        time.sleep(0.1)
-
-        # creates the threadworker object
-        self.t_worker = ThreadWorker(self, self.init_bombcell_solver, None)
-        self.t_worker.work_finished.connect(self.bombcell_solver_init_complete)
-
-        # starts the worker object
-        self.prog_bar.is_task = True
-        self.prog_bar.timer_lbl = True
-        self.is_running = True
-        self.t_worker.start()
-
     def init_fspec_group(self):
 
         # creates the groupbox object
@@ -501,10 +407,6 @@ class BombCellSolver(QDialog):
 
         pass
 
-    # ---------------------------------------------------------------------------
-    # BombCell Solver Functions
-    # ---------------------------------------------------------------------------
-
     def init_bombcell_solver(self, _):
 
         # initialises the bombcell package
@@ -521,6 +423,104 @@ class BombCellSolver(QDialog):
 
         # other class field initialisations
         self.bc_pkg_fcn('setClassField', 'useSpykit', True)
+
+    # ---------------------------------------------------------------------------
+    # BombCell Solver Functions
+    # ---------------------------------------------------------------------------
+
+    def __init__(self, main_obj, expt_dir=None):
+        super(BombCellSolver, self).__init__(main_obj)
+
+        # input arguments
+        self.main_obj = main_obj
+        self.expt_dir = expt_dir
+
+        # class widgets
+        self.h_tab_para = []
+        self.cont_button = []
+        self.fspec_group = QGroupBox("EXPERIMENT PARENT FOLDER")
+        self.para_group = QGroupBox("SOLVER PARAMETERS")
+        self.para_tab = cw.create_tab_group(None)
+        self.prog_bar = cw.QDialogProgress(font=cw.font_lbl, is_task=True)
+        self.progress_frame = QFrame()
+        self.button_frame = QFrame()
+        self.solver_timer = QTimer()
+
+        # class layouts
+        self.main_layout = QVBoxLayout()
+        self.fspec_layout = QHBoxLayout()
+        self.para_layout = QVBoxLayout()
+        self.progress_layout = QVBoxLayout()
+        self.button_layout = QHBoxLayout()
+
+        # boolean class fields
+        self.has_bc = False
+        self.init_complete = False
+        self.is_updating = False
+        self.is_running = False
+        self.can_close = False
+        self.is_new_soln = False
+
+        # folder/file path fields
+        self.mmap_file = None
+
+        # other class fields
+        self.i_tab = 0
+        self.i_run = 1
+        self.i_unit = 0
+        self.bc_pkg = None
+        self.bc_para_c = None
+        self.hght_dlg = 6 * self.x_gap + (self.hght_fspec + self.hght_para + self.hght_button)
+
+        # initialises the class fields
+        self.init_class_fields()
+        self.init_fspec_group()
+        self.init_para_group()
+        self.init_progress_frame()
+        self.init_cont_buttons()
+
+        # initialises the bombcell fields
+        self.init_bomb_cell()
+
+        # sets the widget style sheets
+        self.set_style_sheets()
+
+    # ---------------------------------------------------------------------------
+    # Class Property Widget Setup Functions
+    # ---------------------------------------------------------------------------
+
+    def init_class_fields(self):
+
+        # sets the dialog window properties
+        self.setFixedSize(self.width_dlg, self.hght_dlg)
+        self.setWindowTitle('BombCell Solver')
+        self.setLayout(self.main_layout)
+
+        # adds the main group widgets to the dialog
+        self.main_layout.addWidget(self.fspec_group)
+        self.main_layout.addWidget(self.para_group)
+        self.main_layout.addWidget(self.progress_frame)
+        self.main_layout.addWidget(self.button_frame)
+
+        # solver timer callback function
+        self.solver_timer.timeout.connect(self.solver_timer_fcn)
+
+    def init_bomb_cell(self):
+
+        # updates the progressbar
+        self.prog_bar.set_label("Initialising BombCell")
+        self.prog_bar.set_progbar_state(True)
+        time.sleep(0.1)
+
+        # creates the threadworker object
+        self.t_worker = ThreadWorker(self, self.init_bombcell_solver, None)
+        self.t_worker.work_finished.connect(self.bombcell_solver_init_complete)
+
+        # starts the worker object
+        self.prog_bar.is_task = True
+        self.prog_bar.timer_lbl = True
+        self.is_running = True
+        self.t_worker.start()
 
     def bombcell_solver_init_complete(self):
 

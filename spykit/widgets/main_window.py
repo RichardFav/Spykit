@@ -28,13 +28,13 @@ from spykit.props.utils import PropManager
 from spykit.common.property_classes import SessionWorkBook
 from spykit.common.postprocess import PostMemMap
 from spykit.info.preprocess import PreprocessSetup, pp_flds
-from spykit.widgets.bomb_cell import BombCellSolver
 from spykit.threads.utils import ThreadWorker
 from spykit.widgets.open_session import OpenSession
 from spykit.widgets.default_dir import DefaultDir
 from spykit.widgets.save_prep import SavePrep
 from spykit.widgets.spike_sorting import SpikeSortingDialog
-# from spykit.widgets.unit_filter import UnitFilterDialog
+from spykit.widgets.bomb_cell import BombCellSolver
+# from spykit.widgets.bomb_cell_python import BombCellSolver
 
 # spikewrap module import
 from spikewrap.configs._backend import canon
