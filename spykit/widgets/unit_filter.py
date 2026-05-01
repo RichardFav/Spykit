@@ -1,6 +1,7 @@
 # module import
 import os
 import time
+import pickle
 import numpy as np
 from pathlib import Path
 from copy import deepcopy
@@ -475,6 +476,9 @@ class FilterManagerMixin:
             # exit if the user cancelled
             return
 
+        # removes any block highlights
+        self.remove_block_highlight()
+
         # deletes all filter blocks
         for i in reversed(range(self.n_filt)):
             if i == 0:
@@ -532,12 +536,56 @@ class FilterManagerMixin:
                 self.i_filt_sel = i_filt
                 self.remove_filter_block()
 
-            # resets the selected block index
-            self.i_filt_sel = None
-
         # resets the filter options and toolbar properties
         self.filt_opt = deepcopy(self.filt_opt0)
         self.update_toolbar_props(False)
+
+    # ---------------------------------------------------------------------------
+    # Filter Option I/O Functions
+    # ---------------------------------------------------------------------------
+
+    def load_filter_options(self):
+
+        # field initialisation
+        f_title = "Select Filter File"
+        f_mode = cw.f_mode["filter"]
+        def_dir = cw.get_def_dir("filter")
+
+        # prompts the user for the filter option file
+        file_dlg = cw.FileDialogModal(
+            None, f_title, f_mode, str(def_dir), is_save=False,
+        )
+        if file_dlg.exec() != QDialog.DialogCode.Accepted:
+            # exit if the user cancelled
+            return None
+
+        # outputs the filter options to file
+        file_path = cf.get_selected_file_path(file_dlg, f_mode)
+        with open(file_path, 'rb') as f:
+            self.filt_opt0 = pickle.load(f)
+
+        # resets the filter blocks
+        self.reset_filter_blocks()
+
+    def save_filter_options(self):
+
+        # field initialisation
+        f_title = "Set File Name"
+        f_mode = cw.f_mode["filter"]
+        def_dir = cw.get_def_dir("filter")
+
+        # prompts the user for the filter option file
+        file_dlg = cw.FileDialogModal(
+            None, f_title, f_mode, str(def_dir), is_save=True,
+        )
+        if file_dlg.exec() != QDialog.DialogCode.Accepted:
+            # exit if the user cancelled
+            return None
+
+        # outputs the filter options to file
+        file_path = cf.get_selected_file_path(file_dlg, f_mode)
+        with open(file_path, 'wb') as f:
+            pickle.dump(self.filt_opt, f)
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
@@ -569,7 +617,7 @@ class UnitFilterDialog(FilterManagerMixin, QDialog):
     # toolbar properties
     tool_name = ['open', 'save', None, 'add', 'remove', 'close', None, 'tick',
                  'restart', None, 'arrow_up', 'arrow_down']
-    tool_lbl = ['Open Filter', 'Save Filter', None, 'Add Filter', 'Remove Filter', 'Clear All Filters',
+    tool_lbl = ['Load Filter', 'Save Filter', None, 'Add Filter', 'Remove Filter', 'Clear All Filters',
                 None, 'Apply Filter', 'Reset Original', None, 'Move Up', 'Move Down']
 
     # font objects
@@ -619,6 +667,7 @@ class UnitFilterDialog(FilterManagerMixin, QDialog):
         # main widget properties
         self.setLayout(self.main_layout)
         self.setWindowTitle('Unit Metric Filter')
+        self.setModal(True)
 
         # retrieves the current filtered items
         # unit_tab = self.main_obj.info_manager.get_info_tab('unit')
@@ -698,11 +747,11 @@ class UnitFilterDialog(FilterManagerMixin, QDialog):
         match t_type:
             case 'open':
                 # case is opening a filter
-                pass
+                self.load_filter_options()
 
             case 'save':
                 # case is saving a filter
-                pass
+                self.save_filter_options()
 
             case 'add':
                 # case is adding a filter
@@ -804,7 +853,7 @@ class UnitFilterDialog(FilterManagerMixin, QDialog):
 
                 else:
                     # case is the other filter rows
-                    if filt_opt_all[i_filt, 0] == 'OR':
+                    if self.filt_opt[i_filt, 0] == 'OR':
                         is_filt = np.logical_or(is_filt, is_filt_nw)
                     else:
                         is_filt = np.logical_and(is_filt, is_filt_nw)

@@ -225,7 +225,7 @@ class TraceSpikeMixin:
             if ~np.any(ii):
                 continue
 
-            #
+            # sets up the spike coordinates array
             i_spike_ch = i_spike_unit[ii]
             spike_cluster_ch = spike_cluster_unit[ii]
             for j_ch in np.unique(spike_cluster_ch):

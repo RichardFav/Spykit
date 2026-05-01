@@ -129,6 +129,7 @@ f_mode = {
     'session': "Spykit Session File (*.ssf)",
     'trigger': "Experiment Trigger File (*.npy)",
     'config': "Spike Pipeline Config File (*.cfig)",
+    'filter': "Unit Filter Options (*.filt)",
 }
 
 f_name = {
