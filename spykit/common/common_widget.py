@@ -319,7 +319,7 @@ cell_height = 25
 t_span_min = 0.01
 t_span_max = 0.5
 
-def create_font_obj(size=9, is_bold=False, font_weight=QFont.Weight.Normal):
+def create_font_obj(size=8, is_bold=False, font_weight=QFont.Weight.Normal):
     # creates the font object
     font = QFont(font_base)
 
@@ -3280,7 +3280,7 @@ class QDialogProgress(QWidget):
         self.layout.addWidget(self.prog_bar)
 
         # sets the label properties
-        self.lbl_obj.setContentsMargins(0, x_gap+2, 0, 0)
+        self.lbl_obj.setContentsMargins(0, 2 * x_gap, 0, 0)
         self.lbl_obj.setFixedWidth(self.lbl_width)
 
         # sets the progressbar properties
@@ -3926,7 +3926,7 @@ def create_spin_box(parent, value, font=None, align='center', name=None):
 def create_push_button(parent, text, font=None, name=None):
     # creates a default font object (if not provided)
     if font is None:
-        font = create_font_obj()
+        font = create_font_obj(size=9)
 
     # creates the button object
     h_button = QPushButton(parent)
@@ -4012,7 +4012,7 @@ def create_radio_button(parent, text, state, font=None, name=None):
 def create_tab_group(parent, font=None, name=None):
     # creates a default font object (if not provided)
     if font is None:
-        font = create_font_obj()
+        font = create_font_obj(size=9)
 
     # creates the tab object
     h_tab_grp = QTabWidget(parent)
