@@ -220,6 +220,7 @@ class TriggerProps(PropWidget):
         self.table_region.verticalHeader().setVisible(False)
         self.table_region.cellChanged.connect(self.table_changed)
         self.table_region.cellClicked.connect(self.table_selected)
+        self.table_region.resizeRowsToContents()
 
         # sets the button properties
         self.button_pair.set_enabled(1, False)
@@ -227,9 +228,10 @@ class TriggerProps(PropWidget):
         # resets the section resize mode
         horz_hdr = self.table_region.horizontalHeader()
         horz_hdr.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        horz_hdr.setStyleSheet(cw.table_horz_hdr_style)
 
+        # updates the table header font
         for i_col in range(n_col):
-            # updates the table header font
             self.table_region.horizontalHeaderItem(i_col).setFont(self.table_hdr_font)
 
         # flag initialisation is complete
@@ -451,6 +453,8 @@ class TriggerProps(PropWidget):
             # adds the item to the table
             item.setTextAlignment(cf.align_type['center'])
             self.table_region.setItem(self.n_row - 1, i_col, item)
+
+        self.table_region.resizeRowsToContents()
 
     def delete_region(self, i_run, i_row):
 

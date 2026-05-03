@@ -189,7 +189,8 @@ class InfoManager(QWidget):
 
             # appends the tab to the tab group
             self.tab_group_table.addTab(tab_widget, t_lbl)
-            self.tab_group_table.setTabEnabled(i_tab, self.tab_show[i_tab])
+            self.set_tab_enabled(i_tab, self.tab_show[i_tab])
+            self.set_tab_visible(i_tab, self.tab_show[i_tab])
 
     def init_channel_comboboxes(self, data_list=None, run_list=None, shank_list=None):
 
@@ -573,7 +574,6 @@ class InfoManager(QWidget):
         unit_tab = self.get_info_tab('unit')
 
         # disables the table
-        # self.set_tab_enabled('unit', False)
         self.set_tab_visible('unit', False)
         unit_tab.table.hide()
 
@@ -595,6 +595,7 @@ class InfoManager(QWidget):
         # enables the unit tab
         unit_tab.table.show()
         self.set_tab_visible('unit', True)
+        self.set_tab_enabled('unit', True)
 
         return []
 
@@ -929,7 +930,7 @@ class InfoManager(QWidget):
 
         # updates the table flag
         self.tab_show[i_tab] = s_flag
-        self.tab_group_table.setTabVisibles(i_tab, s_flag)
+        self.tab_group_table.setTabVisible(i_tab, s_flag)
 
     def get_info_tab(self, tab_type):
 

@@ -257,7 +257,7 @@ class TraceSpikeMixin:
 
     def reset_spike_trace_view(self):
 
-        if not self.is_table_init:
+        if (not self.is_table_init) or (self.i_row_sel is None):
             return
 
         # field retrieval
@@ -894,7 +894,7 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
             self.set_table_row_colour(i_row_sel, 'selected')
             self.i_row_sel = i_row_sel
 
-        else:
+        elif (self.i_row_sel is not None):
             # row highlight is turned off
             i_unit = int(self.table.item(self.i_row_sel, self.i_col_unit).text()) - 1
             c_stat = self.get_data('Unit Type')[i_unit]

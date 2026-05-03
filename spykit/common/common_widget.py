@@ -73,6 +73,10 @@ table_style = """
         font: {font} 6px;
         font-weight: 1000;
     }}
+    QHeaderView::section {{
+        background-color: lightgray;
+        color: black;
+    }}    
 """.format(font=font_base)
 
 # editbox style sheet
@@ -105,6 +109,14 @@ combo_style_sheet = """
 tab_widget_style_sheet = """
     QTabBar::tab:selected { 
         font-weight: bold; 
+    }
+"""
+
+# table horizontal header style
+table_horz_hdr_style = """
+    QHeaderView::section {
+        background-color: lightgray;
+        color: black;
     }
 """
 
@@ -2044,6 +2056,9 @@ class QInfoTable(QTableWidget):
         if use_chk:
             table_header = CheckTableHeader(self)
             self.setHorizontalHeader(table_header)
+
+        # horizontal header properties
+        h_header = self.horizontalHeader()
 
         # resets the channel table style
         table_style_chk = CheckBoxStyle(self.style())
