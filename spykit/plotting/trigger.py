@@ -387,7 +387,7 @@ class TriggerPlot(PlotWidget):
         else:
             # otherwise, reset regions based on region proceeding next
             x_reg1_post = self.l_reg_xs[i_run][i_reg1 + 1].getRegion()
-            l_reg1.setBounds([x_reg0[1], x_reg1_post])
+            l_reg1.setBounds([x_reg0[1], x_reg1_post[0]])
 
     def reset_ximage_scale(self):
 

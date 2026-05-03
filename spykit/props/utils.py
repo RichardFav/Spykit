@@ -981,7 +981,7 @@ class PropWidget(QWidget):
                 # creates the label/combobox widget combo
                 lbl_str = '{0}: '.format(ps['name'])
                 obj_chklist = cw.QLabelCheckCombo(None, lbl_str, ps['p_list'], index_on=ps['value'],
-                                                  name=p_name, font=cw.font_lbl)
+                                                  name=p_name, font=cw.font_lbl, n_rows=len(ps['p_list']))
 
                 for lbl, is_on in zip(ps['p_list'], ps['value']):
                     obj_chklist.add_item(lbl, is_on)

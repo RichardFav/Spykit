@@ -257,6 +257,9 @@ class TraceSpikeMixin:
 
     def reset_spike_trace_view(self):
 
+        if not self.is_table_init:
+            return
+
         # field retrieval
         i_unit = self.get_unit_index(self.i_row_sel) - 1
         i_spike = int(self.get_para_value('i_spike')) - 1
@@ -460,6 +463,7 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
 
         # boolean class fields
         self.is_updating = False
+        self.is_table_init = False
         self.is_marker_init = False
         self.markers_cleared = False
 
@@ -589,6 +593,7 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
 
         # flag that manual update is taking place
         self.is_updating = True
+        self.is_table_init = True
         time.sleep(0.05)
 
         # clears the table model
@@ -695,6 +700,9 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
             self.table.item(i_ch_match[-1], 0).setCheckState(cf.chk_state[False])
 
     def clear_all_channel_selections(self):
+
+        if not self.is_table_init:
+            return
 
         # field retrieval
         n_run, n_shank = self.is_filt.shape

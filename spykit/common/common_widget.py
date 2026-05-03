@@ -2642,7 +2642,7 @@ class QCheckCombo(QComboBox):
     # pyqtsignal functions
     item_clicked = pyqtSignal(QStandardItem)
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, n_rows=10):
         super(QCheckCombo, self).__init__(parent)
         self.view().pressed.connect(self.item_press)
         self.view().clicked.connect(self.item_click)
@@ -2655,6 +2655,7 @@ class QCheckCombo(QComboBox):
 
         # sets the widget model and event functions
         self.combo_model = QStandardItemModel(self)
+        self.setMaxVisibleItems(n_rows)
 
         # creates the checkbox object
         self.setFixedHeight(cf.combo_height)
@@ -2781,7 +2782,7 @@ class QLabelCheckCombo(QWidget):
     item_clicked = pyqtSignal(QStandardItem)
     checklist_change = pyqtSignal(QCheckCombo)
 
-    def __init__(self, parent=None, lbl=None, text=None, index_on=None, font=None, name=None):
+    def __init__(self, parent=None, lbl=None, text=None, index_on=None, font=None, name=None, n_rows=10):
         super(QLabelCheckCombo, self).__init__(parent)
 
         # field initialisation
@@ -2807,7 +2808,7 @@ class QLabelCheckCombo(QWidget):
         self.combo_model = QStandardItemModel(self)
 
         # creates the checkbox object
-        self.h_combo = QCheckCombo(self)
+        self.h_combo = QCheckCombo(self, n_rows=n_rows)
         self.h_combo.item_clicked.connect(self.check_update)
 
         if name is not None:
@@ -4130,6 +4131,6 @@ def get_unit_col(u_type, alpha=128):
 # ----------------------------------------------------------------------------------------------------------------------
 
 # label/header font objects
-font_lbl = create_font_obj(is_bold=True, font_weight=QFont.Weight.Bold)
-font_hdr = create_font_obj(size=9, is_bold=True, font_weight=QFont.Weight.Bold)
-font_panel = create_font_obj(size=9, is_bold=True, font_weight=QFont.Weight.Bold)
+font_lbl = create_font_obj(size=9, is_bold=True, font_weight=QFont.Weight.Bold)
+font_hdr = create_font_obj(size=10, is_bold=True, font_weight=QFont.Weight.Bold)
+font_panel = create_font_obj(size=10, is_bold=True, font_weight=QFont.Weight.Bold)

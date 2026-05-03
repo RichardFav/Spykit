@@ -573,7 +573,8 @@ class InfoManager(QWidget):
         unit_tab = self.get_info_tab('unit')
 
         # disables the table
-        self.set_tab_enabled('unit', False)
+        # self.set_tab_enabled('unit', False)
+        self.set_tab_visible('unit', False)
         unit_tab.table.hide()
 
         # table data retrieval
@@ -593,7 +594,7 @@ class InfoManager(QWidget):
 
         # enables the unit tab
         unit_tab.table.show()
-        self.set_tab_enabled('unit', True)
+        self.set_tab_visible('unit', True)
 
         return []
 
@@ -920,6 +921,15 @@ class InfoManager(QWidget):
         # updates the table flag
         self.tab_show[i_tab] = s_flag
         self.tab_group_table.setTabEnabled(i_tab, s_flag)
+
+    def set_tab_visible(self, i_tab, s_flag):
+
+        if isinstance(i_tab, str):
+            i_tab = self.t_types.index(i_tab)
+
+        # updates the table flag
+        self.tab_show[i_tab] = s_flag
+        self.tab_group_table.setTabVisibles(i_tab, s_flag)
 
     def get_info_tab(self, tab_type):
 

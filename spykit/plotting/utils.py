@@ -211,9 +211,11 @@ class PlotManager(QWidget):
         self.reset_trace_views(2)
 
         # updates the trace spike markers (if removing channel selection)
-        if (not value) and (self.main_obj.session_obj.post_data.n_mmap > 0):
-            spike_tab = self.main_obj.prop_manager.get_prop_tab('tracespike')
-            spike_tab.clear_table_channel_selections(i_row[0] + 1)
+        if (self.main_obj.session_obj.post_data.n_mmap > 0):
+            for i_r, v in zip(i_row, value):
+                if not v:
+                    spike_tab = self.main_obj.prop_manager.get_prop_tab('tracespike')
+                    spike_tab.clear_table_channel_selections(i_r[0] + 1)
 
     def trace_highlight(self, is_on, i_contact=None):
 

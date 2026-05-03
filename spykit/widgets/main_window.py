@@ -1634,7 +1634,7 @@ class MenuBar(QObject):
 
             # clear the units from probe-view
             self.main_obj.plot_manager.get_plot_view('probe').clear_unit_markers()
-            self.main_obj.info_manager.set_tab_enabled('unit', False)
+            self.main_obj.info_manager.set_tab_visible('unit', False)
 
             # disable menu items
             self.set_menu_enabled_blocks('clear-postprocess')
