@@ -93,8 +93,9 @@ class TraceViewProps(PropWidget):
         self.main_obj = main_obj
 
         # field initialisation
-        self.is_updating = False
+        self.data_flds = None
         self.trace_view = None
+        self.is_updating = False
         self.t_dur = np.round(self.main_obj.main_obj.session_obj.session_props.t_dur, cf.n_dp)
 
         # initialises the property widget

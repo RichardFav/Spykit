@@ -82,9 +82,9 @@ class UnitInfoTab(InfoWidget):
         # plot option widgets
         self.opt_widget = QWidget()
         self.opt_layout = QGridLayout()
-        self.status_filter = QLabelCheckCombo(None, lbl="Unit Type Filter:", font=font_lbl)
         self.run_type = QLabelCombo(None, 'Session Run:', None, font_lbl=font_lbl)
         self.shank_type = QLabelCombo(None, "Recording Shank:", None, font_lbl=font_lbl)
+        self.status_filter = QLabelCheckCombo(None, lbl="Unit Type Filter:", font=font_lbl)
         self.unit_label = QLabelText(None, lbl_str="Selected Unit:", text_str='N/A',
                                      font_lbl=font_lbl, font_txt=font_lbl)
 
@@ -104,12 +104,12 @@ class UnitInfoTab(InfoWidget):
         self.opt_widget.setContentsMargins(0, 0, 0, 0)
 
         # adds the widgets to the layout widget
-        self.opt_layout.addWidget(self.status_filter.h_lbl, 0, 0, 1, 1)
-        self.opt_layout.addWidget(self.status_filter.h_combo, 0, 1, 1, 1)
-        self.opt_layout.addWidget(self.run_type.obj_lbl, 1, 0, 1, 1)
-        self.opt_layout.addWidget(self.run_type.obj_cbox, 1, 1, 1, 1)
-        self.opt_layout.addWidget(self.shank_type.obj_lbl, 2, 0, 1, 1)
-        self.opt_layout.addWidget(self.shank_type.obj_cbox, 2, 1, 1, 1)
+        self.opt_layout.addWidget(self.run_type.obj_lbl, 0, 0, 1, 1)
+        self.opt_layout.addWidget(self.run_type.obj_cbox, 0, 1, 1, 1)
+        self.opt_layout.addWidget(self.shank_type.obj_lbl, 1, 0, 1, 1)
+        self.opt_layout.addWidget(self.shank_type.obj_cbox, 1, 1, 1, 1)
+        self.opt_layout.addWidget(self.status_filter.h_lbl, 2, 0, 1, 1)
+        self.opt_layout.addWidget(self.status_filter.h_combo, 2, 1, 1, 1)
         self.opt_layout.addWidget(self.unit_label.obj_lbl, 3, 0, 1, 1)
         self.opt_layout.addWidget(self.unit_label.obj_txt, 3, 1, 1, 1)
 
@@ -199,7 +199,7 @@ class UnitInfoTab(InfoWidget):
 
         # field retrieval
         s_obj = self.main_obj.session_obj
-        is_per_shank = s_obj.is_per_shank()
+        is_per_shank = s_obj.is_per_shank(False)
         is_concat_run = s_obj.is_concat_run()
         run_list = ['Concatenated Run'] if is_concat_run else s_obj.session.get_run_names()
 
@@ -214,7 +214,7 @@ class UnitInfoTab(InfoWidget):
         self.run_type.set_enabled((not is_concat_run) and (len(run_list) > 1))
 
         # sets the shank type comobobox properties
-        self.shank_type.addItems(s_obj.get_shank_names(), True)
+        self.shank_type.addItems(s_obj.get_shank_names(is_per_shank), True)
         self.shank_type.set_current_index(0)
         self.shank_type.set_enabled(is_per_shank)
 

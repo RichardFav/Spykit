@@ -360,10 +360,10 @@ class SessionWorkBook(QObject):
         ch_info = self.get_channel_info()
         return ch_info['shank_ids']
 
-    def get_shank_names(self, per_shank=None):
+    def get_shank_names(self, per_shank=None, check_raw=True):
 
         if per_shank is None:
-            per_shank = self.is_per_shank()
+            per_shank = self.is_per_shank(check_raw)
 
         if per_shank:
             # if there is more than one shank, then separate out the names
@@ -388,8 +388,9 @@ class SessionWorkBook(QObject):
     def get_sorting_folder_paths(self, f_type=''):
 
         # field retrieval
+        per_shank = self.is_per_shank(False)
         is_concat_run = self.is_concat_run()
-        n_shank = self.get_shank_count() if self.is_per_shank() else 1
+        n_shank = self.get_shank_count() if per_shank else 1
         n_run = 1 if is_concat_run else self.session.get_run_count()
 
         # determines path of sorting output directory exists
@@ -431,7 +432,7 @@ class SessionWorkBook(QObject):
             f_path_nw = os.path.join(str(base_dir), base_path, r_name, 'sorting')
 
             # case specific folder path update
-            if self.is_per_shank():
+            if per_shank:
                 # case is a multi-shank session
                 for i_shank in range(n_shank):
                     # if there is a match, then exit the inner loop
@@ -617,7 +618,10 @@ class SessionWorkBook(QObject):
             return False
 
         elif check_raw and (not self.has_pp_runs()):
-            return self.has_pp_runs() and self.session.prep_obj.per_shank
+            if self.has_pp_runs() or (self.post_data is not None):
+                return self.session.prep_obj.per_shank
+            else:
+                return False
             # return (not self.is_raw_run()) and self.session.prep_obj.per_shank
 
         else:
