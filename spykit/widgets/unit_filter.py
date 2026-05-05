@@ -13,7 +13,7 @@ import spykit.common.common_widget as cw
 
 # pyqt6 module import
 from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QWidget, QGroupBox, QMessageBox,
-                             QLabel, QFrame, QSpacerItem, QSizePolicy, QToolBar, QLineEdit, QMenuBar)
+                             QLabel, QFrame, QSpacerItem, QSizePolicy, QToolBar, QLineEdit, QMenuBar, QApplication)
 from PyQt6.QtCore import Qt, QSize, QEvent, pyqtSignal
 from PyQt6.QtGui import QFont, QAction, QIcon
 
@@ -131,8 +131,10 @@ class FilterWidget(QWidget):
         # adds the widget to the layout
         self.filt_combo.setObjectName(self.f_lbl)
         self.filt_combo.setFixedHeight(self.widget_hght)
-        self.filt_layout.addWidget(self.filt_combo)
         self.filt_combo.setStyleSheet(self.combo_style)
+        self.filt_layout.addWidget(self.filt_combo)
+
+        # self.filt_combo.hidePopup = self.hidePopup
 
         # installs an event filter
         self.filt_combo.installEventFilter(self)
@@ -166,6 +168,11 @@ class FilterWidget(QWidget):
             self.widget_clicked.emit()
 
         return super().eventFilter(obj, event)
+
+    # def hidePopup(self):
+    #     """Override to disable scrolling through items with the mouse wheel."""
+    #     # By not calling super().wheelEvent(event), the default behavior is blocked
+    #     pass
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -432,6 +439,7 @@ class FilterManagerMixin:
         # updates the other fields
         self.n_filt += 1
         self.obj_filt.append(obj_filt_nw)
+        self.get_filter_options()
 
         # re-adds the spacer item
         if reset_spacer:
@@ -453,9 +461,10 @@ class FilterManagerMixin:
         self.filt_layout.removeItem(self.spacer)
         self.obj_filt[self.i_filt_sel].delete()
         self.obj_filt.pop(self.i_filt_sel)
+        self.get_filter_options()
 
-        # deletes the filter option
-        self.filt_opt = np.delete(self.filt_opt, self.i_filt_sel, 0)
+        # # deletes the filter option
+        # self.filt_opt = np.delete(self.filt_opt, self.i_filt_sel, 0)
 
         # re-adds the spacer item
         self.filt_layout.insertItem(self.n_filt, self.spacer)
@@ -483,13 +492,16 @@ class FilterManagerMixin:
         for i in reversed(range(self.n_filt)):
             if i == 0:
                 self.obj_filt[i].clear_block()
-                self.filt_opt[0, :] = None
+                # self.filt_opt[0, :] = None
 
             else:
-                self.filt_opt = np.delete(self.filt_opt, i, 0)
+                # self.filt_opt = np.delete(self.filt_opt, i, 0)
                 self.obj_filt[i].delete()
                 self.obj_filt.pop(i)
                 self.n_filt -= 1
+
+        # retrieves the filter options
+        self.get_filter_options()
 
         # resets the toolbar properties
         self.update_toolbar_props(False)

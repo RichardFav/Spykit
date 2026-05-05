@@ -19,7 +19,6 @@ from PyQt6.QtCore import Qt, QSize, pyqtSignal, QPersistentModelIndex
 class ChannelInfoTab(InfoWidget):
     # pyqtSignal signal functions
     run_change = pyqtSignal(QWidget)
-    data_change = pyqtSignal(QWidget)
     shank_change = pyqtSignal(QWidget)
     status_change = pyqtSignal(QWidget, object)
     set_update_flag = pyqtSignal(bool)
@@ -59,7 +58,6 @@ class ChannelInfoTab(InfoWidget):
         # plot option widgets
         self.opt_widget = QWidget()
         self.opt_layout = QGridLayout()
-        self.data_type = QLabelCombo(None, 'Display Data:', None, font_lbl=font_lbl)
         self.run_type = QLabelCombo(None, 'Session Run:', None, font_lbl=font_lbl)
         self.shank_type = QLabelCombo(None, "Recording Shank:", None, font_lbl=font_lbl)
         self.status_filter = QLabelCheckCombo(None, lbl="Status Filter:", font=font_lbl)
@@ -80,8 +78,6 @@ class ChannelInfoTab(InfoWidget):
         self.opt_widget.setContentsMargins(0, 0, 0, 0)
 
         # adds the widgets to the layout widget
-        self.opt_layout.addWidget(self.data_type.obj_lbl, 0, 0, 1, 1)
-        self.opt_layout.addWidget(self.data_type.obj_cbox, 0, 1, 1, 1)
         self.opt_layout.addWidget(self.run_type.obj_lbl, 1, 0, 1, 1)
         self.opt_layout.addWidget(self.run_type.obj_cbox, 1, 1, 1, 1)
         self.opt_layout.addWidget(self.shank_type.obj_lbl, 2, 0, 1, 1)
@@ -131,12 +127,6 @@ class ChannelInfoTab(InfoWidget):
     # ---------------------------------------------------------------------------
     # Widget Event Functions
     # ---------------------------------------------------------------------------
-
-    def combo_data_change(self, h_combo):
-
-        # if manually updating, then exit
-        if not self.is_updating:
-            self.data_change.emit(self)
 
     def combo_run_change(self, h_combo):
 
@@ -309,11 +299,7 @@ class ChannelInfoTab(InfoWidget):
             case 'run':
                 combo.connect(self.combo_run_change)
 
-            case 'data':
-                combo.connect(self.combo_data_change)
-
             case 'shank':
-                combo.set_enabled(len(cb_list) > 1)
                 combo.connect(self.combo_shank_change)
 
         # updates the combo box field
@@ -322,21 +308,21 @@ class ChannelInfoTab(InfoWidget):
         # resets the update flag
         self.is_updating = False
 
-    def reset_data_types(self, d_names, d_flds):
-
-        # indicate that
-        self.is_updating = True
-
-        # resets the
-        self.data_type.obj_cbox.clear()
-        self.data_type.obj_cbox.addItems(d_names)
-        self.data_type.set_enabled(len(d_names) > 1)
-
-        # updates the data field
-        self.data_flds = d_flds
-
-        # resets the update flag
-        self.is_updating = False
+    # def reset_data_types(self, d_names, d_flds):
+    #
+    #     # indicate that
+    #     self.is_updating = True
+    #
+    #     # resets the
+    #     self.data_type.obj_cbox.clear()
+    #     self.data_type.obj_cbox.addItems(d_names)
+    #     self.data_type.set_enabled(len(d_names) > 1)
+    #
+    #     # updates the data field
+    #     self.data_flds = d_flds
+    #
+    #     # resets the update flag
+    #     self.is_updating = False
 
     def set_table_rows(self):
 

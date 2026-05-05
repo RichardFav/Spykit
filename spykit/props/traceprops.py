@@ -8,6 +8,7 @@ import spykit.common.common_widget as cw
 from spykit.props.utils import PropWidget, PropPara
 
 # pyqt imports
+from PyQt6.QtWidgets import QWidget
 from PyQt6.QtCore import Qt, pyqtSignal
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -58,6 +59,7 @@ class TraceViewPara(PropPara):
 
     # trace property observer properties
     plot_type = cf.ObservableProperty(pfcn(_combo_update, 'plot_type'))
+    data_type = cf.ObservableProperty(pfcn(_combo_update, 'data_type'))
     sig_type = cf.ObservableProperty(pfcn(_combo_update, 'sig_type'))
     t_start = cf.ObservableProperty(pfcn(_edit_update, 't_start'))
     t_finish = cf.ObservableProperty(pfcn(_edit_update, 't_finish'))
@@ -74,6 +76,9 @@ class TraceViewPara(PropPara):
 """
 
 class TraceViewProps(PropWidget):
+    # pyqtSignal functions
+    data_change = pyqtSignal(QWidget)
+
     # field properties
     type = 'traceview'
 
@@ -88,6 +93,7 @@ class TraceViewProps(PropWidget):
         self.main_obj = main_obj
 
         # field initialisation
+        self.is_updating = False
         self.trace_view = None
         self.t_dur = np.round(self.main_obj.main_obj.session_obj.session_props.t_dur, cf.n_dp)
 
@@ -99,6 +105,7 @@ class TraceViewProps(PropWidget):
         self.p_props = TraceViewPara(self.p_info['ch_fld'])
 
         # widget object field retrieval
+        self.data_type = self.findChild(cw.QLabelCombo, name='data_type')
         self.edit_start = self.findChild(cw.QLineEdit, name='t_start')
         self.edit_finish = self.findChild(cw.QLineEdit, name='t_finish')
         self.cmap_chooser = self.findChild(cw.QColorMapChooser, name='c_map')
@@ -116,6 +123,9 @@ class TraceViewProps(PropWidget):
         # sets the colourmap chooser slot function
         self.cmap_chooser.colour_selected.connect(self.colour_selected)
 
+        # sets the data type combobox properties
+        self.data_type.set_enabled(False)
+
         # updates the other properties
         self.check_update('scale_signal')
 
@@ -124,9 +134,13 @@ class TraceViewProps(PropWidget):
 
     def setup_prop_fields(self):
 
+        # initialisations
+        data_type = ['Raw']
+
         # sets up the subgroup fields
         p_tmp = {
             'plot_type': self.create_para_field('Plot Type', 'combobox', self.plot_list[0], p_list=self.plot_list),
+            'data_type': self.create_para_field('Data Type', 'combobox', data_type[0], p_list=data_type),
             'sig_type': self.create_para_field('Signal Type', 'combobox', self.sig_list[0], p_list=self.sig_list),
             't_start': self.create_para_field('Start Time (s)', 'edit', 0),
             't_finish': self.create_para_field('Finish Time (s)', 'edit', self.t_span0),
@@ -190,6 +204,15 @@ class TraceViewProps(PropWidget):
 
     def combo_update(self, p_str):
 
+        # exit if manually updating
+        if self.is_updating:
+            return
+
+        match p_str:
+            case 'data_type':
+                # case is altering the data type field
+                self.data_change.emit(self)
+
         # resets the plot views
         if self.is_init:
             self.reset_trace_props(p_str)
@@ -234,6 +257,23 @@ class TraceViewProps(PropWidget):
 
         if self.trace_view is not None:
             self.trace_view.reset_trace_props(p_str)
+
+    def reset_data_types(self, d_names, d_flds=None):
+
+        # indicate that
+        self.is_updating = True
+
+        # resets the
+        self.data_type.obj_cbox.clear()
+        self.data_type.obj_cbox.addItems(d_names)
+        self.data_type.set_enabled(len(d_names) > 1)
+
+        # updates the data field
+        if d_flds is not None:
+            self.data_flds = d_flds
+
+        # resets the update flag
+        self.is_updating = False
 
     def set_widget_enable(self, p_str, state):
 

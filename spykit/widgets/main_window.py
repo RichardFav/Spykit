@@ -456,8 +456,9 @@ class MainWindow(QMainWindow):
                     task_name.pop(i_rmv)
 
             # updates the channel data types
-            channel_tab = self.info_manager.get_info_tab('channel')
-            channel_tab.reset_data_types(task_name, pp_data_flds)
+            trace_tab = self.prop_manager.get_prop_tab('traceview')
+            trace_tab.reset_data_types(task_name, pp_data_flds)
+            self.prop_manager.data_type_combobox_update(trace_tab)
 
             # updates the post-processing menu item blocks
             self.menu_bar.set_menu_enabled_blocks('post-preprocess')
@@ -730,7 +731,7 @@ class MainWindow(QMainWindow):
         self.menu_bar.set_menu_enabled_blocks('init')
 
         # clears the post-processing memory map/temporary files
-        self.main_obj.session_obj.clear_all_postprocessing()
+        self.session_obj.clear_all_postprocessing()
 
         # resets the session flag
         self.has_session = False
@@ -775,7 +776,7 @@ class MainWindow(QMainWindow):
         # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/Large Example/large_example.ssf"
 
         # loads the session
-        self.menu_bar.load_session(f_file, True)
+        self.menu_bar.load_session(f_file, False)
 
         # retrieves the configuration tab object
         config_tab = self.prop_manager.get_prop_tab('config')
@@ -1233,6 +1234,10 @@ class MenuBar(QObject):
         ch_tab = self.main_obj.info_manager.get_info_tab('channel')
         self.main_obj.info_manager.channel_combobox_update('shank', ch_tab)
 
+        # re-filters the table
+        tr_tab = self.main_obj.prop_manager.get_prop_tab('traceview')
+        self.main_obj.prop_manager.data_type_combobox_update(tr_tab)
+
         # updates the post-processing menu item blocks
         self.set_menu_enabled_blocks('post-postprocess')
 
@@ -1487,9 +1492,9 @@ class MenuBar(QObject):
         prep_tab.configs.clear()
 
         # resets the combobox fields
-        channel_tab = self.main_obj.info_manager.get_info_tab('channel')
-        channel_tab.reset_combobox_fields('data', ["Raw"])
-        self.main_obj.info_manager.channel_combobox_update('data', channel_tab)
+        trace_tab = self.main_obj.prop_manager.get_prop_tab('traceview')
+        trace_tab.reset_data_types(["Raw"])
+        self.main_obj.prop_manager.data_type_combobox_update(trace_tab)
 
         # disable menu items
         self.set_menu_enabled_blocks('clear-preprocess')
@@ -1729,7 +1734,7 @@ class MenuBar(QObject):
                 tool_off = ['save']
                 menu_off = ['save', 'clear', 'preprocessing', 'sorting', 'postprocess',
                             'clear_prep', 'clear_sort', 'clear_bombcell', 'load_trigger',
-                            'load_config', 'save_preprocessed', 'save_preprocessed']
+                            'load_config', 'load_postprocessed', 'save_preprocessed', 'save_preprocessed']
 
             case 'session-open':
                 # case is opening a bew session
@@ -1739,6 +1744,8 @@ class MenuBar(QObject):
             case 'post-preprocess':
                 # case is post pre-processing
                 menu_on = ['sorting', 'clear_prep', 'save_preprocessed']
+                if bool(len(self.main_obj.session_obj.get_mem_map_files())):
+                    menu_on += ['load_postprocessed']
 
             case 'clear-preprocess':
                 # case is clearing pre-processing
@@ -1748,10 +1755,12 @@ class MenuBar(QObject):
             case 'post-sorting':
                 # case is post spike sorting
                 menu_on = ['clear_sort', 'postprocess']
+                menu_off = ['load_postprocessed']
 
             case 'clear-sorting':
                 # case is clearing spike sorting
                 menu_off = ['postprocess', 'clear_sort', 'clear_bombcell', 'save_postprocessed']
+                menu_off = ['load_postprocessed']
 
             case 'post-postprocess':
                 # case is post-postprocessing

@@ -270,7 +270,8 @@ class PlotManager(QWidget):
         plt_trace.t_start_ofs = plt_trace.gen_props.get('t_start')
 
         # resets the trace duration
-        probe = self.session_obj.get_current_recording_probe()
+        is_per_shank = self.session_obj.is_per_shank()
+        probe = self.session_obj.get_current_recording_probe(is_per_shank)
         t_dur_new = np.round(probe.get_total_duration(), cf.n_dp)
 
         # determines if there is a significant change in expt duration

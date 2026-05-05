@@ -101,6 +101,10 @@ class TraceProps(PropWidget):
             # adds the tab to the tab group
             self.tab_group_tr.addTab(tab_widget, t_lbl)
 
+            # connects the trace property tab widget slot functions
+            if pf == 'traceview':
+                tab_widget.data_change.connect(self.main_obj.data_type_combobox_update)
+
         # sets the other tab properties
         self.set_tab_visible('tracespike', False)
 

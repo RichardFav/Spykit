@@ -158,7 +158,6 @@ class InfoManager(QWidget):
                         tab_widget.table.horizontalHeader().check_update.connect(cb_fcn)
 
                         # case is the channel tab
-                        tab_widget.data_change.connect(pfcn(self.channel_combobox_update, 'data'))
                         tab_widget.run_change.connect(pfcn(self.channel_combobox_update, 'run'))
                         tab_widget.shank_change.connect(pfcn(self.channel_combobox_update, 'shank'))
                         tab_widget.status_change.connect(self.channel_status_update)
@@ -214,9 +213,12 @@ class InfoManager(QWidget):
 
         # resets the combobox fields
         channel_tab = self.get_info_tab('channel')
-        channel_tab.reset_combobox_fields('data', data_list)
         channel_tab.reset_combobox_fields('run', run_list)
         channel_tab.reset_combobox_fields('shank', shank_list)
+
+        # resets the trace properties data types
+        trace_tab = self.main_obj.prop_manager.get_prop_tab('traceview')
+        trace_tab.reset_data_types(data_list)
 
         # resets the update flag
         self.is_updating = False
@@ -244,64 +246,6 @@ class InfoManager(QWidget):
 
         # updates the current run flag
         match d_type:
-            case 'data':
-                # case is the plot data type
-
-                # field retrieval
-                trig_update = False
-                new_type = tab_obj.data_type.current_text()
-                i_run_sel = tab_obj.run_type.current_index()
-                t_dur_run = np.round(self.session_obj.get_run_durations(), cf.n_dp)
-
-                if self.session_obj.is_raw_run() and self.session_obj.session.prep_obj.concat_runs:
-                    # case is changing from a raw data to concatenated preprocessed data type
-
-                    # TraceView limit update
-                    if i_run_sel > 0:
-                        # if the run index is > 0, then reset the trace view
-                        t_ofs = np.round(np.sum(t_dur_run[:self.i_run_pr]), cf.n_dp)
-                        trace_view.t_lim += t_ofs
-                        trig_view.t_lim += t_ofs
-
-                    # TriggerView limit update
-                    full_zoom = np.array_equal(np.array([0, t_dur_run[self.i_run_pr]]),
-                                               np.array(trig_view.l_reg_x.getRegion()))
-                    if full_zoom:
-                        # case is using full zoom
-                        trig_view.t_lim = np.array([0, np.sum(t_dur_run)])
-
-                    # updates the TriggerView duration
-                    trig_update = True
-                    trig_view.gen_props.set_n('t_dur', np.round(np.sum(t_dur_run), cf.n_dp))
-
-                elif (new_type == "Raw") and self.session_obj.is_concat_run():
-                    # case is changing from concatenated preprocessed data type to raw data
-
-                    # determines the run that the trace view starts in
-                    t_dur_sum = np.cumsum(t_dur_run)
-                    self.i_run_pr = next((i for i, x in enumerate(t_dur_sum) if x >= trace_view.t_lim[0]))
-                    if self.i_run_pr != i_run_sel:
-                        # updates the run comoobox if it does not match
-                        tab_obj.is_updating = True
-                        tab_obj.run_type.set_current_index(self.i_run_pr)
-                        tab_obj.is_updating = False
-
-                    # resets the trace view time range
-                    if self.i_run_pr > 0:
-                        trace_view.t_lim -= t_dur_sum[self.i_run_pr - 1]
-
-                    # ensures the upper limit is within the run duration
-                    trace_view.t_lim[1] = np.min([trace_view.t_lim[1], t_dur_run[self.i_run_pr]])
-                    if not np.array_equal(trace_view.l_reg_x.getRegion(), trace_view.t_lim):
-                        trace_view.is_updating = True
-                        trace_view.l_reg_x.setRegion(trace_view.t_lim)
-                        trace_view.is_updating = False
-
-                    # updates the TriggerView duration
-                    trig_update = True
-                    trig_view.gen_props.set_n('t_dur', t_dur_run[self.i_run_pr])
-                    trig_view.t_lim = np.array([0, t_dur_run[self.i_run_pr]])
-
             case 'run':
                 # case is the session run type
 
@@ -327,57 +271,6 @@ class InfoManager(QWidget):
         tab_obj.is_updating = True
 
         match d_type:
-            case 'data':
-                # case is the plot data type
-
-                # field retrieval
-                is_concat = self.session_obj.is_concat_run()
-                has_pp = self.session_obj.post_data.n_mmap > 0
-
-                # resets the channel statuses
-                ch_status = self.session_obj.session.bad_ch[0]
-                tab_obj.update_channel_status(ch_status, self.session_obj.get_keep_channels())
-                tab_obj.set_table_rows()
-                tab_obj.is_updating = True
-
-                # run/concatenation types (based on selection)
-                is_per_shank = self.session_obj.is_per_shank(not has_pp)
-
-                # resets the run index (if displaying a concatenated run)
-                if is_concat:
-                    # tab_obj.run_type.obj_cbox.setCurrentIndex(0)
-                    # self.session_obj.set_current_run(tab_obj.run_type.obj_cbox.itemText(0))
-
-                    # resets the previous run index
-                    self.i_run_pr = None
-
-                # updates the run type properties (disable if displaying concatenate run)
-                tab_obj.run_type.set_enabled(not is_concat)
-                tab_obj.shank_type.set_enabled(is_per_shank)
-
-                # resets the shank list
-                reset_type = 0
-                shank_list = self.session_obj.get_shank_names(is_per_shank)
-                if len(shank_list) != tab_obj.shank_type.obj_cbox.count():
-                    reset_type = 2
-                    tab_obj.reset_combobox_fields('shank', shank_list)
-
-                    # resets the current index (if separating by shank)
-                    if is_per_shank:
-                        if self.i_shank_pr is None:
-                            self.i_shank_pr = 0
-
-                        elif tab_obj.shank_type.current_index() != self.i_shank_pr:
-                            tab_obj.shank_type.set_current_index(self.i_shank_pr)
-
-                # resets the trace view
-                self.update_current_shank(tab_obj)
-                self.main_obj.plot_manager.reset_trace_views(reset_type)
-                self.main_obj.plot_manager.reset_probe_views()
-
-                if trig_update:
-                    self.main_obj.plot_manager.reset_trig_views()
-
             case 'run':
                 # case is the session run
 
@@ -494,7 +387,10 @@ class InfoManager(QWidget):
         ch_tab = self.get_info_tab('channel')
         is_per_shank = self.session_obj.is_per_shank()
         shank_list = self.session_obj.get_shank_names(is_per_shank)
-        data_list = ch_tab.data_type.itemText()
+
+        # retrieves the data types
+        tr_tab = self.main_obj.prop_manager.get_prop_tab('traceview')
+        data_list = tr_tab.data_type.itemText()
 
         # resets the channel comboboxes
         self.init_channel_comboboxes(data_list=data_list, shank_list=shank_list)

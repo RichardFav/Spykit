@@ -89,7 +89,8 @@ class SessionWorkBook(QObject):
             else:
                 probe_rec = self.get_raw_recording_probe()
 
-        elif (is_raw or (not self.session.has_prep())) and (self.post_data.n_mmap == 0):
+        elif is_raw:
+        # elif (is_raw or (not self.session.has_prep())) and (self.post_data.n_mmap == 0):
             probe_rec = self.get_raw_recording_probe()
 
         else:
@@ -233,7 +234,10 @@ class SessionWorkBook(QObject):
 
         return self.session_props.n_samples
 
-    def get_current_recording_probe(self, use_per_shank=False):
+    def get_current_recording_probe(self, use_per_shank=None):
+
+        if use_per_shank is None:
+            use_per_shank = self.is_per_shank()
 
         if use_per_shank:
             i_shank = self.get_shank_index()
@@ -612,8 +616,9 @@ class SessionWorkBook(QObject):
         if self.session is None:
             return False
 
-        elif check_raw:
-            return (not self.is_raw_run()) and self.session.prep_obj.per_shank
+        elif check_raw and (not self.has_pp_runs()):
+            return self.has_pp_runs() and self.session.prep_obj.per_shank
+            # return (not self.is_raw_run()) and self.session.prep_obj.per_shank
 
         else:
             return self.session.prep_obj.per_shank
@@ -784,6 +789,7 @@ class SessionObject(QObject):
         self.sort_obj = None
         self.bcell_obj = None
         self.t_worker = None
+        self.shank_runs = None
         self.ssf_load = ssf_load
         self.data_init = {'bad': False, 'sync': False}
 
@@ -824,6 +830,7 @@ class SessionObject(QObject):
         # self.prep_obj.update_prog.connect(self.update_prog)
 
         # loads the channel data (if not loading session from .ssf file)
+        self.shank_runs = None
         if not self.ssf_load:
             self.load_channel_data()
 
@@ -1080,6 +1087,9 @@ class SessionObject(QObject):
         if isinstance(i_run, str):
             i_run = self.get_run_index(i_run)
 
+        if i_shank is not None:
+            shank_name = f'shank_{i_shank}'
+
         if (pp_type is None) or (pp_type.endswith('raw')):
             if isinstance(run_type, int) or (run_type is None):
                 # case is the run type is not specified
@@ -1087,17 +1097,25 @@ class SessionObject(QObject):
                 if i_shank is None:
                     return run
                 else:
-                    run_shank = run._get_split_by_shank()
-                    return run_shank['shank_{0}'.format(i_shank)]
+                    if self.shank_runs is None:
+                        self.shank_runs = run._get_split_by_shank()
+
+                    return self.shank_runs[shank_name]
 
             else:
                 return self._s._raw_runs[i_run]._raw['grouped']
 
         elif self.prep_obj.concat_runs:
-            return self._s._pp_runs[0]._preprocessed[run_type][pp_type]
+            if i_shank is None:
+                return self._s._pp_runs[0]._preprocessed['grouped'][pp_type]
+            else:
+                return self._s._pp_runs[0]._preprocessed[shank_name][pp_type]
 
         else:
-            return self._s._pp_runs[i_run]._preprocessed[run_type][pp_type]
+            if i_shank is None:
+                return self._s._pp_runs[i_run]._preprocessed['grouped'][pp_type]
+            else:
+                return self._s._pp_runs[i_run]._preprocessed[shank_name][pp_type]
 
     def get_session_names(self, i_run):
 

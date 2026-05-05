@@ -405,7 +405,7 @@ class QRegionConfig(QWidget):
         # ROW/COLUMN WIDGET SETUP ---------------------------------------------
 
         # field initialisations
-        t_lbl = ['Row', 'Column']
+        t_lbl = ['Row Count', 'Column Count']
         p_str = ['n_row', 'n_col']
 
         # row/column widget setup
