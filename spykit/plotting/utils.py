@@ -149,6 +149,7 @@ class PlotManager(QWidget):
                 plot_new.reset_highlight.connect(self.probe_highlight)
                 plot_new.set_gen_props(self.get_prop_tab('general'))
                 plot_new.set_trace_props(self.get_prop_tab('traceview'))
+                plot_new.set_spike_props(self.get_prop_tab('tracespike'))
 
             case 'trigger':
                 # case is the trigger view
@@ -209,6 +210,13 @@ class PlotManager(QWidget):
         self.main_obj.info_manager.update_table_value("Channel Info", i_row, value)
         self.reset_trace_views(2)
 
+        # updates the trace spike markers (if removing channel selection)
+        if (self.main_obj.session_obj.post_data.n_mmap > 0):
+            for i_r, v in zip(i_row, value):
+                if not v:
+                    spike_tab = self.main_obj.prop_manager.get_prop_tab('tracespike')
+                    spike_tab.clear_table_channel_selections(i_r[0] + 1)
+
     def trace_highlight(self, is_on, i_contact=None):
 
         if 'trace' in self.types:
@@ -262,7 +270,8 @@ class PlotManager(QWidget):
         plt_trace.t_start_ofs = plt_trace.gen_props.get('t_start')
 
         # resets the trace duration
-        probe = self.session_obj.get_current_recording_probe()
+        is_per_shank = self.session_obj.is_per_shank()
+        probe = self.session_obj.get_current_recording_probe(is_per_shank)
         t_dur_new = np.round(probe.get_total_duration(), cf.n_dp)
 
         # determines if there is a significant change in expt duration
@@ -343,6 +352,11 @@ class PlotManager(QWidget):
                         prop_viewing.append(pv)
 
         return prop_viewing
+
+    def get_current_view_names(self):
+
+        type_rev = cf.rev_dict(self.types)
+        return [type_rev[x] for x in np.unique(self.grid_id)]
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions

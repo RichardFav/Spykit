@@ -70,7 +70,7 @@ class SpikeSortingDialog(QMainWindow):
     # widget dimensions
     n_prog = 2
     gap_sz = 5
-    dlg_width = 450
+    dlg_width = 460
     dlg_height = 600
     but_height = 20
     p_row = np.array([20, 1, 2, 1])

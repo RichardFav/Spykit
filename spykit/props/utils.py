@@ -13,7 +13,7 @@ from spykit.threads.utils import ThreadWorker
 # pyqt imports
 from PyQt6.QtWidgets import (QWidget, QLineEdit, QComboBox, QCheckBox, QPushButton, QSizePolicy, QVBoxLayout,
                              QHBoxLayout, QFormLayout, QGridLayout, QColorDialog, QTableWidget, QTableWidgetItem,
-                             QApplication, QGroupBox)
+                             QApplication, QGroupBox, QSpinBox)
 from PyQt6.QtCore import Qt, QObject, pyqtSignal
 from PyQt6.QtGui import QStandardItem
 
@@ -234,6 +234,9 @@ class PropManager(QWidget):
 
     def post_process_change(self, i_mmap=None):
 
+        # REMOVE ME LATER
+        t0 = time.time()
+
         if i_mmap is None:
             # retrieves the current memory map index (if not provided)
             i_mmap = self.main_obj.session_obj.post_data.i_mmap
@@ -256,32 +259,199 @@ class PropManager(QWidget):
             unit_tab.i_unit_sel = unit_tab.get_field('n_unit')
 
         # updates the visible plot views
+        c_views = self.main_obj.plot_manager.get_current_view_names()
         for pp_v in p_manager.pp_views:
             # updates the post-processing views (if currently viewing)
             h_view = self.main_obj.plot_manager.get_plot_view(pp_v)
-
             if reset_unit_index and hasattr(h_view, 'i_unit'):
                 h_view.reset_unit_index(unit_tab.i_unit_sel)
 
             # updates the plot view
-            h_view.update_plot()
+            if pp_v in c_views:
+                h_view.update_plot()
+            else:
+                h_view.update_reqd = True
 
             match pp_v:
                 case 'waveform':
                     # case is the waveform plot
                     pp_prop.get_tab_view(pp_v).post_process_change()
 
-        # resets the unit table properties
-        unit_tab.setup_unit_table_data()
-        self.main_obj.info_manager.set_unit_table_data()
+        # unit table reset thread worker
+        t_worker_unit = ThreadWorker(None, self.reset_unit_table)
+        t_worker_unit.work_finished.connect(self.unit_table_update_complete)
+        t_worker_unit.start()
+
+        # spike table reset thread worker
+        t_worker_spike = ThreadWorker(None, self.reset_spike_table)
+        t_worker_unit.work_finished.connect(self.spike_table_update_complete)
+        t_worker_spike.start()
+
+        if self.main_obj.bombcell_dlg is not None:
+            self.main_obj.bombcell_dlg.post_processing_soln_change()
+
+    def data_type_combobox_update(self, tab_obj):
+
+        # if manually updating the combobox, then exit
+        if self.is_updating:
+            return
+        else:
+            self.is_updating = True
+
+        # plot view retrieval
+        info_manager = self.main_obj.info_manager
+        channel_tab = info_manager.get_info_tab('channel')
+        trace_view = self.main_obj.plot_manager.get_plot_view('trace')
+        trig_view = self.main_obj.plot_manager.get_plot_view('trigger')
+
+        # field retrieval
+        trig_update = False
+        new_type = tab_obj.data_type.current_text()
+        i_run_sel = channel_tab.run_type.current_index()
+        is_concat = self.session_obj.is_concat_run()
+        has_pp = self.session_obj.post_data.n_mmap > 0
+        ch_status = self.session_obj.session.bad_ch[0]
+        t_dur_run = np.round(self.session_obj.get_run_durations(), cf.n_dp)
+
+        if self.session_obj.is_raw_run() and self.session_obj.session.prep_obj.concat_runs:
+            # case is changing from a raw data to concatenated preprocessed data type
+
+            # TraceView limit update
+            if i_run_sel > 0:
+                # if the run index is > 0, then reset the trace view
+                t_ofs = np.round(np.sum(t_dur_run[:info_manager.i_run_pr]), cf.n_dp)
+                trace_view.t_lim += t_ofs
+                trig_view.t_lim += t_ofs
+
+            # TriggerView limit update
+            full_zoom = np.array_equal(np.array([0, t_dur_run[info_manager.i_run_pr]]),
+                                       np.array(trig_view.l_reg_x.getRegion()))
+            if full_zoom:
+                # case is using full zoom
+                trig_view.t_lim = np.array([0, np.sum(t_dur_run)])
+
+            # updates the TriggerView duration
+            trig_update = True
+            trig_view.gen_props.set_n('t_dur', np.round(np.sum(t_dur_run), cf.n_dp))
+
+        elif (new_type == "Raw") and self.session_obj.is_concat_run():
+            # case is changing from concatenated preprocessed data type to raw data
+
+            # determines the run that the trace view starts in
+            t_dur_sum = np.cumsum(t_dur_run)
+            info_manager.i_run_pr = next((i for i, x in enumerate(t_dur_sum) if x >= trace_view.t_lim[0]))
+            if info_manager.i_run_pr != i_run_sel:
+                # updates the run comoobox if it does not match
+                channel_tab.is_updating = True
+                channel_tab.run_type.set_current_index(info_manager.i_run_pr)
+                channel_tab.is_updating = False
+
+            # resets the trace view time range
+            if info_manager.i_run_pr > 0:
+                trace_view.t_lim -= t_dur_sum[info_manager.i_run_pr - 1]
+
+            # ensures the upper limit is within the run duration
+            trace_view.t_lim[1] = np.min([trace_view.t_lim[1], t_dur_run[info_manager.i_run_pr]])
+            if not np.array_equal(trace_view.l_reg_x.getRegion(), trace_view.t_lim):
+                trace_view.is_updating = True
+                trace_view.l_reg_x.setRegion(trace_view.t_lim)
+                trace_view.is_updating = False
+
+            # updates the TriggerView duration
+            trig_update = True
+            trig_view.gen_props.set_n('t_dur', t_dur_run[info_manager.i_run_pr])
+            trig_view.t_lim = np.array([0, t_dur_run[info_manager.i_run_pr]])
+
+        # updates the current preprocessing data type
+        if tab_obj.data_flds is not None:
+            i_data = tab_obj.data_type.current_index()
+            self.main_obj.session_obj.set_prep_type(tab_obj.data_flds[i_data])
+
+        # resets the channel statuses
+        channel_tab.is_updating = True
+        channel_tab.update_channel_status(ch_status, self.session_obj.get_keep_channels())
+        channel_tab.set_table_rows()
+        channel_tab.is_updating = True
+
+        # run/concatenation types (based on selection)
+        is_per_shank = self.session_obj.is_per_shank(not has_pp)
+
+        # resets the run index (if displaying a concatenated run)
+        if is_concat:
+            # tab_obj.run_type.obj_cbox.setCurrentIndex(0)
+            # self.session_obj.set_current_run(tab_obj.run_type.obj_cbox.itemText(0))
+
+            # resets the previous run index
+            info_manager.i_run_pr = None
+
+        # updates the run type properties (disable if displaying concatenate run)
+        channel_tab.run_type.set_enabled(not is_concat)
+        channel_tab.shank_type.set_enabled(is_per_shank)
+
+        # resets the shank list
+        reset_type = 0
+        shank_list = self.session_obj.get_shank_names(is_per_shank)
+        if len(shank_list) != channel_tab.shank_type.obj_cbox.count():
+            reset_type = 2
+            channel_tab.reset_combobox_fields('shank', shank_list)
+
+            # resets the current index (if separating by shank)
+            if is_per_shank:
+                if info_manager.i_shank_pr is None:
+                    info_manager.i_shank_pr = 0
+
+                elif channel_tab.shank_type.current_index() != info_manager.i_shank_pr:
+                    channel_tab.shank_type.set_current_index(info_manager.i_shank_pr)
+
+        # updates the trace view
+        info_manager.update_current_shank(channel_tab)
+        self.main_obj.plot_manager.reset_trace_views(reset_type)
+        self.main_obj.plot_manager.reset_probe_views()
+
+        # updates the trigger view (if required)
+        if trig_update:
+            self.main_obj.plot_manager.reset_trig_views()
+
+        # resets the update flags
+        self.is_updating = False
+        channel_tab.is_updating = False
+
+    # ---------------------------------------------------------------------------
+    # Table Reset Functions
+    # --------------------------------------------------------------------------
+
+    def reset_spike_table(self, _):
+
         self.set_spike_table_data()
+
+    def reset_unit_table(self, _):
+
+        # field retrieval
+        unit_tab = self.main_obj.info_manager.get_info_tab('unit')
+
+        # resets the unit table properties
+        df_unit_nw, c_hdr_nw, unit_lbl_nw = unit_tab.setup_unit_table_data(True)
+
+        # updates the unit tab fields and resets the unit table
+        unit_tab.df_unit, unit_tab.c_hdr, unit_tab.unit_lbl = df_unit_nw, c_hdr_nw, unit_lbl_nw
+        self.main_obj.info_manager.set_unit_table_data()
+
+        return df_unit_nw, c_hdr_nw, unit_lbl_nw
+
+    def unit_table_update_complete(self, thread_data):
+
+        # field retrieval
+        unit_tab = self.main_obj.info_manager.get_info_tab('unit')
+
+        # updates the class fields
+        unit_tab.df_unit, unit_tab.c_hdr, unit_tab.unit_lbl = thread_data
+        time.sleep(0.01)
 
         # applies the unit status filter
         unit_tab.update_unit_status()
-        unit_tab.check_filter_item()
+        unit_tab.check_filter_item(False)
 
         # clears any probe unit markers
-        time.sleep(0.01)
         self.main_obj.plot_manager.get_plot_view('probe').reset_unit_markers()
 
         if unit_tab.i_unit_sel is not None:
@@ -292,8 +462,13 @@ class PropManager(QWidget):
             i_row = np.where(unit_tab.df_unit['Cluster ID#'] == unit_tab.i_unit_sel)[0][0]
             unit_tab.reset_probe_roi_location(i_row)
 
-        if self.main_obj.bombcell_dlg is not None:
-            self.main_obj.bombcell_dlg.post_processing_soln_change()
+    def spike_table_update_complete(self):
+
+        # field retrieval
+        spike_props = self.main_obj.prop_manager.get_prop_tab('tracespike')
+
+        # updates the run/shank information fields
+        spike_props.update_run_shank_fields()
 
     # ---------------------------------------------------------------------------
     # Property Parameter Get/Set Functions
@@ -720,6 +895,9 @@ class PropWidget(QWidget):
         elif isinstance(h_widget, QPushButton):
             self.pushbutton_para_update(h_widget)
 
+        elif isinstance(h_widget, QSpinBox):
+            self.spinbox_para_update(h_widget)
+
         elif isinstance(h_widget, cw.QButtonPair):
             self.buttonpair_para_update(h_widget, args[0])
 
@@ -814,6 +992,15 @@ class PropWidget(QWidget):
 
         # toggles the button value
         self.set(p_str, self.get(p_str) ^ (2 ** i_button))
+
+    def spinbox_para_update(self, h_spin):
+
+        # field retrieval
+        p_str = h_spin.objectName()
+        nw_val = h_spin.value()
+
+        # updates the parameter field
+        self.set(p_str, nw_val)
 
     def button_color_pick(self, h_button):
 
@@ -920,7 +1107,7 @@ class PropWidget(QWidget):
                 # creates the label/combobox widget combo
                 lbl_str = '{0}: '.format(ps['name'])
                 obj_chklist = cw.QLabelCheckCombo(None, lbl_str, ps['p_list'], index_on=ps['value'],
-                                                  name=p_name, font=cw.font_lbl)
+                                                  name=p_name, font=cw.font_lbl, n_rows=len(ps['p_list']))
 
                 for lbl, is_on in zip(ps['p_list'], ps['value']):
                     obj_chklist.add_item(lbl, is_on)
@@ -991,6 +1178,29 @@ class PropWidget(QWidget):
                 else:
                     # case is another layout type
                     layout.addRow(pair_obj)
+
+            case 'spinbox':
+                # case is a spinbox pair
+
+                # sets the editbox string
+                lbl_str = '{0}: '.format(ps['name'])
+                spinbox_value = int(ps['value'])
+
+                # creates the label/editbox widget combo
+                obj_lblspin = cw.QLabelSpinbox(None, lbl_str, spinbox_value, name=p_name, font_lbl=cw.font_lbl)
+
+                if isinstance(layout, QGridLayout):
+                    # case is adding to a QGridlayout
+                    layout.addWidget(obj_lblspin.obj_lbl, i_row, 0, 1, 1)
+                    layout.addWidget(obj_lblspin.obj_spinbox, i_row, 1, 1, 2)
+
+                else:
+                    # case is another layout type
+                    obj_lblspin.obj_lbl.setFixedWidth(self.lbl_width)
+                    layout.addRow(obj_lblspin)
+
+                # sets the widget callback function
+                obj_lblspin.connect(cb_fcn)
 
             case 'table':
                 # case is a table widget

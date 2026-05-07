@@ -17,6 +17,7 @@ from pyqtgraph import (ViewBox, RectROI, InfiniteLine, ColorMap, colormap, TextI
 
 # custom module import
 import spykit.common.common_func as cf
+from spykit.threads.utils import ThreadWorker
 
 # pyqt6 module import
 from PyQt6.QtWidgets import (QWidget, QHBoxLayout, QGridLayout, QVBoxLayout, QPushButton, QGroupBox, QTabWidget,
@@ -24,9 +25,9 @@ from PyQt6.QtWidgets import (QWidget, QHBoxLayout, QGridLayout, QVBoxLayout, QPu
                              QApplication, QTreeView, QFrame, QRadioButton, QAbstractItemView, QStylePainter,
                              QStyleOptionComboBox, QStyle, QProxyStyle, QItemDelegate, QTreeWidget, QTreeWidgetItem,
                              QHeaderView, QStyleOptionButton, QTableWidgetItem, QProgressBar, QSpacerItem,
-                             QStyledItemDelegate, QDialog, QTableWidget, QListWidget)
+                             QStyledItemDelegate, QDialog, QTableWidget, QListWidget, QSpinBox, QAbstractSpinBox)
 from PyQt6.QtCore import (Qt, QRect, QRectF, QMimeData, pyqtSignal, QItemSelectionModel, QAbstractTableModel,
-                          QSizeF, QSize, QObject, QVariant, QTimeLine, QEvent, QPoint, QPointF)
+                          QSizeF, QSize, QObject, QVariant, QTimeLine, QEvent, QPoint, QPointF, QTimer)
 from PyQt6.QtGui import (QFont, QDrag, QCursor, QStandardItemModel, QStandardItem, QPalette, QPixmap, QImage,
                          QTextDocument, QAbstractTextDocumentLayout, QIcon, QColor, QMouseEvent, QGuiApplication)
 
@@ -72,13 +73,27 @@ table_style = """
         font: {font} 6px;
         font-weight: 1000;
     }}
+    QHeaderView::section {{
+        background-color: lightgray;
+        color: black;
+    }}    
 """.format(font=font_base)
 
 # editbox style sheet
 edit_style_sheet = """
-    border: 1px solid; 
-    border-radius: 2px; 
     padding-left: 5px;
+    border-radius: 2px; 
+    border: 1px solid; 
+"""
+
+# spinbox style sheet
+spinbox_style_sheet = """
+    QSpinBox {
+        padding-left: 1px;
+        padding-right: 15px;     
+        border-radius: 2px; 
+        border: 1px solid;
+    }
 """
 
 # combobox style sheet
@@ -94,6 +109,14 @@ combo_style_sheet = """
 tab_widget_style_sheet = """
     QTabBar::tab:selected { 
         font-weight: bold; 
+    }
+"""
+
+# table horizontal header style
+table_horz_hdr_style = """
+    QHeaderView::section {
+        background-color: lightgray;
+        color: black;
     }
 """
 
@@ -118,6 +141,7 @@ f_mode = {
     'session': "Spykit Session File (*.ssf)",
     'trigger': "Experiment Trigger File (*.npy)",
     'config': "Spike Pipeline Config File (*.cfig)",
+    'filter': "Unit Filter Options (*.filt)",
 }
 
 f_name = {
@@ -247,27 +271,55 @@ hist_map = {
     'Lratio': 'L-Ratio'
 }
 
+# bombcell classification parameter name mapping dictionary
+param_map = {
+    'maxNPeaks': 'Maximum Peak Count',
+    'maxNTroughs': 'Maximum Trough Count',
+    'minWvDuration': 'Minimum Waveform Duration',
+    'maxWvDuration': 'Maximum Waveform Duration',
+    'minSpatialDecaySlope': 'Minimum Spatial Decay Slope',
+    'minSpatialDecaySlopeExp': 'Minimum Spatial Decay Slope',
+    'maxSpatialDecaySlopeExp': 'Maximum Spatial Decay Slope',
+    'maxWvBaselineFraction': 'Maximum Waveform Baseline Fraction',
+    'maxScndPeakToTroughRatio_noise': 'Maximum 2nd Peak/Trough Ratio',
+    'maxPeak1ToPeak2Ratio_nonSomatic': 'Maximum Inter-Peak Ratio',
+    'maxMainPeakToTroughRatio_nonSomatic': 'Maximum Main Peak/Trough Ratio',
+    'minWidthFirstPeak_nonSomatic': 'Minimum Main Peak Duration',
+    'minWidthMainTrough_nonSomatic': 'Minimum Main Trough Duration',
+    'minTroughToPeak2Ratio_nonSomatic': 'Minimum Trough/Main Peak Ratio',
+    'isoDmin': 'Minimum Isolation Distance',
+    'lratioMax': 'Maximum l-Ratio Value',
+    'ssMin': 'Minimum Silhouette Score',
+    'minAmplitude': 'Minimum Waveform Amplitude',
+    'maxRPVviolations': 'Maximum RPV Fraction',
+    'maxPercSpikesMissing': 'Maximum Missing Spike %age.',
+    'minNumSpikes': 'Minimum Spike Count',
+    'maxDrift': 'Maximum Drift Distance',
+    'minPresenceRatio': 'Minimum Presence Ratio',
+    'minSNR': 'Minimum SNR',
+}
+
 # channel status colour
 status_col = {
-    'good': cf.get_colour_value('g', 128),
-    'dead': cf.get_colour_value('r', 128),
-    'noise': cf.get_colour_value('y', 128),
-    'out': cf.get_colour_value('c', 128),
-    'rejected': cf.get_colour_value('dg', 128),
-    'removed': cf.get_colour_value('k', 128),
+    'good': lambda x: cf.get_colour_value('g', x),
+    'dead': lambda x: cf.get_colour_value('r', x),
+    'noise': lambda x: cf.get_colour_value('y', x),
+    'out': lambda x: cf.get_colour_value('c', x),
+    'rejected': lambda x: cf.get_colour_value('dg', x),
+    'removed': lambda x: cf.get_colour_value('k', x),
 }
 
 # unit type colour
 unit_col = {
-    'noise': cf.get_colour_value('r', 128),
-    'good': cf.get_colour_value('g', 128),
-    'somatic good': cf.get_colour_value('g', 128),
-    'mua': cf.get_colour_value('c', 128),
-    'somatic mua': cf.get_colour_value('c', 128),
-    'non-somatic': cf.get_colour_value('y', 128),
-    'non-somatic good': cf.get_colour_value('y', 128),
-    'non-somatic mua': cf.get_colour_value('m', 128),
-    'selected': cf.get_colour_value([217, 255, 251], 128),
+    'noise': lambda x: cf.get_colour_value('r', x),
+    'good': lambda x: cf.get_colour_value('g', x),
+    'somatic good': lambda x: cf.get_colour_value('g', x),
+    'mua': lambda x: cf.get_colour_value('c', x),
+    'somatic mua': lambda x: cf.get_colour_value('c', x),
+    'non-somatic': lambda x: cf.get_colour_value('m', x),
+    'non-somatic good': lambda x: cf.get_colour_value('m', x),
+    'non-somatic mua': lambda x: cf.get_colour_value('o', x),
+    'selected': lambda x: cf.get_colour_value([217, 255, 251], x),
 }
 
 # widget dimensions
@@ -279,7 +331,7 @@ cell_height = 25
 t_span_min = 0.01
 t_span_max = 0.5
 
-def create_font_obj(size=9, is_bold=False, font_weight=QFont.Weight.Normal):
+def create_font_obj(size=8, is_bold=False, font_weight=QFont.Weight.Normal):
     # creates the font object
     font = QFont(font_base)
 
@@ -353,7 +405,7 @@ class QRegionConfig(QWidget):
         # ROW/COLUMN WIDGET SETUP ---------------------------------------------
 
         # field initialisations
-        t_lbl = ['Row', 'Column']
+        t_lbl = ['Row Count', 'Column Count']
         p_str = ['n_row', 'n_col']
 
         # row/column widget setup
@@ -2005,6 +2057,9 @@ class QInfoTable(QTableWidget):
             table_header = CheckTableHeader(self)
             self.setHorizontalHeader(table_header)
 
+        # horizontal header properties
+        h_header = self.horizontalHeader()
+
         # resets the channel table style
         table_style_chk = CheckBoxStyle(self.style())
         self.setStyle(table_style_chk)
@@ -2231,6 +2286,62 @@ class QLabelEdit(QWidget):
         cb_fcn = functools.partial(cb_fcn0, self.obj_edit)
         self.obj_edit.editingFinished.connect(cb_fcn)
 
+# ----------------------------------------------------------------------------------------------------------------------
+
+"""
+    QLabelSpinbox:
+"""
+
+class QLabelSpinbox(QWidget):
+    def __init__(self, parent=None, lbl_str=None, spinbox_str=None, font_lbl=None, name=None, y_ofs=4):
+        super(QLabelSpinbox, self).__init__(parent)
+
+        # creates the layout widget
+        self.layout = QHBoxLayout()
+        self.layout.setSpacing(0)
+        self.layout.setContentsMargins(0, 0, 0, 0)
+        self.setLayout(self.layout)
+        self.setObjectName(name)
+
+        # creates the label/editbox widget combo
+        self.obj_lbl = create_text_label(None, lbl_str, font=font_lbl)
+        self.obj_spinbox = create_spin_box(None, spinbox_str, name=name, align='left')
+        self.layout.addWidget(self.obj_lbl)
+        self.layout.addWidget(self.obj_spinbox)
+
+        # sets up the label properties
+        self.obj_lbl.adjustSize()
+        self.obj_lbl.setContentsMargins(0, y_ofs, 0, 0)
+
+        # sets up the editbox properties
+        self.obj_spinbox.setFixedHeight(cf.edit_height)
+        self.obj_spinbox.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.PlusMinus)
+        self.obj_spinbox.setStyleSheet(spinbox_style_sheet)
+        self.set_step_size(1)
+
+    def get_value(self):
+        return self.obj_spinbox.value()
+
+    def set_value(self, spinbox_value):
+        self.obj_spinbox.setValue(spinbox_value)
+
+    def set_range(self, y_min, y_max):
+        self.obj_spinbox.setRange(y_min, y_max)
+
+    def set_step_size(self, s_size):
+        self.obj_spinbox.setSingleStep(s_size)
+
+    def set_tooltip(self, tt_str):
+        self.obj_lbl.setToolTip(tt_str)
+
+    def set_enabled(self, state):
+        self.obj_lbl.setEnabled(state)
+        self.obj_spinbox.setEnabled(state)
+
+    def connect(self, cb_fcn0):
+        cb_fcn = functools.partial(cb_fcn0, self.obj_spinbox)
+        self.obj_spinbox.editingFinished.connect(cb_fcn)
+        self.obj_spinbox.valueChanged.connect(cb_fcn)
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -2417,6 +2528,9 @@ class QLabelCombo(QWidget):
         for t in items:
             self.addItem(t)
 
+    def itemText(self):
+
+        return [self.obj_cbox.itemText(x) for x in range(self.count())]
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -2543,7 +2657,7 @@ class QCheckCombo(QComboBox):
     # pyqtsignal functions
     item_clicked = pyqtSignal(QStandardItem)
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, n_rows=10):
         super(QCheckCombo, self).__init__(parent)
         self.view().pressed.connect(self.item_press)
         self.view().clicked.connect(self.item_click)
@@ -2556,6 +2670,7 @@ class QCheckCombo(QComboBox):
 
         # sets the widget model and event functions
         self.combo_model = QStandardItemModel(self)
+        self.setMaxVisibleItems(n_rows)
 
         # creates the checkbox object
         self.setFixedHeight(cf.combo_height)
@@ -2682,7 +2797,7 @@ class QLabelCheckCombo(QWidget):
     item_clicked = pyqtSignal(QStandardItem)
     checklist_change = pyqtSignal(QCheckCombo)
 
-    def __init__(self, parent=None, lbl=None, text=None, index_on=None, font=None, name=None):
+    def __init__(self, parent=None, lbl=None, text=None, index_on=None, font=None, name=None, n_rows=10):
         super(QLabelCheckCombo, self).__init__(parent)
 
         # field initialisation
@@ -2708,7 +2823,7 @@ class QLabelCheckCombo(QWidget):
         self.combo_model = QStandardItemModel(self)
 
         # creates the checkbox object
-        self.h_combo = QCheckCombo(self)
+        self.h_combo = QCheckCombo(self, n_rows=n_rows)
         self.h_combo.item_clicked.connect(self.check_update)
 
         if name is not None:
@@ -2795,6 +2910,33 @@ class QCheckboxHTML(QWidget):
     def get_check(self):
         return self.h_chk.isChecked()
 
+# ----------------------------------------------------------------------------------------------------------------------
+
+"""
+    QEditCombo:
+"""
+
+class QEditCombo(QComboBox):
+    def __init__(self, parent=None, p_val=None, p_list=None, font=None):
+        super(QEditCombo, self).__init__(parent)
+
+        # sets up the combobox widget
+        self.setEditable(True)
+        self.setFont(create_font_obj())
+        self.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
+
+        # sets up the line-edit widget
+        self.obj_edit = create_line_edit(None, p_val, font=font, align='left')
+        self.obj_edit.setPlaceholderText("Enter Value")
+        self.setLineEdit(self.obj_edit)
+
+        if p_list is not None:
+            self.addItems(p_list)
+
+    def connect(self, cb_fcn):
+
+        self.currentIndexChanged.connect(cb_fcn)
+        self.lineEdit().editingFinished.connect(cb_fcn)
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -2837,11 +2979,15 @@ class QProgressWidget(QWidget):
         self.prog_bar = QProgressBar(self, minimum=0, maximum=self.p_max, textVisible=False)
         self.time_line = QTimeLine(self.t_period)
 
-        # other class fields
-        self.n_jobs = 0
-        self.pr_max = 1.0
+        # other array class fields
         self.job_name = []
         self.job_desc = []
+        self.t_worker = None
+
+        # other class scalar/boolean fields
+        self.n_jobs = 0
+        self.pr_max = 1.0
+        self.t_pause = 0.1
         self.is_running = False
         self.p_max_r = self.p_max + 2 * self.dp_max
 
@@ -3022,8 +3168,60 @@ class QProgressWidget(QWidget):
     def stop_timer(self):
 
         self.time_line.stop()
+        self.time_line.setCurrentTime(0)
         self.is_running = False
 
+    def set_interderminate_state(self, state):
+
+        if state:
+            self.prog_bar.setRange(0, 0)
+
+        else:
+            self.prog_bar.setRange(0, self.p_max)
+            self.prog_bar.setValue(0)
+
+    def start_thread(self, desc_str='Running Task...'):
+
+        self.t_worker = ThreadWorker(None, self.thread_prog_func, work_para=(desc_str))
+        # self.t_worker.work_progress.connect(self.update_prog_thread)
+        self.t_worker.start()
+
+    def stop_thread(self):
+
+        # stops the worker thread
+        self.t_worker.force_quit()
+        time.sleep(self.t_pause)
+
+        #
+        self.set_interderminate_state(False)
+
+        # # resets the other labels
+        # self.prog_bar.setValue(0)
+        # self.lbl_obj.setText(self.get_status_text())
+        # self.lbl_obj.setToolTip(self.get_next_task())
+
+    # def update_prog_thread(self, desc_txt, pr_val):
+    #
+    #     # updates the text/tooltip strings
+    #     self.update_prog_labels(desc_txt)
+    #     self.prog_update(pr_val)
+    #
+    #     #
+    #     self.update()
+    #     self.repaint()
+    #     QApplication.processEvents()
+
+    def thread_prog_func(self, desc_str):
+
+        # initialisations
+        self.set_interderminate_state(True)
+
+    def thread_prog_timer(self, desc_str):
+
+        #
+        self.n_count += 1
+        pr_val = (self.n_count * self.t_int) / self.p_max % 1
+        self.t_worker.work_progress.emit(desc_str, pr_val)
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -3098,7 +3296,7 @@ class QDialogProgress(QWidget):
         self.layout.addWidget(self.prog_bar)
 
         # sets the label properties
-        self.lbl_obj.setContentsMargins(0, x_gap+2, 0, 0)
+        self.lbl_obj.setContentsMargins(0, 2 * x_gap, 0, 0)
         self.lbl_obj.setFixedWidth(self.lbl_width)
 
         # sets the progressbar properties
@@ -3150,6 +3348,15 @@ class QDialogProgress(QWidget):
         if self.time_line is not None:
             self.time_line.stop()
             self.is_running = False
+
+    def set_interderminate_state(self, state):
+
+        if state:
+            self.prog_bar.setRange(0, 0)
+
+        else:
+            self.prog_bar.setRange(0, self.p_max)
+            self.prog_bar.setValue(0)
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
@@ -3588,12 +3795,16 @@ class QTableWidgetItemSortable(QTableWidgetItem):
     @staticmethod
     def convert_text(t_str):
 
-        try:
-            t_value = float(t_str)
-            return t_value
+        if len(t_str):
+            try:
+                t_value = float(t_str)
+                return t_value
 
-        except ValueError:
-            return t_str
+            except ValueError:
+                return t_str
+
+        else:
+            return np.nan
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -3707,10 +3918,31 @@ def create_line_edit(parent, text, font=None, align='center', name=None):
     return h_ledit
 
 
+def create_spin_box(parent, value, font=None, align='center', name=None):
+
+    # sets the label font properties
+    if font is None:
+        font = create_font_obj()
+
+    # creates the spinbox object
+    h_sbox = QSpinBox(parent)
+
+    # sets the label properties
+    h_sbox.setFont(font)
+    h_sbox.setValue(value)
+    h_sbox.setAlignment(cf.align_type[align])
+
+    # sets the object name string
+    if name is not None:
+        h_sbox.setObjectName(name)
+
+    # returns the object
+    return h_sbox
+
 def create_push_button(parent, text, font=None, name=None):
     # creates a default font object (if not provided)
     if font is None:
-        font = create_font_obj()
+        font = create_font_obj(size=9)
 
     # creates the button object
     h_button = QPushButton(parent)
@@ -3796,7 +4028,7 @@ def create_radio_button(parent, text, state, font=None, name=None):
 def create_tab_group(parent, font=None, name=None):
     # creates a default font object (if not provided)
     if font is None:
-        font = create_font_obj()
+        font = create_font_obj(size=9)
 
     # creates the tab object
     h_tab_grp = QTabWidget(parent)
@@ -3905,9 +4137,15 @@ def get_unit_labels(is_split_nonsomatic):
     else:
         return ['Noise', 'Good', 'MUA', 'Non-Somatic']
 
+def get_status_col(s_type, alpha=128):
+    return status_col[s_type.lower()](alpha)
+
+def get_unit_col(u_type, alpha=128):
+    return unit_col[u_type.lower()](alpha)
+
 # ----------------------------------------------------------------------------------------------------------------------
 
 # label/header font objects
-font_lbl = create_font_obj(is_bold=True, font_weight=QFont.Weight.Bold)
-font_hdr = create_font_obj(size=9, is_bold=True, font_weight=QFont.Weight.Bold)
-font_panel = create_font_obj(size=9, is_bold=True, font_weight=QFont.Weight.Bold)
+font_lbl = create_font_obj(size=9, is_bold=True, font_weight=QFont.Weight.Bold)
+font_hdr = create_font_obj(size=10, is_bold=True, font_weight=QFont.Weight.Bold)
+font_panel = create_font_obj(size=10, is_bold=True, font_weight=QFont.Weight.Bold)

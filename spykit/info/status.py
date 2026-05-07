@@ -44,6 +44,12 @@ class StatusInfoTab(InfoWidgetPara):
         'std_map': 'Std Dev/Map Method Parameters',
     }
 
+    # toggle style sheet
+    toggle_style_sheet = """
+        border-radius: 2px; 
+        border: 1px solid; 
+    """
+
     def __init__(self, t_str, main_obj):
         super(StatusInfoTab, self).__init__(t_str, main_obj, layout=QFormLayout)
 
@@ -129,6 +135,7 @@ class StatusInfoTab(InfoWidgetPara):
         self.toggle_calc.setCheckable(True)
         self.toggle_calc.setFixedHeight(cf.but_height + self.x_gap)
         self.toggle_calc.clicked.connect(self.toggle_click)
+        self.toggle_calc.setStyleSheet(self.toggle_style_sheet)
 
         self.tab_layout.addWidget(self.toggle_calc)
 

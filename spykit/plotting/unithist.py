@@ -55,8 +55,11 @@ class UnitHistPlot(PlotWidget):
         self.q_hdr = None
         self.q_met = None
         self.unit_props = None
-        self.is_updating = False
         self.bg_widget = QWidget()
+
+        # boolean class fields
+        self.is_updating = False
+        self.update_reqd = False
 
         # initialises the other class fields
         self.init_class_fields()
@@ -136,6 +139,9 @@ class UnitHistPlot(PlotWidget):
                 # case is resetting the entire plot
                 self.get_all_hist_metrics()
                 self.update_all_histograms()
+
+                # flag that plot update is not required
+                self.update_reqd = False
 
             case p_str if p_str in ['opt_config', 'n_r', 'n_c', 'hist_type']:
                 # case is altering a configuration parameter
@@ -249,7 +255,8 @@ class UnitHistPlot(PlotWidget):
 
     def show_view(self):
 
-        pass
+        if self.update_reqd:
+            self.update_plot()
 
     def hide_view(self):
 

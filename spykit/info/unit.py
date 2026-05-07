@@ -67,6 +67,7 @@ class UnitInfoTab(InfoWidget):
         self.main_obj = main_obj
 
         # field initialisations
+        self.i_pk_ch = None
         self.df_unit = None
         self.data_flds = None
         self.i_unit_sel = None
@@ -81,9 +82,9 @@ class UnitInfoTab(InfoWidget):
         # plot option widgets
         self.opt_widget = QWidget()
         self.opt_layout = QGridLayout()
-        self.status_filter = QLabelCheckCombo(None, lbl="Unit Type Filter:", font=font_lbl)
         self.run_type = QLabelCombo(None, 'Session Run:', None, font_lbl=font_lbl)
         self.shank_type = QLabelCombo(None, "Recording Shank:", None, font_lbl=font_lbl)
+        self.status_filter = QLabelCheckCombo(None, lbl="Unit Type Filter:", font=font_lbl)
         self.unit_label = QLabelText(None, lbl_str="Selected Unit:", text_str='N/A',
                                      font_lbl=font_lbl, font_txt=font_lbl)
 
@@ -103,12 +104,12 @@ class UnitInfoTab(InfoWidget):
         self.opt_widget.setContentsMargins(0, 0, 0, 0)
 
         # adds the widgets to the layout widget
-        self.opt_layout.addWidget(self.status_filter.h_lbl, 0, 0, 1, 1)
-        self.opt_layout.addWidget(self.status_filter.h_combo, 0, 1, 1, 1)
-        self.opt_layout.addWidget(self.run_type.obj_lbl, 1, 0, 1, 1)
-        self.opt_layout.addWidget(self.run_type.obj_cbox, 1, 1, 1, 1)
-        self.opt_layout.addWidget(self.shank_type.obj_lbl, 2, 0, 1, 1)
-        self.opt_layout.addWidget(self.shank_type.obj_cbox, 2, 1, 1, 1)
+        self.opt_layout.addWidget(self.run_type.obj_lbl, 0, 0, 1, 1)
+        self.opt_layout.addWidget(self.run_type.obj_cbox, 0, 1, 1, 1)
+        self.opt_layout.addWidget(self.shank_type.obj_lbl, 1, 0, 1, 1)
+        self.opt_layout.addWidget(self.shank_type.obj_cbox, 1, 1, 1, 1)
+        self.opt_layout.addWidget(self.status_filter.h_lbl, 2, 0, 1, 1)
+        self.opt_layout.addWidget(self.status_filter.h_combo, 2, 1, 1, 1)
         self.opt_layout.addWidget(self.unit_label.obj_lbl, 3, 0, 1, 1)
         self.opt_layout.addWidget(self.unit_label.obj_txt, 3, 1, 1, 1)
 
@@ -192,13 +193,13 @@ class UnitInfoTab(InfoWidget):
     def set_table_row_colour(self, i_row, c_stat):
 
         for i_col in range(self.table.columnCount()):
-            self.table.item(i_row, i_col).setBackground(cw.unit_col[c_stat])
+            self.table.item(i_row, i_col).setBackground(cw.get_unit_col(c_stat))
 
     def set_combobox_props(self):
 
         # field retrieval
         s_obj = self.main_obj.session_obj
-        is_per_shank = s_obj.is_per_shank()
+        is_per_shank = s_obj.is_per_shank(False)
         is_concat_run = s_obj.is_concat_run()
         run_list = ['Concatenated Run'] if is_concat_run else s_obj.session.get_run_names()
 
@@ -213,7 +214,7 @@ class UnitInfoTab(InfoWidget):
         self.run_type.set_enabled((not is_concat_run) and (len(run_list) > 1))
 
         # sets the shank type comobobox properties
-        self.shank_type.addItems(s_obj.get_shank_names(), True)
+        self.shank_type.addItems(s_obj.get_shank_names(is_per_shank), True)
         self.shank_type.set_current_index(0)
         self.shank_type.set_enabled(is_per_shank)
 
@@ -300,55 +301,36 @@ class UnitInfoTab(InfoWidget):
             return
 
         # channel position/index
-        i_ch_unit = self.df_unit['Max Channel'][self.i_unit_sel - 1]
-        ch_pos = self.get_field('ch_pos')[i_ch_unit - 1, :]
+        i_ch_unit = self.i_pk_ch[self.i_unit_sel - 1]
+        ch_pos_unit = self.ch_pos[self.i_pk_ch[self.i_unit_sel - 1] - 1, :]
 
+        # resets the roi position
         probe_view = self.main_obj.plot_manager.get_plot_view('probe')
         if probe_view is not None:
-            # field retrieval
-            r_pos = probe_view.main_view.roi.pos()
-            r_sz = probe_view.main_view.roi.size()
-            ax_rng = probe_view.h_plot[0, 0].getViewBox().viewRange()
-
-            # resets the ROI position
-            r_pos.setX(self.reset_roi_coord(ch_pos[0], r_sz[0], ax_rng[0]))
-            r_pos.setY(self.reset_roi_coord(ch_pos[1], r_sz[1], ax_rng[1]))
-            probe_view.main_view.roi.setPos(r_pos)
-
-            # removes any currently selected highlights
             type_lbl = self.table.item(i_row, self.i_col_type).text().lower()
-            probe_view.reset_selected_unit_highlight(i_ch_unit, type_lbl)
-
-    @staticmethod
-    def reset_roi_coord(p, r_dim, ax_lim):
-
-        if (p - r_dim / 2) < ax_lim[0]:
-            return ax_lim[0]
-        elif (p + r_dim / 2) > ax_lim[1]:
-            return ax_lim[1] - r_dim
-        else:
-            return p - r_dim / 2
+            probe_view.reset_unit_roi_position(i_ch_unit, ch_pos_unit, type_lbl)
 
     # ---------------------------------------------------------------------------
     # Widget Event Functions
     # ---------------------------------------------------------------------------
 
-    def check_filter_item(self):
+    def check_filter_item(self, update_data=True):
 
         # retrieves the filtered items
         self.get_filtered_items()
 
         # resets the table view
         self.status_change.emit(self, self.is_filt)
-        self.data_change.emit(self)
+        if update_data:
+            self.data_change.emit(self)
 
-    def combo_run_change(self, h_combo):
+    def combo_run_change(self, _):
 
         # if manually updating, then exit
         if not self.is_updating:
             self.run_change.emit(self)
 
-    def combo_shank_change(self, h_combo):
+    def combo_shank_change(self, _):
 
         # if manually updating, then exit
         if not self.is_updating:
@@ -358,10 +340,27 @@ class UnitInfoTab(InfoWidget):
     # Miscellaneous Methods
     # ---------------------------------------------------------------------------
 
-    def setup_unit_table_data(self):
+    def remap_channel_indices(self, q_hdr, q_met):
+
+        # field retrieval
+        ch_pos0 = self.get_field('ch_pos')
+        i_col_ch = np.where(q_hdr == 'maxChannels')[0][0]
+        i_shank = self.main_obj.session_obj.get_shank_index()
+        probe_view = self.main_obj.plot_manager.get_plot_view('probe')
+
+        # re-maps the bombcell channel indices by height
+        i_pk_ch0 = q_met[:, i_col_ch].astype(int)
+        self.i_pk_ch, self.ch_pos = cf.map_bombcell_channels(i_pk_ch0, ch_pos0)
+
+        # re-maps the channel indices to the probe map
+        q_met[:, i_col_ch] = probe_view.sub_view.ch_map[i_shank][self.i_pk_ch - 1]
+
+        return q_met
+
+    def setup_unit_table_data(self, return_fields=False):
 
         # sets up the unit type fields
-        self.unit_lbl = cw.get_unit_labels(self.get_field('splitGoodAndMua_NonSomatic'))
+        unit_lbl_nw = cw.get_unit_labels(self.get_field('splitGoodAndMua_NonSomatic'))
 
         # sets the column headers
         q_hdr = self.get_field('q_hdr')[0]
@@ -369,16 +368,24 @@ class UnitInfoTab(InfoWidget):
         c_hdr0 = np.array(['Unit Type'] + [bc_var_map[x] for x in q_hdr[is_ok]])
 
         # sets the unit metrics dataframe
-        unit_type = self.get_unit_type_labels()
-        q_met = self.get_field('q_met')[:, is_ok]
-        self.df_unit = pd.DataFrame(np.hstack((unit_type.reshape(-1, 1), q_met)), columns=c_hdr0)
-        self.reorder_unit_dataframe(c_hdr0)
+        unit_type = self.get_unit_type_labels(unit_lbl_nw)
+        q_met = self.remap_channel_indices(q_hdr, self.get_field('q_met')[:, is_ok])
+        df_unit_0 = pd.DataFrame(np.hstack((unit_type.reshape(-1, 1), q_met)), columns=c_hdr0)
+        df_unit_nw, c_hdr_nw = self.reorder_unit_dataframe(df_unit_0, c_hdr0)
 
         # sets the dtype of specific columns
         for i_ch in int_col:
             if i_ch in bc_var_map:
                 p_fld = bc_var_map[i_ch]
-                self.df_unit[p_fld] = self.df_unit[p_fld].astype(float).astype(int)
+                df_unit_nw[p_fld] = df_unit_nw[p_fld].astype(float).astype(int)
+
+        if return_fields:
+            # case is returning the new fields (will be updated elsewhere)
+            return df_unit_nw, c_hdr_nw, unit_lbl_nw
+
+        else:
+            # otherwise, update the class fields
+            self.df_unit, self.c_hdr, self.unit_lbl = df_unit_nw, c_hdr_nw, unit_lbl_nw
 
     def update_unit_status(self):
 
@@ -388,6 +395,7 @@ class UnitInfoTab(InfoWidget):
         # initialisations
         self.is_updating = True
         self.set_update_flag.emit(True)
+        self.status_filter.blockSignals(True)
 
         # resets the status filter
         self.status_filter.clear()
@@ -400,10 +408,14 @@ class UnitInfoTab(InfoWidget):
         # resets the update flag
         self.is_updating = False
         self.set_update_flag.emit(False)
+        self.status_filter.blockSignals(False)
 
-    def get_unit_type_labels(self):
+    def get_unit_type_labels(self, unit_lbl_nw=None):
 
-        return np.array([self.unit_lbl[x[0]] for x in self.get_field('unit_type')])
+        if unit_lbl_nw is None:
+            unit_lbl_nw = self.unit_lbl
+
+        return np.array([unit_lbl_nw[x[0]] for x in self.get_field('unit_type')])
 
     def reset_selected_cell(self, i_row):
 
@@ -417,14 +429,14 @@ class UnitInfoTab(InfoWidget):
 
         # force runs the cell click callback
         self.table_cell_click(i_row, i_col)
-        self.table.verticalScrollBar().setValue(i_row)
+        self.table.verticalScrollBar().setValue(i_row - np.sum(~self.is_filt[:i_row]))
 
-    def reorder_unit_dataframe(self, c_hdr0):
+    def reorder_unit_dataframe(self, df_unit_0, c_hdr0):
 
         # sets the fixed column header array
         c_hdr_nw = ['Cluster ID#', 'Unit Type', 'Max Channel',
                     'Spike Count', 'Peak Count', 'Trough Count']
-        self.c_hdr = c_hdr_nw + list(set(c_hdr0) - set(c_hdr_nw))
+        c_hdr = c_hdr_nw + list(set(c_hdr0) - set(c_hdr_nw))
 
         # re-orders the dataframe
-        self.df_unit = self.df_unit.reindex(columns=self.c_hdr)
+        return df_unit_0.reindex(columns=c_hdr), c_hdr

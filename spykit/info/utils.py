@@ -17,7 +17,7 @@ from spykit.common.common_widget import SearchMixin, QProgressWidget
 from PyQt6.QtWidgets import (QWidget, QTreeWidget, QFrame, QCheckBox, QPushButton, QSizePolicy, QVBoxLayout, QGroupBox,
                              QHeaderView, QTreeWidgetItem, QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox,
                              QTableWidget, QFormLayout, QApplication)
-from PyQt6.QtCore import Qt, QPointF, QSize, pyqtSignal
+from PyQt6.QtCore import Qt, QPointF, QSize, pyqtSignal, QPersistentModelIndex
 from PyQt6.QtGui import QFont, QColor, QIcon
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -158,7 +158,6 @@ class InfoManager(QWidget):
                         tab_widget.table.horizontalHeader().check_update.connect(cb_fcn)
 
                         # case is the channel tab
-                        tab_widget.data_change.connect(pfcn(self.channel_combobox_update, 'data'))
                         tab_widget.run_change.connect(pfcn(self.channel_combobox_update, 'run'))
                         tab_widget.shank_change.connect(pfcn(self.channel_combobox_update, 'shank'))
                         tab_widget.status_change.connect(self.channel_status_update)
@@ -189,7 +188,40 @@ class InfoManager(QWidget):
 
             # appends the tab to the tab group
             self.tab_group_table.addTab(tab_widget, t_lbl)
-            self.tab_group_table.setTabEnabled(i_tab, self.tab_show[i_tab])
+            self.set_tab_enabled(i_tab, self.tab_show[i_tab])
+            self.set_tab_visible(i_tab, self.tab_show[i_tab])
+
+    def init_channel_comboboxes(self, data_list=None, run_list=None, shank_list=None):
+
+        # field reinitialisation
+        self.i_run_pr = 0
+
+        # sets the trace type list
+        if data_list is None:
+            data_list = ['Raw']
+
+        # run list
+        if run_list is None:
+            run_list = self.session_obj.session.get_run_names()
+
+        # shank list
+        if shank_list is None:
+            shank_list = self.session_obj.get_shank_names()
+
+        # flag that manual updating is taking place
+        self.is_updating = True
+
+        # resets the combobox fields
+        channel_tab = self.get_info_tab('channel')
+        channel_tab.reset_combobox_fields('run', run_list)
+        channel_tab.reset_combobox_fields('shank', shank_list)
+
+        # resets the trace properties data types
+        trace_tab = self.main_obj.prop_manager.get_prop_tab('traceview')
+        trace_tab.reset_data_types(data_list)
+
+        # resets the update flag
+        self.is_updating = False
 
     def add_info_widgets(self):
 
@@ -214,64 +246,6 @@ class InfoManager(QWidget):
 
         # updates the current run flag
         match d_type:
-            case 'data':
-                # case is the plot data type
-
-                # field retrieval
-                trig_update = False
-                new_type = tab_obj.data_type.current_text()
-                i_run_sel = tab_obj.run_type.current_index()
-                t_dur_run = np.round(self.session_obj.get_run_durations(), cf.n_dp)
-
-                if self.session_obj.is_raw_run() and self.session_obj.session.prep_obj.concat_runs:
-                    # case is changing from a raw data to concatenated preprocessed data type
-
-                    # TraceView limit update
-                    if i_run_sel > 0:
-                        # if the run index is > 0, then reset the trace view
-                        t_ofs = np.round(np.sum(t_dur_run[:self.i_run_pr]), cf.n_dp)
-                        trace_view.t_lim += t_ofs
-                        trig_view.t_lim += t_ofs
-
-                    # TriggerView limit update
-                    full_zoom = np.array_equal(np.array([0, t_dur_run[self.i_run_pr]]),
-                                               np.array(trig_view.l_reg_x.getRegion()))
-                    if full_zoom:
-                        # case is using full zoom
-                        trig_view.t_lim = np.array([0, np.sum(t_dur_run)])
-
-                    # updates the TriggerView duration
-                    trig_update = True
-                    trig_view.gen_props.set_n('t_dur', np.round(np.sum(t_dur_run), cf.n_dp))
-
-                elif (new_type == "Raw") and self.session_obj.is_concat_run():
-                    # case is changing from concatenated preprocessed data type to raw data
-
-                    # determines the run that the trace view starts in
-                    t_dur_sum = np.cumsum(t_dur_run)
-                    self.i_run_pr = next((i for i, x in enumerate(t_dur_sum) if x >= trace_view.t_lim[0]))
-                    if self.i_run_pr != i_run_sel:
-                        # updates the run comoobox if it does not match
-                        tab_obj.is_updating = True
-                        tab_obj.run_type.set_current_index(self.i_run_pr)
-                        tab_obj.is_updating = False
-
-                    # resets the trace view time range
-                    if self.i_run_pr > 0:
-                        trace_view.t_lim -= t_dur_sum[self.i_run_pr - 1]
-
-                    # ensures the upper limit is within the run duration
-                    trace_view.t_lim[1] = np.min([trace_view.t_lim[1], t_dur_run[self.i_run_pr]])
-                    if not np.array_equal(trace_view.l_reg_x.getRegion(), trace_view.t_lim):
-                        trace_view.is_updating = True
-                        trace_view.l_reg_x.setRegion(trace_view.t_lim)
-                        trace_view.is_updating = False
-
-                    # updates the TriggerView duration
-                    trig_update = True
-                    trig_view.gen_props.set_n('t_dur', t_dur_run[self.i_run_pr])
-                    trig_view.t_lim = np.array([0, t_dur_run[self.i_run_pr]])
-
             case 'run':
                 # case is the session run type
 
@@ -285,7 +259,8 @@ class InfoManager(QWidget):
             case 'shank':
                 # resets the current shank
                 self.update_current_shank(tab_obj)
-                self.main_obj.session_obj.reset_current_session(True)
+                has_prep = self.main_obj.session_obj.session.has_prep()
+                self.main_obj.session_obj.reset_current_session(has_prep)
 
         # updates the current preprocessing data type
         if tab_obj.data_flds is not None:
@@ -296,56 +271,6 @@ class InfoManager(QWidget):
         tab_obj.is_updating = True
 
         match d_type:
-            case 'data':
-                # case is the plot data type
-
-                # field retrieval
-                is_concat = self.session_obj.is_concat_run()
-
-                # resets the channel statuses
-                ch_status = self.session_obj.session.bad_ch[0]
-                tab_obj.update_channel_status(ch_status, self.session_obj.get_keep_channels())
-                tab_obj.set_table_rows()
-                tab_obj.is_updating = True
-
-                # run/concatenation types (based on selection)
-                is_per_shank = self.session_obj.is_per_shank()
-
-                # resets the run index (if displaying a concatenated run)
-                if is_concat:
-                    # tab_obj.run_type.obj_cbox.setCurrentIndex(0)
-                    # self.session_obj.set_current_run(tab_obj.run_type.obj_cbox.itemText(0))
-
-                    # resets the previous run index
-                    self.i_run_pr = None
-
-                # updates the run type properties (disable if displaying concatenate run)
-                tab_obj.run_type.set_enabled(not is_concat)
-                tab_obj.shank_type.set_enabled(is_per_shank)
-
-                # resets the shank list
-                reset_type = 0
-                shank_list = self.session_obj.get_shank_names(is_per_shank)
-                if len(shank_list) != tab_obj.shank_type.obj_cbox.count():
-                    reset_type = 2
-                    tab_obj.reset_combobox_fields('shank', shank_list)
-
-                    # resets the current index (if separating by shank)
-                    if is_per_shank:
-                        if self.i_shank_pr is None:
-                            self.i_shank_pr = 0
-
-                        elif tab_obj.shank_type.current_index() != self.i_shank_pr:
-                            tab_obj.shank_type.set_current_index(self.i_shank_pr)
-
-                # resets the trace view
-                self.update_current_shank(tab_obj)
-                self.main_obj.plot_manager.reset_trace_views(reset_type)
-                self.main_obj.plot_manager.reset_probe_views()
-
-                if trig_update:
-                    self.main_obj.plot_manager.reset_trig_views()
-
             case 'run':
                 # case is the session run
 
@@ -366,6 +291,11 @@ class InfoManager(QWidget):
                 # resets the previous run index
                 self.i_run_pr = tab_obj.run_type.current_index()
 
+                # resets the unit tab run index
+                if self.main_obj.session_obj.post_data.n_mmap > 0:
+                    unit_tab = self.main_obj.info_manager.get_info_tab('unit')
+                    unit_tab.run_type.set_current_index(self.i_run_pr)
+
             case 'shank':
                 # resets the channel statuses
                 tab_obj.set_table_rows()
@@ -374,6 +304,11 @@ class InfoManager(QWidget):
                 # resets the trace/trigger view
                 self.main_obj.plot_manager.reset_trace_views(2)
                 self.main_obj.plot_manager.reset_probe_views()
+
+                # resets the unit tab shank index
+                if self.main_obj.session_obj.post_data.n_mmap > 0:
+                    unit_tab = self.main_obj.info_manager.get_info_tab('unit')
+                    unit_tab.shank_type.set_current_index(self.i_shank_pr)
 
         # resets the update flags
         self.is_updating = False
@@ -391,17 +326,6 @@ class InfoManager(QWidget):
         # resets the trace plot view
         trace_view = self.main_obj.plot_manager.get_plot_view('trace')
         trace_view.reset_trace_view(False)
-
-    def update_flag_change(self, is_updating):
-
-        self.is_updating = is_updating
-
-    def update_current_shank(self, tab_obj):
-
-        i_sel_shank = tab_obj.shank_type.current_index()
-        new_shank = i_sel_shank if self.main_obj.session_obj.is_per_shank() else None
-        self.main_obj.session_obj.set_current_shank(new_shank)
-        tab_obj.is_updating = True
 
     def channel_mouse_move(self, evnt):
 
@@ -430,24 +354,16 @@ class InfoManager(QWidget):
             i_row_tot = i_row_ofs + i_row_sel
 
         # determines the channel index (from the hovered channel)
-        ch_id = ch_tab.get_table_device_id(i_row_tot)
+        pos = evnt.position().toPoint()
+        i_row_ch = int(ch_tab.table.itemAt(pos).row())
+        ch_id = ch_tab.get_table_device_id(i_row_ch)
 
-        if self.i_probe_ch == ch_id:
-            # if there is no change in the highlighted channel, then exit
-            return
-
-        # shows the main view channel label
-        # if not probe_view.main_view.ch_highlight.isVisible():
-        probe_view.show_channel_highlights()
-
-        # resets the channel label position
-        probe_view.reset_channel_highlights(ch_id)
+        # updates the probe view (if change in channel index)
+        if self.i_probe_ch != ch_id:
+            probe_view.show_channel_highlights()
+            probe_view.reset_channel_highlights(ch_id)
 
     def channel_mouse_leave(self, evnt):
-
-        # # if the probe channel is not showing, then exit
-        # if self.i_probe_ch is None:
-        #     return
 
         # retrieves the probe view
         probe_view = self.get_probe_plot_view()
@@ -461,51 +377,81 @@ class InfoManager(QWidget):
         # resets the probe channel index
         self.i_probe_ch = None
 
-    def force_reset_flags(self, i_rmv):
+    def get_avail_channel(self, is_raw=False, use_per_shank=False):
 
-        self.session_obj.channel_data.is_selected[i_rmv] = False
-        self.session_obj.channel_data.is_keep[i_rmv] = False
+        return self.session_obj.get_avail_channel(is_raw=is_raw, use_per_shank=use_per_shank)
 
-    def get_avail_channel(self, is_raw=False):
+    def reset_shank_run_info(self):
 
-        return self.session_obj.get_avail_channel(is_raw=is_raw)
+        # field retrieval
+        ch_tab = self.get_info_tab('channel')
+        is_per_shank = self.session_obj.is_per_shank()
+        shank_list = self.session_obj.get_shank_names(is_per_shank)
 
-    def start_recalc(self, p_props):
+        # retrieves the data types
+        tr_tab = self.main_obj.prop_manager.get_prop_tab('traceview')
+        data_list = tr_tab.data_type.itemText()
 
-        status_tab = self.get_info_tab('status')
-        p_props_final = dict(ChainMap(*list(p_props.values())))
-        status_tab.t_worker = self.session_obj.session.recalc_bad_channel_detect(p_props_final)
+        # resets the channel comboboxes
+        self.init_channel_comboboxes(data_list=data_list, shank_list=shank_list)
+        self.session_obj.current_shank = 0
 
-    def cancel_recalc(self):
-
-        status_tab = self.get_info_tab('status')
-        for t in status_tab.t_worker:
-            t.force_quit()
-
-    def init_channel_comboboxes(self):
-
-        # field reinitialisation
-        self.i_run_pr = 0
-
-        # combobox fields
-        data_list = ['Raw']
-        run_list = self.session_obj.session.get_run_names()
-        shank_list = self.session_obj.get_shank_names()
-
-        # flag that manual updating is taking place
-        self.is_updating = True
-
-        # resets the combobox fields
-        channel_tab = self.get_info_tab('channel')
-        channel_tab.reset_combobox_fields('data', data_list)
-        channel_tab.reset_combobox_fields('run', run_list)
-        channel_tab.reset_combobox_fields('shank', shank_list)
-
-        # resets the update flag
-        self.is_updating = False
+        # pauses for update...
+        time.sleep(0.05)
 
     # ---------------------------------------------------------------------------
-    # Unit Table Setup Functions
+    # Unit Tab Event Functions
+    # ---------------------------------------------------------------------------
+
+    def unit_status_update(self, tab_obj):
+
+        # resets the unit table rows
+        tab_obj.set_table_rows()
+
+        # resets the unit spike table rows
+        tab_spike = self.main_obj.prop_manager.get_prop_tab('tracespike')
+        tab_spike.set_table_rows(tab_obj.is_filt)
+
+        # updates the unit markers
+        probe_view = self.get_probe_plot_view()
+        if probe_view is not None:
+            probe_view.setup_unit_markers(tab_obj)
+
+    def unit_combobox_update(self, d_type, tab_obj):
+
+        # if manually updating the combobox, then exit
+        if tab_obj.is_updating:
+            return
+
+        # field retrieval
+        channel_tab = self.main_obj.info_manager.get_info_tab('channel')
+
+        match d_type:
+            case 'run':
+                # case is altering the session run
+                run_name = tab_obj.run_type.current_text()
+                self.main_obj.session_obj.set_current_run(run_name)
+                channel_tab.run_type.set_current_text(run_name)
+
+            case 'shank':
+                # case is altering the recording shank
+                shank_index = tab_obj.shank_type.current_index()
+                self.main_obj.session_obj.set_current_shank(shank_index)
+                channel_tab.shank_type.set_current_index(shank_index)
+
+        # field retrieval
+        self.main_obj.prop_manager.post_process_change()
+
+    def unit_mouse_move(self):
+
+        pass
+
+    def unit_mouse_leave(self):
+
+        pass
+
+    # ---------------------------------------------------------------------------
+    # Unit Table Functions
     # ---------------------------------------------------------------------------
 
     def add_unit_table(self):
@@ -524,7 +470,7 @@ class InfoManager(QWidget):
         unit_tab = self.get_info_tab('unit')
 
         # disables the table
-        self.set_tab_enabled('unit', False)
+        self.set_tab_visible('unit', False)
         unit_tab.table.hide()
 
         # table data retrieval
@@ -544,6 +490,7 @@ class InfoManager(QWidget):
 
         # enables the unit tab
         unit_tab.table.show()
+        self.set_tab_visible('unit', True)
         self.set_tab_enabled('unit', True)
 
         return []
@@ -587,58 +534,38 @@ class InfoManager(QWidget):
             self.set_other_table_props(table_obj, 'unit', i_col_sort)
 
     # ---------------------------------------------------------------------------
-    # Unit Tab Event Functions
+    # Channel Status Event Functions
     # ---------------------------------------------------------------------------
 
-    def unit_status_update(self, tab_obj):
+    def start_recalc(self, p_props):
 
-        # resets the unit table rows
-        tab_obj.set_table_rows()
+        status_tab = self.get_info_tab('status')
+        p_props_final = dict(ChainMap(*list(p_props.values())))
+        status_tab.t_worker = self.session_obj.session.recalc_bad_channel_detect(p_props_final)
 
-        # resets the unit spike table rows
-        tab_spike = self.main_obj.prop_manager.get_prop_tab('tracespike')
-        tab_spike.set_table_rows(tab_obj.is_filt)
+    def cancel_recalc(self):
 
-        # updates the unit markers
-        probe_view = self.get_probe_plot_view()
-        if probe_view is not None:
-            probe_view.setup_unit_markers(tab_obj)
-
-    def unit_combobox_update(self, d_type, tab_obj):
-
-        # if manually updating the combobox, then exit
-        if tab_obj.is_updating:
-            return
-
-        match d_type:
-            case 'run':
-                # case is altering the session run
-                run_name = tab_obj.run_type.current_text()
-                self.main_obj.session_obj.set_current_run(run_name)
-
-            case 'shank':
-                # case is altering the recording shank
-                shank_name = tab_obj.shank_type.current_text()
-                self.main_obj.session_obj.set_current_shank(shank_name)
-
-        # field retrieval
-        self.main_obj.prop_manager.post_process_change()
-
-    def unit_mouse_move(self):
-
-        pass
-
-    def unit_mouse_leave(self):
-
-        pass
+        status_tab = self.get_info_tab('status')
+        for t in status_tab.t_worker:
+            t.force_quit()
 
     # ---------------------------------------------------------------------------
-    # Class Property Widget Setup Functions
+    # Table Widget Functions
     # ---------------------------------------------------------------------------
+
+    def get_table_widget(self, t_type):
+
+        # module import
+        import spykit.info.info_type as it
+
+        info_c = it.info_types[t_type.split()[0].lower()]
+        i_tab = next(i for i, x in enumerate(self.tabs) if isinstance(x, info_c))
+        return self.tabs[i_tab].table
 
     def setup_info_table(self, data, t_type, c_hdr, set_values=True, table_dim=None):
 
         # retrieves the table widget
+        i_col_ch = c_hdr.index('Channel ID#')
         table_obj = self.get_table_widget(t_type)
 
         # table dimensions (if not provided externally)
@@ -711,55 +638,6 @@ class InfoManager(QWidget):
             cb_fcn = pfcn(self.table_cell_changed, t_type)
             table_obj.cellChanged.connect(cb_fcn)
 
-    def table_cell_changed(self, t_type, i_row_s, i_col):
-
-        # if manually updating, then exit
-        if self.is_updating:
-            return
-
-        # retrieves the table widget
-        table_obj = self.get_table_widget(t_type)
-        i_row = int(table_obj.item(i_row_s, 3).text())
-        self.update()
-
-        match t_type.lower():
-            case 'channel':
-                # case is the channel information tab
-                if i_col == 0:
-                    self.channel_check.emit(i_row)
-
-                elif i_col == 1:
-                    self.session_obj.toggle_channel_flag(i_row, is_keep=True)
-
-                    ch_tab = self.main_obj.info_manager.get_info_tab('channel')
-                    self.is_updating = True
-
-                    if self.main_obj.session_obj.get_keep_channels()[i_row]:
-                        c_status = self.main_obj.session_obj.get_channel_status(i_row)
-                        ch_tab.set_table_row_colour(i_row, c_status)
-
-                    else:
-                        ch_tab.set_table_row_colour(i_row, 'rejected')
-
-                    self.is_updating = False
-
-            case 'unit':
-                # case is the unit information tab
-                self.unit_check.emit(i_row)
-
-            case 'preprocess':
-                # case is the preprocessing information tab
-                pass
-
-    def get_table_widget(self, t_type):
-
-        # module import
-        import spykit.info.info_type as it
-
-        info_c = it.info_types[t_type.split()[0].lower()]
-        i_tab = next(i for i, x in enumerate(self.tabs) if isinstance(x, info_c))
-        return self.tabs[i_tab].findChild(QTableWidget)
-
     def update_table_value(self, t_type, i_row, value):
 
         # flag that updating is taking place
@@ -792,8 +670,48 @@ class InfoManager(QWidget):
         table_obj = self.get_table_widget(t_type)
         table_obj.horizontalHeader().setCheckState(i_status)
 
+    def table_cell_changed(self, t_type, i_row_s, i_col):
+
+        # if manually updating, then exit
+        if self.is_updating:
+            return
+
+        # retrieves the table widget
+        table_obj = self.get_table_widget(t_type)
+        i_row = int(table_obj.item(i_row_s, self.i_col_ch).text()) - 1
+        self.update()
+
+        match t_type.lower():
+            case 'channel':
+                # case is the channel information tab
+                if i_col == 0:
+                    self.channel_check.emit(i_row)
+
+                elif i_col == 1:
+                    self.session_obj.toggle_channel_flag(i_row, is_keep=True)
+
+                    ch_tab = self.main_obj.info_manager.get_info_tab('channel')
+                    self.is_updating = True
+
+                    if self.main_obj.session_obj.get_keep_channels()[i_row]:
+                        c_status = self.main_obj.session_obj.get_channel_status(i_row)
+                        ch_tab.set_table_row_colour(i_row, c_status)
+
+                    else:
+                        ch_tab.set_table_row_colour(i_row, 'rejected')
+
+                    self.is_updating = False
+
+            case 'unit':
+                # case is the unit information tab
+                self.unit_check.emit(i_row)
+
+            case 'preprocess':
+                # case is the preprocessing information tab
+                pass
+
     # ---------------------------------------------------------------------------
-    # Progressbar Functions
+    # Progressbar Job Functions
     # ---------------------------------------------------------------------------
 
     def add_job(self, job_name, job_desc):
@@ -824,7 +742,7 @@ class InfoManager(QWidget):
                 self.unit_header_check.emit(i_state == 2)
 
     # ---------------------------------------------------------------------------
-    # Information Parameter Get/Set Functions
+    # Information Parameter Functions
     # --------------------------------------------------------------------------
 
     def get_info_para(self, p_type):
@@ -881,6 +799,17 @@ class InfoManager(QWidget):
     # Miscellaneous Functions
     # ---------------------------------------------------------------------------
 
+    def update_flag_change(self, is_updating):
+
+        self.is_updating = is_updating
+
+    def update_current_shank(self, tab_obj):
+
+        i_sel_shank = tab_obj.shank_type.current_index()
+        new_shank = i_sel_shank if self.main_obj.session_obj.is_per_shank() else None
+        self.main_obj.session_obj.set_current_shank(new_shank)
+        tab_obj.is_updating = True
+
     def set_tab_enabled(self, i_tab, s_flag):
 
         if isinstance(i_tab, str):
@@ -890,20 +819,14 @@ class InfoManager(QWidget):
         self.tab_show[i_tab] = s_flag
         self.tab_group_table.setTabEnabled(i_tab, s_flag)
 
-    def reset_table_selections(self, t_type, is_sel):
+    def set_tab_visible(self, i_tab, s_flag):
 
-        # sets the update flag
-        self.is_updating = True
+        if isinstance(i_tab, str):
+            i_tab = self.t_types.index(i_tab)
 
-        # retrieves and clears the table object
-        table_obj = self.get_table_widget(t_type)
-
-        # resets the checkbox state
-        for i_row, state in enumerate(is_sel):
-            table_obj.item(i_row, 0).setCheckState(cf.chk_state[state])
-
-        # resets the update flag
-        self.is_updating = False
+        # updates the table flag
+        self.tab_show[i_tab] = s_flag
+        self.tab_group_table.setTabVisible(i_tab, s_flag)
 
     def get_info_tab(self, tab_type):
 
@@ -923,6 +846,26 @@ class InfoManager(QWidget):
 
         # returns the probe view
         return self.main_obj.plot_manager.get_plot_view('probe')
+
+    def reset_table_selections(self, t_type, is_sel):
+
+        # sets the update flag
+        self.is_updating = True
+
+        # retrieves and clears the table object
+        table_obj = self.get_table_widget(t_type)
+
+        # resets the checkbox state
+        for i_row, state in enumerate(is_sel):
+            table_obj.item(i_row, 0).setCheckState(cf.chk_state[state])
+
+        # resets the update flag
+        self.is_updating = False
+
+    def force_reset_flags(self, i_rmv):
+
+        self.session_obj.channel_data.is_selected[i_rmv] = False
+        self.session_obj.channel_data.is_keep[i_rmv] = False
 
     # ---------------------------------------------------------------------------
     # Static Methods
@@ -1011,8 +954,8 @@ class InfoWidgetPara(InfoWidget, SearchMixin):
 
     # font objects
     gray_col = QColor(160, 160, 160, 255)
-    item_font = cw.create_font_obj(9, True, QFont.Weight.Bold)
     item_child_font = cw.create_font_obj(8)
+    item_font = cw.create_font_obj(9, True, QFont.Weight.Bold)
 
     def __init__(self, t_lbl, main_obj, layout=QVBoxLayout):
         super(InfoWidgetPara, self).__init__(t_lbl, main_obj, layout)
@@ -1104,20 +1047,6 @@ class InfoWidgetPara(InfoWidget, SearchMixin):
         tree_header.setSectionResizeMode(1, QHeaderView.ResizeMode.Fixed)
         tree_header.setStyleSheet("background: rgba(240, 240, 255, 255);")
 
-    def on_tree_collapse(self):
-
-        self.tree_prop.viewport().update()
-        self.tree_prop.repaint()
-
-    def on_tree_expand(self):
-
-        self.tree_prop.viewport().update()
-        self.tree_prop.repaint()
-
-    # ---------------------------------------------------------------------------
-    # Property Field Functions
-    # ---------------------------------------------------------------------------
-
     def create_para_object(self, layout, p_str, p_val, p_type, p_str_p):
 
         match p_type:
@@ -1207,6 +1136,90 @@ class InfoWidgetPara(InfoWidget, SearchMixin):
                 # sets up the slot function
                 cb_fcn = pfcn(self.prop_update, p_str_p, obj_checkbox)
                 obj_checkbox.stateChanged.connect(cb_fcn)
+
+    def create_child_tree_item(self, props, p_name):
+
+        # initialisations
+        lbl_str = '{0}'.format(props['name'])
+        cb_fcn_base = pfcn(self.prop_update, p_name)
+
+        # creates the tree widget item
+        item_ch = QTreeWidgetItem(None)
+        item_ch.setText(0, lbl_str)
+
+        match props['type']:
+            case 'edit':
+                # case is a lineedit
+                p_value = props['value']
+
+                # creates the lineedit widget
+                h_obj = cw.create_line_edit(None, str(p_value))
+                h_obj.setObjectName(p_name[-1])
+
+                # sets the object callback functions
+                cb_fcn = pfcn(cb_fcn_base, h_obj)
+                h_obj.editingFinished.connect(cb_fcn)
+
+            case 'combobox':
+                # case is a comboboxW
+                h_obj = QComboBox()
+
+                # adds the combobox items
+                for p in props['p_list']:
+                    h_obj.addItem(p)
+
+                # sets the widget properties
+                i_sel0 = props['p_list'].index(props['value'])
+                h_obj.setCurrentIndex(i_sel0)
+                h_obj.setObjectName(p_name[-1])
+
+                # sets the object callback functions
+                cb_fcn = pfcn(cb_fcn_base, h_obj)
+                h_obj.currentIndexChanged.connect(cb_fcn)
+
+            case 'checkbox':
+                # case is a checkbox
+                h_obj = QCheckBox()
+
+                # sets the widget properties
+                h_obj.setCheckState(cf.chk_state[props['value']])
+                h_obj.setStyleSheet("padding-left: 5px;")
+                h_obj.setObjectName(p_name[-1])
+
+                # sets the object callback functions
+                cb_fcn = pfcn(cb_fcn_base, h_obj)
+                h_obj.clicked.connect(cb_fcn)
+
+            case _:
+                # default case
+                if isinstance(props['value'], str):
+                    p_str = props['value']
+
+                else:
+                    p_str = "%g" % props['value']
+
+                h_obj = cw.QLabel(p_str)
+
+        # returns the objects
+        return item_ch, h_obj
+
+    # ---------------------------------------------------------------------------
+    # Tree View Event Functions
+    # ---------------------------------------------------------------------------
+
+    def on_tree_collapse(self):
+
+        self.tree_prop.viewport().update()
+        self.tree_prop.repaint()
+
+    def on_tree_expand(self):
+
+        self.tree_prop.viewport().update()
+        self.tree_prop.repaint()
+
+    # ---------------------------------------------------------------------------
+    # Property Widget Event Functions
+    # ---------------------------------------------------------------------------
 
     def prop_update(self, p_str, h_obj):
 
@@ -1323,72 +1336,6 @@ class InfoWidgetPara(InfoWidget, SearchMixin):
         self.h_grp[group_str] = item
         self.grp_name.append(item.text(0))
 
-    def create_child_tree_item(self, props, p_name):
-
-        # initialisations
-        lbl_str = '{0}'.format(props['name'])
-        cb_fcn_base = pfcn(self.prop_update, p_name)
-
-        # creates the tree widget item
-        item_ch = QTreeWidgetItem(None)
-        item_ch.setText(0, lbl_str)
-
-        match props['type']:
-            case 'edit':
-                # case is a lineedit
-                p_value = props['value']
-
-                # creates the lineedit widget
-                h_obj = cw.create_line_edit(None, str(p_value))
-                h_obj.setObjectName(p_name[-1])
-
-                # sets the object callback functions
-                cb_fcn = pfcn(cb_fcn_base, h_obj)
-                h_obj.editingFinished.connect(cb_fcn)
-
-            case 'combobox':
-                # case is a comboboxW
-                h_obj = QComboBox()
-
-                # adds the combobox items
-                for p in props['p_list']:
-                    h_obj.addItem(p)
-
-                # sets the widget properties
-                i_sel0 = props['p_list'].index(props['value'])
-                h_obj.setCurrentIndex(i_sel0)
-                h_obj.setObjectName(p_name[-1])
-
-                # sets the object callback functions
-                cb_fcn = pfcn(cb_fcn_base, h_obj)
-                h_obj.currentIndexChanged.connect(cb_fcn)
-
-            case 'checkbox':
-                # case is a checkbox
-                h_obj = QCheckBox()
-
-                # sets the widget properties
-                h_obj.setCheckState(cf.chk_state[props['value']])
-                h_obj.setStyleSheet("padding-left: 5px;")
-                h_obj.setObjectName(p_name[-1])
-
-                # sets the object callback functions
-                cb_fcn = pfcn(cb_fcn_base, h_obj)
-                h_obj.clicked.connect(cb_fcn)
-
-            case _:
-                # default case
-                if isinstance(props['value'], str):
-                    p_str = props['value']
-
-                else:
-                    p_str = "%g" % props['value']
-
-                h_obj = cw.QLabel(p_str)
-
-        # returns the objects
-        return item_ch, h_obj
-
     # ---------------------------------------------------------------------------
     # Static Methods
     # ---------------------------------------------------------------------------
@@ -1400,4 +1347,3 @@ class InfoWidgetPara(InfoWidget, SearchMixin):
                 'p_list': p_list, 'p_misc': p_misc, 'ch_fld': ch_fld}
 
 # ----------------------------------------------------------------------------------------------------------------------
-

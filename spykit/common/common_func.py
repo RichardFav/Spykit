@@ -362,6 +362,14 @@ def get_colour_value(col_id, alpha=255, n_col_new=None):
             # case is blue
             return QColor(0, 0, 255, alpha)
 
+        case col_id if col_id in ['light-blue', 'lb']:
+            # case is blue
+            return QColor(128, 192, 255, alpha)
+
+        case col_id if col_id in ['orange', 'o']:
+            # case is blue
+            return QColor(255, 128, 0, alpha)
+
         case col_id if col_id in ['yellow', 'y']:
             # case is green
             return QColor(255, 255, 0, alpha)
@@ -619,6 +627,11 @@ def calc_ccgram(ts1, ts2, win_sz0=50, bin_size=1, return_freq=True):
         return hh[0], (hh[1][:-1] + hh[1][1:]) / 2
 
 
+def rev_dict(orig_dict):
+
+    return {value: key for key, value in orig_dict.items()}
+
+
 def flat_list(l):
 
     if len(l) == 0:
@@ -627,3 +640,9 @@ def flat_list(l):
         return [item for sublist in l for item in sublist]
     else:
         return l
+
+
+def map_bombcell_channels(i_pk_ch0, ch_pos):
+
+    ia = np.lexsort((ch_pos[:, 0], ch_pos[:, 1]))
+    return np.array([next((i for i, y in enumerate(ia) if (y == (x - 1)))) for x in i_pk_ch0]) + 1, ch_pos[ia, :]

@@ -62,8 +62,11 @@ class UnitMetricPlot(PlotWidget):
         # property class fields
         self.m_plot = None
         self.unit_props = None
-        self.is_updating = False
         self.bg_widget = QWidget()
+
+        # boolean class fields
+        self.is_updating = False
+        self.update_reqd = False
 
         # initialises the other class fields
         self.init_class_fields()
@@ -142,6 +145,9 @@ class UnitMetricPlot(PlotWidget):
 
                 # resets the sub-plots
                 self.update_unit_index()
+
+                # flag that plot update is not required
+                self.update_reqd = False
 
             case 'i_unit':
                 # case is the unit index
@@ -234,7 +240,8 @@ class UnitMetricPlot(PlotWidget):
 
     def show_view(self):
 
-        pass
+        if self.update_reqd:
+            self.update_plot()
 
     def hide_view(self):
 

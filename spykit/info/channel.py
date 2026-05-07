@@ -11,7 +11,7 @@ from spykit.common.common_widget import QLabelCombo, QLabelCheckCombo, font_lbl
 
 # pyqt imports
 from PyQt6.QtWidgets import QWidget, QGridLayout
-from PyQt6.QtCore import (Qt, QSize, pyqtSignal)
+from PyQt6.QtCore import Qt, QSize, pyqtSignal, QPersistentModelIndex
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -19,7 +19,6 @@ from PyQt6.QtCore import (Qt, QSize, pyqtSignal)
 class ChannelInfoTab(InfoWidget):
     # pyqtSignal signal functions
     run_change = pyqtSignal(QWidget)
-    data_change = pyqtSignal(QWidget)
     shank_change = pyqtSignal(QWidget)
     status_change = pyqtSignal(QWidget, object)
     set_update_flag = pyqtSignal(bool)
@@ -59,7 +58,6 @@ class ChannelInfoTab(InfoWidget):
         # plot option widgets
         self.opt_widget = QWidget()
         self.opt_layout = QGridLayout()
-        self.data_type = QLabelCombo(None, 'Display Data:', None, font_lbl=font_lbl)
         self.run_type = QLabelCombo(None, 'Session Run:', None, font_lbl=font_lbl)
         self.shank_type = QLabelCombo(None, "Recording Shank:", None, font_lbl=font_lbl)
         self.status_filter = QLabelCheckCombo(None, lbl="Status Filter:", font=font_lbl)
@@ -80,8 +78,6 @@ class ChannelInfoTab(InfoWidget):
         self.opt_widget.setContentsMargins(0, 0, 0, 0)
 
         # adds the widgets to the layout widget
-        self.opt_layout.addWidget(self.data_type.obj_lbl, 0, 0, 1, 1)
-        self.opt_layout.addWidget(self.data_type.obj_cbox, 0, 1, 1, 1)
         self.opt_layout.addWidget(self.run_type.obj_lbl, 1, 0, 1, 1)
         self.opt_layout.addWidget(self.run_type.obj_cbox, 1, 1, 1, 1)
         self.opt_layout.addWidget(self.shank_type.obj_lbl, 2, 0, 1, 1)
@@ -132,12 +128,6 @@ class ChannelInfoTab(InfoWidget):
     # Widget Event Functions
     # ---------------------------------------------------------------------------
 
-    def combo_data_change(self, h_combo):
-
-        # if manually updating, then exit
-        if not self.is_updating:
-            self.data_change.emit(self)
-
     def combo_run_change(self, h_combo):
 
         # if manually updating, then exit
@@ -148,7 +138,6 @@ class ChannelInfoTab(InfoWidget):
 
         # if manually updating, then exit
         if not self.is_updating:
-            nw_text = h_combo.currentText()
             self.shank_change.emit(self)
 
     def combo_status_change(self, h_combo):
@@ -173,7 +162,7 @@ class ChannelInfoTab(InfoWidget):
     def set_table_row_colour(self, i_row, c_stat):
 
         for i_col in range(self.table.columnCount()):
-            self.table.item(i_row, i_col).setBackground(cw.status_col[c_stat])
+            self.table.item(i_row, i_col).setBackground(cw.get_status_col(c_stat))
 
     def set_table_row_enabled(self, i_row, state):
 
@@ -200,10 +189,15 @@ class ChannelInfoTab(InfoWidget):
         i_shank_sel = None
         n_row = deepcopy(self.table.rowCount())
 
+        if self.main_obj.session_obj.post_data is None:
+            check_raw = True
+        else:
+            check_raw = self.main_obj.session_obj.post_data.n_mmap == 0
+
         # field retrieval
-        if self.main_obj.session_obj.is_per_shank():
+        if self.main_obj.session_obj.is_per_shank(check_raw):
             ch_name_0 = self.main_obj.session_obj.get_channel_ids()[0]
-            ch_name_sh = self.main_obj.session_obj.get_avail_channel()
+            ch_name_sh = self.main_obj.session_obj.get_avail_channel(use_per_shank=True)
             i_shank_sel = self.shank_type.current_index()
             ch_id_shank = np.intersect1d(ch_name_0, ch_name_sh, return_indices=True)[1]
 
@@ -227,7 +221,7 @@ class ChannelInfoTab(InfoWidget):
     def get_table_device_id(self, i_row_sel):
 
         i_row_sel = np.min([self.table.rowCount() - 1, i_row_sel])
-        return int(self.table.item(i_row_sel, self.i_channel_col).text())
+        return int(self.table.item(i_row_sel, self.i_channel_col).text()) - 1
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
@@ -239,6 +233,7 @@ class ChannelInfoTab(InfoWidget):
         self.is_updating = True
         self.set_update_flag.emit(True)
         ch_avail = self.get_avail_channel_fcn(is_raw=True)
+        ch_status = {key: val.capitalize() for key, val in ch_status.items()}
 
         # updates the table with the new information
         ch_list, i_rmv = [], []
@@ -249,17 +244,19 @@ class ChannelInfoTab(InfoWidget):
                 # case is the channel is available
                 self.set_table_row_colour(i_row, c_stat if is_keep[i_row] else 'rejected')
                 self.set_table_row_enabled(i_row, True)
-                item.setText(c_stat)
 
-                if c_stat not in ch_list:
-                    ch_list.append(c_stat)
+                c_stat_cap = c_stat.capitalize()
+                item.setText(c_stat_cap)
+
+                if c_stat_cap not in ch_list:
+                    ch_list.append(c_stat_cap)
 
             else:
                 # case is the item has been removed
                 i_rmv.append(i_row)
                 self.set_table_row_colour(i_row, 'removed')
                 self.set_table_row_enabled(i_row, False)
-                item.setText('removed')
+                item.setText('Removed')
 
         if len(i_rmv):
             self.force_reset_flags.emit(i_rmv)
@@ -272,6 +269,7 @@ class ChannelInfoTab(InfoWidget):
             sel_filt = self.status_filter.get_selected_items()
 
         # resets the status filter
+        self.status_filter.blockSignals(True)
         self.status_filter.clear()
         self.status_filter.setEnabled(True)
         for s_filt in ch_list:
@@ -280,6 +278,7 @@ class ChannelInfoTab(InfoWidget):
         # resets the update flag
         self.is_updating = False
         self.set_update_flag.emit(False)
+        self.status_filter.blockSignals(False)
 
     def reset_combobox_fields(self, cb_type, cb_list):
 
@@ -300,11 +299,7 @@ class ChannelInfoTab(InfoWidget):
             case 'run':
                 combo.connect(self.combo_run_change)
 
-            case 'data':
-                combo.connect(self.combo_data_change)
-
             case 'shank':
-                combo.set_enabled(len(cb_list) > 1)
                 combo.connect(self.combo_shank_change)
 
         # updates the combo box field
@@ -313,21 +308,21 @@ class ChannelInfoTab(InfoWidget):
         # resets the update flag
         self.is_updating = False
 
-    def reset_data_types(self, d_names, d_flds):
-
-        # indicate that
-        self.is_updating = True
-
-        # resets the
-        self.data_type.obj_cbox.clear()
-        self.data_type.obj_cbox.addItems(d_names)
-        self.data_type.set_enabled(len(d_names) > 1)
-
-        # updates the data field
-        self.data_flds = d_flds
-
-        # resets the update flag
-        self.is_updating = False
+    # def reset_data_types(self, d_names, d_flds):
+    #
+    #     # indicate that
+    #     self.is_updating = True
+    #
+    #     # resets the
+    #     self.data_type.obj_cbox.clear()
+    #     self.data_type.obj_cbox.addItems(d_names)
+    #     self.data_type.set_enabled(len(d_names) > 1)
+    #
+    #     # updates the data field
+    #     self.data_flds = d_flds
+    #
+    #     # resets the update flag
+    #     self.is_updating = False
 
     def set_table_rows(self):
 

@@ -26,7 +26,7 @@ class DefaultDir(QDialog):
     width_dlg = 600
 
     # array class fields
-    grp_str = ['data', 'session', 'trigger', 'configs']
+    grp_str = ['data', 'session', 'trigger', 'configs', 'filter']
     but_str = ['Update Defaults', 'Reset Defaults', 'Close Window']
 
     # group mapping fields
@@ -35,6 +35,7 @@ class DefaultDir(QDialog):
         "session": "Spykit Session Files",
         "trigger": "Trigger Channel Files",
         "configs": "Preprocessing Configuration Files",
+        "filter": "Unit Filter Options",
     }
 
     def __init__(self, main_obj):

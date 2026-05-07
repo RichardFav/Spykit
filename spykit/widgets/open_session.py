@@ -87,7 +87,7 @@ class OpenSession(QMainWindow):
 
         # main class widget setup
         self.file = SessionFile(self)
-        self.probe = SessionProbe(self)
+        self.probe = SessionProbe(self, self.session_obj)
 
         # other class fields
         self.n_shank = None
@@ -1018,7 +1018,7 @@ class SessionProbe(QWidget):
     # array class fields
     dim_lbl = ['L:', 'B:', 'W:', 'H:']
     dim_ttip = ['Left', 'Bottom', 'Width', 'Height']
-    def_col = ['contact_ids', 'shank_ids', 'device_channel_indices']
+    def_col = ['contact_ids', 'shank_ids']
     info_lbl = ['Subject Name', 'Title',
                 'Session Name', 'Manufacturer',
                 'Sample Count', 'Model',
@@ -1026,7 +1026,7 @@ class SessionProbe(QWidget):
                 'Duration', 'Shank Count']
     # combo_lbl = ['Current Run', 'Current Shank']
 
-    def __init__(self, parent=None):
+    def __init__(self, parent, session_obj):
         super(SessionProbe, self).__init__(parent)
 
         # field retrieval
@@ -1041,6 +1041,7 @@ class SessionProbe(QWidget):
         # current run/session flags
         self.current_run = None
         self.current_ses = None
+        self.session_obj = session_obj
 
         # boolean class fields
         self.has_plot = False
@@ -1376,8 +1377,8 @@ class SessionProbe(QWidget):
         # PROBE PLOT SETUP ----------------------------------------------
 
         # creates the plot probe
-        self.plt_probe_main = ProbeView(self.main_plt_widget, self.p)
-        self.plt_probe_sub = ProbeView(self.sub_plt_widget, self.p)
+        self.plt_probe_main = ProbeView(self.main_plt_widget, self.p, self.session_obj)
+        self.plt_probe_sub = ProbeView(self.sub_plt_widget, self.p, self.session_obj)
 
         # creates the main plot figure
         self.main_plt_widget.addItem(self.plt_probe_main)

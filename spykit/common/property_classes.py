@@ -46,7 +46,8 @@ class SessionWorkBook(QObject):
     added_post_process = pyqtSignal(str)
 
     # array class fields
-    c_hdr_ch = ['', 'Keep?', 'Status', 'Channel ID#', 'Contact ID#', 'Channel Index', 'X-Coord', 'Y-Coord', 'Shank ID']
+    # c_hdr_ch = ['', 'Keep?', 'Status', 'Channel ID#', 'Contact ID#', 'Channel Index', 'X-Coord', 'Y-Coord', 'Shank ID']
+    c_hdr_ch = ['', 'Keep?', 'Status', 'Channel ID#', 'Contact ID#', 'X-Coord', 'Y-Coord', 'Shank ID']
 
     def __init__(self, main_obj):
         super(SessionWorkBook, self).__init__()
@@ -77,7 +78,7 @@ class SessionWorkBook(QObject):
     # Class Getter Functions
     # ---------------------------------------------------------------------------
 
-    def get_avail_channel(self, is_raw=False, use_last_rec=False):
+    def get_avail_channel(self, is_raw=False, use_last_rec=False, use_per_shank=False):
 
         if use_last_rec:
             if len(self.session._s._pp_runs):
@@ -88,11 +89,12 @@ class SessionWorkBook(QObject):
             else:
                 probe_rec = self.get_raw_recording_probe()
 
-        elif is_raw or (not self.session.has_prep()):
+        elif is_raw:
+        # elif (is_raw or (not self.session.has_prep())) and (self.post_data.n_mmap == 0):
             probe_rec = self.get_raw_recording_probe()
 
         else:
-            probe_rec = self.get_current_recording_probe()
+            probe_rec = self.get_current_recording_probe(use_per_shank)
 
         return probe_rec.get_channel_ids()
 
@@ -112,7 +114,8 @@ class SessionWorkBook(QObject):
     def get_info_data_frame(self, probe=None):
 
         # array fields
-        c_list = ['keep', 'status', 'channel_ids', 'contact_ids',  'device_channel_indices', 'x', 'y', 'shank_ids']
+        # c_list = ['keep', 'status', 'channel_ids', 'contact_ids',  'device_channel_indices', 'x', 'y', 'shank_ids']
+        c_list = ['keep', 'status', 'channel_ids', 'contact_ids', 'x', 'y', 'shank_ids']
 
         # retrieves the necessary channel information data
         ch_info = self.get_channel_info(probe)
@@ -121,6 +124,7 @@ class SessionWorkBook(QObject):
 
         # inserts the "status" column
         n_row, n_col = p_dframe.shape
+        p_dframe['channel_ids'] += 1
         p_dframe.insert(0, 'status', np.array(['***'] * n_row))
         p_dframe.insert(0, 'keep', ch_keep)
 
@@ -230,9 +234,16 @@ class SessionWorkBook(QObject):
 
         return self.session_props.n_samples
 
-    def get_current_recording_probe(self):
+    def get_current_recording_probe(self, use_per_shank=None):
 
-        return self.session.get_session_runs(self.current_run, self.current_ses, self.prep_type, self.current_shank)
+        if use_per_shank is None:
+            use_per_shank = self.is_per_shank()
+
+        if use_per_shank:
+            i_shank = self.get_shank_index()
+            return self.session.get_session_runs(self.current_run, None, self.prep_type, i_shank)
+        else:
+            return self.session.get_session_runs(self.current_run, 'grouped', self.prep_type, None)
 
     def get_run_durations(self):
 
@@ -242,7 +253,7 @@ class SessionWorkBook(QObject):
 
         # retrieves the durations of each raw run
         for i_run in range(n_run):
-            probe = self.session.get_session_runs(i_run, i_run, pp_type='raw')
+            probe = self.session.get_session_runs(i_run, 'grouped', pp_type='raw')
             t_dur[i_run] = probe.get_duration()
 
         return t_dur
@@ -332,7 +343,10 @@ class SessionWorkBook(QObject):
 
         if self.is_per_shank() and (self.current_shank is not None):
             shank_names = self.get_shank_names()
-            return shank_names.index(self.current_shank)
+            if isinstance(self.current_shank, int):
+                return self.current_shank
+            else:
+                return shank_names.index(self.current_shank)
 
         else:
             return 0
@@ -346,10 +360,10 @@ class SessionWorkBook(QObject):
         ch_info = self.get_channel_info()
         return ch_info['shank_ids']
 
-    def get_shank_names(self, per_shank=None):
+    def get_shank_names(self, per_shank=None, check_raw=True):
 
         if per_shank is None:
-            per_shank = self.is_per_shank()
+            per_shank = self.is_per_shank(check_raw)
 
         if per_shank:
             # if there is more than one shank, then separate out the names
@@ -374,8 +388,9 @@ class SessionWorkBook(QObject):
     def get_sorting_folder_paths(self, f_type=''):
 
         # field retrieval
+        per_shank = self.is_per_shank(False)
         is_concat_run = self.is_concat_run()
-        n_shank = self.get_shank_count() if self.is_per_shank() else 1
+        n_shank = self.get_shank_count() if per_shank else 1
         n_run = 1 if is_concat_run else self.session.get_run_count()
 
         # determines path of sorting output directory exists
@@ -417,7 +432,7 @@ class SessionWorkBook(QObject):
             f_path_nw = os.path.join(str(base_dir), base_path, r_name, 'sorting')
 
             # case specific folder path update
-            if self.is_per_shank():
+            if per_shank:
                 # case is a multi-shank session
                 for i_shank in range(n_shank):
                     # if there is a match, then exit the inner loop
@@ -602,8 +617,12 @@ class SessionWorkBook(QObject):
         if self.session is None:
             return False
 
-        elif check_raw:
-            return (not self.is_raw_run()) and self.session.prep_obj.per_shank
+        elif check_raw and (not self.has_pp_runs()):
+            if self.has_pp_runs() or (self.post_data is not None):
+                return self.session.prep_obj.per_shank
+            else:
+                return False
+            # return (not self.is_raw_run()) and self.session.prep_obj.per_shank
 
         else:
             return self.session.prep_obj.per_shank
@@ -774,6 +793,7 @@ class SessionObject(QObject):
         self.sort_obj = None
         self.bcell_obj = None
         self.t_worker = None
+        self.shank_runs = None
         self.ssf_load = ssf_load
         self.data_init = {'bad': False, 'sync': False}
 
@@ -814,6 +834,7 @@ class SessionObject(QObject):
         # self.prep_obj.update_prog.connect(self.update_prog)
 
         # loads the channel data (if not loading session from .ssf file)
+        self.shank_runs = None
         if not self.ssf_load:
             self.load_channel_data()
 
@@ -1070,24 +1091,35 @@ class SessionObject(QObject):
         if isinstance(i_run, str):
             i_run = self.get_run_index(i_run)
 
+        if i_shank is not None:
+            shank_name = f'shank_{i_shank}'
+
         if (pp_type is None) or (pp_type.endswith('raw')):
-            if run_type is None:
+            if isinstance(run_type, int) or (run_type is None):
                 # case is the run type is not specified
                 run = self._s._raw_runs[i_run]
                 if i_shank is None:
                     return run
                 else:
-                    run_shank = run._get_split_by_shank()
-                    return run_shank['shank_{0}'.format(i_shank)]
+                    if self.shank_runs is None:
+                        self.shank_runs = run._get_split_by_shank()
+
+                    return self.shank_runs[shank_name]
 
             else:
                 return self._s._raw_runs[i_run]._raw['grouped']
 
         elif self.prep_obj.concat_runs:
-            return self._s._pp_runs[0]._preprocessed[run_type][pp_type]
+            if i_shank is None:
+                return self._s._pp_runs[0]._preprocessed['grouped'][pp_type]
+            else:
+                return self._s._pp_runs[0]._preprocessed[shank_name][pp_type]
 
         else:
-            return self._s._pp_runs[i_run]._preprocessed[run_type][pp_type]
+            if i_shank is None:
+                return self._s._pp_runs[i_run]._preprocessed['grouped'][pp_type]
+            else:
+                return self._s._pp_runs[i_run]._preprocessed[shank_name][pp_type]
 
     def get_session_names(self, i_run):
 

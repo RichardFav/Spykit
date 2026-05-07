@@ -170,7 +170,7 @@ class ProbePlot(PlotWidget):
 
         if self.n_shank == 1:
             # case is there is a single shank
-            ch_map[0] = i_sort_ch
+            ch_map[0] = i_sort_ch + 1
         else:
             # case is there are multiple shanks
             for i_shank in range(self.n_shank):
@@ -509,7 +509,7 @@ class ProbePlot(PlotWidget):
         if self.session_info.is_per_shank():
             # case is plotting a specifc shank
             i_shank = self.session_info.get_shank_index()
-            # self.main_view.reset_axes_limits(False, i_shank=i_shank)
+            self.main_view.reset_axes_limits(False, i_shank=i_shank)
             self.reset_shank_roi(i_shank)
 
             # resets the previous shank index
@@ -632,11 +632,16 @@ class ProbePlot(PlotWidget):
         # removes any currently selected highlights
         if self.unit_sel is not None:
             self.unit_sel.set_unit_highlight(False)
+            self.unit_sel = None
 
         # resets the unit highlight
-        i_unit = np.where(self.sub_view.i_ch_units == i_ch_unit)[0][0]
-        self.unit_sel = self.sub_view.units[i_unit][type_lbl]
-        self.unit_sel.set_unit_highlight(True)
+        is_match = self.sub_view.i_ch_units == i_ch_unit
+        if np.any(is_match):
+            i_unit = np.where(is_match)[0][0]
+            self.unit_sel = self.sub_view.units[i_unit][type_lbl]
+            self.unit_sel.set_unit_highlight(True)
+        else:
+            self.unit_sel = None
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
@@ -728,6 +733,37 @@ class ProbePlot(PlotWidget):
 
             # updates the roi positions
             self.main_view.reset_inset_roi(p_0=p_new, p_sz=sz_new)
+
+    def reset_unit_roi_position(self, i_ch_unit, ch_pos, type_lbl):
+
+        # field retrieval
+        r_pos = self.main_view.roi.pos()
+        r_sz = self.main_view.roi.size()
+        ax_rng = self.h_plot[0, 0].getViewBox().viewRange()
+
+        # calculates the x-location of the probeview ROI
+        i_shank = self.session_info.get_shank_index()
+        x_lim_new, _ = self.main_view.get_init_roi_limits(i_shank)
+        x_roi = np.mean(x_lim_new)
+
+        # resets the ROI position
+        r_pos.setX(self.reset_roi_coord(x_roi, r_sz[0], ax_rng[0]))
+        r_pos.setY(self.reset_roi_coord(ch_pos[1], r_sz[1], ax_rng[1]))
+        self.main_view.roi.setPos(r_pos)
+
+        # removes any currently selected highlights
+        i_ch_map = self.sub_view.ch_map[i_shank][i_ch_unit - 1]
+        self.reset_selected_unit_highlight(i_ch_map, type_lbl)
+
+    @staticmethod
+    def reset_roi_coord(p, r_dim, ax_lim):
+
+        if (p - r_dim / 2) < ax_lim[0]:
+            return ax_lim[0] + r_dim / 2
+        elif (p + r_dim / 2) > ax_lim[1]:
+            return ax_lim[1] - r_dim / 2
+        else:
+            return p - r_dim / 2
 
     # ---------------------------------------------------------------------------
     # Static Methods
@@ -975,13 +1011,12 @@ class ProbeView(GraphicsObject):
             self.clear_view_unit_markers()
 
         # field retrieval
-        ch_pos = unit_tab.get_field('ch_pos')
-        c_id = np.array(unit_tab.df_unit['Cluster ID#'])
         i_shank = self.session_info.get_shank_index()
         unit_types = unit_tab.get_unit_type_labels()
+        c_id = np.array(unit_tab.df_unit['Cluster ID#'])
 
         # sets the channel indices of the peak channels
-        pk_ch = np.array(unit_tab.df_unit['Max Channel'])
+        pk_ch, ch_pos = unit_tab.i_pk_ch, unit_tab.ch_pos
 
         # removes any filtered items
         if unit_tab.is_filt is not None:
@@ -1005,11 +1040,11 @@ class ProbeView(GraphicsObject):
             # determines the types of units common to the current channel
             ind_pk = np.where(i_pk_grp == i)[0]
             ch_unit = ch_pos[int(i_pk - 1), :] - self.unit_rad / 2
-            unit_types_pk = unit_types[ind_pk]
+            self.i_ch_units[i] = self.ch_map[i_shank][i_pk - 1]
 
             # determines the unique unit types
             self.units[i] = {}
-            self.i_ch_units[i] = i_pk
+            unit_types_pk = unit_types[ind_pk]
             unit_types_uniq = np.unique(unit_types_pk)
             n_unit_types = len(unit_types_uniq)
 
@@ -1017,7 +1052,7 @@ class ProbeView(GraphicsObject):
                 # memory allocation
                 ut_new = ut.lower()
                 if ut_new not in unit_col:
-                    unit_col[ut_new] = cw.unit_col[ut_new]
+                    unit_col[ut_new] = cw.get_unit_col(ut_new)
                     unit_col[ut_new].setAlpha(255)
 
                 # sets the offset coordinates

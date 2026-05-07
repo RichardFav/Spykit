@@ -62,6 +62,9 @@ class WaveFormPlot(PlotWidget):
         self.trace_col = cf.get_colour_value('g')
         self.unit_col = cf.get_colour_value('r')
 
+        # boolean class fields
+        self.update_reqd = False
+
         # initialises the other class fields
         self.init_class_fields()
         self.init_plot_view()
@@ -184,6 +187,9 @@ class WaveFormPlot(PlotWidget):
         self.update_unit_colour()
         self.update_axes_grid()
 
+        # flag that plot update is not required
+        self.update_reqd = False
+
     def update_selected_trace(self):
 
         # hides the unit (if one is already selected)
@@ -279,7 +285,8 @@ class WaveFormPlot(PlotWidget):
 
     def show_view(self):
 
-        pass
+        if self.update_reqd:
+            self.update_plot()
 
     def hide_view(self):
 
