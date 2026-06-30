@@ -939,7 +939,7 @@ class ProbeView(GraphicsObject):
 
         # polygon setup
         p_poly = QPolygonF(self.p_vert)
-        if self.session_info is None:
+        if self.session_info.channel_data is None:
             is_show = np.zeros(len(self.c_poly), dtype=bool)
 
         else:
@@ -964,7 +964,7 @@ class ProbeView(GraphicsObject):
                 self.p.setBrush(mkBrush(self.c_col_hover))
                 self.p.drawPolygon(c_p)
 
-            if self.session_info is not None:
+            if self.session_info.session is not None:
                 # retrieves the channel fill colour
                 if is_show[i_p]:
                     # case is the contact is selected

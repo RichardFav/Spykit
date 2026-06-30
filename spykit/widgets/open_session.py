@@ -156,7 +156,7 @@ class OpenSession(QMainWindow):
         # sets up the main layout
         self.main_layout.setSpacing(0)
         self.main_layout.setContentsMargins(0, 0, 0, 0)
-        self.setLayout(self.main_layout)
+        # self.setLayout(self.main_layout)
 
         # sets the main widget layout
         self.main_widget.setLayout(self.frame_layout)

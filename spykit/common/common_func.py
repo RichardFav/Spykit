@@ -646,3 +646,15 @@ def map_bombcell_channels(i_pk_ch0, ch_pos):
 
     ia = np.lexsort((ch_pos[:, 0], ch_pos[:, 1]))
     return np.array([next((i for i, y in enumerate(ia) if (y == (x - 1)))) for x in i_pk_ch0]) + 1, ch_pos[ia, :]
+
+
+def flatten_mixed(m_list):
+
+    for item in m_list:
+        # Check if the element is a list
+        if isinstance(item, list):
+            # Recursively yield items from the sublist
+            yield from flatten_mixed(item)
+        else:
+            # Yield the non-list element directly
+            yield item

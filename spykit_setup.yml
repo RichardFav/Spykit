@@ -5,17 +5,16 @@ channels:
 dependencies:
   - python=3.12
   - pip
+  - scikit-image
   - numpy
   - scipy
   - pyqt=6
   - pyqtgraph  
   - bigtree
-  - scikit-imagef
   - pandas
-  - docker
-  - torch
   - hdbscan
-  - kilosort
   - pip:
-    - spikeinterface
-    - spikewrap
+    - spikeinterface=0.102.3
+    - spikewrap=0.3.0
+    - docker
+    - kilosort=4.1.2

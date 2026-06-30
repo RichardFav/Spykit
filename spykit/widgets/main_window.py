@@ -93,10 +93,10 @@ class MainWindow(QMainWindow):
         # sets the widget style sheets
         self.set_styles()
 
-        # REMOVE ME LATER
-        if platform.system() == "Windows":
-            if os.environ['COMPUTERNAME'] == "DESKTOP-NLLEH0V":
-                self.testing()
+        # # REMOVE ME LATER
+        # if platform.system() == "Windows":
+        #     if os.environ['COMPUTERNAME'] == "DESKTOP-NLLEH0V":
+        #         self.testing()
 
     # ---------------------------------------------------------------------------
     # Class Widget Setup Functions
@@ -211,6 +211,7 @@ class MainWindow(QMainWindow):
                 self.prop_manager.add_config_view('Trigger')
 
         # updates the grid plots
+        self.plot_manager.hide_all_plots()
         self.plot_manager.update_plot_config(c_id)
         self.prop_manager.set_region_config(c_id)
         self.prop_manager.set_config_enabled(True)
@@ -1139,7 +1140,7 @@ class MenuBar(QObject):
         QApplication.processEvents()
 
         # sets/runs the config field/routines
-        if ses_data['configs'] is not None:
+        if (ses_data['configs'] is not None) and len(ses_data['configs'].prep_task):
             # resets the preprocessing configuration fields
             prep_info = self.main_obj.info_manager.get_info_tab('preprocess')
             prep_info.configs.clear()

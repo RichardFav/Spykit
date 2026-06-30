@@ -670,7 +670,7 @@ class SpikeSortingDialog(QMainWindow):
         if len(sorting_msg):
             # case is there was a spike-sorting calculation error
             error_msg = self.get_spike_sorting_error(sorting_msg)
-            cf.show_error(error_msg, 'BombCell Calculation Error', True)
+            cf.show_error(error_msg, 'Spike Sorting Calculation Error', True)
             self.prog_bar.set_progbar_state(False)
 
             # updates the boolean flags

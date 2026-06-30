@@ -483,20 +483,29 @@ class PropManager(QWidget):
         for pt in p_type:
             # retrieves the property tab object and parameter fields
             p_tab = self.get_prop_tab(pt)
-            p_props = deepcopy(p_tab.p_info['ch_fld'])
 
-            # retrieves the parameter values
-            if p_tab.p_props.is_multi:
-                dict_full = [[p_tab.get(k, i) for i in range(p_tab.p_props.n_run)] for k in p_props]
-                p_dict_new = dict(zip(p_props.keys(), dict_full))
+            if pt == 'trace':
+                # case is the trace property tabs
+                i_tv = p_tab.trace_views.index('traceview')
+                p_para.append(self.get_prop_dict(p_tab.tabs[i_tv]))
 
             else:
-                p_dict_new = dict(zip(p_props.keys(), [p_tab.get(k) for k in p_props]))
-
-            # appends the new dictionary to the list
-            p_para.append(p_dict_new)
+                # retrieves the parameter values
+                p_para.append(self.get_prop_dict(p_tab))
 
         return dict(zip(p_type, p_para))
+
+    def get_prop_dict(self, p_tab):
+
+        p_props = deepcopy(p_tab.p_info['ch_fld'])
+        if p_tab.p_props.is_multi:
+            dict_full = [[p_tab.get(k, i) for i in range(p_tab.p_props.n_run)] for k in p_props]
+            p_dict_new = dict(zip(p_props.keys(), dict_full))
+
+        else:
+            p_dict_new = dict(zip(p_props.keys(), [p_tab.get(k) for k in p_props]))
+
+        return p_dict_new
 
     def set_prop_para(self, p_para):
 
