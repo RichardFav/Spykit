@@ -324,8 +324,11 @@ class PropManager(QWidget):
                 trig_view.t_lim += t_ofs
 
             # TriggerView limit update
-            full_zoom = np.array_equal(np.array([0, t_dur_run[info_manager.i_run_pr]]),
-                                       np.array(trig_view.l_reg_x.getRegion()))
+            if info_manager.i_run_pr is None:
+                full_zoom = True
+            else:
+                full_zoom = np.array_equal(np.array([0, t_dur_run[info_manager.i_run_pr]]),
+                                           np.array(trig_view.l_reg_x.getRegion()))
             if full_zoom:
                 # case is using full zoom
                 trig_view.t_lim = np.array([0, np.sum(t_dur_run)])

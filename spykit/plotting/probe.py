@@ -1401,6 +1401,7 @@ class UnitMarker(pg.QtWidgets.QGraphicsEllipseItem):
         super().__init__(p[0] + self.p_wid / 2, p[1] + self.p_wid / 2, r - self.p_wid, r - self.p_wid)
 
         # field initialisations
+        self.r = r
         self.p0 = QPointF(p[0] + r / 2, p[1] + r / 2)
         self.i_ch = i_ch
         self.i_unit = i_unit
@@ -1470,7 +1471,7 @@ class UnitMarker(pg.QtWidgets.QGraphicsEllipseItem):
 
         # retrieves the converted coordinates
         bb_rect = self.v_box.mapSceneToView(lbl_bb).boundingRect()
-        dx_pos, dy_pos = bb_rect.width(), bb_rect.height()
+        dx_pos, dy_pos = bb_rect.width() + self.r / 2, bb_rect.height()
 
         # resets the y-label offset (if near the top)
         ax_rng = self.v_box.viewRange()
@@ -1479,7 +1480,6 @@ class UnitMarker(pg.QtWidgets.QGraphicsEllipseItem):
 
         # resets the x-label offset (if near the left-side)
         if (m_pos.x() + (self.pw_x * dx_pos)) < ax_rng[0][1]:
-            dx_pos = 0
+            dx_pos = -self.r / 2
 
         return dx_pos, dy_pos
-
