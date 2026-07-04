@@ -1,5 +1,6 @@
 # module import
 import os
+import gc
 import copy
 import time
 import glob
@@ -576,6 +577,14 @@ class SessionWorkBook(QObject):
         f_path = self.get_sorting_folder_paths()
         return np.all([os.path.exists(x) for x in f_path.flatten()])
 
+    def is_spike_sorted(self):
+
+        return self.session._s.get_output_path() is not None
+
+    def is_post_process_loaded(self, mmap_name_chk):
+
+        return mmap_name_chk in self.post_data.mmap_name
+
     # ---------------------------------------------------------------------------
     # Session Wrapper Functions
     # ---------------------------------------------------------------------------
@@ -608,9 +617,12 @@ class SessionWorkBook(QObject):
             s_keys = list(self.session._s._raw_runs[0]._raw.keys())
             self.current_ses = s_keys[0]
 
-    def is_concat_run(self):
+    def is_concat_run(self, check_raw=False):
 
-        return (not self.is_raw_run()) and self.session.prep_obj.concat_runs
+        if check_raw:
+            return (not self.is_raw_run()) and self.session.prep_obj.concat_runs
+        else:
+            return self.session.prep_obj.concat_runs
 
     def is_per_shank(self, check_raw=True):
 
@@ -1480,7 +1492,8 @@ class PostProcessData(QObject):
 
                 # recreates the memory mapped file
                 os.rename(self.mmap_file[self.i_mmap][i_run, i_shank], mmap_file_new[i_run, i_shank])
-                self.mmap[self.i_mmap][i_run, i_shank] = np.memmap(mmap_file_new[i_run, i_shank], dtype=dt, mode='r', shape=(1,))
+                self.mmap[self.i_mmap][i_run, i_shank] = (
+                    np.memmap(mmap_file_new[i_run, i_shank], dtype=dt, mode='r', shape=(1,)))
 
         # resets the other fields
         self.is_saved[self.i_mmap] = True

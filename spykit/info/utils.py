@@ -459,6 +459,7 @@ class InfoManager(QWidget):
         # resets the combobox properties
         unit_tab = self.get_info_tab('unit')
         unit_tab.set_combobox_props()
+        unit_tab.setup_unit_table_data()
 
         t_worker = ThreadWorker(None, self.create_unit_table)
         t_worker.work_finished.connect(self.set_unit_table_data)
@@ -474,7 +475,6 @@ class InfoManager(QWidget):
         unit_tab.table.hide()
 
         # table data retrieval
-        unit_tab.setup_unit_table_data()
         c_hdr_unit = deepcopy(unit_tab.c_hdr)
         c_hdr_unit[c_hdr_unit.index('Cluster ID#')] = 'Unit ID#'
         c_hdr_unit[c_hdr_unit.index('Max Channel')] = 'Channel ID#'

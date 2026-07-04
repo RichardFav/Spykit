@@ -1,6 +1,7 @@
 # module import
 import functools
 import numpy as np
+from copy import deepcopy
 from functools import partial as pfcn
 
 # pyqt6 module import
@@ -164,23 +165,26 @@ class ProbePlot(PlotWidget):
             self.sub_view.reset_probe_fields(self.probe)
 
         # sets up the channel mapping indices
-        ch_map = np.empty(self.n_shank, dtype=object)
         self.probe_dframe = self.probe.to_dataframe(complete=True)
-        i_sort_ch = self.session_info.channel_data.i_sort
+        # i_sort_ch = self.session_info.channel_data.i_sort
 
-        if self.n_shank == 1:
-            # case is there is a single shank
-            ch_map[0] = i_sort_ch + 1
-        else:
-            # case is there are multiple shanks
-            for i_shank in range(self.n_shank):
-                ii = self.probe_dframe['shank_ids'][i_sort_ch] == str(i_shank + 1)
-                ch_map[i_shank] = i_sort_ch[ii] + 1
+        # ch_map = i_sort_ch + 1
+        # ch_map = np.empty(self.n_shank, dtype=object)
+        # if self.n_shank == 1:
+        #     # case is there is a single shank
+        #     ch_map[0] = i_sort_ch + 1
+        # else:
+        #     # case is there are multiple shanks
+        #     for i_shank in range(self.n_shank):
+        #         ii = self.probe_dframe['shank_ids'][i_sort_ch] == str(i_shank + 1)
+        #         ch_map[i_shank] = i_sort_ch[ii] + 1
+
+        # unit-channel mapping memory allocation
+        self.sub_view.reset_channel_map(self.n_shank)
 
         # sets up the probe dataframe
         self.main_view.reset_axes_limits(False)
         self.sub_view.reset_axes_limits(False, is_init=True)
-        self.sub_view.set_channel_map(ch_map)
 
     def setup_label_text(self, i_channel):
 
@@ -1035,6 +1039,7 @@ class ProbeView(GraphicsObject):
         self.calc_unit_radius()
         self.units = np.empty(len(i_pk_ch), dtype=object)
         self.i_ch_units = np.zeros(len(i_pk_ch), dtype=int)
+        # ch_map_tot = np.concatenate(deepcopy(self.ch_map))
 
         for i, i_pk in enumerate(i_pk_ch):
             # determines the types of units common to the current channel
@@ -1058,7 +1063,7 @@ class ProbeView(GraphicsObject):
                 # sets the offset coordinates
                 ind_new = c_id[np.array(ind_pk[unit_types_pk == ut])]
                 ch_new = ch_unit + self.calc_unit_offset(i_ut, n_unit_types)
-                ch_id = self.ch_map[i_shank][i_pk - 1]
+                ch_id = self.i_ch_units[i]
 
                 # sets the unit indices
                 self.units[i][ut_new] = UnitMarker(
@@ -1222,9 +1227,16 @@ class ProbeView(GraphicsObject):
     # Miscellaneous Functions
     # ---------------------------------------------------------------------------
 
-    def set_channel_map(self, ch_map_new):
+    def reset_channel_map(self, n_shank):
 
-        self.ch_map = ch_map_new
+        self.ch_map = np.empty(n_shank, dtype=object)
+
+    def remap_channel_indices(self, ch_pos_unit, i_shank):
+
+        ch_match = (self.c_pos[:, None] == ch_pos_unit).all(axis=2)
+        i_ch_map0, _ = np.where(ch_match)
+
+        self.ch_map[i_shank] = i_ch_map0 + 1
 
     def get_field(self, p_fld):
 

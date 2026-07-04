@@ -254,6 +254,13 @@ class TraceViewProps(PropWidget):
     # Miscellaneous Functions
     # ---------------------------------------------------------------------------
 
+    def reset_prop_para(self):
+
+        self.reset_trace_props('t_start')
+        self.reset_trace_props('t_span')
+        self.reset_trace_props('c_lim_lo')
+        self.reset_trace_props('c_lim_hi')
+
     def reset_trace_props(self, p_str):
 
         if self.trace_view is not None:

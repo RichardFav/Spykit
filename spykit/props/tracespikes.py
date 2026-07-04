@@ -924,6 +924,10 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
         i_pk_ch0 = q_met_df['maxChannels'].astype(int)
         self.i_pk_ch, self.ch_pos = cf.map_bombcell_channels(i_pk_ch0, ch_pos0)
 
+        # resets the channel mapping indices (if missing)
+        if probe_view.sub_view.ch_map[self.i_shank] is None:
+            probe_view.sub_view.remap_channel_indices(ch_pos0, self.i_shank)
+
         # re-maps the channel indices to the probe map
         q_met_df['maxChannels'] = probe_view.sub_view.ch_map[self.i_shank][self.i_pk_ch - 1]
 

@@ -70,6 +70,7 @@ class UnitInfoTab(InfoWidget):
         self.i_pk_ch = None
         self.df_unit = None
         self.data_flds = None
+        self.unit_lbl = None
         self.i_unit_sel = None
         self.table_move_fcn = None
         self.table_leave_fcn = None
@@ -154,7 +155,6 @@ class UnitInfoTab(InfoWidget):
 
         # initialisations
         ch_info = None
-        i_shank_sel = None
         unit_id = self.get_unit_indices()
         n_row = self.df_unit.shape[0]
 
@@ -345,15 +345,22 @@ class UnitInfoTab(InfoWidget):
         # field retrieval
         ch_pos0 = self.get_field('ch_pos')
         i_col_ch = np.where(q_hdr == 'maxChannels')[0][0]
-        i_shank = self.main_obj.session_obj.get_shank_index()
         probe_view = self.main_obj.plot_manager.get_plot_view('probe')
 
         # re-maps the bombcell channel indices by height
         i_pk_ch0 = q_met[:, i_col_ch].astype(int)
         self.i_pk_ch, self.ch_pos = cf.map_bombcell_channels(i_pk_ch0, ch_pos0)
 
-        # re-maps the channel indices to the probe map
+        # remaps the channel indices
+        i_shank = self.main_obj.session_obj.get_shank_index()
+        if probe_view.sub_view.ch_map[i_shank] is None:
+            probe_view.sub_view.remap_channel_indices(ch_pos0, i_shank)
+
+        # re-maps the channel indices to the probe map over all shanks
         q_met[:, i_col_ch] = probe_view.sub_view.ch_map[i_shank][self.i_pk_ch - 1]
+        # for ch_map in probe_view.sub_view.ch_map:
+        #     ii = np.isin(self.i_pk_ch, ch_map)
+        #     q_met[ii, i_col_ch] = self.i_pk_ch[ii]
 
         return q_met
 

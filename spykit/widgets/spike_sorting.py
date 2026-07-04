@@ -252,7 +252,7 @@ class SpikeSortingDialog(QMainWindow):
     def init_checkbox_opt(self):
 
         # initialisations
-        c_str = ['Split Recording By Shank', 'Concatenate Experimental Runs']
+        c_str = [' Split Recording By Shank', ' Concatenate Experimental Runs']
         cb_fcn = [self.checkbox_split_shank, self.checkbox_concat_expt]
 
         # sets the frame/layout properties

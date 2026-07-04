@@ -425,7 +425,7 @@ class PreprocessSetup(QMainWindow):
     def init_checkbox_opt(self):
 
         # initialisations
-        c_str = ['Split Recording By Shank', 'Concatenate Experimental Runs']
+        c_str = [' Split Recording By Shank', ' Concatenate Experimental Runs']
         cb_fcn = [self.checkbox_split_shank, self.checkbox_concat_expt]
 
         # sets the frame/layout properties
@@ -751,6 +751,10 @@ class PreprocessSetup(QMainWindow):
             prep_tab.configs.task_name = [pp_flds[x] for x in prep_tab.configs.prep_task]
             prep_tab.configs.task_para = dict(pr_val)
             prep_tab.configs.set_prep_opt(self.per_shank, self.concat_runs)
+
+        elif self.main_obj.session_obj.is_session_sorted():
+            # otherwise if the session is sorted, then enable the post-processing
+            self.main_obj.menu_bar.set_menu_enabled_blocks('sorted-without-preprocess')
 
         # runs the post window close functions
         self.close_preprocessing.emit(self.has_pp)

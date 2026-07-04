@@ -224,7 +224,7 @@ class BombCellPara(object):
         # initialisations
         self.n_run = self.main_obj.session_obj.session.get_run_count()
         self.n_shank = self.main_obj.session_obj.get_shank_count()
-        self.is_concat = self.main_obj.session_obj.is_concat_run()
+        self.is_concat = self.main_obj.session_obj.is_concat_run(False)
         self.is_per_shank = self.main_obj.session_obj.is_per_shank()
         self.sub_name = os.path.split(s_props['subject_path'])[1]
         self.ses_name = s_props["session_name"]
@@ -896,6 +896,7 @@ class BombCellSolver(BombCellPara, QDialog):
         self.i_unit = 0
         self.bc_pkg = None
         self.bc_para_c = None
+        self.t_worker_solver = None
         self.hght_dlg = 6 * self.x_gap + (self.hght_fspec + self.hght_para + self.hght_button)
 
         # initialises the class fields
@@ -1028,6 +1029,9 @@ class BombCellSolver(BombCellPara, QDialog):
             self.para_tab.addTab(tab_widget, ts)
             self.h_tab_para.append(tab_widget)
 
+            # disables the parameter tab
+            self.para_tab.setTabEnabled(self.para_tab.count() - 1, False)
+
         # tab change callback function
         self.para_tab.currentChanged.connect(self.on_tab_changed)
 
@@ -1080,8 +1084,10 @@ class BombCellSolver(BombCellPara, QDialog):
         self.create_solver_mmap(str(self.sort_dir))
         self.setup_expt_dir()
 
-        # intiialises the parameter groups
+        # re-enables the other dialog widgets
         self.cont_button[0].setEnabled(True)
+        for i_tab in range(self.para_tab.count()):
+            self.para_tab.setTabEnabled(i_tab, True)
 
         # stops and updates the progressbar
         self.is_running = False
@@ -1420,7 +1426,8 @@ class BombCellSolver(BombCellPara, QDialog):
 
             # stops the progressbar and thread worker
             self.prog_bar.set_progbar_state(False)
-            self.t_worker_solver.force_quit()
+            if self.t_worker_solver is not None:
+                self.t_worker_solver.force_quit()
 
         if force_close:
             # terminates the package

@@ -483,6 +483,10 @@ class MainWindow(QMainWindow):
 
         # if there is a change in spike-sorting then
         if ss_change:
+            # if so, then enable the spike sorting menu items
+            self.menu_bar.set_menu_enabled_blocks('post-sorting')
+
+            # clears the bombcell post-processing data
             self.menu_bar.clear_bomb_cell(prompt_user=False)
 
     # ---------------------------------------------------------------------------
@@ -627,6 +631,8 @@ class MainWindow(QMainWindow):
         self.prop_manager.add_prop_tabs(['postprocess'])
 
         # updates the unit information tab
+        self.info_manager.reset_shank_run_info()
+        self.prop_manager.add_spike_table()
         self.info_manager.add_unit_table()
 
         # adds the post-processing views
@@ -1134,6 +1140,9 @@ class MenuBar(QObject):
             prop_tab = self.main_obj.prop_manager.get_prop_tab(pt)
             prop_tab.p_props.reset_prop_para(prop_tab.p_info['ch_fld'], n_run)
 
+        # resets the traceview properties
+        self.main_obj.prop_manager.get_prop_tab('traceview').reset_prop_para()
+
         # resets the property/information panel fields
         self.main_obj.prop_manager.set_prop_para(ses_data['prop_para'])
         self.main_obj.info_manager.set_info_para(ses_data['info_para'])
@@ -1147,13 +1156,18 @@ class MenuBar(QObject):
             prep_info.configs = ses_data['configs']
             self.main_obj.session_obj.set_prep_opt(ses_data['configs'].prep_opt)
 
-            # enables the relavant menu items
+            # enables the post-preprocessing menu items
             self.set_menu_enabled_blocks('post-preprocess')
-            self.set_menu_enabled_blocks('post-sorting')
 
-            # enables post-processing loading (if files are available)
-            mm_file = self.main_obj.session_obj.get_mem_map_files(False)
-            self.set_menu_enabled('load_postprocessed', mm_file is not None)
+            # determines if the session has been spike sorted
+            is_sorted = self.main_obj.session_obj.is_session_sorted()
+            if is_sorted:
+                # if so, then enable the spike sorting menu items
+                self.set_menu_enabled_blocks('post-sorting')
+
+                # enables post-processing loading (if files are available)
+                mm_file = self.main_obj.session_obj.get_mem_map_files(False)
+                self.set_menu_enabled('load_postprocessed', mm_file is not None)
 
             # removes any temporary memory map files
             self.main_obj.remove_temp_mem_maps()
@@ -1170,6 +1184,15 @@ class MenuBar(QObject):
                         # if so, run the preprocessing dialog window
                         prep_opt = tuple(prep_info.configs.prep_opt.values())
                         self.main_obj.run_preprocessing_dialog((prep_task, prep_opt))
+
+                    else:
+                        if is_sorted:
+                            # if the session is sorted, then enable the post-processing
+                            self.set_menu_enabled_blocks('sorted-without-preprocess')
+
+                        else:
+                            # disables the preprocessing menu items
+                            self.set_menu_enabled_blocks('clear-preprocess')
 
         # resets the status label
         self.update_progress_bar(None, None)
@@ -1443,6 +1466,13 @@ class MenuBar(QObject):
                 u_choice = QMessageBox.question(None, 'Overwrite File?', q_str, cf.q_yes_no, cf.q_yes)
                 if u_choice == cf.q_no:
                     # if the user cancelled, then exit
+                    return
+
+                # check to see if file is already loaded
+                if self.main_obj.session_obj.is_post_process_loaded(mm_name):
+                    # if so, then output an error to screen and exit
+                    e_str = 'It is not possible to overwrite a loaded post-processing data file.'
+                    cf.show_error(e_str, 'File Overwrite Error')
                     return
 
                 # deletes all existing files
@@ -1756,12 +1786,18 @@ class MenuBar(QObject):
             case 'post-sorting':
                 # case is post spike sorting
                 menu_on = ['clear_sort', 'postprocess']
-                menu_off = ['load_postprocessed']
+                menu_off = ['clear_bombcell', 'load_postprocessed']
+
+            case 'sorted-without-preprocess':
+                # case is loading a sorted session without preprocessing
+                menu_on = ['postprocess', 'run_bombcell', 'load_postprocessed']
+                menu_off = ['sorting', 'clear_sort', 'clear_prep', 'clear_bombcell',
+                            'save_preprocessed', 'save_postprocessed']
 
             case 'clear-sorting':
                 # case is clearing spike sorting
                 menu_off = ['postprocess', 'clear_sort', 'clear_bombcell', 'save_postprocessed']
-                menu_off = ['load_postprocessed']
+                # menu_off = ['load_postprocessed']
 
             case 'post-postprocess':
                 # case is post-postprocessing

@@ -199,7 +199,7 @@ class TriggerPlot(PlotWidget):
 
         # sets up the trace plot
         t_dur = self.session_info.get_run_durations()
-        if self.session_info.is_concat_run():
+        if self.session_info.is_concat_run(True):
             i_run = 0
             y_tr_run = self.y_tr[1]
             t_dur_x = np.sum(t_dur)
