@@ -92,10 +92,11 @@ class HoverTitle(pg.LabelItem):
         # updates the error string
         if self.has_err:
             if isinstance(t_err[0], np.ndarray):
-                self.err_str = '\n'.join([f' * {x}' for x in t_err[0]])
+                err_str_base = '\n'.join([f' * {x}' for x in t_err[0]])
             else:
-                self.err_str = '\n'.join([f' * {x}' for x in t_err])
+                err_str_base = '\n'.join([f' * {x}' for x in t_err])
 
+            self.err_str = f'Threshold Violations\n{err_str_base}'
             self.h_lbl.setText(self.err_str)
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -419,12 +420,10 @@ class TemplateTrace(UnitPlotLayout):
     l_pen_wform = pg.mkPen(color=(0, 255, 0), width=4)
 
     # error strings
-    # error strings
     err_str = [
-        np.array(['Max Peak Count', 'Max Trough Count', 'Max Waveform Baseline Fraction',
-                  'Min Waveform Duration', 'Max Waveform Duration', '2nd Peak To Trough Ratio',
-                  'Min Trough to 2nd Peak Ratio', 'Min First Peak Width', 'Min Main Trough Width',
-                  'Max 1st/2nd Peak Ratio', 'Max Peak to Trough Ratio', 'Min Slope Decay', 'Max Slope Decay']),
+        np.array(['Peak/Trough Count', 'Waveform Baseline Flatness',
+                  'Waveform Duration', '2nd Peak/Trough Ratio', '1st/2nd Peak Ratio',
+                  'Main Peak/Trough Ratio', 'Slope Decay']),
         np.array(['Minimum Amplitude', 'Minimum SNR']),
     ]
 
@@ -621,8 +620,7 @@ class TemplateTrace(UnitPlotLayout):
 
         else:
             # memory allocation
-            is_lin_fit = p_value('spDecayLinFit')
-            is_ok = np.ones(13 - int(is_lin_fit), dtype=bool)
+            is_ok = np.ones(7, dtype=bool)
 
             # metric retrieval
             n_peak = self.unit_props.q_met['nPeaks'][i_unit_f]
@@ -638,25 +636,25 @@ class TemplateTrace(UnitPlotLayout):
             peak_tr_ratio = np.abs(self.unit_props.q_met['mainPeakToTroughRatio'][i_unit_f])
 
             # other metric feasibility checks
-            is_ok[0] = n_peak <= p_value('maxNPeaks')
-            is_ok[1] = n_trough <= p_value('maxNTroughs')
-            is_ok[2] = wv_flat <= p_value('maxWvBaselineFraction')
-            is_ok[3] = wv_dur >= p_value('minWvDuration')
-            is_ok[4] = wv_dur <= p_value('maxWvDuration')
-            is_ok[5] = sec_peak_ratio <= p_value('maxScndPeakToTroughRatio_noise')
-            is_ok[6] = tr_peak2_ratio >= p_value('minTroughToPeak2Ratio_nonSomatic')
-            is_ok[7] = peak_width >= p_value('minWidthFirstPeak_nonSomatic')
-            is_ok[8] = tr_width >= p_value('minWidthMainTrough_nonSomatic')
-            is_ok[9] = peak_ratio <= p_value('maxPeak1ToPeak2Ratio_nonSomatic')
-            is_ok[10] = peak_tr_ratio <= p_value('maxMainPeakToTroughRatio_nonSomatic')
+            is_ok[0] = ((n_peak <= p_value('maxNPeaks')) and
+                        (n_trough <= p_value('maxNTroughs')))
+            is_ok[1] = wv_flat <= p_value('maxWvBaselineFraction')
+            is_ok[2] = ((wv_dur >= p_value('minWvDuration')) and
+                        (wv_dur <= p_value('maxWvDuration')))
+            is_ok[3] = sec_peak_ratio <= p_value('maxScndPeakToTroughRatio_noise')
+            is_ok[4] = not ((tr_peak2_ratio < p_value('minTroughToPeak2Ratio_nonSomatic')) and
+                            (peak_width < p_value('minWidthFirstPeak_nonSomatic')) and
+                            (tr_width < p_value('minWidthMainTrough_nonSomatic')) and
+                            (peak_ratio > p_value('maxPeak1ToPeak2Ratio_nonSomatic')))
+            is_ok[5] = peak_tr_ratio <= p_value('maxMainPeakToTroughRatio_nonSomatic')
 
             # spatial decay feasibility
             if p_value('computeSpatialDecay'):
-                if is_lin_fit:
-                    is_ok[11] = sd_slope >= p_value('minSpatialDecaySlope')
+                if p_value('spDecayLinFit'):
+                    is_ok[6] = sd_slope >= p_value('minSpatialDecaySlope')
                 else:
-                    is_ok[11] = sd_slope >= p_value('minSpatialDecaySlopeExp')
-                    is_ok[12] = sd_slope <= p_value('maxSpatialDecaySlopeExp')
+                    is_ok[6] = ((sd_slope >= p_value('minSpatialDecaySlopeExp')) and
+                                (sd_slope <= p_value('maxSpatialDecaySlopeExp')))
 
         # returns the colour based on overall feasibility
         return self.err_str[self.is_raw][~is_ok]
@@ -1366,7 +1364,7 @@ class SpikeActivityPlot(UnitPlotLayout):
 
         # metric feasibility check
         is_ok[0] = n_spike >= p_value('minNumSpikes')
-        is_ok[1] = p_ratio >= p_value('minPresenceRatio') or np.isnan(p_ratio)
+        is_ok[1] = not (p_ratio < p_value('minPresenceRatio') or np.isnan(p_ratio))
 
         # returns the colour based on overall feasibility
         return self.err_str[~is_ok]

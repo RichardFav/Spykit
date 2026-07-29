@@ -20,7 +20,7 @@ from pyqtgraph import PlotCurveItem, GraphicsObject, ROI, RectROI, CircleROI, Te
 # plot button fields
 b_icon = ['cell', 'tick', 'star', 'toggle', 'save', 'close']
 b_type = ['toggle', 'button', 'toggle', 'button', 'button', 'button']
-tt_lbl = ['Show Unit Markers', 'Display Inset Traces', 'Highlight Inset Traces',
+tt_lbl = ['Show Unit Markers', 'Display Inset Channel Traces', 'Highlight Inset Traces',
           'Toggle Selection', 'Save Figure', 'Close ProbeView']
 
 

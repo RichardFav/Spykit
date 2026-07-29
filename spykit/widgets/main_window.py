@@ -731,26 +731,10 @@ class MainWindow(QMainWindow):
             # resets the tab visibility
             self.prop_manager.set_tab_visible(tt, tt in base_tab)
 
-        # clears the plot view
+        # clears and hides all plot views
         for p_type in self.plot_manager.types:
-            # retrieves the plot view object
             p_view = self.plot_manager.get_plot_view(p_type)
             p_view.clear_plot_view()
-
-            # # performs the view specific updates
-            # match p_type:
-            #     case 'probe':
-            #         # hide/delete probe unit markers
-            #         pass
-            #
-            #     case 'trace':
-            #         # hide/delete unit spike markers
-            #         pass
-            #
-            #     case 'trigger':
-            #         pass
-
-            # hides the plot view
             p_view.hide()
 
         # clears the information tabs
@@ -796,11 +780,10 @@ class MainWindow(QMainWindow):
 
         # tiny examples
         #  => (CS/SS = Combined/Separated Shank; SR/CR = Separated/Concated Runs)
-        # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/Tiny Example/tiny_example.ssf"
-        # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/Tiny Example/tiny_example_1 (CS + SR).ssf"
-        # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/Tiny Example/tiny_example_2 (SS + SR).ssf"
-        # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/Tiny Example/tiny_example_3 (CS + CR).ssf"
-        f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/session/Preprocessed/Tiny Example (4 - SC).ssf"
+        f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/session/Preprocessed/Tiny Example (1 - NS).ssf"
+        # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/session/Preprocessed/Tiny Example (2 - SS).ssf"
+        # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/session/Preprocessed/Tiny Example (3 - NC).ssf"
+        # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/session/Preprocessed/Tiny Example (4 - SC).ssf"
 
         # # large examples
         # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/Large Example/large_example.ssf"
