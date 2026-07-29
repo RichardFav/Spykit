@@ -140,6 +140,11 @@ class PostProcProps(PropWidget):
         # updates the other properties
         self.soln_combo.set_enabled(len(self.mm_name) > 1)
 
+    def remove_all_soln_files(self):
+
+        for i_mm in range(len(self.mm_name)):
+            self.remove_soln_file(i_mm)
+
     # ---------------------------------------------------------------------------
     # View Specific Functions
     # ---------------------------------------------------------------------------
@@ -170,6 +175,13 @@ class PostProcProps(PropWidget):
 
         p_tab = self.tabs[self.plot_views.index(p_type)]
         p_tab.set_plot_view(p_view)
+
+    def set_current_tab(self, i_tab):
+
+        if isinstance(i_tab, str):
+            i_tab = self.plot_views.index(i_tab)
+
+        self.tab_group_pp.setCurrentIndex(i_tab)
 
     def get_tab_view(self, p_type):
 

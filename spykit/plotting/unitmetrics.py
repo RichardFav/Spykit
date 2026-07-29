@@ -14,9 +14,9 @@ from spykit.threads.utils import ThreadWorker
 from spykit.plotting.utils import (PlotWidget, PlotLayout, UnitPlotLayout, x_gap, setup_default_layout)
 
 # pyqt6 module import
-from PyQt6.QtWidgets import QWidget, QGraphicsPathItem
-from PyQt6.QtCore import pyqtSignal, QSize
-from PyQt6.QtGui import QFont, QPainterPath
+from PyQt6.QtWidgets import QWidget, QGraphicsPathItem, QToolTip
+from PyQt6.QtCore import pyqtSignal, QSize, QPoint
+from PyQt6.QtGui import QFont, QPainterPath, QCursor
 
 # pyqtgraph module imports
 import pyqtgraph as pg
@@ -29,6 +29,74 @@ tt_lbl = ['Save Figure', 'Close View']
 # ----------------------------------------------------------------------------------------------------------------------
 
 xy_pad = 0.02
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+"""
+    HoverTitle:
+"""
+
+class HoverTitle(pg.LabelItem):
+    # parameters
+    title_col = ['white', 'red']
+    lbl_col = pg.mkColor((0, 0, 0, 255))
+    lbl_fill = pg.mkColor((255, 255, 255, 255))
+
+    def __init__(self, main_obj, **kwargs):
+        super().__init__(main_obj.t_str, **kwargs)
+
+        # sets the parent object
+        self.setParent(main_obj)
+
+        # initialisations
+        self.has_err = False
+        self.is_show = False
+
+        # Create a TextItem for the dynamic tooltip
+        self.h_lbl = pg.TextItem(
+            "",
+            anchor=(1, 0),
+            color=self.lbl_col,
+            fill=self.lbl_fill,
+        )
+
+        # sets the label properties
+        self.h_lbl.hide()
+        self.parent().addItem(self.h_lbl)
+
+        # sets the mouse-movement signal functions
+        self.parent().scene().sigMouseMoved.connect(self.mouse_move)
+
+    def mouse_move(self, pos):
+
+        if self.parent().sceneBoundingRect().contains(pos) and self.has_err:
+            # calculates the global mouse position
+            m_pos = self.parent().plotItem.vb.mapSceneToView(pos)
+
+            # displays the tooltip
+            self.is_show = True
+            self.h_lbl.setPos(m_pos.x(), m_pos.y())
+            self.h_lbl.show()
+
+        else:
+            # otherwise, hide the tooltip
+            self.is_show = False
+            self.h_lbl.hide()
+
+    def update_title_props(self, t_err):
+
+        # field retrieval
+        self.has_err = len(t_err) > 0
+        self.setText(self.text, color=self.title_col[self.has_err])
+
+        # updates the error string
+        if self.has_err:
+            if isinstance(t_err[0], np.ndarray):
+                self.err_str = '\n'.join([f' * {x}' for x in t_err[0]])
+            else:
+                self.err_str = '\n'.join([f' * {x}' for x in t_err])
+
+            self.h_lbl.setText(self.err_str)
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -83,6 +151,7 @@ class UnitMetricPlot(PlotWidget):
 
         # sets the plot layout properties
         self.bg_widget.setStyleSheet("background-color: rgba(0, 0, 0, 0);")
+        self.bg_widget.setStyleSheet("background-color: transparent;")
         self.plot_layout.addWidget(self.bg_widget)
         self.plot_layout.setSpacing(10)
         self.plot_layout.setDimOffset(15, 1)
@@ -222,9 +291,8 @@ class UnitMetricPlot(PlotWidget):
                 # case is the figure save button
 
                 # outputs the current trace to file
-                f_path = cf.setup_image_file_name(cw.figure_dir, 'TraceTest.png')       # CHANGE THIS TO
-                exp_obj = exporters.ImageExporter(self.h_plot[0, 0].getPlotItem())
-                exp_obj.export(f_path)
+                f_path = cf.setup_image_file_name(cw.figure_dir, 'UnitMetrics.png')
+                cf.save_subplots(self, self.m_plot, f_path)
 
             case 'close':
                 # case is the close button
@@ -350,6 +418,16 @@ class TemplateTrace(UnitPlotLayout):
     l_pen_path = pg.mkPen(color=(255, 0, 0), width=2)
     l_pen_wform = pg.mkPen(color=(0, 255, 0), width=4)
 
+    # error strings
+    # error strings
+    err_str = [
+        np.array(['Max Peak Count', 'Max Trough Count', 'Max Waveform Baseline Fraction',
+                  'Min Waveform Duration', 'Max Waveform Duration', '2nd Peak To Trough Ratio',
+                  'Min Trough to 2nd Peak Ratio', 'Min First Peak Width', 'Min Main Trough Width',
+                  'Max 1st/2nd Peak Ratio', 'Max Peak to Trough Ratio', 'Min Slope Decay', 'Max Slope Decay']),
+        np.array(['Minimum Amplitude', 'Minimum SNR']),
+    ]
+
     def __init__(self, unit_props, i_unit, is_raw):
         super(TemplateTrace, self).__init__(unit_props, i_unit)
 
@@ -407,6 +485,10 @@ class TemplateTrace(UnitPlotLayout):
         # creates the sub-plot title
         self.t_str = 'Mean Raw Waveform' if self.is_raw else 'Template Waveform'
 
+        # creates the sub-plot title
+        self.title_lbl = HoverTitle(self, size=self.unit_props.title_sub_size, bold=True)
+        self.reset_plot_title(self.title_lbl)
+
     def create_metric_legend(self):
 
         pass
@@ -446,13 +528,8 @@ class TemplateTrace(UnitPlotLayout):
 
     def update_plot_title(self):
 
-        # sets the sub-plot title
-        self.setTitle(
-            self.t_str,
-            color=self.get_title_colour(),
-            size=self.unit_props.title_sub_size,
-            bold=True
-        )
+        # updates the title properties
+        self.title_lbl.update_title_props(self.get_err_flags())
 
     def update_show_metric(self, show_metric):
 
@@ -524,7 +601,7 @@ class TemplateTrace(UnitPlotLayout):
         y_wform = self.p_scl * (y_sig - 1 / 2) * h_pos + ch_pos_n[:, 1].reshape(-1, 1)
         return x_wform, y_wform, i_ch_w, is_ok
 
-    def get_title_colour(self):
+    def get_err_flags(self):
 
         # initialisations
         i_unit_f = self.i_unit - 1
@@ -544,7 +621,8 @@ class TemplateTrace(UnitPlotLayout):
 
         else:
             # memory allocation
-            is_ok = np.ones(7, dtype=bool)
+            is_lin_fit = p_value('spDecayLinFit')
+            is_ok = np.ones(13 - int(is_lin_fit), dtype=bool)
 
             # metric retrieval
             n_peak = self.unit_props.q_met['nPeaks'][i_unit_f]
@@ -559,29 +637,29 @@ class TemplateTrace(UnitPlotLayout):
             peak_ratio = np.abs(self.unit_props.q_met['peak1ToPeak2Ratio'][i_unit_f])
             peak_tr_ratio = np.abs(self.unit_props.q_met['mainPeakToTroughRatio'][i_unit_f])
 
+            # other metric feasibility checks
+            is_ok[0] = n_peak <= p_value('maxNPeaks')
+            is_ok[1] = n_trough <= p_value('maxNTroughs')
+            is_ok[2] = wv_flat <= p_value('maxWvBaselineFraction')
+            is_ok[3] = wv_dur >= p_value('minWvDuration')
+            is_ok[4] = wv_dur <= p_value('maxWvDuration')
+            is_ok[5] = sec_peak_ratio <= p_value('maxScndPeakToTroughRatio_noise')
+            is_ok[6] = tr_peak2_ratio >= p_value('minTroughToPeak2Ratio_nonSomatic')
+            is_ok[7] = peak_width >= p_value('minWidthFirstPeak_nonSomatic')
+            is_ok[8] = tr_width >= p_value('minWidthMainTrough_nonSomatic')
+            is_ok[9] = peak_ratio <= p_value('maxPeak1ToPeak2Ratio_nonSomatic')
+            is_ok[10] = peak_tr_ratio <= p_value('maxMainPeakToTroughRatio_nonSomatic')
+
             # spatial decay feasibility
             if p_value('computeSpatialDecay'):
-                if p_value('spDecayLinFit'):
-                    is_ok[0] = sd_slope >= p_value('minSpatialDecaySlope')
+                if is_lin_fit:
+                    is_ok[11] = sd_slope >= p_value('minSpatialDecaySlope')
                 else:
-                    is_ok[0] = ((sd_slope >= p_value('minSpatialDecaySlopeExp')) and
-                                (sd_slope <= p_value('maxSpatialDecaySlopeExp')))
-
-            # other metric feasibility checks
-            is_ok[1] = ((n_peak <= p_value('maxNPeaks')) and
-                        (n_trough <= p_value('maxNTroughs')))
-            is_ok[2] = wv_flat <= p_value('maxWvBaselineFraction')
-            is_ok[3] = ((wv_dur >= p_value('minWvDuration')) and
-                        (wv_dur <= p_value('maxWvDuration')))
-            is_ok[4] = sec_peak_ratio <= p_value('maxScndPeakToTroughRatio_noise')
-            is_ok[5] = not ((tr_peak2_ratio < p_value('minTroughToPeak2Ratio_nonSomatic')) and
-                        (peak_width < p_value('minWidthFirstPeak_nonSomatic')) and
-                        (tr_width < p_value('minWidthMainTrough_nonSomatic')) and
-                        (peak_ratio > p_value('maxPeak1ToPeak2Ratio_nonSomatic')))
-            is_ok[6] = peak_tr_ratio <= p_value('maxMainPeakToTroughRatio_nonSomatic')
+                    is_ok[11] = sd_slope >= p_value('minSpatialDecaySlopeExp')
+                    is_ok[12] = sd_slope <= p_value('maxSpatialDecaySlopeExp')
 
         # returns the colour based on overall feasibility
-        return 'white' if np.all(is_ok) else 'red'
+        return self.err_str[self.is_raw][~is_ok]
 
     def get_trace_metrics(self):
 
@@ -608,6 +686,10 @@ class SpatialDecayPlot(UnitPlotLayout):
     l_pen_loc = 'g'
     l_pen_trend = pg.mkPen('r', width=2)
     l_brush_loc = (100, 255, 100, 100)
+
+    # error strings
+    t_str = 'Spatial Decay'
+    err_str = np.array(['Minimum Decay Slope', 'Maximum Decay Slope'])
 
     def __init__(self, unit_props, i_unit):
         super(SpatialDecayPlot, self).__init__(unit_props, i_unit)
@@ -666,15 +748,15 @@ class SpatialDecayPlot(UnitPlotLayout):
         )
 
         # creates the trend line
-        self.plot_trend = self.plot(
-            [0],
-            [0],
-            pen=self.l_pen_trend
-        )
+        self.plot_trend = self.plot([0], [0], pen=self.l_pen_trend)
 
         # sets the axes labels
         self.plotItem.getAxis('bottom').setLabel('Distance (um)')
         self.plotItem.getAxis('left').setLabel('Amplitude')
+
+        # creates the sub-plot title
+        self.title_lbl = HoverTitle(self, size=self.unit_props.title_sub_size, bold=True)
+        self.reset_plot_title(self.title_lbl)
 
     def create_metric_legend(self):
 
@@ -730,13 +812,8 @@ class SpatialDecayPlot(UnitPlotLayout):
 
     def update_plot_title(self):
 
-        # sets the sub-plot title
-        self.setTitle(
-            'Spatial Decay',
-            color=self.get_title_colour(),
-            size=self.unit_props.title_sub_size,
-            bold=True
-        )
+        # updates the title properties
+        self.title_lbl.update_title_props(self.get_err_flags())
 
         # updates the axis font properties
         self.getAxis('left').label.setFont(self.unit_props.lbl_font)
@@ -760,25 +837,27 @@ class SpatialDecayPlot(UnitPlotLayout):
     # Class Getter Functions
     # ---------------------------------------------------------------------------
 
-    def get_title_colour(self):
+    def get_err_flags(self):
 
         # initialisations
         i_unit_f = self.i_unit - 1
         p_value = self.unit_props.get_field
+        is_lin_fit = p_value('spDecayLinFit')
 
         # metric retrieval
         sd_slope = self.unit_props.q_met['spatialDecaySlope'][i_unit_f]
 
         # spatial decay feasibility
+        is_ok = np.ones(2 - int(is_lin_fit), dtype=bool)
         if p_value('computeSpatialDecay'):
-            if p_value('spDecayLinFit'):
-                is_ok = sd_slope >= p_value('minSpatialDecaySlope')
+            if is_lin_fit:
+                is_ok[0] = sd_slope >= p_value('minSpatialDecaySlope')
             else:
-                is_ok = ((sd_slope >= p_value('minSpatialDecaySlopeExp')) and
-                         (sd_slope <= p_value('maxSpatialDecaySlopeExp')))
+                is_ok[0] = (sd_slope >= p_value('minSpatialDecaySlopeExp'))
+                is_ok[1] = (sd_slope <= p_value('maxSpatialDecaySlopeExp'))
 
         # returns the colour based on overall feasibility
-        return 'white' if is_ok else 'red'
+        return self.err_str[~is_ok]
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -795,6 +874,10 @@ class AutoCorrelPlot(UnitPlotLayout):
 
     # pen objects
     l_pen_marker = pg.mkPen(color=(255, 0, 0), width=2, style=cf.pen_style['Dash'])
+
+    # error strings
+    t_str = 'Auto-Correlogram'
+    err_str = np.array(['Max RPV violations'])
 
     def __init__(self, unit_props, i_unit):
         super(AutoCorrelPlot, self).__init__(unit_props, i_unit)
@@ -864,6 +947,10 @@ class AutoCorrelPlot(UnitPlotLayout):
         # sets the axis labels
         self.plotItem.getAxis('bottom').setLabel('Time (ms)')
         self.plotItem.getAxis('left').setLabel('Frequency')
+
+        # creates the sub-plot title
+        self.title_lbl = HoverTitle(self, size=self.unit_props.title_sub_size, bold=True)
+        self.reset_plot_title(self.title_lbl)
 
     def create_metric_legend(self):
 
@@ -936,13 +1023,8 @@ class AutoCorrelPlot(UnitPlotLayout):
 
     def update_plot_title(self):
 
-        # sets the sub-plot title
-        self.setTitle(
-            'Auto-Correlogram',
-            size=self.unit_props.title_sub_size,
-            color=self.get_title_colour(),
-            bold=True
-        )
+        # updates the title properties
+        self.title_lbl.update_title_props(self.get_err_flags())
 
         # updates the axis font properties
         self.getAxis('left').label.setFont(self.unit_props.lbl_font)
@@ -1021,7 +1103,7 @@ class AutoCorrelPlot(UnitPlotLayout):
         self.cc_gram = np.empty(q_met.shape[0], dtype=object)
         self.cc_gram_mu = np.zeros(q_met.shape[0], dtype=float)
 
-    def get_title_colour(self):
+    def get_err_flags(self):
 
         # initialisations
         i_unit_f = self.i_unit - 1
@@ -1031,7 +1113,7 @@ class AutoCorrelPlot(UnitPlotLayout):
         is_ok = self.unit_props.q_met['fractionRPVs_estimatedTauR'][i_unit_f] <= p_value('maxRPVviolations')
 
         # returns the colour based on overall feasibility
-        return 'white' if is_ok else 'red'
+        return self.err_str[~is_ok]
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -1056,6 +1138,10 @@ class SpikeActivityPlot(UnitPlotLayout):
     t_min = 10
     py_max = 1.1
     n_bin_min = 30
+
+    # error strings
+    t_str = 'Spike Activity'
+    err_str = np.array(['Spike Count', 'Presence Ratio'])
 
     def __init__(self, unit_props, i_unit, t_dur):
         super(SpikeActivityPlot, self).__init__(unit_props, i_unit, ax_type=['bottom'])
@@ -1083,6 +1169,8 @@ class SpikeActivityPlot(UnitPlotLayout):
         # creates the plot axes/metric legend
         self.create_plot_axes()
         self.create_metric_legend()
+
+        self.setAcceptHoverEvents(True)
 
     # ---------------------------------------------------------------------------
     # PlotWidget Setup Functions
@@ -1148,6 +1236,10 @@ class SpikeActivityPlot(UnitPlotLayout):
         self.getAxis("left").setTickFont(self.unit_props.tick_font)
         self.getAxis("right").setTickFont(self.unit_props.tick_font)
         self.getAxis("bottom").setTickFont(self.unit_props.tick_font)
+
+        # creates the sub-plot title
+        self.title_lbl = HoverTitle(self, size=self.unit_props.title_sub_size, bold=True)
+        self.reset_plot_title(self.title_lbl)
 
     def create_metric_legend(self):
 
@@ -1217,17 +1309,12 @@ class SpikeActivityPlot(UnitPlotLayout):
 
     def update_axes_grid(self, show_grid):
 
-        pass
+        self.plotItem.showGrid(x=show_grid, y=show_grid)
 
     def update_plot_title(self):
 
-        # sets the sub-plot title
-        self.setTitle(
-            'Spike Activity',
-            size=self.unit_props.title_sub_size,
-            color=self.get_title_colour(),
-            bold=True
-        )
+        # updates the title properties
+        self.title_lbl.update_title_props(self.get_err_flags())
 
         # updates the axis font properties
         self.getAxis('left').label.setFont(self.unit_props.lbl_font)
@@ -1266,7 +1353,7 @@ class SpikeActivityPlot(UnitPlotLayout):
 
         return x_new - (x[1] - x[0]) / 2, y_new
 
-    def get_title_colour(self):
+    def get_err_flags(self):
 
         # initialisations
         i_unit_f = self.i_unit - 1
@@ -1279,10 +1366,10 @@ class SpikeActivityPlot(UnitPlotLayout):
 
         # metric feasibility check
         is_ok[0] = n_spike >= p_value('minNumSpikes')
-        is_ok[1] = p_ratio >= p_value('minPresenceRatio')
+        is_ok[1] = p_ratio >= p_value('minPresenceRatio') or np.isnan(p_ratio)
 
         # returns the colour based on overall feasibility
-        return 'white' if np.all(is_ok) else 'red'
+        return self.err_str[~is_ok]
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -1294,6 +1381,10 @@ class SpikeAmplitudeHist(UnitPlotLayout):
     # pen objects
     l_pen_fit = pg.mkPen(color=(0, 255, 0), width=3)
     l_brush_hist = pg.mkBrush(color=(0, 0, 255))
+
+    # string fields
+    t_str = 'Spike Amplitude'
+    err_str = np.array(['Max Missing Spike %'])
 
     def __init__(self, unit_props, i_unit):
         super(SpikeAmplitudeHist, self).__init__(unit_props, i_unit)
@@ -1338,6 +1429,11 @@ class SpikeAmplitudeHist(UnitPlotLayout):
 
         # updates the grid visibility
         self.update_axes_grid(self.unit_props.get_para_value('show_grid'))
+
+        # creates the sub-plot title
+        self.title_lbl = HoverTitle(self, size=self.unit_props.title_sub_size, bold=True)
+        self.reset_plot_title(self.title_lbl)
+
 
     def create_metric_legend(self):
 
@@ -1402,13 +1498,8 @@ class SpikeAmplitudeHist(UnitPlotLayout):
 
     def update_plot_title(self):
 
-        # sets the sub-plot title
-        self.setTitle(
-            'Spike Amplitude',
-            size=self.unit_props.title_sub_size,
-            color=self.get_title_colour(),
-            bold=True
-        )
+        # updates the title properties
+        self.title_lbl.update_title_props(self.get_err_flags())
 
         # updates the axis font properties
         self.getAxis('left').label.setFont(self.unit_props.lbl_font)
@@ -1439,7 +1530,7 @@ class SpikeAmplitudeHist(UnitPlotLayout):
         ii = ~np.isnan(x_bin)
         return x_bin[ii], y_bin[ii], y_fit[ii]
 
-    def get_title_colour(self):
+    def get_err_flags(self):
 
         # initialisations
         i_unit_f = self.i_unit - 1
@@ -1448,11 +1539,11 @@ class SpikeAmplitudeHist(UnitPlotLayout):
 
         if np.all(np.isnan(x_bin)):
             # case is there are no feasible amplitudes
-            return 'red'
+            return self.err_str
 
         else:
             # metric feasibility checks
             is_ok = self.unit_props.q_met['percentageSpikesMissing_gaussian'][i_unit_f] <= p_value('maxPercSpikesMissing')
 
             # returns the colour based on overall feasibility
-            return 'white' if is_ok else 'red'
+            return self.err_str[~is_ok]

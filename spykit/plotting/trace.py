@@ -1334,7 +1334,8 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
                 # resets the spike markers
                 self.spike_props.reset_spike_markers()
-                self.spike_props.table_cell_clicked()
+                if self.session_obj.session is not None:
+                    self.spike_props.table_cell_clicked()
 
             case 'datatip':
                 # case is the label toggle button
@@ -1477,6 +1478,15 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
         # clears the selection flags
         self.reset_trace_view()
+
+        # clears the spikes (if currently displaying)
+        if self.show_spikes:
+            obj_but = self.findChild(cw.QPushButton, name='spike')
+            obj_but.setChecked(False)
+            self.plot_button_clicked('spike')
+
+        # disables the unit spike display button
+        self.set_button_enable('spike', False)
 
     def show_view(self):
 

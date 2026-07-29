@@ -647,6 +647,16 @@ class PropManager(QWidget):
         ses_obj = self.main_obj.session_obj
         return ses_obj.session.get_run_index(ses_obj.current_run)
 
+    def get_tab_index(self, t_str):
+
+        if t_str in ['traceview', 'tracespike']:
+            is_trace_tab = True
+            trace_tab = self.get_prop_tab('trace')
+            return trace_tab.trace_views.index(t_str), True
+
+        else:
+            return self.t_types.index(t_str), False
+
     def get_prop_tab(self, tab_type):
 
         if tab_type in ['traceview', 'tracespike']:
@@ -666,18 +676,24 @@ class PropManager(QWidget):
     # Class Setter Functions
     # ---------------------------------------------------------------------------
 
-    def set_tab_enabled(self, i_tab, s_flag, is_trace_tab=False):
+    def set_current_tab(self, i_tab):
 
         if isinstance(i_tab, str):
-            if i_tab in ['traceview', 'tracespike']:
-                is_trace_tab = True
-                trace_tab = self.get_prop_tab('trace')
-                i_tab = trace_tab.trace_views.index(i_tab)
+            i_tab, is_trace_tab = self.get_tab_index(i_tab)
 
-            else:
-                i_tab = self.t_types.index(i_tab)
+        if is_trace_tab:
+            trace_tab = self.get_prop_tab('trace')
+            trace_tab.tab_group_tr.setCurrentIndex(i_tab)
 
-        # updates the table flag
+        else:
+            self.tab_group_props.setCurrentIndex(i_tab)
+
+    def set_tab_enabled(self, i_tab, s_flag):
+
+        if isinstance(i_tab, str):
+            i_tab, is_trace_tab = self.get_tab_index(i_tab)
+
+        # updates the tab enabled flag
         if is_trace_tab:
             trace_tab = self.get_prop_tab('trace')
             trace_tab.tab_group_tr.setTabEnabled(i_tab, s_flag)
@@ -688,10 +704,15 @@ class PropManager(QWidget):
     def set_tab_visible(self, i_tab, s_flag):
 
         if isinstance(i_tab, str):
-            i_tab = self.t_types.index(i_tab)
+            i_tab, is_trace_tab = self.get_tab_index(i_tab)
 
-        # updates the table flag
-        self.tab_group_props.setTabVisible(i_tab, s_flag)
+        # updates the tab visible flag
+        if is_trace_tab:
+            trace_tab = self.get_prop_tab('trace')
+            trace_tab.tab_group_tr.setTabVisible(i_tab, s_flag)
+
+        else:
+            self.tab_group_props.setTabVisible(i_tab, s_flag)
 
     def set_styles(self):
 

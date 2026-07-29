@@ -340,60 +340,6 @@ class ProbePlot(PlotWidget):
     # Widget Event Functions
     # ---------------------------------------------------------------------------
 
-    def view_mouse_move(self, is_main_view, p_pos, map_coord=True):
-
-        # view-dependent field retrieval
-        vb = self.v_box[1 - int(is_main_view), 0]
-        p_view = self.main_view if is_main_view else self.sub_view
-
-        # retrieves the mapped position
-        if map_coord:
-            m_pos = vb.mapSceneToView(p_pos)
-
-        else:
-            m_pos = p_pos
-
-        self.display_out_line(p_view, vb, m_pos)
-
-        i_contact = p_view.inside_polygon_single(m_pos)
-        if i_contact is not None:
-            if p_view.i_sel_contact is None:
-                p_view.i_sel_contact = i_contact
-                p_view.create_probe_plot()
-
-                # if the contact is selected, then reset the channel highlight
-                if self.session_info.channel_data.is_selected[i_contact]:
-                    self.reset_highlight.emit(True, i_contact)
-
-                # updates the label properties
-                if ((p_view.ch_label is not None) and
-                        (is_main_view or (not self.show_units))):
-                    p_view.ch_label.setVisible(True)
-                    p_view.ch_label.setText(self.setup_label_text(i_contact))
-                    p_view.ch_label.update()
-
-            # calculates the label x/y-offsets
-            ax_rng = vb.viewRange()
-            dx_pos, dy_pos = self.convert_coords(is_main_view, False)
-            if dx_pos is None:
-                return
-
-            # resets the y-label offset (if near the top)
-            if (m_pos.y() + self.pw_y * dy_pos) > ax_rng[1][1]:
-                dy_pos = 0
-
-            # resets the x-label offset (if near the right-side)
-            if (m_pos.x() + self.pw_x * dx_pos) < ax_rng[0][1]:
-                dx_pos = 0
-
-            # resets the label position
-            if p_view.ch_label is not None:
-                p_view.ch_label.setPos(m_pos + QPointF(-dx_pos, dy_pos))
-
-        else:
-            # otherwise, remove the contact highlight
-            self.remove_contact_highlight(p_view)
-
     def main_roi_moved(self, p_pos):
 
         # updates the x-axis limits
@@ -453,6 +399,60 @@ class ProbePlot(PlotWidget):
         self.main_view.roi.setPos(x_range[0], y_range[0])
         self.main_view.roi.setSize([np.diff(x_range), np.diff(y_range)])
         self.main_view.is_updating = False
+
+    def view_mouse_move(self, is_main_view, p_pos, map_coord=True):
+
+        # view-dependent field retrieval
+        vb = self.v_box[1 - int(is_main_view), 0]
+        p_view = self.main_view if is_main_view else self.sub_view
+
+        # retrieves the mapped position
+        if map_coord:
+            m_pos = vb.mapSceneToView(p_pos)
+
+        else:
+            m_pos = p_pos
+
+        self.display_out_line(p_view, vb, m_pos)
+
+        i_contact = p_view.inside_polygon_single(m_pos)
+        if i_contact is not None:
+            if p_view.i_sel_contact is None:
+                p_view.i_sel_contact = i_contact
+                p_view.create_probe_plot()
+
+                # if the contact is selected, then reset the channel highlight
+                if self.session_info.channel_data.is_selected[i_contact]:
+                    self.reset_highlight.emit(True, i_contact)
+
+                # updates the label properties
+                if ((p_view.ch_label is not None) and
+                        (is_main_view or (not self.show_units))):
+                    p_view.ch_label.setVisible(True)
+                    p_view.ch_label.setText(self.setup_label_text(i_contact))
+                    p_view.ch_label.update()
+
+            # calculates the label x/y-offsets
+            ax_rng = vb.viewRange()
+            dx_pos, dy_pos = self.convert_coords(is_main_view, False)
+            if dx_pos is None:
+                return
+
+            # resets the y-label offset (if near the top)
+            if (m_pos.y() + self.pw_y * dy_pos) > ax_rng[1][1]:
+                dy_pos = 0
+
+            # resets the x-label offset (if near the right-side)
+            if (m_pos.x() + self.pw_x * dx_pos) < ax_rng[0][1]:
+                dx_pos = 0
+
+            # resets the label position
+            if p_view.ch_label is not None:
+                p_view.ch_label.setPos(m_pos + QPointF(-dx_pos, dy_pos))
+
+        else:
+            # otherwise, remove the contact highlight
+            self.remove_contact_highlight(p_view)
 
     # ---------------------------------------------------------------------------
     # Channel Highlight Functions
@@ -570,6 +570,10 @@ class ProbePlot(PlotWidget):
         self.main_view.clear_probe_plot()
         self.sub_view.clear_probe_plot()
 
+        # clears the unit markers
+        if self.has_units:
+            self.clear_unit_markers()
+
     def show_view(self):
 
         # resets the inset id flags
@@ -605,7 +609,7 @@ class ProbePlot(PlotWidget):
             obj_but.setChecked(False)
             self.plot_button_clicked('cell')
 
-        # disables the button
+        # disables the unit marker display button
         self.set_button_enable('cell', False)
 
     def setup_unit_markers(self, unit_tab):

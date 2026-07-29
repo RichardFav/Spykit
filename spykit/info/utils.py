@@ -796,37 +796,8 @@ class InfoManager(QWidget):
             h_obj.setText('%g' % p_val)
 
     # ---------------------------------------------------------------------------
-    # Miscellaneous Functions
-    # ---------------------------------------------------------------------------
-
-    def update_flag_change(self, is_updating):
-
-        self.is_updating = is_updating
-
-    def update_current_shank(self, tab_obj):
-
-        i_sel_shank = tab_obj.shank_type.current_index()
-        new_shank = i_sel_shank if self.main_obj.session_obj.is_per_shank() else None
-        self.main_obj.session_obj.set_current_shank(new_shank)
-        tab_obj.is_updating = True
-
-    def set_tab_enabled(self, i_tab, s_flag):
-
-        if isinstance(i_tab, str):
-            i_tab = self.t_types.index(i_tab)
-
-        # updates the table flag
-        self.tab_show[i_tab] = s_flag
-        self.tab_group_table.setTabEnabled(i_tab, s_flag)
-
-    def set_tab_visible(self, i_tab, s_flag):
-
-        if isinstance(i_tab, str):
-            i_tab = self.t_types.index(i_tab)
-
-        # updates the table flag
-        self.tab_show[i_tab] = s_flag
-        self.tab_group_table.setTabVisible(i_tab, s_flag)
+    # Class Getter Functions
+    # --------------------------------------------------------------------------
 
     def get_info_tab(self, tab_type):
 
@@ -846,6 +817,50 @@ class InfoManager(QWidget):
 
         # returns the probe view
         return self.main_obj.plot_manager.get_plot_view('probe')
+
+    # ---------------------------------------------------------------------------
+    # Class Setter Functions
+    # --------------------------------------------------------------------------
+
+    def set_current_tab(self, i_tab):
+
+        if isinstance(i_tab, str):
+            i_tab = self.t_types.index(i_tab)
+
+        self.tab_group_table.setCurrentIndex(i_tab)
+
+    def set_tab_enabled(self, i_tab, s_flag):
+
+        if isinstance(i_tab, str):
+            i_tab = self.t_types.index(i_tab)
+
+        # updates the table flag
+        self.tab_show[i_tab] = s_flag
+        self.tab_group_table.setTabEnabled(i_tab, s_flag)
+
+    def set_tab_visible(self, i_tab, s_flag):
+
+        if isinstance(i_tab, str):
+            i_tab = self.t_types.index(i_tab)
+
+        # updates the table flag
+        self.tab_show[i_tab] = s_flag
+        self.tab_group_table.setTabVisible(i_tab, s_flag)
+
+    # ---------------------------------------------------------------------------
+    # Miscellaneous Functions
+    # ---------------------------------------------------------------------------
+
+    def update_flag_change(self, is_updating):
+
+        self.is_updating = is_updating
+
+    def update_current_shank(self, tab_obj):
+
+        i_sel_shank = tab_obj.shank_type.current_index()
+        new_shank = i_sel_shank if self.main_obj.session_obj.is_per_shank() else None
+        self.main_obj.session_obj.set_current_shank(new_shank)
+        tab_obj.is_updating = True
 
     def reset_table_selections(self, t_type, is_sel):
 

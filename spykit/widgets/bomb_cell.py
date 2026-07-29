@@ -78,16 +78,16 @@ p_tooltip = {
 
     # refractory period parameters
     'tauR_valuesMin': ('Minimum refractory period time in seconds. If this value is different from '
-                       '"Max Refactory Period", then Bombcell will estimate the refactory time period '
-                       'taking possible values Min/Max Refactory Time Periods in steps of '
-                       '"Refactory Period Time-Steps".'),
+                       '"Max Refractory Period", then Bombcell will estimate the refractory time period '
+                       'taking possible values Min/Max Refractory Time Periods in steps of '
+                       '"Refractory Period Time-Steps".'),
     'tauR_valuesStep': ('Refractory period time steps in seconds. This is only considered if Min/Max '
-                        'Refactory Time Periods are not equal.'),
+                        'Refractory Time Periods are not equal.'),
     'tauR_valuesMax': 'Refractory time period in seconds.',
     'tauC': 'Censored time period in seconds. This is to prevent duplicate spike detection.',
 
     # percentage spikes missing parameters
-    'hillOrLlobetMethod': 'Method for detecting refactory period violations.',
+    'hillOrLlobetMethod': 'Method for detecting refractory period violations.',
     'computeTimeChunks':('Computes the refractory period violation fraction and the missing spike '
                          'percentage for different time chunks.'),
     'deltaTimeChunk': 'Time chunk duration in seconds.',
@@ -142,7 +142,7 @@ p_tooltip = {
     'maxSpatialDecaySlopeExp': 'Maximum exponential spatial decay slope.',
     'maxWvBaselineFraction': ('The maximum absolute waveform baseline value as a '
                               'fraction of the waveform''s absolute peak value.'),
-    'maxScndPeakToTroughRatio_noise': 'Maximum second peak to trough ratio threshold.',
+    'maxScndPeakToTroughRatio_noise': 'Maximum 2nd peak/trough ratio threshold.',
 
     # non-somatic waveform parameters
     'maxPeak1ToPeak2Ratio_nonSomatic': ('For units that have an initial peak before the trough, the '
@@ -160,7 +160,7 @@ p_tooltip = {
 
     # other classification parameters
     'minAmplitude': 'Minimum waveform amplitude in uV.',
-    'maxRPVviolations':'Maximum refactory period violation fraction.',
+    'maxRPVviolations':'Maximum refractory period violation fraction.',
     'maxPercSpikesMissing': 'Maximum missing spike percentage.',
     'minNumSpikes': 'Minimum number of spikes per unit.',
     'maxDrift': 'Maximum drift distance in microns.',
@@ -371,16 +371,16 @@ class BombCellPara(object):
                             'Baseline Noise Sample Size', 'Edit', p_lim=[1, 100])
 
         # refractory period parameters
-        self.add_para_field('Quality', 'Refactory Period', 'tauR_valuesMin', 2e-3,
-                            'Min Refactory Time Period (s)', 'EditF', p_lim=[1e-5, 1e-2])
-        self.add_para_field('Quality', 'Refactory Period', 'tauR_valuesStep', 5e-4,
-                            'Refactory Period Time-Steps (s)', 'EditF', p_lim=[1e-6, 1e-2])
-        self.add_para_field('Quality', 'Refactory Period', 'tauR_valuesMax', 2e-3,
-                            'Max Refactory Time Period (s)', 'EditF', p_lim=[1e-5, 1e-2])
-        self.add_para_field('Quality', 'Refactory Period', 'tauC', 1e-4,
+        self.add_para_field('Quality', 'Refractory Period', 'tauR_valuesMin', 2e-3,
+                            'Min Refractory Time Period (s)', 'EditF', p_lim=[1e-5, 1e-2])
+        self.add_para_field('Quality', 'Refractory Period', 'tauR_valuesStep', 5e-4,
+                            'Refractory Period Time-Steps (s)', 'EditF', p_lim=[1e-6, 1e-2])
+        self.add_para_field('Quality', 'Refractory Period', 'tauR_valuesMax', 2e-3,
+                            'Max Refractory Time Period (s)', 'EditF', p_lim=[1e-5, 1e-2])
+        self.add_para_field('Quality', 'Refractory Period', 'tauC', 1e-4,
                             'Censored Time Period (s)', 'EditF', p_lim=[1e-5, 1e-3])
-        self.add_para_field('Quality', 'Refactory Period', 'hillOrLlobetMethod', 1,
-                            'Refactory Period Violation Method', 'Popup', p_list=p_method)
+        self.add_para_field('Quality', 'Refractory Period', 'hillOrLlobetMethod', 1,
+                            'Refractory Period Violation Method', 'Popup', p_list=p_method)
 
         # percentage spikes missing parameters
         self.add_para_field('Quality', 'Missing Spike Percentage', 'computeTimeChunks', 0,
@@ -463,19 +463,19 @@ class BombCellPara(object):
         self.add_para_field('Classification', 'Waveform (Noise)', 'maxWvBaselineFraction', 0.3,
                             'Max Waveform Baseline Fraction', 'EditF', p_lim=[0.01, 0.99])
         self.add_para_field('Classification', 'Waveform (Noise)', 'maxScndPeakToTroughRatio_noise', 0.8,
-                            'Max Peak To Trough Ratio', 'EditF', p_lim=[0.01, 10])
+                            'Max 2nd Peak/Trough Ratio', 'EditF', p_lim=[0.01, 10])
 
         # non-somatic waveform parameters
         self.add_para_field('Classification', 'Waveform (Non-Somatic)', 'maxPeak1ToPeak2Ratio_nonSomatic', 3,
-                            'Max Peak To Peak Ratio', 'EditF', p_lim=[0.01, 10])
+                            'Max 1st/2nd Peak Ratio', 'EditF', p_lim=[0.01, 10])
         self.add_para_field('Classification', 'Waveform (Non-Somatic)', 'maxMainPeakToTroughRatio_nonSomatic', 0.8,
-                            'Max Peak To Trough Ratio', 'EditF', p_lim=[0.01, 10])
+                            'Max 1st Peak/Trough Ratio', 'EditF', p_lim=[0.01, 10])
         self.add_para_field('Classification', 'Waveform (Non-Somatic)', 'minWidthFirstPeak_nonSomatic', 4,
-                            'Min Peak Width (Samples)', 'Edit', p_lim=[1, 20])
+                            'Min 1st Peak Width (Samples)', 'Edit', p_lim=[1, 20])
         self.add_para_field('Classification', 'Waveform (Non-Somatic)', 'minWidthMainTrough_nonSomatic', 5,
                             'Min Trough Width (Samples)', 'Edit', p_lim=[1, 20])
         self.add_para_field('Classification', 'Waveform (Non-Somatic)', 'minTroughToPeak2Ratio_nonSomatic', 5,
-                            'Min Trough To Peak Ratio', 'EditF', p_lim=[0.1, 100])
+                            'Min Trough/2nd Peak Ratio', 'EditF', p_lim=[0.1, 100])
 
         # distance metric parameters
         self.add_para_field('Classification', 'Distance Metrics', 'isoDmin', 20,

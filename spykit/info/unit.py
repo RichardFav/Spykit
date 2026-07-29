@@ -20,7 +20,7 @@ bc_var_map = cw.hist_map | {
     'clusterID': 'Cluster ID#',
     'ksTest_pValue': 'KS-Test P-Value',
     'mainPeak_after_width': 'Post-Main Peak Width',
-    'mainPeak_before_width': 'Pre-Meain Peak Width',
+    'mainPeak_before_width': 'Pre-Main Peak Width',
     'mainTrough_width': 'Main Trough Width',
     'maxChannels': 'Max Channel',
     # 'phy_clusterID': 'Phy Cluster ID#',

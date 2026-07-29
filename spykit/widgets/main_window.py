@@ -93,10 +93,10 @@ class MainWindow(QMainWindow):
         # sets the widget style sheets
         self.set_styles()
 
-        # # REMOVE ME LATER
-        # if platform.system() == "Windows":
-        #     if os.environ['COMPUTERNAME'] == "DESKTOP-NLLEH0V":
-        #         self.testing()
+        # REMOVE ME LATER
+        if platform.system() == "Windows":
+            if os.environ['COMPUTERNAME'] == "DESKTOP-NLLEH0V":
+                self.testing()
 
     # ---------------------------------------------------------------------------
     # Class Widget Setup Functions
@@ -109,7 +109,7 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.central_widget)
 
         # creates the dialog window
-        self.setWindowTitle("Spike Interface Pipeline")
+        self.setWindowTitle("Spykit Analysis Pipeline")
         self.setMinimumSize(QSize(min_width, min_height))
         self.resize(dlg_width, dlg_height)
 
@@ -692,6 +692,11 @@ class MainWindow(QMainWindow):
 
         # array fields
         base_tab = ['config']
+        has_post_data = self.session_obj.post_data is not None
+
+        # property/information tab group reset
+        self.prop_manager.set_current_tab('config')
+        self.info_manager.set_current_tab('channel')
 
         # resets the property tab widget/visibility fields
         for t, tt in zip(self.prop_manager.tabs, self.prop_manager.t_types):
@@ -710,6 +715,19 @@ class MainWindow(QMainWindow):
                     trig_view = self.plot_manager.get_plot_view('trigger')
                     trig_view.delete_all_regions()
 
+                case 'trace':
+                    # case is the trace tab
+
+                    # resets the selected tab & spike tab visibility
+                    self.prop_manager.set_current_tab('traceview')
+                    self.prop_manager.set_tab_visible('tracespike', False)
+
+                case 'postprocess':
+                    # case is the postprocessing tab
+
+                    # resets the selected tab
+                    t.set_current_tab('waveform')
+
             # resets the tab visibility
             self.prop_manager.set_tab_visible(tt, tt in base_tab)
 
@@ -719,22 +737,27 @@ class MainWindow(QMainWindow):
             p_view = self.plot_manager.get_plot_view(p_type)
             p_view.clear_plot_view()
 
-            # performs the view specific updates
-            match p_type:
-                case 'probe':
-                    pass
-
-                case 'trace':
-                    pass
-
-                case 'trigger':
-                    pass
+            # # performs the view specific updates
+            # match p_type:
+            #     case 'probe':
+            #         # hide/delete probe unit markers
+            #         pass
+            #
+            #     case 'trace':
+            #         # hide/delete unit spike markers
+            #         pass
+            #
+            #     case 'trigger':
+            #         pass
 
             # hides the plot view
             p_view.hide()
 
         # clears the information tabs
+        self.info_manager.set_tab_visible('unit', False)
         self.info_manager.tab_group_table.setVisible(False)
+
+        # resets the menu item properties
         self.menu_bar.set_menu_enabled_blocks('init')
 
         # clears the post-processing memory map/temporary files
@@ -777,10 +800,10 @@ class MainWindow(QMainWindow):
         # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/Tiny Example/tiny_example_1 (CS + SR).ssf"
         # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/Tiny Example/tiny_example_2 (SS + SR).ssf"
         # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/Tiny Example/tiny_example_3 (CS + CR).ssf"
-        # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/Tiny Example/tiny_example_4 (SS + CR).ssf"
+        f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/session/Preprocessed/Tiny Example (4 - SC).ssf"
 
-        # large examples
-        f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/Large Example/large_example.ssf"
+        # # large examples
+        # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/Large Example/large_example.ssf"
 
         # loads the session
         self.menu_bar.load_session(f_file, False)
@@ -869,7 +892,8 @@ class MenuBar(QObject):
 
         # initialisations
         p_str = ['new', 'open', 'save', None, 'clear', 'default', None, 'close']
-        p_lbl = ['New...', 'Load...', 'Save...', None, 'Clear Session', 'Default Directories', None, 'Close Window']
+        p_lbl = ['New Session', 'Load...', 'Save...', None, 'Clear Session',
+                 'Default Directories', None, 'Close Spykit']
         has_ch = [False, True, True, False, False, False, False, False]
         cb_fcn = [self.new_session, self.load_session, self.save_session, None,
                   self.clear_session, self.default_dir, None, self.close_window]
@@ -902,7 +926,7 @@ class MenuBar(QObject):
         # field retrieval
         h_session_load = self.get_menu_item('load_session')
         p_str = ['load_spykit', 'load_preprocessed', 'load_postprocessed']
-        p_lbl = ['Spykit Session', 'Pre-Processed', 'Post-Processed']
+        p_lbl = ['Spykit Session', 'Preprocessed', 'Post-Processed']
         cb_fcn = [self.load_session, self.load_preprocessed, self.load_postprocessed]
 
         # adds the file menu items
@@ -932,7 +956,7 @@ class MenuBar(QObject):
         # field retrieval
         h_session_save = self.get_menu_item('save_session')
         p_str = ['save_spykit', 'save_preprocessed', 'save_postprocessed']
-        p_lbl = ['Spykit Session', 'Pre-Processed', 'Post-Processed']
+        p_lbl = ['Spykit Session', 'Preprocessed', 'Postprocessed']
         cb_fcn = [self.save_session, self.save_preprocessed, self.save_postprocessed]
 
         # adds the file menu items
@@ -1208,7 +1232,7 @@ class MenuBar(QObject):
         mm_file, mm_name = self.get_post_process_files()
         if mm_file is None:
             # if there are no feasible files then exit the function
-            e_str = 'There are no feasible post-processed data files for this session.'
+            e_str = 'There are no feasible postprocessed data files for this session.'
             cf.show_error(e_str)
             return
 

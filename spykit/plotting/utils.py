@@ -726,7 +726,7 @@ class PlotWidget(QWidget):
 # ----------------------------------------------------------------------------------------------------------------------
 
 """
-    GridPlotWidget
+    UnitPlotLayout
 """
 
 class UnitPlotLayout(pg.PlotWidget):
@@ -762,6 +762,20 @@ class UnitPlotLayout(pg.PlotWidget):
         for ax_t in self.ax_type:
             self.plotItem.getAxis(ax_t).setPen(self.l_pen_axes)
             self.plotItem.getAxis(ax_t).setTextPen(self.l_pen_axes)
+
+    def reset_plot_title(self, title_lbl):
+
+        self.plotItem.layout.removeItem(self.plotItem.titleLabel)
+        self.plotItem.titleLabel = title_lbl
+        self.plotItem.layout.addItem(title_lbl, 0, 1)
+
+    def leaveEvent(self, event):
+
+        h_title = self.findChild(pg.LabelItem)
+        if h_title is not None:
+            h_title.h_lbl.hide()
+
+        event.accept()
 
 # ----------------------------------------------------------------------------------------------------------------------
 

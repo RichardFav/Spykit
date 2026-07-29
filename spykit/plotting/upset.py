@@ -319,9 +319,8 @@ class UpSetPlot(PlotWidget):
                 # case is the figure save button
 
                 # outputs the current trace to file
-                f_path = cf.setup_image_file_name(cw.figure_dir, 'TraceTest.png')
-                exp_obj = exporters.ImageExporter(self.h_plot[0, 0].getPlotItem())
-                exp_obj.export(f_path)
+                f_path = cf.setup_image_file_name(cw.figure_dir, 'UpSet.png')
+                cf.save_subplots(self, self.h_plot, f_path, self.plot_widget.geometry())
 
             case 'close':
                 # case is the close button

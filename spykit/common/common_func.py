@@ -15,8 +15,8 @@ from typing import TypeVar
 # pyqt6 module import
 import numpy as np
 from PyQt6.QtWidgets import (QMessageBox, QSizePolicy)
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QColor, QFontMetrics
+from PyQt6.QtCore import Qt, QRect, QPoint, QSize
+from PyQt6.QtGui import QColor, QFontMetrics, QPixmap, QPainter
 
 # other initialisations
 q_fix = QSizePolicy.Policy.Fixed
@@ -658,3 +658,45 @@ def flatten_mixed(m_list):
         else:
             # Yield the non-list element directly
             yield item
+
+
+def save_subplots(p_widget, s_plot, f_path, p_ofs=None):
+
+    # other initialisations
+    g_plot = subplot_geometry(s_plot)
+    p_map_full = p_widget.grab(p_widget.rect())
+
+    # initialisations
+    p_map_sz = g_plot.size()
+    if p_ofs is not None:
+        p_map_sz += QSize(p_ofs.x(), p_ofs.y())
+
+    # sets up the pixel map widget
+    p_map = QPixmap(p_map_sz)
+    p_map.fill(Qt.GlobalColor.black)
+    painter = QPainter(p_map)
+
+    # adds in the subplots
+    for sp in s_plot:
+        g_sp = sp.geometry()
+        if p_ofs is not None:
+            g_sp.translate(p_ofs.x(), p_ofs.y())
+
+        x_ofs, y_ofs = g_sp.x() - g_plot.x(), g_sp.y() - g_plot.y()
+        painter.drawPixmap(x_ofs, y_ofs, p_map_full.copy(g_sp))
+
+    # saves the image to file
+    painter.end()
+    p_map.save(f_path)
+
+
+def subplot_geometry(s_plot):
+
+    # retrieves the extents of the subplot geometries
+    g = [x.geometry() for x in s_plot]
+    x0, y0 = [x.x() for x in g], [x.y() for x in g]
+    r, b = [x.x() + x.width() for x in g], [x.y() + x.height() for x in g]
+
+    # returns the geometry encompassing all subplots
+    x, y = np.min(x0), np.min(y0)
+    return QRect(x, y, np.max(r) - x, np.max(b) - y)
