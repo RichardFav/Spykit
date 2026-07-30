@@ -24,7 +24,7 @@ from PyQt6.QtWidgets import (QWidget, QHBoxLayout, QGridLayout, QVBoxLayout, QPu
                              QFormLayout, QLabel, QCheckBox, QLineEdit, QComboBox, QSizePolicy, QFileDialog,
                              QApplication, QTreeView, QFrame, QRadioButton, QAbstractItemView, QStylePainter,
                              QStyleOptionComboBox, QStyle, QProxyStyle, QItemDelegate, QTreeWidget, QTreeWidgetItem,
-                             QHeaderView, QStyleOptionButton, QTableWidgetItem, QProgressBar, QSpacerItem,
+                             QHeaderView, QStyleOptionButton, QTableWidgetItem, QProgressBar, QSpacerItem, QMessageBox,
                              QStyledItemDelegate, QDialog, QTableWidget, QListWidget, QSpinBox, QAbstractSpinBox)
 from PyQt6.QtCore import (Qt, QRect, QRectF, QMimeData, pyqtSignal, QItemSelectionModel, QAbstractTableModel,
                           QSizeF, QSize, QObject, QVariant, QTimeLine, QEvent, QPoint, QPointF, QTimer)
@@ -142,6 +142,7 @@ f_mode = {
     'trigger': "Experiment Trigger File (*.npy)",
     'config': "Spykit Pipeline Config File (*.cfig)",
     'filter': "Unit Filter Options (*.filt)",
+    'saveview': "Portable Network Graphics File (*.png)",
 }
 
 f_name = {
@@ -321,6 +322,13 @@ unit_col = {
     'non-somatic mua': lambda x: cf.get_colour_value('o', x),
     'selected': lambda x: cf.get_colour_value([217, 255, 251], x),
 }
+
+# custom button type dictionary
+b_type = [
+    QMessageBox.ButtonRole.YesRole,
+    QMessageBox.ButtonRole.NoRole,
+    QMessageBox.ButtonRole.RejectRole
+]
 
 # widget dimensions
 x_gap = 5
@@ -2200,6 +2208,27 @@ class QFileListDialog(QDialog):
 
         self.file_sel = None
         self.close()
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+"""
+    CustomMessageBox:
+"""
+
+def CustomMessageBox(q_str, t_str, b_str):
+
+    # widget setup
+    msg_box = QMessageBox()
+
+    # sets the message box properties
+    msg_box.setText(q_str)
+    msg_box.setWindowTitle(t_str)
+
+    # adds the buttons to the messagebox
+    for i, bs in enumerate(b_str):
+        msg_box.addButton(bs, b_type[i])
+
+    return msg_box
 
 # ----------------------------------------------------------------------------------------------------------------------
 # BASE WIDGET COMBINATIONS
@@ -4137,11 +4166,31 @@ def get_unit_labels(is_split_nonsomatic):
     else:
         return ['Noise', 'Good', 'MUA', 'Non-Somatic']
 
+
 def get_status_col(s_type, alpha=128):
     return status_col[s_type.lower()](alpha)
 
+
 def get_unit_col(u_type, alpha=128):
     return unit_col[u_type.lower()](alpha)
+
+
+def get_image_file_name(fig_dir, fig_name):
+
+    if not os.path.exists(fig_dir):
+        os.mkdir(fig_dir)
+
+    # prompts the user for the output file name
+    def_file = os.path.join(fig_dir, f'{fig_name}.png')
+    file_dlg = FileDialogModal(
+        None, 'Set File Name', f_mode['saveview'], def_file, is_save=True)
+    if file_dlg.exec() == QDialog.DialogCode.Accepted:
+        # case is the user set a valid file name
+        return file_dlg.selectedFiles()[0]
+
+    else:
+        # case is the user cancelled
+        return None
 
 # ----------------------------------------------------------------------------------------------------------------------
 

@@ -310,20 +310,31 @@ class ProbePlot(PlotWidget):
             case 'save':
                 # case is the save button
 
-                # hides the interaction objects
+                # hides the main view inset ROI
                 self.main_view.roi.setVisible(False)
 
-                # outputs the main probe view
-                f_path = cf.setup_image_file_name(cw.figure_dir, 'ProbeMainTest.png')
-                exp_obj = exporters.ImageExporter(self.h_plot[0, 0].getPlotItem())
-                exp_obj.export(f_path)
+                # prompts the user for the image type
+                t_str = 'Probe Image Type'
+                b_str = ['Main', 'Inset', 'Cancel']
+                q_str = 'Do you want to save the main or inset image?'
+                u_choice = cw.CustomMessageBox(q_str, t_str, b_str).exec()
 
-                # outputs the sub-image probe view
-                f_path = cf.setup_image_file_name(cw.figure_dir, 'ProbeInsetTest.png')
-                exp_obj = exporters.ImageExporter(self.h_plot[1, 0].getPlotItem())
-                exp_obj.export(f_path)
+                # outputs the image based on type (given the user didn't cancel)
+                f_path = None
+                if u_choice == 2:
+                    # case is the main probe image
+                    f_path, i_plot = cw.get_image_file_name(cw.figure_dir, 'ProbeMain'), 0
 
-                # hides the interaction objects
+                elif u_choice == 3:
+                    # case is inset probe image
+                    f_path, i_plot = cw.get_image_file_name(cw.figure_dir, 'ProbeInset'), 1
+
+                # outputs the image to file (if valid)
+                if f_path is not None:
+                    exp_obj = exporters.ImageExporter(self.h_plot[i_plot, 0].getPlotItem())
+                    exp_obj.export(f_path)
+
+                # re-shows the main view inset ROI
                 self.main_view.roi.setVisible(True)
 
             case 'close':

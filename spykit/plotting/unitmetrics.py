@@ -291,9 +291,12 @@ class UnitMetricPlot(PlotWidget):
             case 'save':
                 # case is the figure save button
 
-                # outputs the current trace to file
-                f_path = cf.setup_image_file_name(cw.figure_dir, 'UnitMetrics.png')
-                cf.save_subplots(self, self.m_plot, f_path)
+                # prompts the user for the file name
+                f_path = cw.get_image_file_name(cw.figure_dir, 'UnitMetrics')
+                if f_path is not None:
+                    # saves the image to file
+                    p_map = cf.setup_subplot_image(self, self.m_plot)
+                    p_map.save(f_path)
 
             case 'close':
                 # case is the close button

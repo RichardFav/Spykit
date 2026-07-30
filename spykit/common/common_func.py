@@ -442,14 +442,6 @@ def get_folder_dir(f_path):
     return [x for x in os.listdir(f_path) if os.path.isdir(os.path.join(f_path, x))]
 
 
-def setup_image_file_name(fig_dir, fig_name):
-
-    if not os.path.exists(fig_dir):
-        os.mkdir(fig_dir)
-
-    return os.path.join(fig_dir, fig_name)
-
-
 def normalise_trace(y):
 
     y_min, y_max = np.min(y), np.max(y)
@@ -660,7 +652,7 @@ def flatten_mixed(m_list):
             yield item
 
 
-def save_subplots(p_widget, s_plot, f_path, p_ofs=None):
+def setup_subplot_image(p_widget, s_plot, p_ofs=None):
 
     # other initialisations
     g_plot = subplot_geometry(s_plot)
@@ -687,7 +679,9 @@ def save_subplots(p_widget, s_plot, f_path, p_ofs=None):
 
     # saves the image to file
     painter.end()
-    p_map.save(f_path)
+
+    # returns the image
+    return p_map
 
 
 def subplot_geometry(s_plot):
