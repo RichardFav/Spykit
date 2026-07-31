@@ -234,6 +234,9 @@ class PropManager(QWidget):
 
     def post_process_change(self, i_mmap=None):
 
+        if self.is_updating:
+            return
+
         # REMOVE ME LATER
         t0 = time.time()
 

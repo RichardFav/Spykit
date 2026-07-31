@@ -171,6 +171,16 @@ class PostProcProps(PropWidget):
     # Miscellaneous Functions
     # ---------------------------------------------------------------------------
 
+    def clear_post_processing(self):
+
+        # clears the combobox
+        self.is_updating = True
+        self.soln_combo.clear()
+        self.is_updating = False
+
+        # resets the selected tab
+        self.set_current_tab('waveform')
+
     def set_plot_view(self, p_type, p_view):
 
         p_tab = self.tabs[self.plot_views.index(p_type)]

@@ -148,12 +148,12 @@ class ChannelInfoTab(InfoWidget):
 
     def check_filter_item(self):
 
-        # retrieves the filtered items
-        self.get_filtered_items()
+        # # retrieves the filtered items
+        # self.get_filtered_items()
 
         # resets the table view
+        self.set_table_rows()
         self.status_change.emit(self, self.is_filt)
-        self.data_change.emit(self)
 
     # ---------------------------------------------------------------------------
     # Setter Functions

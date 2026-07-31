@@ -93,10 +93,10 @@ class MainWindow(QMainWindow):
         # sets the widget style sheets
         self.set_styles()
 
-        # REMOVE ME LATER
-        if platform.system() == "Windows":
-            if os.environ['COMPUTERNAME'] == "DESKTOP-NLLEH0V":
-                self.testing()
+        # # REMOVE ME LATER
+        # if platform.system() == "Windows":
+        #     if os.environ['COMPUTERNAME'] == "DESKTOP-NLLEH0V":
+        #         self.testing()
 
     # ---------------------------------------------------------------------------
     # Class Widget Setup Functions
@@ -726,7 +726,7 @@ class MainWindow(QMainWindow):
                     # case is the postprocessing tab
 
                     # resets the selected tab
-                    t.set_current_tab('waveform')
+                    t.clear_post_processing()
 
             # resets the tab visibility
             self.prop_manager.set_tab_visible(tt, tt in base_tab)

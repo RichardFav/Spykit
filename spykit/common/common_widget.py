@@ -1787,7 +1787,7 @@ class QColorMapChooser(QFrame):
         self.select_widget = QWidget()
         self.tree_prop = QTreeWidget(self)
         self.select_lbl = create_text_label(None, 'Colour Map:', font_lbl, align='right')
-        self.select_name = create_text_label(None, c_map, align='right')
+        self.select_name = create_text_label(None, c_map, font_lbl, align='right')
         self.select_colour = QColorLabel(None, c_map_name=c_map, n_pts=self.col_wid)
 
         # initialises the class fields
@@ -1824,8 +1824,8 @@ class QColorMapChooser(QFrame):
         # sets the selection widget properties
         self.select_name.setFixedWidth(self.lbl_width)
         self.select_colour.setFixedWidth(self.col_wid)
-        self.select_lbl.setContentsMargins(0, 3, 0, 0)
-        self.select_name.setContentsMargins(0, 3, 0, 0)
+        self.select_lbl.setContentsMargins(0, 7, 0, 0)
+        self.select_name.setContentsMargins(0, 7, 0, 0)
 
         # sets the tree-view properties
         self.tree_prop.setLineWidth(1)
@@ -2009,7 +2009,7 @@ class SearchMixin:
         for i, hg in enumerate(self.h_grp):
             col = 'yellow' if hg in grp_s else '#A0A0A0'
             t_lbl = cf.set_text_background_colour(self.grp_name[i], col)
-            self.h_grp[hg].setText(0, t_lbl)
+            self.tree_prop.itemWidget(self.h_grp[hg], 0).setText(t_lbl)
 
         # resets the parameter label strings
         for ii, nn, hh in zip(ind_s, self.para_name0, self.h_para):
@@ -2018,7 +2018,7 @@ class SearchMixin:
                 nn = self.add_highlight(nn, xi0, ns_txt)
 
             # updates the property label text
-            hh.setText(0, nn)
+            self.tree_prop.itemWidget(hh, 0).setText(nn)
 
     def label_clear_search(self, evnt):
 

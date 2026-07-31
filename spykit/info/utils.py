@@ -18,7 +18,7 @@ from PyQt6.QtWidgets import (QWidget, QTreeWidget, QFrame, QCheckBox, QPushButto
                              QHeaderView, QTreeWidgetItem, QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox,
                              QTableWidget, QFormLayout, QApplication)
 from PyQt6.QtCore import Qt, QPointF, QSize, pyqtSignal, QPersistentModelIndex
-from PyQt6.QtGui import QFont, QColor, QIcon
+from PyQt6.QtGui import QFont, QColor, QIcon, QBrush
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -150,37 +150,45 @@ class InfoManager(QWidget):
             # sets the
             self.t_types.append(t_type)
             match t_type:
-                case t_type if t_type in ['channel', 'unit']:
-                    # performs tab specific updates
-                    if t_type == 'channel':
-                        # connects the
-                        cb_fcn = pfcn(self.header_check_update, t_lbl)
-                        tab_widget.table.horizontalHeader().check_update.connect(cb_fcn)
+                case 'channel':
+                    # case is the channel tab
 
-                        # case is the channel tab
-                        tab_widget.run_change.connect(pfcn(self.channel_combobox_update, 'run'))
-                        tab_widget.shank_change.connect(pfcn(self.channel_combobox_update, 'shank'))
-                        tab_widget.status_change.connect(self.channel_status_update)
-                        tab_widget.set_update_flag.connect(self.update_flag_change)
-                        tab_widget.mouse_move.connect(self.channel_mouse_move)
-                        tab_widget.mouse_leave.connect(self.channel_mouse_leave)
-                        tab_widget.force_reset_flags.connect(self.force_reset_flags)
-                        tab_widget.get_avail_channel_fcn = self.get_avail_channel
+                    # connects the horizontal header slot function
+                    cb_fcn = pfcn(self.header_check_update, t_lbl)
+                    tab_widget.table.horizontalHeader().check_update.connect(cb_fcn)
 
-                    elif t_type == 'unit':
-                        # case us the unit tab
-                        tab_widget.data_change.connect(self.unit_status_update)
-                        tab_widget.run_change.connect(pfcn(self.unit_combobox_update, 'run'))
-                        tab_widget.shank_change.connect(pfcn(self.unit_combobox_update, 'shank'))
-                        tab_widget.mouse_move.connect(self.unit_mouse_move)
-                        tab_widget.mouse_leave.connect(self.unit_mouse_leave)
-                        tab_widget.set_update_flag.connect(self.update_flag_change)
+                    # connects the other tab widget slot functions
+                    tab_widget.run_change.connect(pfcn(self.channel_combobox_update, 'run'))
+                    tab_widget.shank_change.connect(pfcn(self.channel_combobox_update, 'shank'))
+                    tab_widget.status_change.connect(self.channel_status_update)
+                    tab_widget.set_update_flag.connect(self.update_flag_change)
+                    tab_widget.mouse_move.connect(self.channel_mouse_move)
+                    tab_widget.mouse_leave.connect(self.channel_mouse_leave)
+                    tab_widget.force_reset_flags.connect(self.force_reset_flags)
+                    tab_widget.get_avail_channel_fcn = self.get_avail_channel
+
+                case 'unit':
+                    # case us the unit tab
+
+                    # connects the other tab widget slot functions
+                    tab_widget.data_change.connect(self.unit_status_update)
+                    tab_widget.run_change.connect(pfcn(self.unit_combobox_update, 'run'))
+                    tab_widget.shank_change.connect(pfcn(self.unit_combobox_update, 'shank'))
+                    tab_widget.mouse_move.connect(self.unit_mouse_move)
+                    tab_widget.mouse_leave.connect(self.unit_mouse_leave)
+                    tab_widget.set_update_flag.connect(self.update_flag_change)
 
                 case 'status':
+                    # case is the status tab
+
+                    # connects the other tab widget slot functions
                     tab_widget.start_recalc.connect(self.start_recalc)
                     tab_widget.cancel_recalc.connect(self.cancel_recalc)
 
                 case 'preprocess':
+                    # case is the preprocessing tab
+
+                    # connects the other tab widget slot functions
                     tab_widget.bad_channel_fcn = self.session_obj.get_bad_channels
                     tab_widget.keep_channel_fcn = self.session_obj.get_keep_channels
                     tab_widget.removed_channel_fcn = self.session_obj.get_removed_channels
@@ -355,13 +363,21 @@ class InfoManager(QWidget):
 
         # determines the channel index (from the hovered channel)
         pos = evnt.position().toPoint()
-        i_row_ch = int(ch_tab.table.itemAt(pos).row())
-        ch_id = ch_tab.get_table_device_id(i_row_ch)
+        tab_item = ch_tab.table.itemAt(pos)
 
-        # updates the probe view (if change in channel index)
-        if self.i_probe_ch != ch_id:
-            probe_view.show_channel_highlights()
-            probe_view.reset_channel_highlights(ch_id)
+        if tab_item is not None:
+            # updates the channel highlight
+            i_row_ch = int(tab_item.row())
+            ch_id = ch_tab.get_table_device_id(i_row_ch)
+
+            # updates the probe view (if change in channel index)
+            if self.i_probe_ch != ch_id:
+                probe_view.show_channel_highlights()
+                probe_view.reset_channel_highlights(ch_id)
+        else:
+            # if there is no table item then reset the probe channel highlight
+            self.i_probe_ch = None
+            probe_view.hide_channel_highlights()
 
     def channel_mouse_leave(self, evnt):
 
@@ -962,6 +978,7 @@ class InfoWidgetPara(InfoWidget, SearchMixin):
 
     # dimensions
     x_gap = 5
+    x_pad = 20
     item_row_size = 23
 
     # array class fields
@@ -988,6 +1005,7 @@ class InfoWidgetPara(InfoWidget, SearchMixin):
         self.is_sort_para = False
 
         # initialisations
+        self.w_lbl = 0
         self.n_grp, self.n_para = 0, 0
         self.h_grp, self.h_para = {}, []
         self.para_name0, self.para_name, self.para_grp, self.grp_name = [], [], [], []
@@ -1014,13 +1032,14 @@ class InfoWidgetPara(InfoWidget, SearchMixin):
         # sets the tree-view properties
         self.tree_prop.setLineWidth(1)
         self.tree_prop.setColumnCount(2)
-        self.tree_prop.setIndentation(12)
+        self.tree_prop.setIndentation(10)
         self.tree_prop.setItemsExpandable(True)
         self.tree_prop.setStyleSheet(cw.tree_style)
         self.tree_prop.setHeaderLabels(self.tree_hdr)
         self.tree_prop.setFrameStyle(QFrame.Shape.WinPanel | QFrame.Shadow.Plain)
         self.tree_prop.setAlternatingRowColors(True)
         self.tree_prop.setItemDelegateForColumn(0, cw.HTMLDelegate())
+        self.tree_prop.setSelectionMode(QTreeWidget.SelectionMode.NoSelection)
 
         self.tree_prop.itemCollapsed.connect(self.on_tree_collapse)
         self.tree_prop.itemExpanded.connect(self.on_tree_expand)
@@ -1030,11 +1049,16 @@ class InfoWidgetPara(InfoWidget, SearchMixin):
             # creates the parent item
             item = QTreeWidgetItem(self.tree_prop)
 
+            # creates the header label
+            h_lbl = cw.create_text_label(None, pp_h['name'], font=self.item_font)
+            h_lbl.setAlignment(Qt.AlignmentFlag.AlignVCenter)
+            h_lbl.setStyleSheet("background-color: '#A0A0A0;")
+            self.tree_prop.setItemWidget(item, 0, h_lbl)
+
             # sets the item properties
-            item.setText(0, pp_h['name'])
-            item.setFont(0, self.item_font)
-            item.setFirstColumnSpanned(True)
             item.setExpanded(True)
+            item.setFirstColumnSpanned(True)
+            # item.setBackground(0, QBrush(QColor('#blue')))
 
             # adds the main group to the search widget
             self.append_grp_obj(item, pp_s)
@@ -1043,8 +1067,8 @@ class InfoWidgetPara(InfoWidget, SearchMixin):
             self.tree_prop.addTopLevelItem(item)
             for k, p in pp_h['props'].items():
                 # creates the property name field
-                item_ch, obj_prop = self.create_child_tree_item(p, [pp_s, k])
-                item_ch.setTextAlignment(0, cw.align_flag['right'] | cw.align_flag['vcenter'])
+                item_ch, obj_prop = self.create_child_tree_item(item, p, [pp_s, k])
+                # item_ch.setTextAlignment(0, cw.align_flag['right'] | cw.align_flag['vcenter'])
                 obj_prop.setFixedHeight(self.item_row_size)
 
                 # adds the child tree widget item
@@ -1054,11 +1078,12 @@ class InfoWidgetPara(InfoWidget, SearchMixin):
 
         # adds the tree widget to the parent widget
         self.tab_layout.addWidget(self.tree_prop)
+        self.tree_prop.setColumnWidth(0, self.w_lbl + self.x_pad)
 
         # resizes the columns to fit, then resets to fixed size
         tree_header = self.tree_prop.header()
         tree_header.setDefaultAlignment(cf.align_type['center'])
-        tree_header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
+        # tree_header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
         tree_header.setSectionResizeMode(1, QHeaderView.ResizeMode.Fixed)
         tree_header.setStyleSheet("background: rgba(240, 240, 255, 255);")
 
@@ -1152,15 +1177,23 @@ class InfoWidgetPara(InfoWidget, SearchMixin):
                 cb_fcn = pfcn(self.prop_update, p_str_p, obj_checkbox)
                 obj_checkbox.stateChanged.connect(cb_fcn)
 
-    def create_child_tree_item(self, props, p_name):
+    def create_child_tree_item(self, ch_item_p, props, p_name):
 
         # initialisations
-        lbl_str = '{0}'.format(props['name'])
+        lbl_str = '{0}: '.format(props['name'])
         cb_fcn_base = pfcn(self.prop_update, p_name)
 
         # creates the tree widget item
-        item_ch = QTreeWidgetItem(None)
-        item_ch.setText(0, lbl_str)
+        item_ch = QTreeWidgetItem(ch_item_p)
+
+        # creates the label widget
+        h_lbl = cw.create_text_label(None, lbl_str)
+        h_lbl.setAlignment(Qt.AlignmentFlag.AlignVCenter)
+        self.w_lbl = np.max([self.w_lbl, h_lbl.sizeHint().width()])
+
+        #
+        self.tree_prop.setItemWidget(item_ch, 0, h_lbl)
+        # item_ch.setText(0, lbl_str)
 
         match props['type']:
             case 'edit':
@@ -1334,7 +1367,8 @@ class InfoWidgetPara(InfoWidget, SearchMixin):
 
         # increments the count
         self.n_para += 1
-        p_name_s = re.sub(r'<[^>]*>|[&;]+', '', item.text(0))
+        lbl_str = self.tree_prop.itemWidget(item, 0).text()
+        p_name_s = re.sub(r'<[^>]*>|[&;]+', '', lbl_str)
 
         # appends the objects
         self.h_para.append(item)
@@ -1349,7 +1383,7 @@ class InfoWidgetPara(InfoWidget, SearchMixin):
 
         # appends the objects
         self.h_grp[group_str] = item
-        self.grp_name.append(item.text(0))
+        self.grp_name.append(self.tree_prop.itemWidget(item, 0).text())
 
     # ---------------------------------------------------------------------------
     # Static Methods
