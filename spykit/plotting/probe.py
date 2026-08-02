@@ -320,14 +320,14 @@ class ProbePlot(PlotWidget):
                 u_choice = cw.CustomMessageBox(q_str, t_str, b_str).exec()
 
                 # outputs the image based on type (given the user didn't cancel)
-                f_path = None
+                f_path, fig_dir = None, cw.get_def_dir("figure")
                 if u_choice == 2:
                     # case is the main probe image
-                    f_path, i_plot = cw.get_image_file_name(cw.figure_dir, 'ProbeMain'), 0
+                    f_path, i_plot = cw.get_image_file_name(fig_dir, 'ProbeMain'), 0
 
                 elif u_choice == 3:
                     # case is inset probe image
-                    f_path, i_plot = cw.get_image_file_name(cw.figure_dir, 'ProbeInset'), 1
+                    f_path, i_plot = cw.get_image_file_name(fig_dir, 'ProbeInset'), 1
 
                 # outputs the image to file (if valid)
                 if f_path is not None:

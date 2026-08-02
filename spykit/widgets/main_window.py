@@ -809,7 +809,6 @@ class MainWindow(QMainWindow):
         # updates the probe view
         self.plot_manager.plots[self.plot_manager.types['probe'] - 1].show_view()
 
-
 # ----------------------------------------------------------------------------------------------------------------------
 
 """

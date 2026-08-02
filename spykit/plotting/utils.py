@@ -215,7 +215,7 @@ class PlotManager(QWidget):
             for i_r, v in zip(i_row, value):
                 if not v:
                     spike_tab = self.main_obj.prop_manager.get_prop_tab('tracespike')
-                    spike_tab.clear_table_channel_selections(i_r[0] + 1)
+                    spike_tab.clear_table_channel_selections(i_r + 1)
 
     def trace_highlight(self, is_on, i_contact=None):
 

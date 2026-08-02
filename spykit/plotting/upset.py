@@ -319,7 +319,7 @@ class UpSetPlot(PlotWidget):
                 # case is the figure save button
 
                 # prompts the user for the file name
-                f_path = cw.get_image_file_name(cw.figure_dir, 'UpSet')
+                f_path = cw.get_image_file_name(cw.get_def_dir("figure"), 'UpSet')
                 if f_path is not None:
                     # saves the image to file
                     p_map = cf.setup_subplot_image(self, self.h_plot, self.plot_widget.geometry())

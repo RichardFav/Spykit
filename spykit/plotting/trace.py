@@ -1350,7 +1350,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
                 # case is the figure save button
 
                 # prompts the user for the file name
-                f_path = cw.get_image_file_name(cw.figure_dir, 'Trace')
+                f_path = cw.get_image_file_name(cw.get_def_dir("figure"), 'Trace')
                 if f_path is not None:
                     # saves the image to file
                     exp_obj = exporters.ImageExporter(self.h_plot[0, 0].getPlotItem())

@@ -237,7 +237,7 @@ class UnitHistPlot(PlotWidget):
                 # case is the figure save button
 
                 # outputs the current trace to file
-                f_path = cw.get_image_file_name(cw.figure_dir, 'UnitHistograms')
+                f_path = cw.get_image_file_name(cw.get_def_dir("figure"), 'UnitHistograms')
                 if f_path is not None:
                     # saves the image to file
                     p_map = cf.setup_subplot_image(self, self.hist)
