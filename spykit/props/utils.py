@@ -32,7 +32,7 @@ x_gap_h = 2
 """
 
 
-class PropManager(QWidget):
+class PropManager(QObject):
     # signal functions
     config_update = pyqtSignal(object)
     axes_reset = pyqtSignal(QWidget)
@@ -44,13 +44,15 @@ class PropManager(QWidget):
     props_name = 'Plot Properties'
     tab_type = ['config']
 
-    def __init__(self, main_obj, info_width, session_obj=None):
-        super(PropManager, self).__init__()
+    def __init__(self, sp_main, info_width):
+        super(PropManager, self).__init__(sp_main)
 
         # main class fields
-        self.main_obj = main_obj
+        self.sp_main = sp_main
         self.info_width = info_width
-        self.session_obj = session_obj
+
+        # main sub-class fields
+        self.session_obj = self.sp_main.session_obj
 
         # class property fields
         self.p_info = {}
@@ -66,8 +68,9 @@ class PropManager(QWidget):
         self.props_layout = QVBoxLayout()
 
         # main widgets setup
+        self.main_widget = QWidget()
         self.group_props = QGroupBox(self.props_name.upper())
-        self.tab_group_props = cw.create_tab_group(self)
+        self.tab_group_props = cw.create_tab_group(self.main_widget)
 
         # initialises the class fields
         self.init_class_fields()
@@ -80,9 +83,9 @@ class PropManager(QWidget):
     def init_class_fields(self):
 
         # sets the main widget properties
-        self.setFixedWidth(self.info_width + self.dx_gap)
-        self.setSizePolicy(QSizePolicy(cf.q_fix, cf.q_fix))
-        self.setLayout(self.main_layout)
+        self.main_widget.setFixedWidth(self.info_width + self.dx_gap)
+        self.main_widget.setSizePolicy(QSizePolicy(cf.q_fix, cf.q_fix))
+        self.main_widget.setLayout(self.main_layout)
 
         # sets the widget layout properties
         self.main_layout.setSpacing(0)
@@ -154,7 +157,7 @@ class PropManager(QWidget):
 
         # field retrieval
         pp_tab = self.get_prop_tab('postprocess')
-        pp_data = self.main_obj.session_obj.post_data
+        pp_data = self.session_obj.post_data
 
         # determines the location of the current item
         mm_name_prev = pp_data.mmap_name[pp_data.i_mmap]
@@ -169,7 +172,7 @@ class PropManager(QWidget):
 
         # field retrieval
         pp_tab = self.get_prop_tab('postprocess')
-        unit_tab = self.main_obj.info_manager.get_info_tab('unit')
+        unit_tab = self.sp_main.info_manager.get_info_tab('unit')
         n_views = len(pp_tab.plot_views)
 
         # creates the plot views for each post-processing type
@@ -179,12 +182,12 @@ class PropManager(QWidget):
             m_obj.update_progress_bar(m_str, 0.5 * (1 + (i_pf / n_views)))
 
             # adds the config/plot views
-            self.main_obj.prop_manager.add_config_view(ppt.prop_names[pf])
+            self.add_config_view(ppt.prop_names[pf])
 
             # sets the property tab plot views
-            self.main_obj.plot_manager.add_plot_view(
+            self.sp_main.plot_manager.add_plot_view(
                 pf, show_plot=False, expand_grid=False, clear_view=False)
-            p_view = self.main_obj.plot_manager.get_plot_view(pf)
+            p_view = self.sp_main.plot_manager.get_plot_view(pf)
             pp_tab.set_plot_view(pf, p_view)
 
         # updates the progressbar
@@ -196,7 +199,7 @@ class PropManager(QWidget):
 
         # updates the progressbars
         m_obj.update_progress_bar(None, None)
-        self.main_obj.info_manager.prog_widget.update_message_label()
+        self.sp_main.info_manager.prog_widget.update_message_label()
 
     # ---------------------------------------------------------------------------
     # Special Widget Event Functions
@@ -242,17 +245,16 @@ class PropManager(QWidget):
 
         if i_mmap is None:
             # retrieves the current memory map index (if not provided)
-            i_mmap = self.main_obj.session_obj.post_data.i_mmap
+            i_mmap = self.session_obj.post_data.i_mmap
 
         else:
             # otherwise, update the memory map index
-            self.main_obj.session_obj.post_data.set_mmap_index(i_mmap)
+            self.session_obj.post_data.set_mmap_index(i_mmap)
 
         # field retrieval
         reset_unit_index = False
-        p_manager = self.main_obj.plot_manager
-        unit_tab = self.main_obj.info_manager.get_info_tab('unit')
-        pp_prop = self.main_obj.prop_manager.get_prop_tab('postprocess')
+        unit_tab = self.sp_main.info_manager.get_info_tab('unit')
+        pp_prop = self.get_prop_tab('postprocess')
 
         # resets the selected unit index (if it exceeds unit count)
         if ((unit_tab.i_unit_sel is not None) and
@@ -262,10 +264,10 @@ class PropManager(QWidget):
             unit_tab.i_unit_sel = unit_tab.get_field('n_unit')
 
         # updates the visible plot views
-        c_views = self.main_obj.plot_manager.get_current_view_names()
-        for pp_v in p_manager.pp_views:
+        c_views = self.sp_main.plot_manager.get_current_view_names()
+        for pp_v in self.sp_main.plot_manager.pp_views:
             # updates the post-processing views (if currently viewing)
-            h_view = self.main_obj.plot_manager.get_plot_view(pp_v)
+            h_view = self.sp_main.plot_manager.get_plot_view(pp_v)
             if reset_unit_index and hasattr(h_view, 'i_unit'):
                 h_view.reset_unit_index(unit_tab.i_unit_sel)
 
@@ -281,17 +283,17 @@ class PropManager(QWidget):
                     pp_prop.get_tab_view(pp_v).post_process_change()
 
         # unit table reset thread worker
-        t_worker_unit = ThreadWorker(None, self.reset_unit_table)
+        t_worker_unit = ThreadWorker(self.sp_main, self.reset_unit_table)
         t_worker_unit.work_finished.connect(self.unit_table_update_complete)
         t_worker_unit.start()
 
         # spike table reset thread worker
-        t_worker_spike = ThreadWorker(None, self.reset_spike_table)
+        t_worker_spike = ThreadWorker(self.sp_main, self.reset_spike_table)
         t_worker_unit.work_finished.connect(self.spike_table_update_complete)
         t_worker_spike.start()
 
-        if self.main_obj.bombcell_dlg is not None:
-            self.main_obj.bombcell_dlg.post_processing_soln_change()
+        if self.sp_main.bombcell_dlg is not None:
+            self.sp_main.bombcell_dlg.post_processing_soln_change()
 
     def data_type_combobox_update(self, tab_obj):
 
@@ -302,10 +304,9 @@ class PropManager(QWidget):
             self.is_updating = True
 
         # plot view retrieval
-        info_manager = self.main_obj.info_manager
-        channel_tab = info_manager.get_info_tab('channel')
-        trace_view = self.main_obj.plot_manager.get_plot_view('trace')
-        trig_view = self.main_obj.plot_manager.get_plot_view('trigger')
+        channel_tab = self.sp_main.info_manager.get_info_tab('channel')
+        trace_view = self.sp_main.plot_manager.get_plot_view('trace')
+        trig_view = self.sp_main.plot_manager.get_plot_view('trigger')
 
         # field retrieval
         trig_update = False
@@ -322,15 +323,15 @@ class PropManager(QWidget):
             # TraceView limit update
             if i_run_sel > 0:
                 # if the run index is > 0, then reset the trace view
-                t_ofs = np.round(np.sum(t_dur_run[:info_manager.i_run_pr]), cf.n_dp)
+                t_ofs = np.round(np.sum(t_dur_run[:self.sp_main.info_manager.i_run_pr]), cf.n_dp)
                 trace_view.t_lim += t_ofs
                 trig_view.t_lim += t_ofs
 
             # TriggerView limit update
-            if info_manager.i_run_pr is None:
+            if self.sp_main.info_manager.i_run_pr is None:
                 full_zoom = True
             else:
-                full_zoom = np.array_equal(np.array([0, t_dur_run[info_manager.i_run_pr]]),
+                full_zoom = np.array_equal(np.array([0, t_dur_run[self.sp_main.info_manager.i_run_pr]]),
                                            np.array(trig_view.l_reg_x.getRegion()))
             if full_zoom:
                 # case is using full zoom
@@ -345,19 +346,20 @@ class PropManager(QWidget):
 
             # determines the run that the trace view starts in
             t_dur_sum = np.cumsum(t_dur_run)
-            info_manager.i_run_pr = next((i for i, x in enumerate(t_dur_sum) if x >= trace_view.t_lim[0]))
-            if info_manager.i_run_pr != i_run_sel:
+            self.sp_main.info_manager.i_run_pr = (
+                next((i for i, x in enumerate(t_dur_sum) if x >= trace_view.t_lim[0])))
+            if self.sp_main.info_manager.i_run_pr != i_run_sel:
                 # updates the run comoobox if it does not match
                 channel_tab.is_updating = True
-                channel_tab.run_type.set_current_index(info_manager.i_run_pr)
+                channel_tab.run_type.set_current_index(self.sp_main.info_manager.i_run_pr)
                 channel_tab.is_updating = False
 
             # resets the trace view time range
-            if info_manager.i_run_pr > 0:
-                trace_view.t_lim -= t_dur_sum[info_manager.i_run_pr - 1]
+            if self.sp_main.info_manager.i_run_pr > 0:
+                trace_view.t_lim -= t_dur_sum[self.sp_main.info_manager.i_run_pr - 1]
 
             # ensures the upper limit is within the run duration
-            trace_view.t_lim[1] = np.min([trace_view.t_lim[1], t_dur_run[info_manager.i_run_pr]])
+            trace_view.t_lim[1] = np.min([trace_view.t_lim[1], t_dur_run[self.sp_main.info_manager.i_run_pr]])
             if not np.array_equal(trace_view.l_reg_x.getRegion(), trace_view.t_lim):
                 trace_view.is_updating = True
                 trace_view.l_reg_x.setRegion(trace_view.t_lim)
@@ -365,13 +367,13 @@ class PropManager(QWidget):
 
             # updates the TriggerView duration
             trig_update = True
-            trig_view.gen_props.set_n('t_dur', t_dur_run[info_manager.i_run_pr])
-            trig_view.t_lim = np.array([0, t_dur_run[info_manager.i_run_pr]])
+            trig_view.gen_props.set_n('t_dur', t_dur_run[self.sp_main.info_manager.i_run_pr])
+            trig_view.t_lim = np.array([0, t_dur_run[self.sp_main.info_manager.i_run_pr]])
 
         # updates the current preprocessing data type
         if tab_obj.data_flds is not None:
             i_data = tab_obj.data_type.current_index()
-            self.main_obj.session_obj.set_prep_type(tab_obj.data_flds[i_data])
+            self.session_obj.set_prep_type(tab_obj.data_flds[i_data])
 
         # resets the channel statuses
         channel_tab.is_updating = True
@@ -388,7 +390,7 @@ class PropManager(QWidget):
             # self.session_obj.set_current_run(tab_obj.run_type.obj_cbox.itemText(0))
 
             # resets the previous run index
-            info_manager.i_run_pr = None
+            self.sp_main.info_manager.i_run_pr = None
 
         # updates the run type properties (disable if displaying concatenate run)
         channel_tab.run_type.set_enabled(not is_concat)
@@ -403,20 +405,20 @@ class PropManager(QWidget):
 
             # resets the current index (if separating by shank)
             if is_per_shank:
-                if info_manager.i_shank_pr is None:
-                    info_manager.i_shank_pr = 0
+                if self.sp_main.info_manager.i_shank_pr is None:
+                    self.sp_main.info_manager.i_shank_pr = 0
 
-                elif channel_tab.shank_type.current_index() != info_manager.i_shank_pr:
-                    channel_tab.shank_type.set_current_index(info_manager.i_shank_pr)
+                elif channel_tab.shank_type.current_index() != self.sp_main.info_manager.i_shank_pr:
+                    channel_tab.shank_type.set_current_index(self.sp_main.info_manager.i_shank_pr)
 
         # updates the trace view
-        info_manager.update_current_shank(channel_tab)
-        self.main_obj.plot_manager.reset_trace_views(reset_type)
-        self.main_obj.plot_manager.reset_probe_views()
+        self.sp_main.info_manager.update_current_shank(channel_tab)
+        self.sp_main.plot_manager.reset_trace_views(reset_type)
+        self.sp_main.plot_manager.reset_probe_views()
 
         # updates the trigger view (if required)
         if trig_update:
-            self.main_obj.plot_manager.reset_trig_views()
+            self.sp_main.plot_manager.reset_trig_views()
 
         # resets the update flags
         self.is_updating = False
@@ -433,21 +435,21 @@ class PropManager(QWidget):
     def reset_unit_table(self, _):
 
         # field retrieval
-        unit_tab = self.main_obj.info_manager.get_info_tab('unit')
+        unit_tab = self.sp_main.info_manager.get_info_tab('unit')
 
         # resets the unit table properties
         df_unit_nw, c_hdr_nw, unit_lbl_nw = unit_tab.setup_unit_table_data(True)
 
         # updates the unit tab fields and resets the unit table
         unit_tab.df_unit, unit_tab.c_hdr, unit_tab.unit_lbl = df_unit_nw, c_hdr_nw, unit_lbl_nw
-        self.main_obj.info_manager.set_unit_table_data()
+        self.sp_main.info_manager.set_unit_table_data()
 
         return df_unit_nw, c_hdr_nw, unit_lbl_nw
 
     def unit_table_update_complete(self, thread_data):
 
         # field retrieval
-        unit_tab = self.main_obj.info_manager.get_info_tab('unit')
+        unit_tab = self.sp_main.info_manager.get_info_tab('unit')
 
         # updates the class fields
         unit_tab.df_unit, unit_tab.c_hdr, unit_tab.unit_lbl = thread_data
@@ -458,7 +460,7 @@ class PropManager(QWidget):
         unit_tab.check_filter_item(False)
 
         # clears any probe unit markers
-        self.main_obj.plot_manager.get_plot_view('probe').reset_unit_markers()
+        self.sp_main.plot_manager.get_plot_view('probe').reset_unit_markers()
 
         if unit_tab.i_unit_sel is not None:
             # resets the table highlight
@@ -471,7 +473,7 @@ class PropManager(QWidget):
     def spike_table_update_complete(self):
 
         # field retrieval
-        spike_props = self.main_obj.prop_manager.get_prop_tab('tracespike')
+        spike_props = self.get_prop_tab('tracespike')
 
         # updates the run/shank information fields
         spike_props.update_run_shank_fields()
@@ -516,7 +518,7 @@ class PropManager(QWidget):
     def set_prop_para(self, p_para):
 
         i_run_sel = self.get_run_index()
-        n_run = self.main_obj.session_obj.session.get_run_count()
+        n_run = self.session_obj.session.get_run_count()
 
         # retrieves the parameter values for each info type
         for pt0, pv in p_para.items():
@@ -594,7 +596,7 @@ class PropManager(QWidget):
             match p_tab.type:
                 case 'general':
                     # case is the general property tab
-                    p_tab.t_dur = self.main_obj.session_obj.session_props.t_dur
+                    p_tab.t_dur = self.session_obj.session_props.t_dur
                     p_tab.check_update(False)
                     p_tab.reset_slot_functions()
 
@@ -607,7 +609,7 @@ class PropManager(QWidget):
 
     def add_spike_table(self):
 
-        t_worker = ThreadWorker(None, self.create_spike_table)
+        t_worker = ThreadWorker(self.sp_main, self.create_spike_table)
         t_worker.work_finished.connect(self.set_spike_table_data)
         t_worker.start()
 
@@ -647,8 +649,7 @@ class PropManager(QWidget):
 
     def get_run_index(self):
 
-        ses_obj = self.main_obj.session_obj
-        return ses_obj.session.get_run_index(ses_obj.current_run)
+        return self.session_obj.session.get_run_index(self.session_obj.current_run)
 
     def get_tab_index(self, t_str):
 
@@ -847,14 +848,18 @@ class PropWidget(QWidget):
     # widget dimensions
     lbl_width = 130
 
-    def __init__(self, main_obj, p_type, p_info, f_layout=None):
-        super(PropWidget, self).__init__()
+    def __init__(self, prop_manager, p_type, p_info, f_layout=None):
+        super(PropWidget, self).__init__(prop_manager.main_widget)
 
         # main class fields
         self.p_type = p_type
         self.p_info = p_info
-        self.main_obj = main_obj
         self.f_layout = f_layout
+        self.prop_manager = prop_manager
+
+        # other class field retrieval
+        self.sp_main = prop_manager.parent()
+        self.session_obj = self.sp_main.session_obj
 
         # common class widgets
         self.outer_layout = QVBoxLayout()
@@ -903,7 +908,8 @@ class PropWidget(QWidget):
 
         # creates the parameter objects
         for ps_ch in tab_para:
-            self.create_para_object(self.f_layout, ps_ch, tab_para[ps_ch], [self.p_type, ps_ch])
+            self.create_para_object(
+                self.f_layout, ps_ch, tab_para[ps_ch], [self.p_type, ps_ch])
             self.n_para += 1
 
         # adds the widget to the table
@@ -956,7 +962,7 @@ class PropWidget(QWidget):
             # case is a numerical parameters
 
             # updates the reset flag
-            self.main_obj.was_reset = True
+            self.prop_manager.was_reset = True
             p_min, p_max, is_int = self.get_para_limits(p_str)
 
             # determines if the new value is valid
@@ -1275,7 +1281,7 @@ class PropWidget(QWidget):
                 # case is a region configuration widget
 
                 # creates the region configuration widget
-                gbox_height = self.main_obj.info_width - 4 * x_gap
+                gbox_height = self.prop_manager.info_width - 4 * x_gap
                 obj_rconfig = cw.QRegionConfig(self, font=cw.font_lbl, is_expanded=True,
                                                p_list0=ps['p_list'], gbox_height=gbox_height)
 
@@ -1462,7 +1468,7 @@ class PropWidget(QWidget):
 
     def get_run_index(self):
 
-        ses_obj = self.main_obj.session_obj
+        ses_obj = self.prop_manager.session_obj
         return ses_obj.session.get_run_index(ses_obj.current_run)
 
     # ---------------------------------------------------------------------------

@@ -42,8 +42,11 @@ class ChannelInfoTab(InfoWidget):
     # object dimensions
     but_height = 16
 
-    def __init__(self, t_str, main_obj):
-        super(ChannelInfoTab, self).__init__(t_str, main_obj)
+    def __init__(self, sp_main, t_str):
+        super(ChannelInfoTab, self).__init__(sp_main, t_str)
+
+        # main class fields
+        self.session_obj = sp_main.session_obj
 
         # field initialisations
         self.data_flds = None
@@ -189,15 +192,15 @@ class ChannelInfoTab(InfoWidget):
         i_shank_sel = None
         n_row = deepcopy(self.table.rowCount())
 
-        if self.main_obj.session_obj.post_data is None:
+        if self.session_obj.post_data is None:
             check_raw = True
         else:
-            check_raw = self.main_obj.session_obj.post_data.n_mmap == 0
+            check_raw = self.session_obj.post_data.n_mmap == 0
 
         # field retrieval
-        if self.main_obj.session_obj.is_per_shank(check_raw):
-            ch_name_0 = self.main_obj.session_obj.get_channel_ids()[0]
-            ch_name_sh = self.main_obj.session_obj.get_avail_channel(use_per_shank=True)
+        if self.session_obj.is_per_shank(check_raw):
+            ch_name_0 = self.session_obj.get_channel_ids()[0]
+            ch_name_sh = self.session_obj.get_avail_channel(use_per_shank=True)
             i_shank_sel = self.shank_type.current_index()
             ch_id_shank = np.intersect1d(ch_name_0, ch_name_sh, return_indices=True)[1]
 
@@ -213,7 +216,7 @@ class ChannelInfoTab(InfoWidget):
             if i_shank_sel is not None:
                 # field retrieval (first iteration only)
                 if i_row == 0:
-                    ch_info = np.array(self.main_obj.session_obj.get_shank_ids()).astype(int)
+                    ch_info = np.array(self.session_obj.get_shank_ids()).astype(int)
 
                 # updates the filter flag
                 self.is_filt[i_row] = self.is_filt[i_row] and (i_row in ch_id_shank)
@@ -330,7 +333,7 @@ class ChannelInfoTab(InfoWidget):
         for i_row in range(self.table.rowCount()):
             self.table.setRowHidden(i_row, not self.is_filt[i_row])
 
-        self.main_obj.session_obj.channel_data.set_filter_flag(self.is_filt)
+        self.session_obj.channel_data.set_filter_flag(self.is_filt)
 
     def keep_channel_reset(self, is_keep):
 

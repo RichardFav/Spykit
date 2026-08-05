@@ -50,8 +50,8 @@ class SessionWorkBook(QObject):
     # c_hdr_ch = ['', 'Keep?', 'Status', 'Channel ID#', 'Contact ID#', 'Channel Index', 'X-Coord', 'Y-Coord', 'Shank ID']
     c_hdr_ch = ['', 'Keep?', 'Status', 'Channel ID#', 'Contact ID#', 'X-Coord', 'Y-Coord', 'Shank ID']
 
-    def __init__(self, main_obj):
-        super(SessionWorkBook, self).__init__()
+    def __init__(self, parent):
+        super(SessionWorkBook, self).__init__(parent)
 
         # initialisation flag
         self.state = 0
@@ -62,7 +62,6 @@ class SessionWorkBook(QObject):
         self.channel_data = None
         self.post_data = None
         self.session_props = None
-        self.main_obj = main_obj
 
         # other class field
         self.current_run = None
@@ -673,10 +672,10 @@ class SessionWorkBook(QObject):
         else:
             self.channel_data.toggle_select_flag(i_channel, state)
 
-    def reset_session(self, ses_data):
+    def reset_session(self, ses_data, ssf_file):
 
         # resets the session object
-        self.session = SessionObject(ses_data['session_props'], True, self.worker_job_started)
+        self.session = SessionObject(self.parent(), ses_data['session_props'], ssf_file, self.worker_job_started)
         self.session.channel_calc.connect(self.channel_calc)
         self.session.prep_prop_update.connect(self.prep_prop_update)
 
@@ -718,7 +717,7 @@ class SessionWorkBook(QObject):
 
         if self.post_data is not None:
             # removes the item from the
-            pp_tab = self.main_obj.prop_manager.get_prop_tab('postprocess')
+            pp_tab = self.parent().prop_manager.get_prop_tab('postprocess')
             pp_tab.remove_soln_file(i_mmap_rmv)
 
             # removes the memory map
@@ -750,7 +749,7 @@ class SessionWorkBook(QObject):
             _probe_current = _self.get_current_recording_probe()
             _self.channel_data = ChannelData(_probe_current)
             _self.session_props = SessionProps(_probe_current)
-            _self.post_data = PostProcessData(_self.main_obj)
+            _self.post_data = PostProcessData(_self.parent())
             _self.session.load_sorting_para(_self)
 
             # connects the signal functions
@@ -790,13 +789,16 @@ class SessionObject(QObject):
     # parameters
     dy_min = 1.5
 
-    def __init__(self, s_props, ssf_load=False, sig_fcn=None):
-        super(SessionObject, self).__init__()
+    def __init__(self, parent, s_props, ssf_file=None, sig_fcn=None):
+        super(SessionObject, self).__init__(parent)
 
         # class field initialisations
         self._s = None
         self._s_props = s_props
         self.sig_fcn = sig_fcn
+
+        # other class field retrieval
+        self.sp_main = self.parent().parent()
 
         # bad/sync channels
         self.bad_ch = None
@@ -806,8 +808,10 @@ class SessionObject(QObject):
         self.bcell_obj = None
         self.t_worker = None
         self.shank_runs = None
-        self.ssf_load = ssf_load
         self.data_init = {'bad': False, 'sync': False}
+
+        self.ssf_file = ssf_file
+        self.ssf_load = ssf_file is not None
 
         # creates the session property fields from the input dictionary
         for sp in s_props:
@@ -870,13 +874,13 @@ class SessionObject(QObject):
             ses_run = self.get_session_runs(i_run)
 
             # sets up the bad channel detection worker
-            t_worker_bad = ThreadWorker(None, self.get_bad_channel, (ses_run, i_run))
+            t_worker_bad = ThreadWorker(self.sp_main, self.get_bad_channel, (ses_run, i_run))
             t_worker_bad.work_finished.connect(self.post_get_bad_channel)
             t_worker_bad.desc = 'bad'
             t_worker_bad.start()
 
             # sets up the sync channel detection worker
-            t_worker_sync = ThreadWorker(None, self.get_sync_channel, (self._s, i_run))
+            t_worker_sync = ThreadWorker(self.sp_main, self.get_sync_channel, (self._s, i_run))
             t_worker_sync.work_finished.connect(self.post_get_sync_channel)
             t_worker_sync.desc = 'sync'
             t_worker_sync.start()
@@ -903,7 +907,7 @@ class SessionObject(QObject):
         # updates the signal function
         if (ses_obj.session.sig_fcn is not None) and (not ses_obj.session.ssf_load):
             # sets up the bad channel detection worker
-            t_worker_sort = ThreadWorker(None, self.get_sorter_info, (ses_obj))
+            t_worker_sort = ThreadWorker(self.sp_main, self.get_sorter_info, (ses_obj))
             t_worker_sort.work_finished.connect(self.post_get_sorter_info)
             t_worker_sort.desc = 'sorterpara'
             t_worker_sort.start()
@@ -929,7 +933,7 @@ class SessionObject(QObject):
             ses_run = self.get_session_runs(i_run)
 
             # sets up the bad channel detection worker
-            t_worker_new = ThreadWorker(None, self.get_bad_channel, (ses_run, i_run, p_props))
+            t_worker_new = ThreadWorker(self.sp_main, self.get_bad_channel, (ses_run, i_run, p_props))
             t_worker_new.work_finished.connect(self.post_get_bad_channel)
             t_worker_new.start()
 
@@ -1328,12 +1332,9 @@ class PostProcessData(QObject):
     # pyqtsignal functions
     added_pp = pyqtSignal(str)
 
-    def __init__(self, main_obj):
+    def __init__(self, parent):
         # initialises the property widget
-        super(PostProcessData, self).__init__()
-
-        # input arguments
-        self.main_obj = main_obj
+        super(PostProcessData, self).__init__(parent)
 
         # field initialisation
         self.mmap = []
@@ -1356,7 +1357,7 @@ class PostProcessData(QObject):
     def read_post_process(self, mm_file):
 
         # creates the memory map object
-        pmm_obj = PostMemMap(self.main_obj)
+        pmm_obj = PostMemMap(self.parent())
 
         if (self.n_mmap == 0):
             self.i_mmap = 0

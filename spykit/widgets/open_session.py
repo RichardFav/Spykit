@@ -69,12 +69,12 @@ class OpenSession(QMainWindow):
     # parameters
     x_max = 50
 
-    def __init__(self, main_obj):
-        super(OpenSession, self).__init__(main_obj)
+    def __init__(self, sp_main):
+        super(OpenSession, self).__init__(sp_main)
 
         # input arguments
-        self.main_obj = main_obj
-        self.session_obj = main_obj.session_obj
+        self.sp_main = sp_main
+        self.session_obj = self.sp_main.session_obj
 
         # other class widget setup
         self.main_layout = QGridLayout()
@@ -252,7 +252,7 @@ class OpenSession(QMainWindow):
             self.session_obj.channel_calc(ch_type, session)
 
         else:
-            self.main_obj.worker_job_finished(ch_type)
+            self.sp_main.worker_job_finished(ch_type)
 
     def close_window(self):
 
@@ -260,7 +260,7 @@ class OpenSession(QMainWindow):
         update_session = False
 
         # if there is a session loaded, then prompt the user if they want to update
-        if self.parent() is not None:
+        if self.sp_main is not None:
             if (self.session is not None) and self.is_changed:
                 # prompts the user if they want to delete the trace
                 m_str = "Do you want to update the loaded session?"
@@ -293,8 +293,8 @@ class OpenSession(QMainWindow):
             self.session.force_close_workers()
 
         # sets the parent widget to be visible (if available)
-        if self.parent() is not None:
-            self.parent().setVisible(True)
+        if self.sp_main is not None:
+            self.sp_main.setVisible(True)
 
         # closes the window
         self.can_close = True
@@ -405,11 +405,14 @@ class SessionFile(QWidget):
     table_hdr_font = cw.create_font_obj(size=8, is_bold=True, font_weight=QFont.Weight.Bold)
     chk_flag = Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsSelectable
 
-    def __init__(self, parent=None):
+    def __init__(self, parent):
         super(SessionFile, self).__init__(parent)
 
+        # main class fields
+        self.open_ses = self.parent()
+        self.sp_main = self.open_ses.parent()
+
         # class fields
-        self.open_ses = parent
         self.n_para = None
         self.use_run = None
         self.f_type = 'folder'
@@ -431,7 +434,7 @@ class SessionFile(QWidget):
 
         # class widget fields
         self.expt_folder = None
-        self.main_widget = self.parent()
+        self.main_widget = self.open_ses.main_widget
         self.run_table = QTableWidget(0, 3, None)
         self.tab_group = cw.create_tab_group(self)
         self.group_panel = QGroupBox(self.grp_name.upper())
@@ -948,9 +951,9 @@ class SessionFile(QWidget):
                 pass
 
         # creates the session object
-        sig_fcn = self.open_ses.main_obj.worker_job_started
-        self.main_widget.session = SessionObject(s_props, sig_fcn=sig_fcn)
-        self.main_widget.session.channel_calc.connect(self.channel_calc_slot)
+        sig_fcn = self.sp_main.worker_job_started
+        self.open_ses.session = SessionObject(self.open_ses, s_props, sig_fcn=sig_fcn)
+        self.open_ses.session.channel_calc.connect(self.channel_calc_slot)
 
     def channel_calc_slot(self, ch_type, session):
 
@@ -960,7 +963,7 @@ class SessionFile(QWidget):
 
         if not self.is_updating:
             self.use_run[item.row()] = item.checkState() == cf.chk_state[True]
-            self.main_widget.set_toolbar_props('open', np.any(self.use_run))
+            self.parent().set_toolbar_props('open', np.any(self.use_run))
 
     def set_styling(self):
 

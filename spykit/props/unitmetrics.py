@@ -68,19 +68,25 @@ class UnitMetricProps(PropWidget):
     # field properties
     type = 'unitmet'
 
+    # widget dimensions
+    info_width = 270
+
     # font sizes
     lbl_size = 10
     tick_size = 9
     title_sub_size0 = 12
     title_main_size0 = 25
 
-    def __init__(self, main_obj):
-        # sets the input arguments
-        self.main_obj = main_obj
+    def __init__(self, prop_manager):
+
+        # resets the width value
+        info_width0 = prop_manager.info_width
+        prop_manager.info_width = self.info_width
 
         # initialises the property widget
         self.setup_prop_fields()
-        super(UnitMetricProps, self).__init__(self.main_obj, 'unitmet', self.p_info)
+        super(UnitMetricProps, self).__init__(prop_manager, 'unitmet', self.p_info)
+        prop_manager.info_width = info_width0
 
         # sets up the parameter fields
         self.p_props = UnitMetricPara(self.p_info['ch_fld'])
@@ -179,7 +185,7 @@ class UnitMetricProps(PropWidget):
             match p_str:
                 case 'i_unit':
                     # case is the cluster index
-                    unit_tab = self.main_obj.main_obj.main_obj.info_manager.get_info_tab('unit')
+                    unit_tab = self.sp_main.info_manager.get_info_tab('unit')
                     unit_tab.reset_selected_cell(chk_val[0] - 1)
 
             # updates the histogram view
@@ -220,7 +226,7 @@ class UnitMetricProps(PropWidget):
 
     def get_field(self, p_fld):
 
-        return self.main_obj.main_obj.session_obj.get_mem_map_field(p_fld)
+        return self.session_obj.get_mem_map_field(p_fld)
 
     def get_unit_type(self, i_unit):
 
@@ -229,13 +235,13 @@ class UnitMetricProps(PropWidget):
 
     def get_metric_table_values(self):
 
-        self.q_met = self.main_obj.main_obj.main_obj.session_obj.get_metric_table_values()
+        self.q_met = self.session_obj.get_metric_table_values()
 
     def get_raw_traces(self, i_unit_f, i_ch):
 
         # determines the channel index offset
-        i_shank = self.main_obj.main_obj.session_obj.get_shank_index()
-        i_ch_ofs = self.main_obj.main_obj.session_obj.post_data.i_ch_ofs[i_shank]
+        i_shank = self.session_obj.get_shank_index()
+        i_ch_ofs = self.session_obj.post_data.i_ch_ofs[i_shank]
 
         return self.get_field('avg_sig')[i_unit_f, i_ch + i_ch_ofs, :]
 

@@ -88,19 +88,17 @@ class TraceViewProps(PropWidget):
     sig_list = ['Difference', 'Absolute']
     plot_list = ['Trace', 'Heatmap', 'Auto']
 
-    def __init__(self, main_obj):
-        # sets the input arguments
-        self.main_obj = main_obj
+    def __init__(self, prop_manager):
 
         # field initialisation
         self.data_flds = None
         self.trace_view = None
         self.is_updating = False
-        self.t_dur = np.round(self.main_obj.main_obj.session_obj.session_props.t_dur, cf.n_dp)
+        self.t_dur = np.round(prop_manager.session_obj.session_props.t_dur, cf.n_dp)
 
         # initialises the property widget
         self.setup_prop_fields()
-        super(TraceViewProps, self).__init__(self.main_obj, 'trace', self.p_info)
+        super(TraceViewProps, self).__init__(prop_manager, 'trace', self.p_info)
 
         # sets up the parameter fields
         self.p_props = TraceViewPara(self.p_info['ch_fld'])

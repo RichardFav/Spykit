@@ -121,8 +121,8 @@ class PreprocessConfig(object):
 
 
 class PreprocessInfoTab(InfoWidgetPara):
-    def __init__(self, t_str, main_obj):
-        super(PreprocessInfoTab, self).__init__(t_str, main_obj, layout=QFormLayout)
+    def __init__(self, sp_main, t_str):
+        super(PreprocessInfoTab, self).__init__(sp_main, t_str, layout=QFormLayout)
 
         # class field initialisation
         self.bad_channel_fcn = None
@@ -302,16 +302,18 @@ class PreprocessSetup(QMainWindow):
         }
     """
 
-    def __init__(self, main_obj, prep_obj_auto):
-        super(PreprocessSetup, self).__init__(main_obj)
-
-        # sets the input arguments
-        self.main_obj = main_obj
-        self.prep_obj_auto = prep_obj_auto
-        self.is_auto = prep_obj_auto is not None
+    def __init__(self, sp_main, prep_obj_auto):
+        super(PreprocessSetup, self).__init__(sp_main)
 
         # creates the preprocessing run class object
-        self.session = self.main_obj.session_obj.session
+        self.sp_main = sp_main
+        self.session_obj = self.sp_main.session_obj
+        self.info_manager = self.sp_main.info_manager
+        self.session = self.session_obj.session
+
+        # input arguments
+        self.prep_obj_auto = prep_obj_auto
+        self.is_auto = prep_obj_auto is not None
 
         # sets the central widget
         self.main_widget = QWidget(self)
@@ -447,7 +449,7 @@ class PreprocessSetup(QMainWindow):
             # checkbox_new.setStyleSheet(self.border_style)
 
         # sets the by shank checkbox enabled properties
-        n_shank = self.main_obj.session_obj.get_shank_count()
+        n_shank = self.session_obj.get_shank_count()
         self.checkbox_opt[0].setEnabled(n_shank > 1)
 
         # sets the concatenation checkbox enabled properties
@@ -455,7 +457,7 @@ class PreprocessSetup(QMainWindow):
         self.checkbox_opt[1].setEnabled(n_run > 1)
 
         # determines if partial preprocessing has taken place
-        pp_runs = self.main_obj.session_obj.get_pp_runs()
+        pp_runs = self.session_obj.get_pp_runs()
         if len(pp_runs):
             # flag that partial preprocessing has taken place
             self.has_pp = True
@@ -478,7 +480,7 @@ class PreprocessSetup(QMainWindow):
         # channel interpolation field (if it exists) if either a) there are no bad channels or
         # b) the common reference calculations have already taken place
         if 'Channel Interpolation' in self.l_task:
-            bad_ch_id = self.main_obj.session_obj.get_bad_channels()[0]
+            bad_ch_id = self.session_obj.get_bad_channels()[0]
             if (len(bad_ch_id) == 0) or ('Common Reference' not in self.l_task):
                 self.l_task.pop(self.l_task.index('Channel Interpolation'))
 
@@ -705,7 +707,7 @@ class PreprocessSetup(QMainWindow):
                 self.n_task = deepcopy(self.add_list.count())
 
                 # sets the preprocessing options
-                prep_tab = self.main_obj.info_manager.get_info_tab('preprocess')
+                prep_tab = self.info_manager.get_info_tab('preprocess')
                 prep_tab.configs.set_prep_opt(self.per_shank, self.concat_runs)
 
                 # retrieves the selected tasks
@@ -736,7 +738,7 @@ class PreprocessSetup(QMainWindow):
         # if there are outstanding tasks, then promopt the user
         if (self.add_list.count() > 0) or ((not self.has_pp) and self.is_auto):
             q_str = 'There are still outstanding tasks to process. Do you still want to continue?'
-            u_choice = QMessageBox.question(self.main_obj, 'Close Window?', q_str, cf.q_yes_no, cf.q_yes)
+            u_choice = QMessageBox.question(self.sp_main, 'Close Window?', q_str, cf.q_yes_no, cf.q_yes)
             if u_choice == cf.q_no:
                 # case is the user chose not to close
                 return
@@ -744,7 +746,7 @@ class PreprocessSetup(QMainWindow):
         if self.has_pp:
             # updates the pre-processing information
             pr_val = self.session.prep_obj.pp_steps_tot.values()
-            prep_tab = self.main_obj.info_manager.get_info_tab('preprocess')
+            prep_tab = self.info_manager.get_info_tab('preprocess')
 
             # resets the preprocessing configuration fields
             prep_tab.configs.prep_task = [x[0] for x in pr_val]
@@ -752,15 +754,20 @@ class PreprocessSetup(QMainWindow):
             prep_tab.configs.task_para = dict(pr_val)
             prep_tab.configs.set_prep_opt(self.per_shank, self.concat_runs)
 
-        elif self.main_obj.session_obj.is_session_sorted():
+        elif self.session_obj.is_session_sorted():
             # otherwise if the session is sorted, then enable the post-processing
-            self.main_obj.menu_bar.set_menu_enabled_blocks('sorted-without-preprocess')
+            self.sp_main.menu_bar.set_menu_enabled_blocks('sorted-without-preprocess')
 
         # runs the post window close functions
         self.close_preprocessing.emit(self.has_pp)
 
         # closes the window
         self.close()
+
+        #
+        self.sp_main.activateWindow()
+        self.sp_main.raise_()
+        self.sp_main.setFocus()
 
     # ---------------------------------------------------------------------------
     # Preprocessing Worker Functions
@@ -769,7 +776,7 @@ class PreprocessSetup(QMainWindow):
     def setup_preprocessing_worker(self, prep_obj):
 
         # creates the threadworker object
-        self.t_worker = ThreadWorker(self, self.run_preprocessing_worker, prep_obj)
+        self.t_worker = ThreadWorker(self.sp_main, self.run_preprocessing_worker, prep_obj)
         self.t_worker.work_finished.connect(self.preprocessing_complete)
 
         # starts the worker object
@@ -778,7 +785,7 @@ class PreprocessSetup(QMainWindow):
     def run_preprocessing_worker(self, prep_obj):
 
         # runs the session pre-processing
-        prep_tab = self.main_obj.info_manager.get_info_tab('preprocess')
+        prep_tab = self.info_manager.get_info_tab('preprocess')
 
         # case is running from the Preprocessing dialog
         if isinstance(prep_obj, tuple):
@@ -832,6 +839,7 @@ class PreprocessSetup(QMainWindow):
             self.is_updating = False
 
         # deletes the worker object
+        self.t_worker.quit()
         self.t_worker.deleteLater()
 
     # ---------------------------------------------------------------------------

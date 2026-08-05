@@ -103,16 +103,17 @@ class SpikeSortingDialog(QMainWindow):
         }
     """
 
-    def __init__(self, main_obj=None, ss_config=None):
-        super(SpikeSortingDialog, self).__init__(main_obj)
+    def __init__(self, sp_main=None, ss_config=None):
+        super(SpikeSortingDialog, self).__init__(sp_main)
 
         # sets the input arguments
-        self.main_obj = main_obj
+        self.sp_main = sp_main
         self.ss_config = ss_config
 
-        if main_obj is not None:
+        if self.sp_main is not None:
             # creates the preprocessing run class object
-            self.session = self.main_obj.session_obj.session
+            self.session_obj = self.sp_main.session_obj
+            self.session = self.session_obj.session
             self.prep_opt = [self.session.prep_obj.per_shank, self.session.prep_obj.concat_runs]
 
             # preprocessing options
@@ -124,7 +125,7 @@ class SpikeSortingDialog(QMainWindow):
 
         # sets the central widget
         self.main_widget = QWidget(self)
-        self.ss_obj = SpikeSortInfo(None if (main_obj is None) else main_obj.session_obj)
+        self.ss_obj = SpikeSortInfo(None if (self.sp_main is None) else self.session_obj)
 
         # widget layouts
         self.main_layout = QGridLayout()
@@ -274,7 +275,7 @@ class SpikeSortingDialog(QMainWindow):
             checkbox_new.setFixedHeight(cf.but_height)
             checkbox_new.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
 
-        if self.main_obj is not None:
+        if self.sp_main is not None:
             # updates the checkbox properties
             self.checkbox_opt[0].setCheckState(cf.chk_state[self.per_shank_pp])
             self.checkbox_opt[1].setCheckState(cf.chk_state[self.concat_runs_pp])
@@ -381,7 +382,8 @@ class SpikeSortingDialog(QMainWindow):
             self.session.sort_obj.update_prog.connect(self.info_worker_progress)
 
             # creates the threadworker object
-            self.t_worker = ThreadWorker(self, self.run_get_info_worker, (self.ss_obj, 'kilosort4'))
+            sort_props = (self.session_obj, 'kilosort4')
+            self.t_worker = ThreadWorker(self.sp_main, self.run_get_info_worker, sort_props)
             self.t_worker.start()
 
     def set_widget_config(self):
@@ -576,7 +578,7 @@ class SpikeSortingDialog(QMainWindow):
             sort_config = self.setup_config_dict()
 
             # retrieves the preprocessing information
-            prep_obj = self.main_obj.session_obj.session.prep_obj
+            prep_obj = self.sp_main.session_obj.session.prep_obj
             sort_opt = (self.per_shank and (not prep_obj.per_shank),
                         self.concat_runs and (not prep_obj.concat_runs))
 
@@ -611,7 +613,7 @@ class SpikeSortingDialog(QMainWindow):
             self.update_sort_para_changes()
 
             q_str = 'Do you want to update the parameter changes?'
-            u_choice = QMessageBox.question(self.main_obj, 'Update Changes?', q_str, cf.q_yes_no_cancel, cf.q_yes)
+            u_choice = QMessageBox.question(self.sp_main, 'Update Changes?', q_str, cf.q_yes_no_cancel, cf.q_yes)
             if u_choice == cf.q_yes:
                 # case is the user chose to update the parameters
                 self.update_sort_para_changes()
@@ -632,7 +634,7 @@ class SpikeSortingDialog(QMainWindow):
     def set_checkbox_enabled_props(self):
 
         # sets the by shank checkbox enabled properties
-        n_shank = self.main_obj.session_obj.get_shank_count()
+        n_shank = self.session_obj.get_shank_count()
         self.checkbox_opt[0].setEnabled((n_shank > 1) and (not self.per_shank_pp))
 
         # sets the concatenation checkbox enabled properties
@@ -642,7 +644,7 @@ class SpikeSortingDialog(QMainWindow):
     def setup_spike_sorting_worker(self, sort_obj):
 
         # creates the threadworker object
-        self.t_worker = ThreadWorker(self, self.run_spike_sorting_worker, sort_obj)
+        self.t_worker = ThreadWorker(self.sp_main, self.run_spike_sorting_worker, sort_obj)
         self.t_worker.work_finished.connect(self.spike_sorting_complete)
 
         # starts the worker object
@@ -812,7 +814,7 @@ class SpikeSortingDialog(QMainWindow):
             # case is there is at least one output path that exists
             q_str = ('Spike sorting data already exists for this experiment. Do you want to overwrite?\n'
                      'Note that this operation cannot be reversed.')
-            u_choice = QMessageBox.question(self.main_obj, 'Overwrite Folder?', q_str, cf.q_yes_no, cf.q_yes)
+            u_choice = QMessageBox.question(self.sp_main, 'Overwrite Folder?', q_str, cf.q_yes_no, cf.q_yes)
             if u_choice == cf.q_yes:
                 # case is the user chose to overwrite the folder
                 self.delete_sorter_folders(out_path)
@@ -831,7 +833,7 @@ class SpikeSortingDialog(QMainWindow):
         # field retrieval
         out_path = []
         n_run = self.session.get_run_count()
-        n_shank = self.main_obj.session_obj.get_shank_count()
+        n_shank = self.session_obj.get_shank_count()
 
         # retrieves the session per shank/concat run flags
         per_shank = self.session.prep_obj.per_shank or self.per_shank
@@ -960,6 +962,7 @@ class RunSpikeSorting(QObject):
         self.run_sorter_method = False
 
     def sort(self, ss_config, per_shank, concat_runs, run_sorter_method):
+
         # sets the input arguments
         self.per_shank = per_shank
         self.concat_runs = concat_runs
@@ -975,14 +978,12 @@ class RunSpikeSorting(QObject):
         )
 
     def get_info(self, ss_obj, p_name):
+
         # initialises the progressbar
         self.update_prog.emit(0, None)
 
-        # retrieves the
-        s_props = ss_obj.setup_sorter_para('kilosort4')
-
         # initialises the progressbar
-        self.update_prog.emit(1, s_props)
+        self.update_prog.emit(1, ss_obj.setup_sorter_para('kilosort4'))
 
 
 # ----------------------------------------------------------------------------------------------------------------------

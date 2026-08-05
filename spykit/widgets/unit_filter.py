@@ -60,12 +60,12 @@ class FilterWidget(QWidget):
         }
     """
 
-    def __init__(self, main_obj, f_lbl):
+    def __init__(self, sp_main, f_lbl):
         super(FilterWidget, self).__init__()
 
         # input arguments
         self.f_lbl = f_lbl
-        self.main_obj = main_obj
+        self.sp_main = sp_main
         f_lbl_txt = f"  {self.f_lbl}  "
 
         # other class widgets
@@ -189,11 +189,11 @@ class FilterBlock(QFrame):
     # fixes array fields
     t_lbl = ['Operator', 'Filter Metric', 'Condition', 'Comparison Value']
 
-    def __init__(self, main_obj, i_filt_nw):
+    def __init__(self, sp_main, i_filt_nw):
         super(FilterBlock, self).__init__()
 
         # input arguments
-        self.main_obj = main_obj
+        self.sp_main = sp_main
         self.i_filt = i_filt_nw
 
         # other class widget fields
@@ -225,7 +225,7 @@ class FilterBlock(QFrame):
 
         for i_tl, tl in enumerate(self.t_lbl):
             # creates the new filter widget
-            f_widget_nw = FilterWidget(self.main_obj, tl)
+            f_widget_nw = FilterWidget(self.sp_main, tl)
             f_widget_nw.widget_clicked.connect(self.widget_clicked_event)
 
             # sets the parameter group
@@ -428,7 +428,7 @@ class FilterManagerMixin:
             self.filt_layout.removeItem(self.spacer)
 
         # creates and adds the new filter object
-        obj_filt_nw = FilterBlock(self.main_obj, self.n_filt)
+        obj_filt_nw = FilterBlock(self.sp_main, self.n_filt)
         self.filt_layout.addWidget(obj_filt_nw)
 
         # sets the slot/function handles
@@ -635,17 +635,16 @@ class UnitFilterDialog(FilterManagerMixin, QDialog):
     # font objects
     font_hdr = cw.create_font_obj(size=10, is_bold=True, font_weight=QFont.Weight.Bold)
 
-    def __init__(self, main_obj):
+    def __init__(self, sp_main):
         FilterManagerMixin.__init__(self)
         super(UnitFilterDialog, self).__init__()
 
         # input arguments
-        self.main_obj = main_obj
+        self.sp_main = sp_main
 
         # other class fields
         self.filt_opt0 = None
-        # self.session_obj = self.main_obj.session_obj
-        self.session_obj = self.main_obj.main_obj.session_obj
+        self.session_obj = self.sp_main.session_obj
         self.filt_opt = np.empty((1, n_filt_fld), dtype=object)
 
         # field retrieval

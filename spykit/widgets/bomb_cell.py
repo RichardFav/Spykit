@@ -1,5 +1,6 @@
 # module import
 import os
+import sys
 import time
 import mmap
 import pathlib
@@ -172,12 +173,15 @@ class BombCellPara(object):
     # pyqtsignal functions
     setup_para_groups = pyqtSignal()
 
-    def __init__(self, main_obj, expt_dir):
+    def __init__(self, sp_main, expt_dir):
         super(BombCellPara, self).__init__()
 
         # input arguments
-        self.main_obj = main_obj
+        self.sp_main = sp_main
         self.expt_dir = expt_dir
+
+        # main sub-class fields
+        self.session_obj = self.sp_main.session_obj
 
         # main class fields
         self.p_map = {}
@@ -187,10 +191,10 @@ class BombCellPara(object):
         self.p_update = {}
 
         # retrieves the default parameter dictionary
-        self.sort_dir = self.main_obj.session_obj.get_sorting_folder_paths()[0, 0]
+        self.sort_dir = self.session_obj.get_sorting_folder_paths()[0, 0]
 
         # creates the threadworker object
-        self.t_worker_para = ThreadWorker(self, self.init_bombcell_para, None)
+        self.t_worker_para = ThreadWorker(self.sp_main, self.init_bombcell_para)
         self.t_worker_para.work_finished.connect(self.init_bombcell_para_complete)
         self.t_worker_para.start()
 
@@ -219,13 +223,13 @@ class BombCellPara(object):
     def check_expt_dir(self):
 
         # field retrieval
-        s_props = self.main_obj.session_obj.session.get_session_props()
+        s_props = self.session_obj.session.get_session_props()
 
         # initialisations
-        self.n_run = self.main_obj.session_obj.session.get_run_count()
-        self.n_shank = self.main_obj.session_obj.get_shank_count()
-        self.is_concat = self.main_obj.session_obj.is_concat_run(False)
-        self.is_per_shank = self.main_obj.session_obj.is_per_shank()
+        self.n_run = self.session_obj.session.get_run_count()
+        self.n_shank = self.session_obj.get_shank_count()
+        self.is_concat = self.session_obj.is_concat_run(False)
+        self.is_per_shank = self.session_obj.is_per_shank()
         self.sub_name = os.path.split(s_props['subject_path'])[1]
         self.ses_name = s_props["session_name"]
 
@@ -564,12 +568,12 @@ class BombCellInfoTab(InfoWidgetPara):
         'verbose': False,
     }
 
-    def __init__(self, t_str, main_obj, p_tab):
-        super(BombCellInfoTab, self).__init__(t_str, main_obj, layout=QFormLayout)
+    def __init__(self, bc_dlg, t_str, p_tab):
+        super(BombCellInfoTab, self).__init__(bc_dlg, t_str, layout=QFormLayout)
 
         # sets the input arguments
         self.p_tab = p_tab
-        self.main_obj = main_obj
+        self.bc_dlg = bc_dlg
 
         # initialises the major widget groups
         self.setup_prop_fields()
@@ -603,7 +607,7 @@ class BombCellInfoTab(InfoWidgetPara):
         # sets up the fields for each parameter group
         for pg, ps in self.p_tab.items():
             # if no valid parameters in block then continue
-            if not np.any([(self.main_obj.p_info[x]['p_desc'] is not None) for x in ps]):
+            if not np.any([(self.bc_dlg.p_info[x]['p_desc'] is not None) for x in ps]):
                 continue
 
             # memory allocation
@@ -613,14 +617,14 @@ class BombCellInfoTab(InfoWidgetPara):
             # sets up the properties for each parameter in the group
             for _ps in ps:
                 # determines if the parameter is visible (otherwise continue)
-                p_info = self.main_obj.p_info[_ps]
+                p_info = self.bc_dlg.p_info[_ps]
                 if p_info['p_desc'] is None:
-                    self.main_obj.p_update[_ps] = self.main_obj.bc_para[_ps]
+                    self.bc_dlg.p_update[_ps] = self.bc_dlg.bc_para[_ps]
                     continue
 
                 # creates the parameter field
-                p_info = self.main_obj.p_info[_ps]
-                p_value = self.main_obj.bc_para[_ps]
+                p_info = self.bc_dlg.p_info[_ps]
+                p_value = self.bc_dlg.bc_para[_ps]
                 p_desc, p_type = p_info['p_desc'], p_info['p_type']
 
                 # sets the parameter-group mapping value
@@ -662,7 +666,7 @@ class BombCellInfoTab(InfoWidgetPara):
 
             # sets the parameter group property fields
             self.p_prop_flds[pg] = {
-                'name': self.main_obj.p_map[pg],
+                'name': self.bc_dlg.p_map[pg],
                 'props': p_props_g,
             }
 
@@ -686,7 +690,7 @@ class BombCellInfoTab(InfoWidgetPara):
             return
 
         # updates the reset parameters button props
-        self.main_obj.check_para_reset()
+        self.bc_dlg.check_para_reset()
 
         # updates the model parameter value
         p_value = self.p_props[p_str[0]][p_str[1]]
@@ -694,11 +698,11 @@ class BombCellInfoTab(InfoWidgetPara):
         if (p_props['type'] == 'combobox'):
             # case is a combobox
             i_sel = p_props['p_list'].index(p_value)
-            self.main_obj.bc_pkg.BombCellFcn('setParaValue', p_str[1], i_sel)
+            self.bc_dlg.bc_pkg.BombCellFcn('setParaValue', p_str[1], i_sel)
 
         else:
             # case the other parameter types
-            self.main_obj.bc_pkg.BombCellFcn('setParaValue', p_str[1], p_value)
+            self.bc_dlg.bc_pkg.BombCellFcn('setParaValue', p_str[1], p_value)
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -852,7 +856,12 @@ class BombCellSolver(BombCellPara, QDialog):
         }
     """
 
-    def __init__(self, main_obj, expt_dir=None):
+    def __init__(self, sp_main, expt_dir=None):
+
+        # main class fields
+        self.sp_main = sp_main
+        self.session_obj = self.sp_main.session_obj
+
         # boolean class fields
         self.has_bc = False
         self.init_complete = False
@@ -862,12 +871,9 @@ class BombCellSolver(BombCellPara, QDialog):
         self.is_new_soln = False
         self.is_ok = True
 
-        super(BombCellSolver, self).__init__(main_obj, expt_dir)
+        # creates the class object
+        super(BombCellSolver, self).__init__(self.sp_main, expt_dir)
         self.setup_para_groups.connect(self.init_para_groups)
-
-        # # input arguments
-        # self.main_obj = main_obj
-        # self.expt_dir = expt_dir
 
         # class widgets
         self.h_tab_para = []
@@ -1025,7 +1031,7 @@ class BombCellSolver(BombCellPara, QDialog):
 
         # creates the tab objects
         for ts, p_tab in self.p_grp.items():
-            tab_widget = BombCellInfoTab(ts, self, p_tab)
+            tab_widget = BombCellInfoTab(self, ts, p_tab)
             self.para_tab.addTab(tab_widget, ts)
             self.h_tab_para.append(tab_widget)
 
@@ -1047,7 +1053,7 @@ class BombCellSolver(BombCellPara, QDialog):
         time.sleep(0.1)
 
         # creates the threadworker object
-        self.t_worker_pkg = ThreadWorker(self, self.init_bombcell_package, None)
+        self.t_worker_pkg = ThreadWorker(self.sp_main, self.init_bombcell_package)
         self.t_worker_pkg.work_finished.connect(self.init_bombcell_package_complete)
 
         # progressbar flag update
@@ -1101,9 +1107,9 @@ class BombCellSolver(BombCellPara, QDialog):
     def run_bombcell_solver(self, _):
 
         # field retrieval
-        is_concat = self.main_obj.session_obj.is_concat_run()
-        is_per_shank = self.main_obj.session_obj.is_per_shank()
-        n_shank_s = self.main_obj.session_obj.get_shank_count() if is_per_shank else 1
+        is_concat = self.session_obj.is_concat_run()
+        is_per_shank = self.session_obj.is_per_shank()
+        n_shank_s = self.session_obj.get_shank_count() if is_per_shank else 1
 
         # memory allocation
         bc_data_nw = np.empty((self.n_run, n_shank_s), dtype=object)
@@ -1208,7 +1214,7 @@ class BombCellSolver(BombCellPara, QDialog):
             self.mmap['s_flag'] = np.int16(1)
 
             # creates the threadworker object
-            self.t_worker_solver = ThreadWorker(self, self.run_bombcell_solver, None)
+            self.t_worker_solver = ThreadWorker(self.sp_main, self.run_bombcell_solver)
             self.t_worker_solver.work_finished.connect(self.run_bombcell_solver_complete)
 
             # starts the worker object
@@ -1244,7 +1250,7 @@ class BombCellSolver(BombCellPara, QDialog):
 
             # otherwise, prompt the user to overwrite
             q_str = 'BombCell solution already calculated. Do you want to overwrite?'
-            u_choice = QMessageBox.question(self.main_obj, 'Overwrite Folder?', q_str, cf.q_yes_no, cf.q_yes)
+            u_choice = QMessageBox.question(self.sp_main, 'Overwrite Folder?', q_str, cf.q_yes_no, cf.q_yes)
             return u_choice == cf.q_yes
 
     # ---------------------------------------------------------------------------
@@ -1302,9 +1308,9 @@ class BombCellSolver(BombCellPara, QDialog):
         exp_info = {
             "exDir": self.expt_dir.replace('//', '/'),
             "nRun": self.n_run,
-            "nShank": self.main_obj.session_obj.get_shank_count(),
-            "isConcat": self.main_obj.session_obj.is_concat_run(),
-            "isPerShank": self.main_obj.session_obj.is_per_shank(),
+            "nShank": self.session_obj.get_shank_count(),
+            "isConcat": self.session_obj.is_concat_run(),
+            "isPerShank": self.session_obj.is_per_shank(),
         }
 
         # runs the experiment folder diagnosis
@@ -1438,7 +1444,7 @@ class BombCellSolver(BombCellPara, QDialog):
                 self.bc_pkg = None
 
             # closes the dialog window
-            self.main_obj.bombcell_dlg = None
+            self.sp_main.bombcell_dlg = None
             self.can_close = True
             self.close()
 
@@ -1453,7 +1459,7 @@ class BombCellSolver(BombCellPara, QDialog):
                 u_choice = QMessageBox.question(self, 'Update Post-Processing Data?', q_str, cf.q_yes_no, cf.q_yes)
                 if u_choice == cf.q_yes:
                     # if so, then update the post processing data
-                    t_worker = self.main_obj.setup_postprocessing_worker(self.bc_data, True)
+                    t_worker = self.sp_main.setup_postprocessing_worker(self.bc_data, True)
 
                 # resets the new solution flag
                 self.is_new_soln = False
@@ -1549,20 +1555,19 @@ class BombCellSolver(BombCellPara, QDialog):
 
         # field retrieval
         para_changed = []
-        s_obj = self.main_obj.session_obj
 
         # updates any outstanding parameter fields
         for ps, pv in self.p_update.items():
             self.bc_pkg_fcn('setClassField', ps, pv)
 
         # check if there is any existing post-processing data loaded
-        if (s_obj.post_data is not None) and len(s_obj.post_data.mmap):
+        if (self.session_obj.post_data is not None) and len(self.session_obj.post_data.mmap):
             # resets the parameters to match the post-processing dataset
             bc_para = self.bc_pkg_fcn('getClassField', 'bcPara')
             for k in bc_para.keys():
                 if k not in self.p_str_u:
                     # if the parameters do not match, then reset the value
-                    p_val_pp = s_obj.get_mem_map_field(k)
+                    p_val_pp = self.session_obj.get_mem_map_field(k)
                     if (p_val_pp != bc_para[k]) and (not np.isnan(bc_para[k])):
                         para_changed.append(k)
                         bc_para[k] = p_val_pp

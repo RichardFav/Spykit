@@ -55,11 +55,11 @@ class ProbePlot(PlotWidget):
         'toggle': ['Remove Selection', 'Toggle Selection', 'Add Selection'],
     }
 
-    def __init__(self, session_info):
-        super(ProbePlot, self).__init__('probe', b_icon=b_icon, b_type=b_type, tt_lbl=tt_lbl)
+    def __init__(self, sp_main):
+        super(ProbePlot, self).__init__(sp_main, 'probe', b_icon=b_icon, b_type=b_type, tt_lbl=tt_lbl)
 
         # main class fields
-        self.session_info = session_info
+        self.session_obj = sp_main.session_obj
 
         # probe class fields
         self.probe = None
@@ -73,7 +73,7 @@ class ProbePlot(PlotWidget):
         self.sub_xhair = None
         self.inset_id = None
         self.i_shank_pr = None
-        self.n_shank = session_info.get_shank_count()
+        self.n_shank = self.session_obj.get_shank_count()
 
         # unit marker objects
         self.l_unit_pen = None
@@ -114,7 +114,7 @@ class ProbePlot(PlotWidget):
             self.v_box[i, 0].setBorder((255, 255, 255))
 
         # main class fields
-        self.probe_rec = self.session_info.get_current_recording_probe()
+        self.probe_rec = self.session_obj.get_current_recording_probe()
 
         # sets the inset mouse drag properties
         self.v_box[1, 0].drawing_finished.connect(self.inset_mouse_release)
@@ -131,7 +131,7 @@ class ProbePlot(PlotWidget):
 
         if self.main_view is None:
             # creates the main view
-            self.main_view = ProbeView(self.h_plot[0, 0], self.probe, self.session_info)
+            self.main_view = ProbeView(self.h_plot[0, 0], self.probe, self.session_obj)
 
             # sets the main probe view properties
             self.h_plot[0, 0].addItem(self.main_view)
@@ -151,7 +151,7 @@ class ProbePlot(PlotWidget):
 
         if self.sub_view is None:
             # creates the inset view
-            self.sub_view = ProbeView(self.h_plot[1, 0], self.probe, self.session_info, l_wid=2)
+            self.sub_view = ProbeView(self.h_plot[1, 0], self.probe, self.session_obj, l_wid=2)
 
             # sets the inset probe view properties
             self.h_plot[1, 0].addItem(self.sub_view)
@@ -166,7 +166,7 @@ class ProbePlot(PlotWidget):
 
         # sets up the channel mapping indices
         self.probe_dframe = self.probe.to_dataframe(complete=True)
-        # i_sort_ch = self.session_info.channel_data.i_sort
+        # i_sort_ch = self.session_obj.channel_data.i_sort
 
         # ch_map = i_sort_ch + 1
         # ch_map = np.empty(self.n_shank, dtype=object)
@@ -188,10 +188,10 @@ class ProbePlot(PlotWidget):
 
     def setup_label_text(self, i_channel):
 
-        probe = self.session_info.get_raw_recording_probe()
-        loc_ch = self.session_info.get_channel_location(i_channel, probe)
-        status_ch = self.session_info.get_channel_status(i_channel)
-        shank_id = self.session_info.get_shank_id(i_channel)
+        probe = self.session_obj.get_raw_recording_probe()
+        loc_ch = self.session_obj.get_channel_location(i_channel, probe)
+        status_ch = self.session_obj.get_channel_status(i_channel)
+        shank_id = self.session_obj.get_shank_id(i_channel)
 
         lbl_str = "Channel ID#: {0}".format(i_channel + 1)
         lbl_str += "\nDepth: {0}".format(loc_ch[1])
@@ -247,14 +247,14 @@ class ProbePlot(PlotWidget):
 
         if len(i_sel):
             # toggles the selection flag
-            self.session_info.toggle_channel_flag(i_sel, self.i_status)
+            self.session_obj.toggle_channel_flag(i_sel, self.i_status)
 
             # resets the probe views
             self.reset_probe_views()
             self.probe_clicked.emit(i_sel)
 
             if len(i_sel) == 1:
-                is_sel_ch = self.session_info.channel_data.is_selected[i_sel[0]]
+                is_sel_ch = self.session_obj.channel_data.is_selected[i_sel[0]]
                 self.reset_highlight.emit(bool(is_sel_ch), i_sel[0])
 
     # ---------------------------------------------------------------------------
@@ -433,7 +433,7 @@ class ProbePlot(PlotWidget):
                 p_view.create_probe_plot()
 
                 # if the contact is selected, then reset the channel highlight
-                if self.session_info.channel_data.is_selected[i_contact]:
+                if self.session_obj.channel_data.is_selected[i_contact]:
                     self.reset_highlight.emit(True, i_contact)
 
                 # updates the label properties
@@ -521,9 +521,9 @@ class ProbePlot(PlotWidget):
         self.main_view.create_probe_plot()
         self.sub_view.create_probe_plot()
 
-        if self.session_info.is_per_shank():
+        if self.session_obj.is_per_shank():
             # case is plotting a specifc shank
-            i_shank = self.session_info.get_shank_index()
+            i_shank = self.session_obj.get_shank_index()
             self.main_view.reset_axes_limits(False, i_shank=i_shank)
             self.reset_shank_roi(i_shank)
 
@@ -547,7 +547,7 @@ class ProbePlot(PlotWidget):
         # calculates the out location
         if np.any(is_out):
             # retrieves the position of the out channels
-            probe = self.session_info.get_raw_recording_probe()
+            probe = self.session_obj.get_raw_recording_probe()
             p_loc0 = probe.get_channel_locations()
             p_loc = p_loc0[is_out, 1]
 
@@ -593,7 +593,7 @@ class ProbePlot(PlotWidget):
             self.probe_roi_moved.emit(self.inset_id)
 
         # adds in the probe locations (if calculated)
-        if len(self.session_info.post_data.mmap):
+        if len(self.session_obj.post_data.mmap):
             if not self.has_units:
                 self.create_unit_markers.emit()
 
@@ -761,7 +761,7 @@ class ProbePlot(PlotWidget):
         ax_rng = self.h_plot[0, 0].getViewBox().viewRange()
 
         # calculates the x-location of the probeview ROI
-        i_shank = self.session_info.get_shank_index()
+        i_shank = self.session_obj.get_shank_index()
         x_lim_new, _ = self.main_view.get_init_roi_limits(i_shank)
         x_roi = np.mean(x_lim_new)
 
@@ -825,7 +825,7 @@ class ProbeView(GraphicsObject):
     # pyqtsignal functions
     update_roi = pyqtSignal(object)
 
-    def __init__(self, main_obj, probe, session_info, l_wid=1):
+    def __init__(self, main_obj, probe, session_obj, l_wid=1):
         super(ProbeView, self).__init__()
 
         # sets the parent object
@@ -835,7 +835,7 @@ class ProbeView(GraphicsObject):
         # other main class fields
         self.ch_map = None
         self.probe = probe
-        self.session_info = session_info
+        self.session_obj = session_obj
 
         # line pen widgets
         self.pen_sel = mkPen(color='k', width=l_wid)
@@ -958,12 +958,12 @@ class ProbeView(GraphicsObject):
 
         # polygon setup
         p_poly = QPolygonF(self.p_vert)
-        if self.session_info.channel_data is None:
+        if self.session_obj.channel_data is None:
             is_show = np.zeros(len(self.c_poly), dtype=bool)
 
         else:
-            is_show = np.logical_and(self.session_info.channel_data.is_selected,
-                                     self.session_info.channel_data.is_filt)
+            is_show = np.logical_and(self.session_obj.channel_data.is_selected,
+                                     self.session_obj.channel_data.is_filt)
 
         # painter object setup
         self.p = QPainter(self.picture)
@@ -983,13 +983,13 @@ class ProbeView(GraphicsObject):
                 self.p.setBrush(mkBrush(self.c_col_hover))
                 self.p.drawPolygon(c_p)
 
-            if self.session_info.session is not None:
+            if self.session_obj.session is not None:
                 # retrieves the channel fill colour
                 if is_show[i_p]:
                     # case is the contact is selected
                     self.p.setPen(self.pen_sel)
 
-                ch_status = self.session_info.get_channel_status(i_p)
+                ch_status = self.session_obj.get_channel_status(i_p)
                 self.p.setBrush(mkBrush(cw.p_col_status[ch_status]))
 
             # case is a normal polygon
@@ -1030,7 +1030,7 @@ class ProbeView(GraphicsObject):
             self.clear_view_unit_markers()
 
         # field retrieval
-        i_shank = self.session_info.get_shank_index()
+        i_shank = self.session_obj.get_shank_index()
         unit_types = unit_tab.get_unit_type_labels()
         c_id = np.array(unit_tab.df_unit['Cluster ID#'])
 
@@ -1255,7 +1255,7 @@ class ProbeView(GraphicsObject):
 
     def get_field(self, p_fld):
 
-        return self.session_info.get_mem_map_field(p_fld)
+        return self.session_obj.get_mem_map_field(p_fld)
 
     def set_out_line_visible(self, is_show):
 
@@ -1494,7 +1494,7 @@ class UnitMarker(pg.QtWidgets.QGraphicsEllipseItem):
             dy_pos = 0
 
         # resets the x-label offset (if near the left-side)
-        if (m_pos.x() + (self.pw_x * dx_pos)) < ax_rng[0][1]:
+        if (m_pos.x() - (self.pw_x * dx_pos)) < ax_rng[0][0]:
             dx_pos = -self.r / 2
 
         return dx_pos, dy_pos

@@ -46,8 +46,11 @@ class TriggerPlot(PlotWidget):
     l_pen_trig = mkPen(color=cf.get_colour_value('g'), width=1)
     l_brush = mkBrush(color=cf.get_colour_value('k', alpha=200))
 
-    def __init__(self, session_info):
-        super(TriggerPlot, self).__init__('trigger', b_icon=b_icon, b_type=b_type, tt_lbl=tt_lbl)
+    def __init__(self, sp_main):
+        super(TriggerPlot, self).__init__(sp_main, 'trigger', b_icon=b_icon, b_type=b_type, tt_lbl=tt_lbl)
+
+        # main class fields
+        self.session_obj = sp_main.session_obj
 
         # linear region objects
         self.l_reg_x = None
@@ -88,24 +91,23 @@ class TriggerPlot(PlotWidget):
 
         # initialises the other class fields
         self.init_class_fields()
-        self.reset_session_fields(session_info)
+        self.reset_session_fields()
 
     # ---------------------------------------------------------------------------
     # Class Widget Setup Functions
     # ---------------------------------------------------------------------------
 
-    def reset_session_fields(self, ses_info):
+    def reset_session_fields(self):
 
-        #
-        self.session_info = ses_info
-        self.s_props = self.session_info.session_props
+        # field retrieval
+        self.s_props = self.session_obj.session_props
         self.t_dur = self.s_props.get_value('t_dur')
         self.t_lim = np.array([0, self.t_dur])
 
         # experiment properties
         self.i_run_reg = self.get_run_index()
         self.n_samples = self.s_props.get_value('n_samples')
-        self.n_run = self.session_info.session.get_run_count()
+        self.n_run = self.session_obj.session.get_run_count()
 
         # field retrieval
         s_freq = self.s_props.get_value('s_freq')
@@ -198,8 +200,8 @@ class TriggerPlot(PlotWidget):
         self.is_updating = True
 
         # sets up the trace plot
-        t_dur = self.session_info.get_run_durations()
-        if self.session_info.is_concat_run(True):
+        t_dur = self.session_obj.get_run_durations()
+        if self.session_obj.is_concat_run(True):
             i_run = 0
             y_tr_run = self.y_tr[1]
             t_dur_x = np.sum(t_dur)
@@ -549,7 +551,7 @@ class TriggerPlot(PlotWidget):
 
     def get_run_index(self):
 
-        return self.session_info.session.get_run_index(self.session_info.current_run)
+        return self.session_obj.session.get_run_index(self.session_obj.current_run)
 
     def get_region_index(self, l_reg, i_run):
 
@@ -558,7 +560,7 @@ class TriggerPlot(PlotWidget):
     def get_sample_freq(self):
 
         if self.s_props is None:
-            return self.session_info.session_props.get_value('s_freq')
+            return self.session_obj.session_props.get_value('s_freq')
 
         else:
             return self.s_props.get_value('s_freq')
@@ -566,8 +568,8 @@ class TriggerPlot(PlotWidget):
     def reset_trace_values(self):
 
         # field retrieval
-        t_dur = self.session_info.get_run_durations()
-        n_run = self.session_info.session.get_run_count()
+        t_dur = self.session_obj.get_run_durations()
+        n_run = self.session_obj.session.get_run_count()
 
         # memory allocation
         n_tr = []
@@ -577,7 +579,7 @@ class TriggerPlot(PlotWidget):
         #
         for i_run in range(n_run):
             # retrieves the current sync channel data
-            sync_ch = self.session_info.session.sync_ch[i_run]
+            sync_ch = self.session_obj.session.sync_ch[i_run]
 
             # sets the start end values
             n_tr.append(len(sync_ch))

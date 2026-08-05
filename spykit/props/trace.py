@@ -35,12 +35,9 @@ class TraceProps(PropWidget):
     dx_gap = 15
     info_width = 210
 
-    def __init__(self, main_obj):
+    def __init__(self, prop_manager):
         # initialises the property widget
-        super(TraceProps, self).__init__(main_obj, 'trace', None)
-
-        # sets the input arguments
-        self.main_obj = main_obj
+        super(TraceProps, self).__init__(prop_manager, 'trace', None)
 
         # widget layout setup
         self.tr_layout = QVBoxLayout()
@@ -69,7 +66,7 @@ class TraceProps(PropWidget):
     def init_trace_fields(self):
 
         # sets the main widget properties
-        self.setFixedWidth(self.main_obj.info_width - self.dx_gap)
+        self.setFixedWidth(self.prop_manager.info_width - self.dx_gap)
         self.setSizePolicy(QSizePolicy(cf.q_fix, cf.q_fix))
 
         # sets the outer groupbox layout
@@ -95,7 +92,7 @@ class TraceProps(PropWidget):
             # creates the tab widget (based on type)
             t_lbl = pt.prop_names[pf]
             tab_constructor = pt.prop_types[pf]
-            tab_widget = tab_constructor(self)
+            tab_widget = tab_constructor(self.prop_manager)
             self.tabs.append(tab_widget)
 
             # adds the tab to the tab group
@@ -103,7 +100,7 @@ class TraceProps(PropWidget):
 
             # connects the trace property tab widget slot functions
             if pf == 'traceview':
-                tab_widget.data_change.connect(self.main_obj.data_type_combobox_update)
+                tab_widget.data_change.connect(self.prop_manager.data_type_combobox_update)
 
         # sets the other tab properties
         self.set_tab_visible('tracespike', False)
@@ -142,4 +139,4 @@ class TraceProps(PropWidget):
 
     def get_field(self, p_fld):
 
-        return self.main_obj.main_obj.session_obj.get_mem_map_field(p_fld)
+        return self.session_obj.get_mem_map_field(p_fld)

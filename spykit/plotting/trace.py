@@ -163,15 +163,15 @@ class TracePlot(TraceLabelMixin, PlotWidget):
     l_pen_inset = mkPen(color=cf.get_colour_value('r'), width=1)
     l_pen_high = mkPen(color=cf.get_colour_value('y'), width=1)
 
-    def __init__(self, session_obj):
+    def __init__(self, sp_main):
         TraceLabelMixin.__init__(self)
-        super(TracePlot, self).__init__('trace', b_icon=b_icon, b_type=b_type, tt_lbl=tt_lbl)
+        super(TracePlot, self).__init__(sp_main, 'trace', b_icon=b_icon, b_type=b_type, tt_lbl=tt_lbl)
 
         # main class fields
-        self.session_obj = session_obj
-        s_props = self.session_obj.session_props
+        self.session_obj = sp_main.session_obj
 
         # experiment properties
+        s_props = self.session_obj.session_props
         self.t_dur = s_props.get_value('t_dur')
         self.s_freq = s_props.get_value('s_freq')
         self.n_channels = s_props.get_value('n_channels')

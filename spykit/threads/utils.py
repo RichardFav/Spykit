@@ -1,3 +1,5 @@
+# module import
+import sys
 
 # pyqt5 module import
 from PyQt6.QtCore import QObject, QThread, pyqtSignal
@@ -22,6 +24,11 @@ class ThreadWorker(QThread):
         self.work_fcn = work_fcn
         self.work_para = work_para
 
+        # connects finished slot function
+        self.finished.connect(self.quit)
+        self.started.connect(self.reset_error_hook)
+        self.finished.connect(self.reset_error_hook)
+
         # boolean class fields
         self.is_ok = True
         self.is_running = False
@@ -45,6 +52,10 @@ class ThreadWorker(QThread):
         # force quits the thread worker
         self.is_running = False
         self.terminate()
+
+    def reset_error_hook(self):
+
+        sys.excepthook = self.parent().orig_error_hook
 
 # ----------------------------------------------------------------------------------------------------------------------
 

@@ -67,6 +67,7 @@ class TraceSpikePara(PropPara):
     TraceSpikeMixin:
 """
 
+
 class TraceSpikeMixin:
     # plot properties
     sym = 'o'
@@ -440,19 +441,19 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
     # widget dimensions
     hght_but = 22
 
-    def __init__(self, main_obj):
+    def __init__(self, prop_manager):
+
         # sets the input arguments
-        self.main_obj = main_obj
         TraceSpikeMixin.__init__(self)
 
         # initialises the property widget
         self.setup_prop_fields()
-        super(TraceSpikeProps, self).__init__(self.main_obj, 'unitmet', self.p_info)
+        super(TraceSpikeProps, self).__init__(prop_manager, 'unitmet', self.p_info)
 
         # sets up the parameter fields
         self.p_props = TraceSpikePara(self.p_info['ch_fld'])
-        self.i_run = self.main_obj.main_obj.session_obj.get_current_run_index()
-        self.i_shank = self.main_obj.main_obj.session_obj.get_shank_index()
+        self.i_run = self.prop_manager.session_obj.get_current_run_index()
+        self.i_shank = self.prop_manager.session_obj.get_shank_index()
 
         # other class widgets
         # self.unit_label = cw.QLabelText(None, lbl_str="Selected Unit:", text_str='N/A',
@@ -482,7 +483,7 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
         self.i_spike_win = None
         self.spk_cluster_win = None
         self.spk_channel_win = None
-        self.s_freq = self.main_obj.main_obj.session_obj.session_props.s_freq
+        self.s_freq = self.prop_manager.session_obj.session_props.s_freq
 
         # initialises the other class fields
         self.init_other_class_fields()
@@ -573,7 +574,7 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
 
         # memory allocation
         self.n_unit = self.get_field('n_unit')
-        self.n_unit_pp = self.main_obj.main_obj.main_obj.session_obj.post_data.n_unit_pp
+        self.n_unit_pp = self.prop_manager.parent().session_obj.post_data.n_unit_pp
         self.data = np.empty(self.n_unit_pp.shape, dtype=object)
         self.i_spike_info = np.empty(self.n_unit_pp.shape, dtype=object)
 
@@ -774,7 +775,7 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
     def open_filt_dlg(self):
 
         if self.filt_dlg is None:
-            self.filt_dlg = UnitFilterDialog(self.main_obj)
+            self.filt_dlg = UnitFilterDialog(self.sp_main)
             self.filt_dlg.apply_filter.connect(self.apply_unit_filter)
 
         self.filt_dlg.show_dialog()
@@ -822,7 +823,7 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
 
         # ensures the channel is selected
         if new_state:
-            ch_tab = self.main_obj.main_obj.main_obj.info_manager.get_info_tab('channel')
+            ch_tab = self.prop_manager.parent().info_manager.get_info_tab('channel')
             item_chk_ch = ch_tab.table.item(i_row_ch, 0)
             if item_chk_ch.checkState() == cf.chk_state[False]:
                 item_chk_ch.setCheckState(cf.chk_state[True])
@@ -850,7 +851,7 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
     def set_trace_view(self, trace_view_new):
 
         self.trace_view = trace_view_new
-        self.n_sample = self.main_obj.main_obj.session_obj.session_props.n_samples
+        self.n_sample = self.prop_manager.session_obj.session_props.n_samples
 
     def set_para_value(self, p_fld, p_val):
 
@@ -912,13 +913,13 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
     def get_table_data_frame(self):
 
         # retrieves the raw metric data frame
-        q_met_df = self.main_obj.main_obj.main_obj.session_obj.get_metric_table_values()[self.c_hdr_0].astype(int)
+        q_met_df = self.prop_manager.parent().session_obj.get_metric_table_values()[self.c_hdr_0].astype(int)
 
         # field retrieval
         ch_pos0 = self.get_field('ch_pos')
-        self.i_run = self.main_obj.main_obj.session_obj.get_current_run_index()
-        self.i_shank = self.main_obj.main_obj.session_obj.get_shank_index()
-        probe_view = self.main_obj.main_obj.main_obj.plot_manager.get_plot_view('probe')
+        self.i_run = self.prop_manager.session_obj.get_current_run_index()
+        self.i_shank = self.prop_manager.session_obj.get_shank_index()
+        probe_view = self.prop_manager.parent().plot_manager.get_plot_view('probe')
 
         # re-maps the bombcell channel indices by height
         i_pk_ch0 = q_met_df['maxChannels'].astype(int)
@@ -957,7 +958,7 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
 
     def get_field(self, p_fld):
 
-        return self.main_obj.main_obj.session_obj.get_mem_map_field(p_fld)
+        return self.prop_manager.session_obj.get_mem_map_field(p_fld)
 
     def get_unit_indices(self):
 
@@ -1004,8 +1005,8 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
     def update_run_shank_fields(self):
 
         # resets the run/shank indices
-        self.i_run = self.main_obj.main_obj.session_obj.get_current_run_index()
-        self.i_shank = self.main_obj.main_obj.session_obj.get_shank_index()
+        self.i_run = self.prop_manager.session_obj.get_current_run_index()
+        self.i_shank = self.prop_manager.session_obj.get_shank_index()
 
         # resets the table data
         self.update_spike_data_fields()

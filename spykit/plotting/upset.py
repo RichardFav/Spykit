@@ -62,14 +62,16 @@ class UpSetPlot(PlotWidget):
     c_stripe_2 = QColor(c_col2, c_col2, c_col2, 255)
     c_dot = QColor(c_col3, c_col3, c_col3, 255)
 
-    def __init__(self, session_info):
+    def __init__(self, sp_main):
+
+        # main class fields
+        self.sp_main = sp_main
+        self.session_obj = self.sp_main.session_obj
+
         # creates the class object
         p_layout = setup_default_layout()
         super(UpSetPlot, self).__init__(
-            'upset', b_icon=b_icon, b_type=b_type, tt_lbl=tt_lbl, p_layout=p_layout)
-
-        # main class fields
-        self.session_info = session_info
+            sp_main, 'upset', b_icon=b_icon, b_type=b_type, tt_lbl=tt_lbl, p_layout=p_layout)
 
         # initialises the other class fields
         self.init_class_fields()
@@ -354,8 +356,8 @@ class UpSetPlot(PlotWidget):
 
         # field retrieval
         p = self.get_field
-        q_met = self.session_info.get_metric_table_values()
-        unit_tab = self.session_info.main_obj.info_manager.get_info_tab('unit')
+        q_met = self.session_obj.get_metric_table_values()
+        unit_tab = self.sp_main.info_manager.get_info_tab('unit')
         unit_lbl = unit_tab.get_unit_type_labels()
 
         match self.unit_type:
@@ -490,7 +492,7 @@ class UpSetPlot(PlotWidget):
 
     def get_field(self, p_fld):
 
-        return self.session_info.get_mem_map_field(p_fld)
+        return self.session_obj.get_mem_map_field(p_fld)
 
     # ---------------------------------------------------------------------------
     # Class Setter Methods

@@ -66,16 +66,14 @@ class UpSetProps(PropWidget):
     # field properties
     type = 'upset'
 
-    def __init__(self, main_obj):
-        # sets the input arguments
-        self.main_obj = main_obj
+    def __init__(self, prop_manager):
 
         # field initialisation
         self.plot_view = None
 
         # initialises the property widget
         self.setup_prop_fields()
-        super(UpSetProps, self).__init__(self.main_obj, 'upset', self.p_info)
+        super(UpSetProps, self).__init__(prop_manager, 'upset', self.p_info)
 
         # sets up the parameter fields
         self.p_props = UpSetPara(self.p_info['ch_fld'])

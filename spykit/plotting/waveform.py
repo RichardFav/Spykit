@@ -39,16 +39,16 @@ class WaveFormPlot(PlotWidget):
     # font sizes
     title_size0 = 22
 
-    def __init__(self, session_info):
+    def __init__(self, sp_main):
+
+        # main class fields
+        self.session_obj = sp_main.session_obj
+
         # creates the class object
         p_layout = setup_default_layout()
         super(WaveFormPlot, self).__init__(
-            'waveform', b_icon=b_icon, b_type=b_type, tt_lbl=tt_lbl, p_layout=p_layout)
+            sp_main, 'waveform', b_icon=b_icon, b_type=b_type, tt_lbl=tt_lbl, p_layout=p_layout)
         p_layout.setParent(self)
-
-        # main class fields
-        self.session_info = session_info
-        s_props = self.session_info.session_props
 
         # field initialisations
         self.is_updating = True
@@ -300,7 +300,7 @@ class WaveFormPlot(PlotWidget):
 
     def get_field(self, p_fld):
 
-        return self.session_info.get_mem_map_field(p_fld)
+        return self.session_obj.get_mem_map_field(p_fld)
 
     @staticmethod
     def get_plot_config(n_plt):

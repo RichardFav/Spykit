@@ -36,7 +36,11 @@ class UnitHistPlot(PlotWidget):
     # widget dimensions
     p_row0 = 5
 
-    def __init__(self, session_info):
+    def __init__(self, sp_main):
+
+        # main class fields
+        self.session_obj = sp_main.session_obj
+
         # field initialisations
         self.is_updating = True
         self.i_unit = 1
@@ -44,12 +48,8 @@ class UnitHistPlot(PlotWidget):
         # creates the class object
         p_layout = setup_default_layout()
         super(UnitHistPlot, self).__init__(
-            'unithist', b_icon=b_icon, b_type=b_type, tt_lbl=tt_lbl, p_layout=p_layout)
+            sp_main, 'unithist', b_icon=b_icon, b_type=b_type, tt_lbl=tt_lbl, p_layout=p_layout)
         p_layout.setParent(self)
-
-        # main class fields
-        self.session_info = session_info
-        s_props = self.session_info.session_props
 
         # property class fields
         self.q_hdr = None
@@ -324,7 +324,7 @@ class UnitHistPlot(PlotWidget):
 
     def get_field(self, p_fld):
 
-        return self.session_info.get_mem_map_field(p_fld)
+        return self.session_obj.get_mem_map_field(p_fld)
 
     # ---------------------------------------------------------------------------
     # Widget Event Callback Functions

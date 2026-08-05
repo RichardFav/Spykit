@@ -113,7 +113,12 @@ class UnitMetricPlot(PlotWidget):
     # font objects
     title_font_main = cw.create_font_obj(is_bold=True, font_weight=QFont.Weight.Bold, size=24)
 
-    def __init__(self, session_info):
+    def __init__(self, sp_main):
+
+        # main class fields
+        self.sp_main = sp_main
+        self.session_obj = self.sp_main.session_obj
+
         # field initialisations
         self.is_updating = True
         self.i_unit = 1
@@ -121,12 +126,8 @@ class UnitMetricPlot(PlotWidget):
         # creates the class object
         p_layout = setup_default_layout()
         super(UnitMetricPlot, self).__init__(
-            'unitmet', b_icon=b_icon, b_type=b_type, tt_lbl=tt_lbl, p_layout=p_layout)
+            sp_main, 'unitmet', b_icon=b_icon, b_type=b_type, tt_lbl=tt_lbl, p_layout=p_layout)
         p_layout.setParent(self)
-
-        # main class fields
-        self.session_info = session_info
-        s_props = self.session_info.session_props
 
         # property class fields
         self.m_plot = None
@@ -148,7 +149,7 @@ class UnitMetricPlot(PlotWidget):
 
         # field retrieval
         self.l_size = self.plot_layout.sizeHint()
-        self.t_dur = self.session_info.get_current_session_duration()
+        self.t_dur = self.session_obj.get_current_session_duration()
 
         # sets the plot layout properties
         self.bg_widget.setStyleSheet("background-color: rgba(0, 0, 0, 0);")
@@ -177,7 +178,7 @@ class UnitMetricPlot(PlotWidget):
         self.m_plot[0] = TemplateTrace(self.unit_props, self.i_unit, False)
         self.m_plot[1] = TemplateTrace(self.unit_props, self.i_unit, True)
         self.m_plot[2] = SpatialDecayPlot(self.unit_props, self.i_unit)
-        self.m_plot[3] = AutoCorrelPlot(self.unit_props, self.i_unit)
+        self.m_plot[3] = AutoCorrelPlot(self.unit_props, self.i_unit, self.sp_main.info_manager)
         self.m_plot[4] = SpikeActivityPlot(self.unit_props, self.i_unit, self.t_dur)
         self.m_plot[5] = SpikeAmplitudeHist(self.unit_props, self.i_unit)
 
@@ -279,7 +280,7 @@ class UnitMetricPlot(PlotWidget):
     def update_session_duration(self):
 
         # resets the run duration
-        self.t_dur = self.session_info.get_current_session_duration()
+        self.t_dur = self.session_obj.get_current_session_duration()
 
     # ---------------------------------------------------------------------------
     # Plot Button Event Functions
@@ -358,7 +359,7 @@ class UnitMetricPlot(PlotWidget):
 
     def get_field(self, p_fld):
 
-        return self.session_info.get_mem_map_field(p_fld)
+        return self.session_obj.get_mem_map_field(p_fld)
 
     # ---------------------------------------------------------------------------
     # Widget Event Callback Functions
@@ -880,8 +881,11 @@ class AutoCorrelPlot(UnitPlotLayout):
     t_str = 'Auto-Correlogram'
     err_str = np.array(['Max RPV violations'])
 
-    def __init__(self, unit_props, i_unit):
+    def __init__(self, unit_props, i_unit, info_manager):
         super(AutoCorrelPlot, self).__init__(unit_props, i_unit)
+
+        # main class fields
+        self.info_manager = info_manager
 
         # field initialisations
         self.cc_gram = None
@@ -986,7 +990,8 @@ class AutoCorrelPlot(UnitPlotLayout):
                 self.set_prog_state(True)
 
             # sets up and run the calculation thread worker
-            self.t_worker = ThreadWorker(None, self.calc_cc_gram, None)
+            sp_main = self.info_manager.parent()
+            self.t_worker = ThreadWorker(sp_main, self.calc_cc_gram, None)
             self.t_worker.work_finished.connect(self.cc_gram_finished)
             self.t_worker.start()
 
@@ -1079,15 +1084,14 @@ class AutoCorrelPlot(UnitPlotLayout):
         # field initialisation
         job_name = 'cc-gram'
         job_desc = 'Autocorrelogram Calculations'
-        info_manager = self.unit_props.main_obj.main_obj.main_obj.info_manager
 
         if state:
             # case is starting the progressbar
-            info_manager.add_job(job_name, job_desc)
+            self.info_manager.add_job(job_name, job_desc)
 
         else:
             # case is stopping the progressbar
-            info_manager.delete_job(job_name)
+            self.info_manager.delete_job(job_name)
 
     # ---------------------------------------------------------------------------
     # Class Getter Functions

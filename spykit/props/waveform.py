@@ -86,13 +86,14 @@ class WaveFormProps(PropWidget):
     # field properties
     type = 'waveform'
 
-    def __init__(self, main_obj):
-        # sets the input arguments
-        self.main_obj = main_obj
+    def __init__(self, prop_manager):
+
+        # main class fields
+        self.session_obj = prop_manager.session_obj
 
         # initialises the property widget
         self.setup_prop_fields()
-        super(WaveFormProps, self).__init__(self.main_obj, 'waveform', self.p_info)
+        super(WaveFormProps, self).__init__(prop_manager, 'waveform', self.p_info)
 
         # sets up the parameter fields
         self.p_props = WaveFormPara(self.p_info['ch_fld'])
@@ -156,7 +157,7 @@ class WaveFormProps(PropWidget):
             match p_str:
                 case 'i_unit':
                     # case is the cluster index
-                    unit_tab = self.main_obj.main_obj.main_obj.info_manager.get_info_tab('unit')
+                    unit_tab = self.sp_main.info_manager.get_info_tab('unit')
                     unit_tab.reset_selected_cell(chk_val[0] - 1)
 
             # updates the histogram view
@@ -238,7 +239,7 @@ class WaveFormProps(PropWidget):
 
     def get_field(self, p_fld):
 
-        return self.main_obj.main_obj.main_obj.session_obj.get_mem_map_field(p_fld)
+        return self.session_obj.get_mem_map_field(p_fld)
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Methods

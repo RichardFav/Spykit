@@ -182,9 +182,7 @@ class TriggerProps(PropWidget):
     table_font = cw.create_font_obj(size=8)
     table_hdr_font = cw.create_font_obj(size=8, is_bold=True, font_weight=QFont.Weight.Bold)
 
-    def __init__(self, main_obj):
-        # sets the input arguments
-        self.main_obj = main_obj
+    def __init__(self, prop_manager):
 
         # field initialisation
         self.n_row = 0
@@ -192,11 +190,11 @@ class TriggerProps(PropWidget):
         self.i_row_sel = None
         self.i_col_sel = None
         self.trig_view = None
-        self.n_run = self.main_obj.session_obj.session.get_run_count()
+        self.n_run = prop_manager.session_obj.session.get_run_count()
 
         # initialises the property widget
         self.setup_prop_fields()
-        super(TriggerProps, self).__init__(self.main_obj, 'trigger', self.p_info)
+        super(TriggerProps, self).__init__(prop_manager, 'trigger', self.p_info)
 
         # memory allocation
         self.p_props = TriggerPara(self.p_info['ch_fld'], self.n_run)
@@ -350,8 +348,8 @@ class TriggerProps(PropWidget):
 
     def get_run_index(self):
 
-        curr_run = self.main_obj.session_obj.current_run
-        return self.main_obj.session_obj.session.get_run_index(curr_run)
+        curr_run = self.session_obj.current_run
+        return self.session_obj.session.get_run_index(curr_run)
 
     def get_table_row(self, i_row):
 
@@ -360,7 +358,7 @@ class TriggerProps(PropWidget):
     def get_run_duration(self):
 
         if self.trig_view is None:
-            return self.main_obj.session_obj.session_props.t_dur
+            return self.session_obj.session_props.t_dur
 
         else:
             return self.trig_view.gen_props.get('t_dur')

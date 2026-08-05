@@ -39,11 +39,8 @@ class DefaultDir(QDialog):
         "figure": "Output Figure Directory",
     }
 
-    def __init__(self, main_obj):
-        super(DefaultDir, self).__init__(main_obj)
-
-        # input arguments
-        self.main_obj = main_obj
+    def __init__(self, sp_main):
+        super(DefaultDir, self).__init__(sp_main)
 
         # class widgets
         self.cont_button = []

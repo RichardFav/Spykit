@@ -36,9 +36,7 @@ class ConfigProps(PropWidget):
     init_plot_types = ['Trace', 'Probe']
     prop_views = ['trace', 'trigger']
 
-    def __init__(self, main_obj):
-        # sets the input arguments
-        self.main_obj = main_obj
+    def __init__(self, prop_manager):
 
         # field initialisation
         self.p_info = None
@@ -46,7 +44,7 @@ class ConfigProps(PropWidget):
 
         # initialises the property widget
         self.setup_prop_fields()
-        super(ConfigProps, self).__init__(self.main_obj, 'config', self.p_info)
+        super(ConfigProps, self).__init__(prop_manager, 'config', self.p_info)
 
         # initialises the other class fields
         self.init_other_class_fields()

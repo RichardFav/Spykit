@@ -34,14 +34,10 @@ class PostProcProps(PropWidget):
 
     # widget dimensions
     dx_gap = 15
-    info_width = 210
 
-    def __init__(self, main_obj):
+    def __init__(self, prop_manager):
         # initialises the property widget
-        super(PostProcProps, self).__init__(main_obj, 'postprocess', None)
-
-        # sets the input arguments
-        self.main_obj = main_obj
+        super(PostProcProps, self).__init__(prop_manager, 'postprocess', None)
 
         # widget layout setup
         self.pp_layout = QVBoxLayout()
@@ -77,7 +73,7 @@ class PostProcProps(PropWidget):
     def init_pp_fields(self):
 
         # sets the main widget properties
-        self.setFixedWidth(self.main_obj.info_width - self.dx_gap)
+        self.setFixedWidth(self.prop_manager.info_width - self.dx_gap)
         self.setSizePolicy(QSizePolicy(cf.q_fix, cf.q_fix))
 
         # sets the outer groupbox layout
@@ -104,7 +100,7 @@ class PostProcProps(PropWidget):
             # creates the tab widget (based on type)
             t_lbl = pt.prop_names[pf]
             tab_constructor = pt.prop_types[pf]
-            tab_widget = tab_constructor(self)
+            tab_widget = tab_constructor(self.prop_manager)
             self.tabs.append(tab_widget)
 
             # adds the tab to the tab group
@@ -165,7 +161,7 @@ class PostProcProps(PropWidget):
 
         # resets the post-processing tabs/views
         if not self.is_updating:
-            self.main_obj.post_process_change(h_combo.currentIndex())
+            self.sp_main.post_process_change(h_combo.currentIndex())
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
@@ -199,4 +195,4 @@ class PostProcProps(PropWidget):
 
     def get_field(self, p_fld):
 
-        return self.main_obj.main_obj.session_obj.get_mem_map_field(p_fld)
+        return self.sp_main.session_obj.get_mem_map_field(p_fld)

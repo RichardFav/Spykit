@@ -28,11 +28,12 @@ class SavePrep(QDialog):
     # array class fields
     but_str = ['Save Data', 'Cancel']
 
-    def __init__(self, main_obj):
-        super(SavePrep, self).__init__(main_obj)
+    def __init__(self, sp_main):
+        super(SavePrep, self).__init__(sp_main)
 
         # input arguments
-        self.main_obj = main_obj
+        self.sp_main = sp_main
+        self.session_obj = self.sp_main.session_obj
 
         # class widgets
         self.cont_button = []
@@ -48,15 +49,15 @@ class SavePrep(QDialog):
         self.button_layout = QHBoxLayout()
 
         # field retrieval
-        self.pp_steps = self.main_obj.session_obj.get_preprocessing_steps()
-        self.pp_data_flds = self.main_obj.session_obj.get_current_prep_data_names()
-        self.out_run = self.main_obj.session_obj.get_current_run_index()
-        self.run_names = self.main_obj.session_obj.session.get_run_names()
-        self.n_shank = self.main_obj.session_obj.get_shank_count()
+        self.pp_steps = self.session_obj.get_preprocessing_steps()
+        self.pp_data_flds = self.session_obj.get_current_prep_data_names()
+        self.out_run = self.session_obj.get_current_run_index()
+        self.run_names = self.session_obj.session.get_run_names()
+        self.n_shank = self.session_obj.get_shank_count()
 
         # boolean class fields
-        self.is_per_shank = self.main_obj.session_obj.is_per_shank
-        self.is_concat_run = self.main_obj.session_obj.is_concat_run()
+        self.is_per_shank = self.session_obj.is_per_shank
+        self.is_concat_run = self.session_obj.is_concat_run()
 
         # other class fields
         self.n_worker = 10
@@ -204,7 +205,7 @@ class SavePrep(QDialog):
 
                     # retrieves the recording object
                     run_type = "shank_{0}".format(_i_shank)
-                    pp_rec = self.main_obj.session_obj.session.get_session_runs(
+                    pp_rec = self.session_obj.session.get_session_runs(
                         _i_run, run_type, pp_type=self.pp_data_flds[self.i_sel_pp])
 
                     # outputs the binary file
@@ -215,7 +216,7 @@ class SavePrep(QDialog):
                 out_folder = self.setup_output_folder_path(_i_run)
 
                 # retrieves the recording object
-                pp_rec = self.main_obj.session_obj.session.get_session_runs(
+                pp_rec = self.session_obj.session.get_session_runs(
                             _i_run, "grouped", pp_type=self.pp_data_flds[self.i_sel_pp])
 
                 # outputs the binary file
@@ -233,7 +234,7 @@ class SavePrep(QDialog):
     def setup_output_folder_path(self, i_run=None, i_shank=None):
 
         # field retrieval
-        s_props = self.main_obj.session_obj.session._s_props
+        s_props = self.session_obj.session._s_props
 
         # sets the base folder path
         p_comp = s_props['subject_path'].split('/')
@@ -246,7 +247,7 @@ class SavePrep(QDialog):
 
         elif (i_run is None):
             # case is using the current run index
-            run_dir = self.main_obj.session_obj.current_run
+            run_dir = self.session_obj.current_run
 
         else:
             # case is outputting a specific run

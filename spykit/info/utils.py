@@ -17,7 +17,7 @@ from spykit.common.common_widget import SearchMixin, QProgressWidget
 from PyQt6.QtWidgets import (QWidget, QTreeWidget, QFrame, QCheckBox, QPushButton, QSizePolicy, QVBoxLayout, QGroupBox,
                              QHeaderView, QTreeWidgetItem, QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox,
                              QTableWidget, QFormLayout, QApplication)
-from PyQt6.QtCore import Qt, QPointF, QSize, pyqtSignal, QPersistentModelIndex
+from PyQt6.QtCore import Qt, QObject, QPointF, QSize, pyqtSignal, QPersistentModelIndex
 from PyQt6.QtGui import QFont, QColor, QIcon, QBrush
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -35,7 +35,7 @@ x_gap_h = 2
 """
 
 
-class InfoManager(QWidget):
+class InfoManager(QObject):
     # signal functions
     unit_check = pyqtSignal(object)
     unit_header_check = pyqtSignal(object)
@@ -60,13 +60,15 @@ class InfoManager(QWidget):
     norm_item_flag = Qt.ItemFlag.ItemIsEnabled
     check_item_flag = norm_item_flag | Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsSelectable
 
-    def __init__(self, main_obj, info_width, session_obj=None):
-        super(InfoManager, self).__init__()
+    def __init__(self, sp_main, info_width):
+        super(InfoManager, self).__init__(sp_main)
 
         # main class fields
-        self.main_obj = main_obj
+        self.sp_main = sp_main
         self.info_width = info_width
-        self.session_obj = session_obj
+
+        # sub-class field retrieval
+        self.session_obj = self.sp_main.session_obj
 
         # class property fields
         self.n_para = 0
@@ -84,15 +86,16 @@ class InfoManager(QWidget):
         # widget layout setup
         self.tabs = []
         self.t_types = []
+        self.main_widget = QWidget()
         self.main_layout = QVBoxLayout()
         self.table_layout = QVBoxLayout()
 
         # main widget setup
         self.group_table = QGroupBox(self.table_name.upper())
-        self.tab_group_table = cw.create_tab_group(self)
+        self.tab_group_table = cw.create_tab_group(self.main_widget)
 
         # other widget setup
-        self.prog_widget = QProgressWidget(self, cw.font_lbl)
+        self.prog_widget = QProgressWidget(self.session_obj, font=cw.font_lbl)
 
         # initialises the class fields
         self.init_class_fields()
@@ -105,9 +108,9 @@ class InfoManager(QWidget):
     def init_class_fields(self):
 
         # sets the main widget properties
-        self.setFixedWidth(self.info_width + self.dx_gap)
-        self.setSizePolicy(QSizePolicy(cf.q_fix, cf.q_exp))
-        self.setLayout(self.main_layout)
+        self.main_widget.setFixedWidth(self.info_width + self.dx_gap)
+        self.main_widget.setSizePolicy(QSizePolicy(cf.q_fix, cf.q_exp))
+        self.main_widget.setLayout(self.main_layout)
 
         # sets the widget layout properties
         self.main_layout.setSpacing(0)
@@ -144,7 +147,7 @@ class InfoManager(QWidget):
             # creates the tab widget (based on type)
             t_lbl = it.info_names[t_type]
             tab_constructor = it.info_types[t_type]
-            tab_widget = tab_constructor(t_lbl, self.main_obj)
+            tab_widget = tab_constructor(self.sp_main, t_lbl)
             self.tabs.append(tab_widget)
 
             # sets the
@@ -225,7 +228,7 @@ class InfoManager(QWidget):
         channel_tab.reset_combobox_fields('shank', shank_list)
 
         # resets the trace properties data types
-        trace_tab = self.main_obj.prop_manager.get_prop_tab('traceview')
+        trace_tab = self.sp_main.prop_manager.get_prop_tab('traceview')
         trace_tab.reset_data_types(data_list)
 
         # resets the update flag
@@ -249,8 +252,8 @@ class InfoManager(QWidget):
             self.is_updating = True
 
         # field retrieval
-        trace_view = self.main_obj.plot_manager.get_plot_view('trace')
-        trig_view = self.main_obj.plot_manager.get_plot_view('trigger')
+        trace_view = self.sp_main.plot_manager.get_plot_view('trace')
+        trig_view = self.sp_main.plot_manager.get_plot_view('trigger')
 
         # updates the current run flag
         match d_type:
@@ -259,21 +262,21 @@ class InfoManager(QWidget):
 
                 # resets the current run
                 new_run = tab_obj.run_type.current_text()
-                self.main_obj.session_obj.set_current_run(new_run)
+                self.session_obj.set_current_run(new_run)
 
                 # resets the run parameter fields
-                self.main_obj.prop_manager.reset_run_para_fields()
+                self.sp_main.prop_manager.reset_run_para_fields()
 
             case 'shank':
                 # resets the current shank
                 self.update_current_shank(tab_obj)
-                has_prep = self.main_obj.session_obj.session.has_prep()
-                self.main_obj.session_obj.reset_current_session(has_prep)
+                has_prep = self.session_obj.session.has_prep()
+                self.session_obj.reset_current_session(has_prep)
 
         # updates the current preprocessing data type
         if tab_obj.data_flds is not None:
             i_data = tab_obj.data_type.current_index()
-            self.main_obj.session_obj.set_prep_type(tab_obj.data_flds[i_data])
+            self.session_obj.set_prep_type(tab_obj.data_flds[i_data])
 
         # flag that the tab object is updating
         tab_obj.is_updating = True
@@ -293,15 +296,15 @@ class InfoManager(QWidget):
                         trace_view.t_lim -= (trace_view.t_lim[1] - t_dur_run)
 
                 # resets the trace/trigger view
-                self.main_obj.plot_manager.reset_trace_views()
-                self.main_obj.plot_manager.reset_trig_views()
+                self.sp_main.plot_manager.reset_trace_views()
+                self.sp_main.plot_manager.reset_trig_views()
 
                 # resets the previous run index
                 self.i_run_pr = tab_obj.run_type.current_index()
 
                 # resets the unit tab run index
-                if self.main_obj.session_obj.post_data.n_mmap > 0:
-                    unit_tab = self.main_obj.info_manager.get_info_tab('unit')
+                if self.session_obj.post_data.n_mmap > 0:
+                    unit_tab = self.get_info_tab('unit')
                     unit_tab.run_type.set_current_index(self.i_run_pr)
 
             case 'shank':
@@ -310,12 +313,12 @@ class InfoManager(QWidget):
                 self.i_shank_pr = tab_obj.shank_type.current_index()
 
                 # resets the trace/trigger view
-                self.main_obj.plot_manager.reset_trace_views(2)
-                self.main_obj.plot_manager.reset_probe_views()
+                self.sp_main.plot_manager.reset_trace_views(2)
+                self.sp_main.plot_manager.reset_probe_views()
 
                 # resets the unit tab shank index
-                if self.main_obj.session_obj.post_data.n_mmap > 0:
-                    unit_tab = self.main_obj.info_manager.get_info_tab('unit')
+                if self.session_obj.post_data.n_mmap > 0:
+                    unit_tab = self.get_info_tab('unit')
                     unit_tab.shank_type.set_current_index(self.i_shank_pr)
 
         # resets the update flags
@@ -328,11 +331,11 @@ class InfoManager(QWidget):
         self.session_obj.channel_data.set_filter_flag(is_filt)
 
         # resets the probe plot view
-        probe_view = self.main_obj.plot_manager.get_plot_view('probe')
+        probe_view = self.sp_main.plot_manager.get_plot_view('probe')
         probe_view.sub_view.create_probe_plot()
 
         # resets the trace plot view
-        trace_view = self.main_obj.plot_manager.get_plot_view('trace')
+        trace_view = self.sp_main.plot_manager.get_plot_view('trace')
         trace_view.reset_trace_view(False)
 
     def channel_mouse_move(self, evnt):
@@ -347,7 +350,7 @@ class InfoManager(QWidget):
         i_row_sel = int(np.floor(evnt.pos().y() / cw.cell_height))
 
         # retrieves the channel index
-        ch_tab = self.main_obj.info_manager.get_info_tab('channel')
+        ch_tab = self.get_info_tab('channel')
         ch_tab.table.viewport().rect().height() / cw.cell_height
         i_row_ofs = ch_tab.table.verticalScrollBar().value()
 
@@ -405,7 +408,7 @@ class InfoManager(QWidget):
         shank_list = self.session_obj.get_shank_names(is_per_shank)
 
         # retrieves the data types
-        tr_tab = self.main_obj.prop_manager.get_prop_tab('traceview')
+        tr_tab = self.sp_main.prop_manager.get_prop_tab('traceview')
         data_list = tr_tab.data_type.itemText()
 
         # resets the channel comboboxes
@@ -425,7 +428,7 @@ class InfoManager(QWidget):
         tab_obj.set_table_rows()
 
         # resets the unit spike table rows
-        tab_spike = self.main_obj.prop_manager.get_prop_tab('tracespike')
+        tab_spike = self.sp_main.prop_manager.get_prop_tab('tracespike')
         tab_spike.set_table_rows(tab_obj.is_filt)
 
         # updates the unit markers
@@ -440,23 +443,23 @@ class InfoManager(QWidget):
             return
 
         # field retrieval
-        channel_tab = self.main_obj.info_manager.get_info_tab('channel')
+        channel_tab = self.get_info_tab('channel')
 
         match d_type:
             case 'run':
                 # case is altering the session run
                 run_name = tab_obj.run_type.current_text()
-                self.main_obj.session_obj.set_current_run(run_name)
+                self.session_obj.set_current_run(run_name)
                 channel_tab.run_type.set_current_text(run_name)
 
             case 'shank':
                 # case is altering the recording shank
                 shank_index = tab_obj.shank_type.current_index()
-                self.main_obj.session_obj.set_current_shank(shank_index)
+                self.session_obj.set_current_shank(shank_index)
                 channel_tab.shank_type.set_current_index(shank_index)
 
         # field retrieval
-        self.main_obj.prop_manager.post_process_change()
+        self.sp_main.prop_manager.post_process_change()
 
     def unit_mouse_move(self):
 
@@ -477,7 +480,7 @@ class InfoManager(QWidget):
         unit_tab.set_combobox_props()
         unit_tab.setup_unit_table_data()
 
-        t_worker = ThreadWorker(None, self.create_unit_table)
+        t_worker = ThreadWorker(self.sp_main, self.create_unit_table)
         t_worker.work_finished.connect(self.set_unit_table_data)
         t_worker.start()
 
@@ -496,7 +499,7 @@ class InfoManager(QWidget):
         c_hdr_unit[c_hdr_unit.index('Max Channel')] = 'Channel ID#'
 
         # table creation
-        n_row_max = np.max(self.main_obj.session_obj.post_data.n_unit_pp)
+        n_row_max = np.max(self.session_obj.post_data.n_unit_pp)
         table_dim = (n_row_max, unit_tab.df_unit.shape[1])
         self.setup_info_table(
             unit_tab.df_unit, 'unit', c_hdr_unit, set_values=False, table_dim=table_dim)
@@ -706,11 +709,11 @@ class InfoManager(QWidget):
                 elif i_col == 1:
                     self.session_obj.toggle_channel_flag(i_row, is_keep=True)
 
-                    ch_tab = self.main_obj.info_manager.get_info_tab('channel')
+                    ch_tab = self.get_info_tab('channel')
                     self.is_updating = True
 
-                    if self.main_obj.session_obj.get_keep_channels()[i_row]:
-                        c_status = self.main_obj.session_obj.get_channel_status(i_row)
+                    if self.session_obj.get_keep_channels()[i_row]:
+                        c_status = self.session_obj.get_channel_status(i_row)
                         ch_tab.set_table_row_colour(i_row, c_status)
 
                     else:
@@ -822,17 +825,17 @@ class InfoManager(QWidget):
     def get_probe_plot_view(self):
 
         # if the probe view has not been created, then exit
-        if 'probe' not in self.main_obj.plot_manager.types:
+        if 'probe' not in self.sp_main.plot_manager.types:
             return None
 
         # retrieves the probe plot view
-        g_id = self.main_obj.plot_manager.grid_id
-        if not np.any(g_id == self.main_obj.plot_manager.types['probe']):
+        g_id = self.sp_main.plot_manager.grid_id
+        if not np.any(g_id == self.sp_main.plot_manager.types['probe']):
             # if not currently showing the probe view, then exit
             return None
 
         # returns the probe view
-        return self.main_obj.plot_manager.get_plot_view('probe')
+        return self.sp_main.plot_manager.get_plot_view('probe')
 
     # ---------------------------------------------------------------------------
     # Class Setter Functions
@@ -874,8 +877,8 @@ class InfoManager(QWidget):
     def update_current_shank(self, tab_obj):
 
         i_sel_shank = tab_obj.shank_type.current_index()
-        new_shank = i_sel_shank if self.main_obj.session_obj.is_per_shank() else None
-        self.main_obj.session_obj.set_current_shank(new_shank)
+        new_shank = i_sel_shank if self.session_obj.is_per_shank() else None
+        self.session_obj.set_current_shank(new_shank)
         tab_obj.is_updating = True
 
     def reset_table_selections(self, t_type, is_sel):
@@ -920,14 +923,13 @@ class InfoWidget(QWidget):
     # widget dimensions
     x_gap = 5
 
-    def __init__(self, t_lbl, main_obj, layout=QVBoxLayout):
-        super(InfoWidget, self).__init__()
+    def __init__(self, parent, t_lbl, layout=QVBoxLayout):
+        super(InfoWidget, self).__init__(parent)
 
         # field initialisations
         self.table = None
         self.undock_obj = None
         self.t_lbl = t_lbl
-        self.main_obj = main_obj
         self.use_chk = False
 
         # field retrieval
@@ -989,8 +991,8 @@ class InfoWidgetPara(InfoWidget, SearchMixin):
     item_child_font = cw.create_font_obj(8)
     item_font = cw.create_font_obj(9, True, QFont.Weight.Bold)
 
-    def __init__(self, t_lbl, main_obj, layout=QVBoxLayout):
-        super(InfoWidgetPara, self).__init__(t_lbl, main_obj, layout)
+    def __init__(self, parent, t_lbl, layout=QVBoxLayout):
+        super(InfoWidgetPara, self).__init__(parent, t_lbl, layout)
         SearchMixin.__init__(self)
 
         # initialisations

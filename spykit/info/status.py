@@ -50,8 +50,8 @@ class StatusInfoTab(InfoWidgetPara):
         border: 1px solid; 
     """
 
-    def __init__(self, t_str, main_obj):
-        super(StatusInfoTab, self).__init__(t_str, main_obj, layout=QFormLayout)
+    def __init__(self, sp_main, t_str):
+        super(StatusInfoTab, self).__init__(sp_main, t_str, layout=QFormLayout)
 
         # class widgets
         self.toggle_calc = cw.create_push_button(None, self.b_str[0], cw.font_lbl)

@@ -1,6 +1,7 @@
 # module import
 import os
 import re
+import sys
 import time
 import glob
 import pickle
@@ -34,6 +35,8 @@ from spykit.widgets.default_dir import DefaultDir
 from spykit.widgets.save_prep import SavePrep
 from spykit.widgets.spike_sorting import SpikeSortingDialog
 from spykit.widgets.bomb_cell import BombCellSolver
+from spykit.common.error_logging import ErrorHandler
+
 # from spykit.widgets.bomb_cell_python import BombCellSolver
 
 # spikewrap module import
@@ -65,22 +68,32 @@ class MainWindow(QMainWindow):
     # pyqtsignal functions
     start_preprocess = pyqtSignal(object)
 
-    def __init__(self):
+    def __init__(self, err_handler):
         super(MainWindow, self).__init__()
 
         # sets up the main layout
         self.central_widget = QWidget()
         self.main_layout = QGridLayout()
 
+        # field initialisations
+        self.info_manager = None
+        self.prop_manager = None
+        self.plot_manager = None
+        self.bombcell_dlg = None
+
         # main class object setup
         self.session_obj = SessionWorkBook(self)
 
+        # sets up the error handler
+        self.err_handler = err_handler
+        self.err_handler.set_main_window(self)
+        self.orig_error_hook = sys.excepthook
+
         # main class widget setup
+        self.info_manager = InfoManager(self, info_width)
+        self.plot_manager = PlotManager(self, dlg_width - info_width)
+        self.prop_manager = PropManager(self, info_width)
         self.menu_bar = MenuBar(self)
-        self.info_manager = InfoManager(self, info_width, self.session_obj)
-        self.plot_manager = PlotManager(self, dlg_width - info_width, self.session_obj)
-        self.prop_manager = PropManager(self, info_width, self.session_obj)
-        self.bombcell_dlg = None
 
         # boolean class fields
         self.can_close = False
@@ -118,9 +131,9 @@ class MainWindow(QMainWindow):
     def init_class_fields(self):
 
         # plot parameter widget setup
-        self.main_layout.addWidget(self.prop_manager, 0, 0, 1, 1)
-        self.main_layout.addWidget(self.info_manager, 1, 0, 1, 1)
-        self.main_layout.addWidget(self.plot_manager, 0, 1, 2, 1)
+        self.main_layout.addWidget(self.prop_manager.main_widget, 0, 0, 1, 1)
+        self.main_layout.addWidget(self.info_manager.main_widget, 1, 0, 1, 1)
+        self.main_layout.addWidget(self.plot_manager.main_widget, 0, 1, 2, 1)
         self.main_layout.setSpacing(0)
         self.main_layout.setContentsMargins(0, 0, 0, 0)
 
@@ -261,7 +274,7 @@ class MainWindow(QMainWindow):
             if 'trigger' in self.plot_manager.types:
                 trig_view = self.plot_manager.get_plot_view('trigger')
                 trig_view.delete_all_regions()
-                trig_view.reset_session_fields(self.session_obj)
+                trig_view.reset_session_fields()
 
             else:
                 # appends the trigger plot view to the info manager
@@ -434,9 +447,9 @@ class MainWindow(QMainWindow):
     def run_preprocessing_dialog(self, pp_config=None):
 
         # opens the preprocessing setup
-        h_app = PreprocessSetup(self, pp_config)
-        h_app.close_preprocessing.connect(self.on_preprocessing_close)
-        h_app.show()
+        self.h_app = PreprocessSetup(self, pp_config)
+        self.h_app.close_preprocessing.connect(self.on_preprocessing_close)
+        self.h_app.show()
 
     def on_preprocessing_close(self, has_pp):
 
@@ -821,11 +834,18 @@ class MenuBar(QObject):
     sync_file_name = canon.saved_sync_filename()
     sync_folder_name = canon.sync_folder()
 
-    def __init__(self, main_obj):
-        super(MenuBar, self).__init__()
+    def __init__(self, sp_main):
+        super(MenuBar, self).__init__(sp_main)
 
-        # field retrieval
-        self.main_obj = main_obj
+        # main class fields
+        self.sp_main = sp_main
+
+        # main sub-class fields
+        self.session_obj = self.sp_main.session_obj
+        self.info_manager = self.sp_main.info_manager
+        self.prop_manager = self.sp_main.prop_manager
+        self.plot_manager = self.sp_main.plot_manager
+        self.bombcell_dlg = self.sp_main.bombcell_dlg
 
         # tool/menubar setup
         self.menu_bar = None
@@ -844,8 +864,8 @@ class MenuBar(QObject):
     def init_class_fields(self):
 
         # adds the menubar to the main window
-        self.menu_bar = QMenuBar(self.main_obj)
-        self.main_obj.setMenuBar(self.menu_bar)
+        self.menu_bar = QMenuBar(self.sp_main)
+        self.sp_main.setMenuBar(self.menu_bar)
 
         # parent menu widgets
         h_menu_file = self.add_main_menu_item('File')
@@ -858,27 +878,27 @@ class MenuBar(QObject):
         # ---------------------------------------------------------------------------
 
         # creates the toolbar object
-        self.tool_bar = QToolBar(self.main_obj)
+        self.tool_bar = QToolBar(self.sp_main)
         self.tool_bar.setMovable(False)
         self.tool_bar.setStyleSheet(cw.toolbar_style)
         self.tool_bar.setIconSize(QSize(cf.but_height + 1, cf.but_height + 1))
 
         # adds the toolbar to the main window
-        self.main_obj.addToolBarBreak()
-        self.main_obj.addToolBar(Qt.ToolBarArea.TopToolBarArea, self.tool_bar)
-        self.main_obj.contextMenuEvent = self.context_menu_event
+        self.sp_main.addToolBarBreak()
+        self.sp_main.addToolBar(Qt.ToolBarArea.TopToolBarArea, self.tool_bar)
+        self.sp_main.contextMenuEvent = self.context_menu_event
 
         # ---------------------------------------------------------------------------
         # File Menubar Item Setup
         # ---------------------------------------------------------------------------
 
         # initialisations
-        p_str = ['new', 'open', 'save', None, 'clear', 'default', None, 'close']
+        p_str = ['new', 'open', 'save', None, 'clear', 'default', None, 'close', 'err_test']
         p_lbl = ['New Session', 'Load...', 'Save...', None, 'Clear Session',
-                 'Default Directories', None, 'Close Spykit']
-        has_ch = [False, True, True, False, False, False, False, False]
+                 'Default Directories', None, 'Close Spykit', 'Error Test']
+        has_ch = [False, True, True, False, False, False, False, False, False]
         cb_fcn = [self.new_session, self.load_session, self.save_session, None,
-                  self.clear_session, self.default_dir, None, self.close_window]
+                  self.clear_session, self.default_dir, None, self.close_window, self.error_test]
 
         # adds the file menu items
         self.add_menu_items(h_menu_file, p_lbl, cb_fcn, p_str, True, has_ch=has_ch)
@@ -1048,46 +1068,51 @@ class MenuBar(QObject):
 
     def new_session(self):
 
-        self.main_obj.setVisible(False)
-        OpenSession(self.main_obj)
+        self.sp_main.setVisible(False)
+        OpenSession(self.sp_main)
 
     def clear_session(self):
 
         # if there is a parameter change, then prompt the user if they want to change
         q_str = 'Are you sure you want to clear the current session?'
-        u_choice = QMessageBox.question(self.main_obj, 'Clear Session?', q_str, cf.q_yes_no, cf.q_yes)
+        u_choice = QMessageBox.question(self.sp_main, 'Clear Session?', q_str, cf.q_yes_no, cf.q_yes)
         if u_choice == cf.q_no:
             # exit if they cancelled
             return
 
         # clears the session data
-        self.main_obj.session_obj.session = None
+        self.session_obj.session = None
 
         # resets the status label
-        self.main_obj.info_manager.prog_widget.update_message_label()
+        self.info_manager.prog_widget.update_message_label()
 
     def default_dir(self):
 
-        DefaultDir(self.main_obj).show()
+        DefaultDir(self.sp_main).show()
 
     def close_window(self):
 
         # determines if there are any outstanding post-processing data files
-        if self.main_obj.post_processing_data_check():
+        if self.sp_main.post_processing_data_check():
             # if the user chose to continue, then clear the data files
-            self.main_obj.session_obj.clear_all_postprocessing()
+            self.sp_main.session_obj.clear_all_postprocessing()
 
         else:
             # if the user cancelled, then exit
             return
 
         # closes the post-proessing dialog window (if open)
-        if self.main_obj.bombcell_dlg is not None:
-            self.main_obj.bombcell_dlg.close_window(True)
+        if self.bombcell_dlg is not None:
+            self.bombcell_dlg.close_window(True)
 
         # closes the window
-        self.main_obj.can_close = True
-        self.main_obj.close()
+        self.sp_main.can_close = True
+        self.sp_main.close()
+
+    def error_test(self):
+
+        # REMOVE ME LATER
+        a
 
     # ---------------------------------------------------------------------------
     # Load Menubar Functions
@@ -1097,14 +1122,14 @@ class MenuBar(QObject):
 
         # prompts the user for the file name (exit if the user cancels)
         session_dir = cw.get_def_dir("session")
-        file_info = self.load_file(file_info, 'session', def_dir=session_dir)
-        if file_info is None:
+        ssf_file = self.load_file(file_info, 'session', def_dir=session_dir)
+        if ssf_file is None:
             return
 
         # determines if there are any outstanding post-processing data files
-        if self.main_obj.post_processing_data_check():
+        if self.sp_main.post_processing_data_check():
             # if the user chose to continue, then clear the data files
-            self.main_obj.session_obj.clear_all_postprocessing()
+            self.session_obj.clear_all_postprocessing()
 
         else:
             # if the user cancelled, then exit
@@ -1112,7 +1137,7 @@ class MenuBar(QObject):
 
         # loads data from the file
         self.update_progress_bar('Loading Session File', 0.1)
-        with open(file_info, 'rb') as f:
+        with open(ssf_file, 'rb') as f:
             ses_data = pickle.load(f)
 
         # field retrieval
@@ -1123,60 +1148,60 @@ class MenuBar(QObject):
         ses_data['prop_para']['trace']['t_finish'] = ses_data['prop_para']['trace']['t_span']
 
         # resets the session data
-        self.main_obj.session_obj.reset_session(ses_data)
+        self.session_obj.reset_session(ses_data, ssf_file)
 
         # resets the channel data
         self.update_progress_bar('Resetting Channel Data', 0.2)
-        self.main_obj.session_obj.reset_channel_data(channel_data)
+        self.session_obj.reset_channel_data(channel_data)
 
         # resets the sorting information object
         if 'sorting_props' in ses_data:
-            self.main_obj.session_obj.set_sorting_props(ses_data['sorting_props'])
+            self.session_obj.set_sorting_props(ses_data['sorting_props'])
 
         # updates the bad/sync channel status table fields
         self.update_progress_bar('Updating Channel Information', 0.3)
-        self.main_obj.bad_channel_change()
-        self.main_obj.sync_channel_change()
+        self.sp_main.bad_channel_change()
+        self.sp_main.sync_channel_change()
 
         # resets the multi-run property fields
         self.update_progress_bar('Resetting Info Parameters', 0.4)
-        n_run = self.main_obj.session_obj.session.get_run_count()
+        n_run = self.session_obj.session.get_run_count()
         for pt in ['general', 'trigger']:
             # retrieves the property tab
-            prop_tab = self.main_obj.prop_manager.get_prop_tab(pt)
+            prop_tab = self.prop_manager.get_prop_tab(pt)
             prop_tab.p_props.reset_prop_para(prop_tab.p_info['ch_fld'], n_run)
 
         # resets the traceview properties
-        self.main_obj.prop_manager.get_prop_tab('traceview').reset_prop_para()
+        self.prop_manager.get_prop_tab('traceview').reset_prop_para()
 
         # resets the property/information panel fields
-        self.main_obj.prop_manager.set_prop_para(ses_data['prop_para'])
-        self.main_obj.info_manager.set_info_para(ses_data['info_para'])
+        self.prop_manager.set_prop_para(ses_data['prop_para'])
+        self.info_manager.set_info_para(ses_data['info_para'])
         QApplication.processEvents()
 
         # sets/runs the config field/routines
         if (ses_data['configs'] is not None) and len(ses_data['configs'].prep_task):
             # resets the preprocessing configuration fields
-            prep_info = self.main_obj.info_manager.get_info_tab('preprocess')
+            prep_info = self.info_manager.get_info_tab('preprocess')
             prep_info.configs.clear()
             prep_info.configs = ses_data['configs']
-            self.main_obj.session_obj.set_prep_opt(ses_data['configs'].prep_opt)
+            self.session_obj.set_prep_opt(ses_data['configs'].prep_opt)
 
             # enables the post-preprocessing menu items
             self.set_menu_enabled_blocks('post-preprocess')
 
             # determines if the session has been spike sorted
-            is_sorted = self.main_obj.session_obj.is_session_sorted()
+            is_sorted = self.session_obj.is_session_sorted()
             if is_sorted:
                 # if so, then enable the spike sorting menu items
                 self.set_menu_enabled_blocks('post-sorting')
 
                 # enables post-processing loading (if files are available)
-                mm_file = self.main_obj.session_obj.get_mem_map_files(False)
+                mm_file = self.session_obj.get_mem_map_files(False)
                 self.set_menu_enabled('load_postprocessed', mm_file is not None)
 
             # removes any temporary memory map files
-            self.main_obj.remove_temp_mem_maps()
+            self.sp_main.remove_temp_mem_maps()
 
             # runs the preprocessing (if data in config field)
             if not ignore_pp:
@@ -1185,11 +1210,11 @@ class MenuBar(QObject):
                     # if there is preprocessed data, prompt the user if they would like to re-run the calculations
                     t_str = 'Re-run Preprocessing?'
                     q_str = 'The loaded session has preprocessed tasks. Would you like to re-run these tasks?'
-                    u_choice = QMessageBox.question(self.main_obj, 'Use Default Files?', q_str, cf.q_yes_no, cf.q_yes)
+                    u_choice = QMessageBox.question(self.sp_main, 'Use Default Files?', q_str, cf.q_yes_no, cf.q_yes)
                     if u_choice == cf.q_yes:
                         # if so, run the preprocessing dialog window
                         prep_opt = tuple(prep_info.configs.prep_opt.values())
-                        self.main_obj.run_preprocessing_dialog((prep_task, prep_opt))
+                        self.sp_main.run_preprocessing_dialog((prep_task, prep_opt))
 
                     else:
                         if is_sorted:
@@ -1202,7 +1227,7 @@ class MenuBar(QObject):
 
         # resets the status label
         self.update_progress_bar(None, None)
-        self.main_obj.info_manager.prog_widget.update_message_label()
+        self.info_manager.prog_widget.update_message_label()
 
     def load_preprocessed(self):
 
@@ -1228,7 +1253,7 @@ class MenuBar(QObject):
         else:
             # determines if the file has already been loaded
             mm_file_sel = f"{file_dlg.file_sel}.dat"
-            if mm_file_sel in self.main_obj.session_obj.post_data.mmap_name:
+            if mm_file_sel in self.session_obj.post_data.mmap_name:
                 # case is the file has already been loaded
                 e_str = f'The file "{mm_file_sel}" is already loaded. Try loading another file.'
                 cf.show_error(e_str, 'Duplicate File Error')
@@ -1239,34 +1264,34 @@ class MenuBar(QObject):
                 mm_file = mm_file[:, :, np.array([isinstance(x, str) for x in mm_file[0, 0, :]])]
 
         # updates the post-processing tabs
-        self.main_obj.session_obj.post_data.read_post_process(mm_file)
-        self.main_obj.prop_manager.add_prop_tabs(['postprocess'])
+        self.session_obj.post_data.read_post_process(mm_file)
+        self.prop_manager.add_prop_tabs(['postprocess'])
 
         for i_mm in range(mm_file.shape[2]):
             mm_name = os.path.split(mm_file[0, 0, i_mm])[1]
-            self.main_obj.added_post_process(mm_name)
+            self.sp_main.added_post_process(mm_name)
 
         # updates the unit information tab
-        self.main_obj.info_manager.reset_shank_run_info()
-        self.main_obj.prop_manager.add_spike_table()
-        self.main_obj.info_manager.add_unit_table()
+        self.info_manager.reset_shank_run_info()
+        self.prop_manager.add_spike_table()
+        self.info_manager.add_unit_table()
 
         # adds the post-processing views
-        self.main_obj.prop_manager.add_post_process_views(self)
+        self.prop_manager.add_post_process_views(self)
 
         # resets the probe unit markers (if already created)
-        self.main_obj.plot_manager.get_plot_view('probe').reset_unit_markers()
-        if self.main_obj.session_obj.post_data.n_mmap == 1:
-            unit_tab = self.main_obj.info_manager.get_info_tab('unit')
+        self.plot_manager.get_plot_view('probe').reset_unit_markers()
+        if self.session_obj.post_data.n_mmap == 1:
+            unit_tab = self.info_manager.get_info_tab('unit')
             unit_tab.table_cell_click(0, 0)
 
         # re-filters the table
-        ch_tab = self.main_obj.info_manager.get_info_tab('channel')
-        self.main_obj.info_manager.channel_combobox_update('shank', ch_tab)
+        ch_tab = self.info_manager.get_info_tab('channel')
+        self.info_manager.channel_combobox_update('shank', ch_tab)
 
         # re-filters the table
-        tr_tab = self.main_obj.prop_manager.get_prop_tab('traceview')
-        self.main_obj.prop_manager.data_type_combobox_update(tr_tab)
+        tr_tab = self.prop_manager.get_prop_tab('traceview')
+        self.prop_manager.data_type_combobox_update(tr_tab)
 
         # updates the post-processing menu item blocks
         self.set_menu_enabled_blocks('post-postprocess')
@@ -1275,7 +1300,7 @@ class MenuBar(QObject):
 
         # field retrieval
         sync_dir_base = None
-        raw_runs = self.main_obj.session_obj.session._s._raw_runs
+        raw_runs = self.session_obj.session._s._raw_runs
 
         # determines if the default sync channel trace exists
         has_def, def_sync_dir = True, []
@@ -1289,7 +1314,7 @@ class MenuBar(QObject):
         if has_def:
             # if the default file exist, prompt the user if they want to use them
             q_str = 'Do you want to use the default trigger channel files?'
-            u_choice = QMessageBox.question(self.main_obj, 'Use Default Files?', q_str, cf.q_yes_no_cancel, cf.q_yes)
+            u_choice = QMessageBox.question(self.sp_main, 'Use Default Files?', q_str, cf.q_yes_no_cancel, cf.q_yes)
             if u_choice == cf.q_cancel:
                 # case is the user cancelled
                 return
@@ -1325,7 +1350,7 @@ class MenuBar(QObject):
             n_sample_run = rr._raw[list(rr._raw.keys())[0]].get_num_samples()
             if len(sync_run) == n_sample_run:
                 # if so, then update the trace
-                self.main_obj.session_obj.session.sync_ch[i_run] = sync_run
+                self.session_obj.session.sync_ch[i_run] = sync_run
 
             else:
                 # otherwise, output an error to screen
@@ -1335,8 +1360,8 @@ class MenuBar(QObject):
 
         # more field retrieval
         change_made = False
-        trig_props = self.main_obj.prop_manager.get_prop_tab('trigger')
-        trig_view = self.main_obj.plot_manager.get_plot_view('trigger')
+        trig_props = self.prop_manager.get_prop_tab('trigger')
+        trig_view = self.plot_manager.get_plot_view('trigger')
 
         # resets the trigger view
         if trig_props.delete_all_regions():
@@ -1365,8 +1390,8 @@ class MenuBar(QObject):
     def save_session(self):
 
         # field retrieval
-        ses_obj = self.main_obj.session_obj
-        prep_tab = self.main_obj.info_manager.get_info_tab('preprocess')
+        ses_obj = self.session_obj
+        prep_tab = self.info_manager.get_info_tab('preprocess')
 
         # info/property parameter retrieval
         info_list = ["preprocess", "status"]
@@ -1378,8 +1403,8 @@ class MenuBar(QObject):
             'configs': prep_tab.configs,
             'session_props': ses_obj.session.get_session_props(),
             'sorting_props': ses_obj.session.sort_obj.s_props,
-            'prop_para': self.main_obj.prop_manager.get_prop_para(prop_list),
-            'info_para': self.main_obj.info_manager.get_info_para(info_list),
+            'prop_para': self.prop_manager.get_prop_para(prop_list),
+            'info_para': self.info_manager.get_info_para(info_list),
             'channel_data': {
                 'bad': ses_obj.session.bad_ch,
                 'sync': ses_obj.session.sync_ch,
@@ -1394,7 +1419,7 @@ class MenuBar(QObject):
 
     def save_preprocessed(self):
 
-        SavePrep(self.main_obj).show()
+        SavePrep(self.sp_main).show()
 
     def save_trigger(self):
 
@@ -1403,7 +1428,7 @@ class MenuBar(QObject):
 
         # prompts the user if they want to use the default output path
         q_str = 'Do you want to use the default trigger channel output path?'
-        u_choice = QMessageBox.question(self.main_obj, 'Use Default Path?', q_str, cf.q_yes_no_cancel, cf.q_yes)
+        u_choice = QMessageBox.question(self.sp_main, 'Use Default Path?', q_str, cf.q_yes_no_cancel, cf.q_yes)
         if u_choice == cf.q_cancel:
             # exit if the user cancelled
             return
@@ -1420,14 +1445,14 @@ class MenuBar(QObject):
 
                 else:
                     # sets the output directory
-                    output_dir_base = base_dir / self.main_obj.session_obj.session._session_name
+                    output_dir_base = base_dir / self.session_obj.session._session_name
 
         # field/object retrieval
-        s_freq = self.main_obj.session_obj.session_props.s_freq
-        sync_ch = deepcopy(self.main_obj.session_obj.session.sync_ch)
-        trig_props = self.main_obj.prop_manager.get_prop_tab('trigger')
-        trig_view = self.main_obj.plot_manager.get_plot_view('trigger')
-        raw_runs = self.main_obj.session_obj.session._s._raw_runs
+        s_freq = self.session_obj.session_props.s_freq
+        sync_ch = deepcopy(self.session_obj.session.sync_ch)
+        trig_props = self.prop_manager.get_prop_tab('trigger')
+        trig_view = self.plot_manager.get_plot_view('trigger')
+        raw_runs = self.session_obj.session._s._raw_runs
 
         # trigger trace silencing
         for i_run, r_lim in enumerate(trig_props.p_props.region_index):
@@ -1465,7 +1490,7 @@ class MenuBar(QObject):
                 return
 
             # check if the file already exists in the bombcell directories
-            mm_file = self.main_obj.session_obj.setup_mmap_files(mm_name)
+            mm_file = self.session_obj.setup_mmap_files(mm_name)
             if np.any([os.path.exists(x) for x in mm_file.flatten()]):
                 # if so, then prompt the user if they want to overwrite the files
                 q_str = 'The entered file already exists. Do you want to overwrite the files?'
@@ -1475,7 +1500,7 @@ class MenuBar(QObject):
                     return
 
                 # check to see if file is already loaded
-                if self.main_obj.session_obj.is_post_process_loaded(mm_name):
+                if self.session_obj.is_post_process_loaded(mm_name):
                     # if so, then output an error to screen and exit
                     e_str = 'It is not possible to overwrite a loaded post-processing data file.'
                     cf.show_error(e_str, 'File Overwrite Error')
@@ -1487,8 +1512,8 @@ class MenuBar(QObject):
                         os.remove(mm_f)
 
             # runs the postprocessing output thread worker
-            self.main_obj.prop_manager.rename_post_process_solution(f"{mm_name}.dat")
-            self.main_obj.session_obj.post_data.rename_post_process(mm_file)
+            self.prop_manager.rename_post_process_solution(f"{mm_name}.dat")
+            self.session_obj.post_data.rename_post_process(mm_file)
 
             # sets the other figure properties
             self.set_menu_enabled('load_postprocessed', True)
@@ -1508,34 +1533,34 @@ class MenuBar(QObject):
 
     def run_preproccessing(self):
 
-        self.main_obj.run_preprocessing_dialog()
+        self.sp_main.run_preprocessing_dialog()
 
     def clear_preprocessing(self):
 
         # prompts the user if they want to clear
         q_str = "Are you sure you want to clear the existing data processing?"
-        u_choice = QMessageBox.question(self.main_obj, 'Clear Preprocessing?', q_str, cf.q_yes_no, cf.q_yes)
+        u_choice = QMessageBox.question(self.sp_main, 'Clear Preprocessing?', q_str, cf.q_yes_no, cf.q_yes)
         if u_choice == cf.q_no:
             # exit if the user cancelled
             return
 
         # resets the channel data fields
-        self.main_obj.session_obj.channel_data.is_keep[:] = True
-        self.main_obj.session_obj.channel_data.is_selected[:] = False
-        self.main_obj.session_obj.clear_preprocessing()
+        self.session_obj.channel_data.is_keep[:] = True
+        self.session_obj.channel_data.is_selected[:] = False
+        self.session_obj.clear_preprocessing()
 
         # resets the preprocessing tab properties
-        prep_tab = self.main_obj.info_manager.get_info_tab('preprocess')
+        prep_tab = self.info_manager.get_info_tab('preprocess')
         prep_tab.configs.clear()
 
         # resets the combobox fields
-        trace_tab = self.main_obj.prop_manager.get_prop_tab('traceview')
+        trace_tab = self.prop_manager.get_prop_tab('traceview')
         trace_tab.reset_data_types(["Raw"])
-        self.main_obj.prop_manager.data_type_combobox_update(trace_tab)
+        self.prop_manager.data_type_combobox_update(trace_tab)
 
         # disable menu items
         self.set_menu_enabled_blocks('clear-preprocess')
-        self.main_obj.info_manager.prog_widget.update_message_label()
+        self.info_manager.prog_widget.update_message_label()
 
         # clears the spike-sorting fields
         self.clear_spike_sorting(prompt_user=False)
@@ -1545,7 +1570,7 @@ class MenuBar(QObject):
         import matplotlib
         matplotlib.use('Agg')
 
-        ses = self.main_obj.session_obj.session
+        ses = self.session_obj.session
         h_fig = ses._s.plot_preprocessed(
             show=True,
             time_range=(0, 0.1),
@@ -1561,14 +1586,14 @@ class MenuBar(QObject):
 
     def run_spike_sorting(self):
 
-        self.main_obj.run_spike_sorting_dialog()
+        self.sp_main.run_spike_sorting_dialog()
 
     def clear_spike_sorting(self, state=False, prompt_user=True):
 
         if prompt_user:
             # prompts the user if they want to clear
             q_str = "Are you sure you want to clear the existing spike sorting calculations?"
-            u_choice = QMessageBox.question(self.main_obj, 'Clear Spike Sorting?', q_str, cf.q_yes_no, cf.q_yes)
+            u_choice = QMessageBox.question(self.sp_main, 'Clear Spike Sorting?', q_str, cf.q_yes_no, cf.q_yes)
             if u_choice == cf.q_no:
                 # exit if the user cancelled
                 return
@@ -1578,7 +1603,7 @@ class MenuBar(QObject):
 
         # disable menu items
         self.set_menu_enabled_blocks('clear-sorting')
-        self.main_obj.info_manager.prog_widget.update_message_label()
+        self.info_manager.prog_widget.update_message_label()
 
     # ---------------------------------------------------------------------------
     # BombCell Menubar Functions
@@ -1586,24 +1611,24 @@ class MenuBar(QObject):
 
     def run_bomb_cell(self):
 
-        if self.main_obj.bombcell_dlg is None:
+        if self.bombcell_dlg is None:
             # sets up the experiment base directory
-            p_comp = self.main_obj.session_obj.session._s_props['subject_path'].split('/')
+            p_comp = self.session_obj.session._s_props['subject_path'].split('/')
             base_dir = '/'.join(p_comp[:-2])
 
             # runs the bombcell solver
-            self.main_obj.bombcell_dlg = BombCellSolver(self.main_obj, base_dir)
-            self.main_obj.bombcell_dlg.show()
+            self.bombcell_dlg = BombCellSolver(self.sp_main, base_dir)
+            self.bombcell_dlg.show()
 
         else:
             # if already setup, then reshow the window
-            self.main_obj.bombcell_dlg.show_window()
+            self.bombcell_dlg.show_window()
 
     def clear_bomb_cell(self, state=False, prompt_user=True):
 
         # initialisations
         reset_view = True
-        pp_data = self.main_obj.session_obj.post_data
+        pp_data = self.session_obj.post_data
 
         # prompts the user for the files to remove (if calling via menu item)
         if prompt_user:
@@ -1624,7 +1649,7 @@ class MenuBar(QObject):
             else:
                 # case is only one loaded post-processing data file
                 q_str = "Are you sure you want to clear the current post-processing dataset?"
-                u_choice = QMessageBox.question(self.main_obj, 'Clear Postprocessing?', q_str, cf.q_yes_no, cf.q_yes)
+                u_choice = QMessageBox.question(self.sp_main, 'Clear Postprocessing?', q_str, cf.q_yes_no, cf.q_yes)
                 if u_choice == cf.q_no:
                     # exit if the user cancelled
                     return
@@ -1639,26 +1664,26 @@ class MenuBar(QObject):
 
         # removes the post-processing
         for i_rmv in np.flip(i_mmap_rmv):
-            self.main_obj.session_obj.remove_post_process(i_rmv)
+            self.session_obj.remove_post_process(i_rmv)
             time.sleep(0.05)
 
         if reset_view:
             # clears the post-processing views from the configuration panel
             is_view_change = False
-            g_id = deepcopy(self.main_obj.plot_manager.grid_id)
-            cf_props = self.main_obj.prop_manager.get_prop_tab('config')
+            g_id = deepcopy(self.plot_manager.grid_id)
+            cf_props = self.prop_manager.get_prop_tab('config')
 
-            pp_props = self.main_obj.prop_manager.get_prop_tab('postprocess')
+            pp_props = self.prop_manager.get_prop_tab('postprocess')
             if pp_props is not None:
                 for pp_view in pp_props.plot_views:
                     # determines if the view has been created
-                    if pp_view in self.main_obj.plot_manager.types:
+                    if pp_view in self.plot_manager.types:
                         # removes the plot from the plot view
-                        pp_id = self.main_obj.plot_manager.types[pp_view]
+                        pp_id = self.plot_manager.types[pp_view]
                         if pp_id in g_id:
                             is_view_change = True
                             g_id[g_id == pp_id] = 0
-                            self.main_obj.plot_manager.get_plot_view(pp_view).hide()
+                            self.plot_manager.get_plot_view(pp_view).hide()
 
                         # removes the view from the configuration list
                         cf_props.remove_config_view(ppt.prop_names[pp_view])
@@ -1667,23 +1692,23 @@ class MenuBar(QObject):
                 if is_view_change:
                     # force updates the gui
                     time.sleep(0.05)
-                    self.main_obj.prop_manager.set_region_config(g_id)
+                    self.prop_manager.set_region_config(g_id)
 
                     # resets the configuration ID flags and views
                     time.sleep(0.05)
-                    self.main_obj.plot_manager.update_plot_config(g_id)
-                    self.main_obj.reset_prop_tab_visible(g_id)
+                    self.plot_manager.update_plot_config(g_id)
+                    self.sp_main.reset_prop_tab_visible(g_id)
 
             # clear the units from probe-view
-            self.main_obj.plot_manager.get_plot_view('probe').clear_unit_markers()
-            self.main_obj.info_manager.set_tab_visible('unit', False)
+            self.plot_manager.get_plot_view('probe').clear_unit_markers()
+            self.info_manager.set_tab_visible('unit', False)
 
             # disable menu items
             self.set_menu_enabled_blocks('clear-postprocess')
 
         else:
             # re-runs the solution file selection callback function
-            pp_tab = self.main_obj.prop_manager.get_prop_tab('postprocess')
+            pp_tab = self.prop_manager.get_prop_tab('postprocess')
             pp_tab.soln_combo_change(pp_tab.soln_combo.obj_cbox)
 
     # ---------------------------------------------------------------------------
@@ -1781,7 +1806,7 @@ class MenuBar(QObject):
             case 'post-preprocess':
                 # case is post pre-processing
                 menu_on = ['sorting', 'clear_prep', 'save_preprocessed']
-                if bool(len(self.main_obj.session_obj.get_mem_map_files())):
+                if bool(len(self.session_obj.get_mem_map_files())):
                     menu_on += ['load_postprocessed']
 
             case 'clear-preprocess':
@@ -1844,7 +1869,7 @@ class MenuBar(QObject):
     def get_post_process_files(self):
 
         # determines the available memory map files
-        pp_files = self.main_obj.session_obj.get_mem_map_files(False)
+        pp_files = self.session_obj.get_mem_map_files(False)
         if pp_files is None:
             return None, None
 
@@ -1876,7 +1901,7 @@ class MenuBar(QObject):
                     is_temp_file = os.path.split(pp_files[i, j, k])[-1].startswith('Temp_')
 
                     # sets the final feasibility flag
-                    if self.main_obj.session_obj.is_concat_run():
+                    if self.session_obj.is_concat_run():
                         is_feas[i, j, k] = ('concat' in pp_files[i, j, k]) and (not is_temp_file)
                     else:
                         is_feas[i, j, k] = ('concat' not in pp_files[i, j, k]) and (not is_temp_file)
@@ -1890,7 +1915,7 @@ class MenuBar(QObject):
     def update_progress_bar(self, m_str, pr_val):
 
         # updates the GUI progressbar
-        pr_widget = self.main_obj.info_manager.prog_widget
+        pr_widget = self.info_manager.prog_widget
         if m_str is None:
             pr_widget.set_progbar_state(False)
 

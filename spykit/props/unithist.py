@@ -87,13 +87,14 @@ class UnitHistProps(PropWidget):
     title_sub_size = 12
     title_main_size = 25
 
-    def __init__(self, main_obj):
-        # sets the input arguments
-        self.main_obj = main_obj
+    def __init__(self, prop_manager):
+
+        # main class fields
+        self.session_obj = prop_manager.session_obj
 
         # initialises the property widget
         self.setup_prop_fields()
-        super(UnitHistProps, self).__init__(self.main_obj, 'unithist', self.p_info)
+        super(UnitHistProps, self).__init__(prop_manager, 'unithist', self.p_info)
 
         # sets up the parameter fields
         self.p_props = UnitHistPara(self.p_info['ch_fld'])
@@ -200,7 +201,7 @@ class UnitHistProps(PropWidget):
             match p_str:
                 case 'i_unit':
                     # case is the cluster index
-                    unit_tab = self.main_obj.main_obj.main_obj.info_manager.get_info_tab('unit')
+                    unit_tab = self.sp_main.info_manager.get_info_tab('unit')
                     unit_tab.reset_selected_cell(chk_val[0] - 1)
 
             # updates the histogram view
@@ -343,7 +344,7 @@ class UnitHistProps(PropWidget):
 
     def get_field(self, p_fld):
 
-        return self.main_obj.main_obj.session_obj.get_mem_map_field(p_fld)
+        return self.session_obj.get_mem_map_field(p_fld)
 
     def get_unit_type(self, i_unit):
 

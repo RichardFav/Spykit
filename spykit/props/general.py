@@ -93,20 +93,17 @@ class GeneralProps(PropWidget):
     # field properties
     type = 'general'
 
-    def __init__(self, main_obj):
-
-        # sets the input arguments
-        self.main_obj = main_obj
+    def __init__(self, prop_manager):
 
         # field initialisation
         self.trig_view = None
         self.trace_view = None
-        self.t_dur = np.round(self.main_obj.session_obj.session_props.t_dur, cf.n_dp)
-        self.n_run = self.main_obj.session_obj.session.get_run_count()
+        self.t_dur = np.round(prop_manager.session_obj.session_props.t_dur, cf.n_dp)
+        self.n_run = prop_manager.session_obj.session.get_run_count()
 
         # initialises the property widget
         self.setup_prop_fields()
-        super(GeneralProps, self).__init__(self.main_obj, 'general', self.p_info)
+        super(GeneralProps, self).__init__(prop_manager, 'general', self.p_info)
 
         # sets up the parameter fields
         self.p_props = GeneralPara(self.p_info['ch_fld'], self.n_run)

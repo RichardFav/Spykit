@@ -156,8 +156,7 @@ f_name = {
 resource_dir = os.path.join(os.getcwd(), 'spykit', 'resources').replace('\\', '/')
 icon_dir = os.path.join(resource_dir, 'icons').replace('\\', '/')
 para_dir = os.path.join(resource_dir, 'parameters').replace('\\', '/')
-# figure_dir = os.path.join(resource_dir, 'figures').replace('\\', '/')
-# figure_dir = 'C:/Spykit/resources/figures'
+log_dir = os.path.join(resource_dir, 'logging').replace('\\', '/')
 def_file = os.path.join(resource_dir, 'def_dir.pkl').replace('\\', '/')
 ssort_para = os.path.join(resource_dir, 'ssort_para.csv').replace('\\', '/')
 
@@ -2997,11 +2996,11 @@ class QProgressWidget(QWidget):
         }
     """
 
-    def __init__(self, parent=None, font=None):
+    def __init__(self, session_obj, parent=None, font=None):
         super(QProgressWidget, self).__init__(parent)
 
         # field retrieval
-        self.session_obj = parent.session_obj
+        self.session_obj = session_obj
 
         # widget setup
         self.layout = QHBoxLayout(self)
@@ -3209,49 +3208,6 @@ class QProgressWidget(QWidget):
         else:
             self.prog_bar.setRange(0, self.p_max)
             self.prog_bar.setValue(0)
-
-    def start_thread(self, desc_str='Running Task...'):
-
-        self.t_worker = ThreadWorker(None, self.thread_prog_func, work_para=(desc_str))
-        # self.t_worker.work_progress.connect(self.update_prog_thread)
-        self.t_worker.start()
-
-    def stop_thread(self):
-
-        # stops the worker thread
-        self.t_worker.force_quit()
-        time.sleep(self.t_pause)
-
-        #
-        self.set_interderminate_state(False)
-
-        # # resets the other labels
-        # self.prog_bar.setValue(0)
-        # self.lbl_obj.setText(self.get_status_text())
-        # self.lbl_obj.setToolTip(self.get_next_task())
-
-    # def update_prog_thread(self, desc_txt, pr_val):
-    #
-    #     # updates the text/tooltip strings
-    #     self.update_prog_labels(desc_txt)
-    #     self.prog_update(pr_val)
-    #
-    #     #
-    #     self.update()
-    #     self.repaint()
-    #     QApplication.processEvents()
-
-    def thread_prog_func(self, desc_str):
-
-        # initialisations
-        self.set_interderminate_state(True)
-
-    def thread_prog_timer(self, desc_str):
-
-        #
-        self.n_count += 1
-        pr_val = (self.n_count * self.t_int) / self.p_max % 1
-        self.t_worker.work_progress.emit(desc_str, pr_val)
 
 # ----------------------------------------------------------------------------------------------------------------------
 

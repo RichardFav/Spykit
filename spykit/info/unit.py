@@ -60,11 +60,12 @@ class UnitInfoTab(InfoWidget):
     i_col_type = 1
     but_height = 16
 
-    def __init__(self, t_str, main_obj):
-        super(UnitInfoTab, self).__init__(t_str, main_obj)
+    def __init__(self, sp_main, t_str):
+        super(UnitInfoTab, self).__init__(sp_main, t_str)
 
-        # sets the input arguments
-        self.main_obj = main_obj
+        # main sub-class fields
+        self.sp_main = sp_main
+        self.session_obj = self.sp_main.session_obj
 
         # field initialisations
         self.i_pk_ch = None
@@ -174,7 +175,7 @@ class UnitInfoTab(InfoWidget):
 
     def get_field(self, p_fld):
 
-        return self.main_obj.session_obj.get_mem_map_field(p_fld)
+        return self.session_obj.get_mem_map_field(p_fld)
 
     def get_unit_indices(self):
 
@@ -198,10 +199,9 @@ class UnitInfoTab(InfoWidget):
     def set_combobox_props(self):
 
         # field retrieval
-        s_obj = self.main_obj.session_obj
-        is_per_shank = s_obj.is_per_shank(False)
-        is_concat_run = s_obj.is_concat_run()
-        run_list = ['Concatenated Run'] if is_concat_run else s_obj.session.get_run_names()
+        is_per_shank = self.session_obj.is_per_shank(False)
+        is_concat_run = self.session_obj.is_concat_run()
+        run_list = ['Concatenated Run'] if is_concat_run else self.session_obj.session.get_run_names()
 
         # flag that the widgets are being manually updated
         self.is_updating = True
@@ -214,7 +214,7 @@ class UnitInfoTab(InfoWidget):
         self.run_type.set_enabled((not is_concat_run) and (len(run_list) > 1))
 
         # sets the shank type comobobox properties
-        self.shank_type.addItems(s_obj.get_shank_names(is_per_shank), True)
+        self.shank_type.addItems(self.session_obj.get_shank_names(is_per_shank), True)
         self.shank_type.set_current_index(0)
         self.shank_type.set_enabled(is_per_shank)
 
@@ -280,7 +280,7 @@ class UnitInfoTab(InfoWidget):
         self.reset_probe_roi_location(i_row)
 
         # retrieves
-        post_tab = self.main_obj.prop_manager.get_prop_tab('postprocess')
+        post_tab = self.sp_main.prop_manager.get_prop_tab('postprocess')
         if post_tab is not None:
             # flag that manual updating is occuring
             self.is_updating = True
@@ -305,7 +305,7 @@ class UnitInfoTab(InfoWidget):
         ch_pos_unit = self.ch_pos[self.i_pk_ch[self.i_unit_sel - 1] - 1, :]
 
         # resets the roi position
-        probe_view = self.main_obj.plot_manager.get_plot_view('probe')
+        probe_view = self.sp_main.plot_manager.get_plot_view('probe')
         if probe_view is not None:
             type_lbl = self.table.item(i_row, self.i_col_type).text().lower()
             probe_view.reset_unit_roi_position(i_ch_unit, ch_pos_unit, type_lbl)
@@ -345,14 +345,14 @@ class UnitInfoTab(InfoWidget):
         # field retrieval
         ch_pos0 = self.get_field('ch_pos')
         i_col_ch = np.where(q_hdr == 'maxChannels')[0][0]
-        probe_view = self.main_obj.plot_manager.get_plot_view('probe')
+        probe_view = self.sp_main.plot_manager.get_plot_view('probe')
 
         # re-maps the bombcell channel indices by height
         i_pk_ch0 = q_met[:, i_col_ch].astype(int)
         self.i_pk_ch, self.ch_pos = cf.map_bombcell_channels(i_pk_ch0, ch_pos0)
 
         # remaps the channel indices
-        i_shank = self.main_obj.session_obj.get_shank_index()
+        i_shank = self.session_obj.get_shank_index()
         if probe_view.sub_view.ch_map[i_shank] is None:
             probe_view.sub_view.remap_channel_indices(ch_pos0, i_shank)
 

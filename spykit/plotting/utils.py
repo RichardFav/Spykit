@@ -35,7 +35,7 @@ min_height = 670
 """
 
 
-class PlotManager(QWidget):
+class PlotManager(QObject):
     # signal functions
     probe_inset_button = pyqtSignal(object)
 
@@ -46,13 +46,15 @@ class PlotManager(QWidget):
     # parameters
     eps = 1e-6
 
-    def __init__(self, main_obj, plot_width, session_obj=None):
-        super(PlotManager, self).__init__()
+    def __init__(self, sp_main, plot_width):
+        super(PlotManager, self).__init__(sp_main)
 
         # main class fields
-        self.main_obj = main_obj
+        self.sp_main = sp_main
         self.plot_width = plot_width
-        self.session_obj = session_obj
+
+        # main sub-class fields
+        self.session_obj = self.sp_main.session_obj
 
         # field initialisation
         self.n_plot = 0
@@ -61,10 +63,13 @@ class PlotManager(QWidget):
         self.i_plot = None
         self.grid_id = None
 
-        # widget setup
+        # pre-calculations
         sz_layout = QSize(dlg_width - (info_width + x_gap), dlg_height)
-        self.main_layout = PlotLayout(self, sz_hint=sz_layout)
+
+        # widget setup
         self.bg_widget = QWidget()
+        self.main_widget = QWidget()
+        self.main_layout = PlotLayout(self.main_widget, sz_hint=sz_layout)
 
         # initialises the class fields
         self.init_class_fields()
@@ -79,8 +84,8 @@ class PlotManager(QWidget):
         pg.setConfigOptions(antialias=True)
 
         # sets the main widget properties
-        self.setSizePolicy(QSizePolicy(cf.q_exp, cf.q_exp))
-        self.setLayout(self.main_layout)
+        self.main_widget.setSizePolicy(QSizePolicy(cf.q_exp, cf.q_exp))
+        self.main_widget.setLayout(self.main_layout)
 
         # sets the widget layout properties
         self.main_layout.setSpacing(0)
@@ -114,7 +119,7 @@ class PlotManager(QWidget):
 
         # creates new plot type
         plot_constructor = vt.plot_types[p_type]
-        plot_new = plot_constructor(self.session_obj)
+        plot_new = plot_constructor(self.sp_main)
 
         # adds the new layout and updates the grid layout
         self.main_layout.addWidget(plot_new)
@@ -188,8 +193,8 @@ class PlotManager(QWidget):
 
         # sets the region configuration
         self.plots[p_id - 1].hide()
-        self.main_obj.prop_manager.set_region_config(c_id)
-        self.main_obj.reset_prop_tab_visible(c_id)
+        self.sp_main.prop_manager.set_region_config(c_id)
+        self.sp_main.reset_prop_tab_visible(c_id)
         self.update_plot_config(c_id)
 
     def get_plot_index(self, p_type):
@@ -198,7 +203,7 @@ class PlotManager(QWidget):
 
     def get_prop_tab(self, p_type):
 
-        return self.main_obj.prop_manager.get_prop_tab(p_type)
+        return self.sp_main.prop_manager.get_prop_tab(p_type)
 
     # ---------------------------------------------------------------------------
     # Probe-View Specific Functions
@@ -207,14 +212,14 @@ class PlotManager(QWidget):
     def clicked_probe(self, i_row):
 
         value = self.session_obj.channel_data.is_selected[i_row]
-        self.main_obj.info_manager.update_table_value("Channel Info", i_row, value)
+        self.sp_main.info_manager.update_table_value("Channel Info", i_row, value)
         self.reset_trace_views(2)
 
         # updates the trace spike markers (if removing channel selection)
-        if (self.main_obj.session_obj.post_data.n_mmap > 0):
+        if (self.session_obj.post_data.n_mmap > 0):
             for i_r, v in zip(i_row, value):
                 if not v:
-                    spike_tab = self.main_obj.prop_manager.get_prop_tab('tracespike')
+                    spike_tab = self.sp_main.prop_manager.get_prop_tab('tracespike')
                     spike_tab.clear_table_channel_selections(i_r + 1)
 
     def trace_highlight(self, is_on, i_contact=None):
@@ -237,7 +242,7 @@ class PlotManager(QWidget):
 
         # field retrieval
         plt_probe = self.plots[self.types['probe'] - 1]
-        unit_tab = self.main_obj.info_manager.get_info_tab('unit')
+        unit_tab = self.sp_main.info_manager.get_info_tab('unit')
         plt_probe.setup_unit_markers(unit_tab)
 
     def probe_highlight(self, i_contact):
@@ -330,7 +335,7 @@ class PlotManager(QWidget):
             match pv:
                 case 'postprocess':
                     # case is the post-processing view
-                    pp_tab = self.main_obj.prop_manager.get_prop_tab('postprocess')
+                    pp_tab = self.sp_main.prop_manager.get_prop_tab('postprocess')
                     if pp_tab is None:
                         continue
 
@@ -510,10 +515,11 @@ class PlotWidget(QWidget):
         }
     """
 
-    def __init__(self, p_type, b_icon=None, b_type=None, tt_lbl=None, p_layout=None):
+    def __init__(self, sp_main, p_type, b_icon=None, b_type=None, tt_lbl=None, p_layout=None):
         super(PlotWidget, self).__init__()
 
         # main class fields
+        self.sp_main = sp_main
         self.p_type = p_type
         self.b_icon = b_icon
         self.b_type = b_type
@@ -702,16 +708,13 @@ class PlotWidget(QWidget):
     # ---------------------------------------------------------------------------
 
     def click_plot_region(self, plot, *_):
-
+\
         if self.region_clicked:
             self.region_clicked = False
             return
 
-        if self.plt_manager is None:
-            self.plt_manager = cf.get_parent_widget(self, PlotManager)
-
         # updates the selected plot to the current
-        self.plt_manager.reset_plot_highlight(plot)
+        self.sp_main.plot_manager.reset_plot_highlight(plot)
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
@@ -728,6 +731,7 @@ class PlotWidget(QWidget):
 """
     UnitPlotLayout
 """
+
 
 class UnitPlotLayout(pg.PlotWidget):
     # pen objects

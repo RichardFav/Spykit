@@ -2,15 +2,15 @@
 import os
 import sys
 import time
+import threading
 
 # custom module import
 from testing.testing import Testing
-from spykit.common.common_func import q_yes_no
 from spykit.widgets.main_window import MainWindow
+from spykit.common.error_logging import ErrorHandler
 
 # pyqt6 module import
-from PyQt6.QtWidgets import (QApplication, QTreeWidget, QTreeWidgetItem, QTreeView, QProxyStyle, QStyleFactory,
-                             QWidget, QMessageBox)
+from PyQt6.QtWidgets import (QApplication, QTreeWidget, QTreeWidgetItem, QTreeView, QProxyStyle, QStyleFactory, QWidget)
 from PyQt6.QtGui import QFont
 
 # debugging parameters
@@ -19,24 +19,22 @@ test_type = 15
 
 ########################################################################################################################
 
-def error_logger(exctype, value, traceback):
+class SafeApplication(QApplication):
+    def notify(self, receiver, event):
+        try:
+            return super().notify(receiver, event)
+        except:
+            sys.excepthook(*sys.exc_info())
+            return False
 
-    e_str = (f'The following error has occurred:\n\n '
-             f' * Error Type: {exctype.__name__}\n '
-             f' * Error Message: {value}\n\nDo you still want to continue?')
-    u_choice = QMessageBox.question(None, 'Program Error', e_str, q_yes_no)
-
-    if u_choice == 'No':
-        # quit program here?
-        pass
-
-# Assign the handler to the system hook
-sys.excepthook = error_logger
+    def excepthook(self, exc_type, exc_value, exc_traceback):
+        custom_excepthook(exc_type, exc_value, exc_traceback)
 
 ########################################################################################################################
 
 if __name__ == '__main__':
 
+    # application/error handle setup
     app = QApplication(sys.argv)
 
     if is_testing:
@@ -46,7 +44,7 @@ if __name__ == '__main__':
 
     else:
         # case is running full program
-        h_app = MainWindow()
+        h_app = MainWindow(ErrorHandler())
 
     # Run the main Qt loop
     h_app.show()
