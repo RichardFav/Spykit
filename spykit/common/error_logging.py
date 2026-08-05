@@ -10,7 +10,116 @@ import spykit.common.common_widget as cw
 from spykit.common.common_func import q_yes_no, q_no
 
 # pyqt6 module import
-from PyQt6.QtWidgets import QMessageBox
+from PyQt6.QtWidgets import QMessageBox, QVBoxLayout, QHBoxLayout, QDialog, QFrame, QPlainTextEdit
+
+########################################################################################################################
+
+"""
+    QTableUndock:
+"""
+
+class ErrorHandlerDlg(QDialog):
+    # widget dimensions
+    x_gap = 5
+    dlg_width = 500
+    dlg_height = 250
+    hght_button_frame = 40
+
+    # array class fields
+    but_str = ['Continue Spykit', 'Close Spykit']
+    err_lbl = [
+        'There following error has been detected within Spykit:',
+        'Do you still want to continue running Spykit?'
+    ]
+
+    # widget styles
+    frame_style = QFrame.Shape.Box | QFrame.Shadow.Plain
+
+    def __init__(self, parent=None):
+        super(ErrorHandlerDlg, self).__init__(parent)
+
+        # class layouts
+        self.main_layout = QVBoxLayout()
+        self.error_layout = QVBoxLayout()
+        self.button_layout = QHBoxLayout()
+
+        # class widgets
+        self.error_frame = QFrame(self)
+        self.button_frame = QFrame(self)
+        self.err_list = QPlainTextEdit()
+
+        # initialises the class objects
+        self.init_class_fields()
+        self.init_error_frame()
+        self.init_button_frame()
+
+    def init_class_fields(self):
+
+        # sets the dialog window properties
+        self.setFixedSize(self.dlg_width, self.dlg_height)
+        self.setWindowTitle('Unexpected Program Error')
+        self.setLayout(self.main_layout)
+        self.main_layout.setSpacing(self.x_gap)
+
+        # adds the frames to the main widget
+        self.main_layout.addWidget(self.error_frame)
+        self.main_layout.addWidget(self.button_frame)
+
+    def init_error_frame(self):
+
+        # sets the error frame properties
+        self.error_frame.setLayout(self.error_layout)
+        self.error_frame.setFrameStyle(self.frame_style)
+        self.error_frame.setLineWidth(1)
+
+        # list widget properties
+        self.err_list.setStyleSheet("border: 1px solid black; color: red;")
+        self.err_list.setReadOnly(True)
+
+        # creates the text labels
+        h_lbl_top = cw.create_text_label(None, self.err_lbl[0], font=cw.font_lbl, align='left')
+        h_lbl_bot = cw.create_text_label(None, self.err_lbl[1], font=cw.font_lbl, align='left')
+
+        # adds the widgets to the error layout
+        self.error_layout.addWidget(h_lbl_top)
+        self.error_layout.addWidget(self.err_list)
+        self.error_layout.addWidget(h_lbl_bot)
+
+    def init_button_frame(self):
+
+        # initialisations
+        cb_fcn = [self.cont_spykit, self.close_spykit]
+
+        # sets the button frame properties
+        self.button_frame.setLayout(self.button_layout)
+        self.button_frame.setFixedHeight(self.hght_button_frame)
+        self.button_frame.setFrameStyle(self.frame_style)
+        self.button_frame.setLineWidth(1)
+
+        # button group layout properties
+        self.button_layout.setSpacing(0)
+        self.button_layout.setContentsMargins(self.x_gap, self.x_gap, self.x_gap, self.x_gap)
+
+        for bs, cb in zip(self.but_str, cb_fcn):
+            # creates the control button widgets
+            obj_but = cw.create_push_button(None, bs, cw.font_lbl)
+            obj_but.setFixedHeight(self.hght_button_frame - 2 * self.x_gap)
+            self.button_layout.addWidget(obj_but)
+
+            # sets the slot function
+            obj_but.clicked.connect(cb)
+
+    def set_error_message(self, err_msg):
+
+        self.err_list.setPlainText(err_msg)
+
+    def cont_spykit(self):
+
+        self.accept()
+
+    def close_spykit(self):
+
+        self.reject()
 
 ########################################################################################################################
 
@@ -22,6 +131,9 @@ class ErrorHandler:
 
         # class field initialisations
         self.main_window = None
+
+        # creates the error handler dialog
+        self.err_dlg = ErrorHandlerDlg()
 
         # ensures the log file directory exists
         if not os.path.exists(cw.log_dir):
@@ -43,13 +155,10 @@ class ErrorHandler:
         # closes the logger file
         self.close_logger(logger)
 
-        # prompts the user if they want to continue
-        e_str = (f'The following error has occurred:\n\n '
-                 f' * Error Type: {et.__name__}\n '
-                 f' * Error Message: {v}\n\nDo you still want to continue?')
-        u_choice = QMessageBox.question(None, 'Program Error', e_str, q_yes_no)
-        if u_choice == q_no:
-            # closes the window
+        # displays the error message to screen
+        self.err_dlg.set_error_message(self.setup_error_msg(et, v, tb))
+        if self.err_dlg.exec() == QDialog.DialogCode.Rejected:
+            # closes the program if prompted
             self.main_window.can_close = True
             self.main_window.close()
 
