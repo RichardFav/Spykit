@@ -15,7 +15,7 @@ from PyQt6.QtWidgets import QMessageBox, QVBoxLayout, QHBoxLayout, QDialog, QFra
 ########################################################################################################################
 
 """
-    QTableUndock:
+    ErrorHandlerDlg:
 """
 
 class ErrorHandlerDlg(QDialog):
@@ -122,6 +122,10 @@ class ErrorHandlerDlg(QDialog):
         self.reject()
 
 ########################################################################################################################
+
+"""
+    ErrorHandler:
+"""
 
 class ErrorHandler:
     # logger properties
