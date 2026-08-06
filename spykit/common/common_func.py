@@ -37,6 +37,7 @@ q_yes_no = q_yes | q_no
 q_yes_no_cancel = q_yes_no | q_cancel
 
 # boolean flags
+is_testing = True
 is_win = platform.system() == 'Windows'
 
 # common parameters
@@ -173,6 +174,9 @@ class ObservableThreadSafe:
 
 class SessionInfo:
     # initialisations
+    dot = chr(int('25CF', 16))
+    circle = chr(int('25CB', 16))
+    arrow = chr(int('1F81E', 16))
     param_name = 'spikeinterface_params.json'
 
     def __init__(self, session_obj):
@@ -198,20 +202,37 @@ class SessionInfo:
 
     def setup_session_string(self, use_hdr=True):
 
+        # module import
+        import spykit.common.common_widget as cw
+
         # string initialisation
         ses_str = 'Session Information:\n' if use_hdr else ""
 
         # sets up the session information string
         s_props = self.session_obj.session.get_session_props()
         for k, v in s_props.items():
-            ses_str = f"{ses_str} * {k} = {v}\n"
+            match k:
+                case 'subject_path':
+                    # case is the subject path
+                    if v.startswith(cw.main_dir):
+                        # case is the data folder/file is on the program path
+                        value = f'..{v[len(cw.main_dir):]}'
+
+                    else:
+                        # otherwise case (use folder/file path)
+                        value = v
+
+                case _:
+                    value = v
+
+            ses_str = f"{ses_str} {self.arrow} {cw.ses_map[k]}: {value}\n"
 
         return ses_str
 
     def setup_preprocessing_string(self, use_hdr=True):
 
         # string initialisation
-        pre_str = 'Preprocessing Information:\n' if use_hdr else ""
+        pre_str = 'Preprocessing Information:\n\n' if use_hdr else ""
 
         # sets up the preprocessing information string
         if self.session_obj.has_pp_runs():
@@ -221,28 +242,28 @@ class SessionInfo:
             is_concat_run = self.session_obj.is_concat_run()
 
             # main preprocessing fields
-            pre_str = f"{pre_str}\n * Shank Separated = {is_per_shank}\n"
-            pre_str = f"{pre_str} * Concatenated Runs = {is_concat_run}\n\n"
+            pre_str = f"{pre_str} {self.arrow} Shank Separated: {is_per_shank}\n"
+            pre_str = f"{pre_str} {self.arrow} Concatenated Runs: {is_concat_run}\n\n"
 
             # preprocessing step information
             for k, v in pp_steps.items():
-                pre_str = f"{pre_str} * Step {k}: {v[0]}\n"
+                pre_str = f"{pre_str} {self.arrow} Step {k}: {v[0]}\n"
                 for kk, vv in v[1].items():
                     # outputs the parameter for the current step
                     match kk:
                         case "channel_ids":
                             # case is the interpolation channel IDs
-                            pre_str = f"{pre_str}  - {kk}:\n"
+                            pre_str = f"{pre_str}  {self.dot} {kk}:\n"
                             for ch_id in vv:
-                                pre_str = f"{pre_str}    * {ch_id}\n"
+                                pre_str = f"{pre_str}    - {ch_id}\n"
 
                         case _:
                             # default case
-                            pre_str = f"{pre_str}  - {kk}: {vv}\n"
+                            pre_str = f"{pre_str}  {self.dot} {kk}: {vv}\n"
 
         else:
             # case is preprocessing has not taken place
-            pre_str = f"{pre_str} * Session Not Preprocessed\n"
+            pre_str = f"{pre_str} {self.arrow} Session Not Preprocessed\n"
 
         return pre_str
 
@@ -254,7 +275,7 @@ class SessionInfo:
         # sets up the spike sorting information string
         if not self.session_obj.is_session_sorted():
             # case is spike sorting has not taken place
-            sort_str = f"{sort_str} * Session Not Spike Sorted\n"
+            sort_str = f"{sort_str} {self.arrow} Session Not Spike Sorted\n"
             return sort_str
 
         # case is the session has been spike sorted
@@ -269,13 +290,13 @@ class SessionInfo:
         for k, v in data.items():
             if isinstance(v, dict):
                 # case is value field is a dictionary
-                sort_str = f"{sort_str} * {k}:\n"
+                sort_str = f"{sort_str} {self.arrow} {k}:\n"
                 for kk, vv in v.items():
-                    sort_str = f"{sort_str}  - {kk}: {vv}\n"
+                    sort_str = f"{sort_str}  {self.dot} {kk}: {vv}\n"
 
             else:
                 # otherwise, set the data field
-                sort_str = f"{sort_str} * {k}: {v}\n"
+                sort_str = f"{sort_str} {self.arrow} {k}: {v}\n"
 
         return sort_str
 
@@ -290,25 +311,25 @@ class SessionInfo:
         # sets up the spike sorting information string
         if (self.session_obj.post_data is None) or (self.session_obj.post_data.n_mmap == 0):
             # case is the session has been postprocessed
-            return f"{post_str} * Session Not Postprocessed\n"
+            return f"{post_str} {self.arrow} Session Not Postprocessed\n"
 
         # retrieves the postprocessed solution file name
         pp_data = self.session_obj.post_data
         if pp_data.is_saved[pp_data.i_mmap]:
             # case is the solution has been saved
             mmap_file = pp_data.mmap_name[pp_data.i_mmap]
-            post_str = f"{post_str} * Solution File = {mmap_file}\n"
+            post_str = f"{post_str} {self.arrow} Solution File: {mmap_file}\n\n"
 
         else:
             # case is the solution has not been saved to file
             mmap_file = 'File Not Saved'
-            post_str = f"{post_str} * File Not Saved\n"
+            post_str = f"{post_str} {self.arrow} File Not Saved\n\n"
 
         # postprocessing classification parameters
-        post_str = f"{post_str} * Classification Parameters:\n"
+        post_str = f"{post_str} {self.arrow} Classification Parameters:\n"
         for k, v in cw.param_map.items():
             p_val = self.session_obj.get_mem_map_field(k)
-            post_str = f"{post_str}  -  {v} = {p_val}\n"
+            post_str = f"{post_str}  {self.dot} {v}: {p_val}\n"
 
         return post_str
 
@@ -841,3 +862,8 @@ def subplot_geometry(s_plot):
     # returns the geometry encompassing all subplots
     x, y = np.min(x0), np.min(y0)
     return QRect(x, y, np.max(r) - x, np.max(b) - y)
+
+
+def is_dev():
+
+    return (is_win and is_testing) and (os.environ['COMPUTERNAME'] == "DESKTOP-NLLEH0V")

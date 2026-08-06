@@ -107,9 +107,8 @@ class MainWindow(QMainWindow):
         self.set_styles()
 
         # # REMOVE ME LATER
-        # if platform.system() == "Windows":
-        #     if os.environ['COMPUTERNAME'] == "DESKTOP-NLLEH0V":
-        #         self.testing()
+        # cf.is_dev():
+        #     self.testing()
 
     # ---------------------------------------------------------------------------
     # Class Widget Setup Functions
@@ -893,12 +892,19 @@ class MenuBar(QObject):
         # ---------------------------------------------------------------------------
 
         # initialisations
-        p_str = ['new', 'open', 'save', None, 'clear', 'default', None, 'close', 'err_test']
-        p_lbl = ['New Session', 'Load...', 'Save...', None, 'Clear Session',
-                 'Default Directories', None, 'Close Spykit', 'Error Test']
+        p_str = ['new', 'open', 'save', None, 'clear', 'info', 'default', None, 'close']
+        p_lbl = ['New Session', 'Load...', 'Save...', None, 'Clear Session', 'Session Information',
+                 'Default Directories', None, 'Close Spykit']
         has_ch = [False, True, True, False, False, False, False, False, False]
-        cb_fcn = [self.new_session, self.load_session, self.save_session, None,
-                  self.clear_session, self.default_dir, None, self.close_window, self.error_test]
+        cb_fcn = [self.new_session, self.load_session, self.save_session, None, self.clear_session,
+                  self.session_info, self.default_dir, None, self.close_window]
+
+        # REMOVE ME LATER
+        if cf.is_dev():
+            p_str += ['err_test']
+            p_lbl += ['Error Test']
+            has_ch += [False]
+            cb_fcn += [self.error_test]
 
         # adds the file menu items
         self.add_menu_items(h_menu_file, p_lbl, cb_fcn, p_str, True, has_ch=has_ch)
@@ -1085,6 +1091,10 @@ class MenuBar(QObject):
 
         # resets the status label
         self.info_manager.prog_widget.update_message_label()
+
+    def session_info(self):
+
+        cw.SessionProgress(self.sp_main).exec()
 
     def default_dir(self):
 
@@ -1794,14 +1804,14 @@ class MenuBar(QObject):
             case 'init':
                 # case is initialising/resetting
                 tool_off = ['save']
-                menu_off = ['save', 'clear', 'preprocessing', 'sorting', 'postprocess',
+                menu_off = ['save', 'clear', 'info', 'preprocessing', 'sorting', 'postprocess',
                             'clear_prep', 'clear_sort', 'clear_bombcell', 'load_trigger',
                             'load_config', 'load_postprocessed', 'save_preprocessed', 'save_preprocessed']
 
             case 'session-open':
                 # case is opening a bew session
                 tool_on = ['save']
-                menu_on = ['save', 'clear', 'preprocessing', 'load_trigger', 'load_config']
+                menu_on = ['save', 'clear', 'info', 'preprocessing', 'load_trigger', 'load_config']
 
             case 'post-preprocess':
                 # case is post pre-processing

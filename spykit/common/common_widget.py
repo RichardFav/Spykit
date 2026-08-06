@@ -12,17 +12,17 @@ from copy import deepcopy
 from pathlib import PosixPath
 from skimage.measure import label, regionprops
 
-#
-from pyqtgraph import (ViewBox, RectROI, InfiniteLine, ColorMap, colormap, TextItem)
-
-# custom module import
+# spykit module import
 import spykit.common.common_func as cf
 from spykit.threads.utils import ThreadWorker
 
+# pyqtgraph module imports
+from pyqtgraph import (ViewBox, RectROI, InfiniteLine, ColorMap, colormap, TextItem)
+
 # pyqt6 module import
 from PyQt6.QtWidgets import (QWidget, QHBoxLayout, QGridLayout, QVBoxLayout, QPushButton, QGroupBox, QTabWidget,
-                             QFormLayout, QLabel, QCheckBox, QLineEdit, QComboBox, QSizePolicy, QFileDialog,
-                             QApplication, QTreeView, QFrame, QRadioButton, QAbstractItemView, QStylePainter,
+                             QFormLayout, QLabel, QCheckBox, QLineEdit, QComboBox, QSizePolicy, QFileDialog, QFrame,
+                             QApplication, QTreeView, QRadioButton, QAbstractItemView, QStylePainter, QPlainTextEdit,
                              QStyleOptionComboBox, QStyle, QProxyStyle, QItemDelegate, QTreeWidget, QTreeWidgetItem,
                              QHeaderView, QStyleOptionButton, QTableWidgetItem, QProgressBar, QSpacerItem, QMessageBox,
                              QStyledItemDelegate, QDialog, QTableWidget, QListWidget, QSpinBox, QAbstractSpinBox)
@@ -143,6 +143,7 @@ f_mode = {
     'config': "Spykit Pipeline Config File (*.cfig)",
     'filter': "Unit Filter Options (*.filt)",
     'saveview': "Portable Network Graphics File (*.png)",
+    'text': "ASCII Text File (*.txt)",
 }
 
 f_name = {
@@ -153,7 +154,8 @@ f_name = {
 }
 
 # parameter/resource folder paths
-resource_dir = os.path.join(os.getcwd(), 'spykit', 'resources').replace('\\', '/')
+main_dir = os.getcwd().replace('\\', '/')
+resource_dir = os.path.join(main_dir, 'spykit', 'resources').replace('\\', '/')
 icon_dir = os.path.join(resource_dir, 'icons').replace('\\', '/')
 para_dir = os.path.join(resource_dir, 'parameters').replace('\\', '/')
 log_dir = os.path.join(resource_dir, 'logging').replace('\\', '/')
@@ -246,6 +248,16 @@ cmap = {
         'cubehelix', 'brg', 'gist_rainbow', 'rainbow', 'jet',
         'turbo', 'nipy_spectral', 'gist_ncar'
     ],
+}
+
+# session properties variable-name mapping dictionary
+ses_map = {
+    'format_type': 'Format Type',
+    'subject_path': 'Subject Path',
+    'session_name': 'Session Name',
+    'file_format': 'File Format',
+    'run_names': 'Run Names',
+    'output_path': 'Output Path',
 }
 
 # bombcell variable-name mapping dictionary
@@ -353,6 +365,153 @@ def create_font_obj(size=8, is_bold=False, font_weight=QFont.Weight.Normal):
 
 # ----------------------------------------------------------------------------------------------------------------------
 # SPECIAL WIDGETS
+# ----------------------------------------------------------------------------------------------------------------------
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+"""
+    SessionProgress:
+"""
+
+
+class SessionProgress(QDialog):
+    # widget dimensions
+    x_gap = 5
+    dlg_width = 650
+    dlg_height = 450
+    hght_button_frame = 40
+
+    # array class fields
+    but_str = ['Save Session Details', 'Close Dialog']
+    info_tab = ['Session', 'Preprocessing', 'Spike Sorting', 'Postprocessing']
+
+    # widget styles
+    list_style = "border: 1px solid black;"
+    frame_style = QFrame.Shape.Box | QFrame.Shadow.Plain
+
+    def __init__(self, sp_main):
+        super(SessionProgress, self).__init__(sp_main)
+
+        # main class fields
+        self.sp_main = sp_main
+        self.session_obj = self.sp_main.session_obj
+        self.ses_info = cf.SessionInfo(self.session_obj)
+
+        # class layouts
+        self.main_layout = QVBoxLayout()
+        self.prog_layout = QVBoxLayout()
+        self.button_layout = QHBoxLayout()
+
+        # class widgets
+        self.prog_frame = QFrame()
+        self.button_frame = QFrame()
+        self.prog_tab_grp = create_tab_group(self)
+
+        # initialises the class objects
+        self.init_class_fields()
+        self.init_prog_frame()
+        self.init_button_frame()
+
+    def init_class_fields(self):
+
+        # sets the dialog window properties
+        self.setFixedSize(self.dlg_width, self.dlg_height)
+        self.setWindowTitle('Spykit Session Properties')
+        self.setLayout(self.main_layout)
+        self.setModal(True)
+
+        # adds the frames to the main widget
+        self.main_layout.setSpacing(self.x_gap)
+        self.main_layout.addWidget(self.prog_frame)
+        self.main_layout.addWidget(self.button_frame)
+
+    def init_prog_frame(self):
+
+        # sets the progress frame properties
+        self.prog_frame.setLayout(self.prog_layout)
+        self.prog_frame.setFrameStyle(self.frame_style)
+        self.prog_frame.setLineWidth(1)
+
+        # adds the tab group and tabs to the progress frame
+        self.prog_layout.addWidget(self.prog_tab_grp)
+        for it in self.info_tab:
+            tab_widget = self.create_info_tab(it)
+            self.prog_tab_grp.addTab(tab_widget, it)
+
+    def create_info_tab(self, tab_lbl):
+
+        # tab widget/layouts
+        tab_widget = QWidget()
+        tab_layout = QVBoxLayout()
+        info_list = QPlainTextEdit()
+
+        # sets the tab widget properties
+        tab_widget.setLayout(tab_layout)
+        tab_layout.addWidget(info_list)
+
+        # sets the listbox properties
+        info_list.setStyleSheet(self.list_style)
+        info_list.setReadOnly(True)
+        info_list.setPlainText(self.get_list_text(tab_lbl))
+
+        return tab_widget
+
+    def get_list_text(self, tab_lbl):
+
+        match tab_lbl:
+            case 'Session':
+                return self.ses_info.setup_session_string(False)
+
+            case 'Preprocessing':
+                return self.ses_info.setup_preprocessing_string(False)
+
+            case 'Spike Sorting':
+                return self.ses_info.setup_sorting_string(False)
+
+            case 'Postprocessing':
+                return self.ses_info.setup_postprocessing_string(False)
+
+    def init_button_frame(self):
+
+        # initialisations
+        cb_fcn = [self.save_props, self.close_window]
+
+        # sets the button frame properties
+        self.button_frame.setLayout(self.button_layout)
+        self.button_frame.setFixedHeight(self.hght_button_frame)
+        self.button_frame.setFrameStyle(self.frame_style)
+        self.button_frame.setLineWidth(1)
+
+        # button group layout properties
+        self.button_layout.setSpacing(0)
+        self.button_layout.setContentsMargins(self.x_gap, self.x_gap, self.x_gap, self.x_gap)
+
+        for bs, cb in zip(self.but_str, cb_fcn):
+            # creates the control button widgets
+            obj_but = create_push_button(None, bs, font_lbl)
+            obj_but.setFixedHeight(self.hght_button_frame - 2 * self.x_gap)
+            self.button_layout.addWidget(obj_but)
+
+            # sets the slot function
+            obj_but.clicked.connect(cb)
+
+    def save_props(self):
+
+        # prompts the user for the filter option file
+        file_dlg = FileDialogModal(
+            None, "Set File Name", f_mode["text"], str(log_dir), is_save=True,
+        )
+        if file_dlg.exec() == QDialog.DialogCode.Accepted:
+            # outputs the filter options to file
+            file_path = cf.get_selected_file_path(file_dlg, f_mode["text"])
+            with open(file_path, "w", encoding="utf-8") as file:
+                file.writelines(self.ses_info.get_full_session_info())
+
+    def close_window(self):
+
+        self.close()
+
+
 # ----------------------------------------------------------------------------------------------------------------------
 
 """

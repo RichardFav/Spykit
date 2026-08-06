@@ -33,6 +33,7 @@ class ErrorHandlerDlg(QDialog):
     ]
 
     # widget styles
+    list_style = "border: 1px solid black; color: red;"
     frame_style = QFrame.Shape.Box | QFrame.Shadow.Plain
 
     def __init__(self, parent=None):
@@ -73,7 +74,7 @@ class ErrorHandlerDlg(QDialog):
         self.error_frame.setLineWidth(1)
 
         # list widget properties
-        self.err_list.setStyleSheet("border: 1px solid black; color: red;")
+        self.err_list.setStyleSheet(self.list_style)
         self.err_list.setReadOnly(True)
 
         # creates the text labels
