@@ -4,6 +4,7 @@ import re
 import sys
 import math
 import time
+import json
 import string
 import random
 import platform
@@ -164,6 +165,152 @@ class ObservableThreadSafe:
     def set_callback(self, callback):
         self._callback = callback
 
+# ----------------------------------------------------------------------------------------------------------------------
+
+"""
+    SessionInfo:
+"""
+
+class SessionInfo:
+    # initialisations
+    param_name = 'spikeinterface_params.json'
+
+    def __init__(self, session_obj):
+
+        # input arguments
+        self.session_obj = session_obj
+
+    def get_full_session_info(self):
+
+        if self.session_obj.session is None:
+            # case is no session is loaded
+            return "No Session Loaded\n"
+
+        else:
+            # sets up the session workflow information strings
+            ses_str = self.setup_session_string()
+            pre_str = self.setup_preprocessing_string()
+            sort_str = self.setup_sorting_string()
+            post_str = self.setup_postprocessing_string()
+
+            # returns the full string
+            return f"{ses_str}\n{pre_str}\n{sort_str}\n{post_str}"
+
+    def setup_session_string(self, use_hdr=True):
+
+        # string initialisation
+        ses_str = 'Session Information:\n' if use_hdr else ""
+
+        # sets up the session information string
+        s_props = self.session_obj.session.get_session_props()
+        for k, v in s_props.items():
+            ses_str = f"{ses_str} * {k} = {v}\n"
+
+        return ses_str
+
+    def setup_preprocessing_string(self, use_hdr=True):
+
+        # string initialisation
+        pre_str = 'Preprocessing Information:\n' if use_hdr else ""
+
+        # sets up the preprocessing information string
+        if self.session_obj.has_pp_runs():
+            # case is the session has been preprocessed
+            pp_steps = self.session_obj.session.prep_obj.pp_steps_new
+            is_per_shank = self.session_obj.is_per_shank()
+            is_concat_run = self.session_obj.is_concat_run()
+
+            # main preprocessing fields
+            pre_str = f"{pre_str}\n * Shank Separated = {is_per_shank}\n"
+            pre_str = f"{pre_str} * Concatenated Runs = {is_concat_run}\n\n"
+
+            # preprocessing step information
+            for k, v in pp_steps.items():
+                pre_str = f"{pre_str} * Step {k}: {v[0]}\n"
+                for kk, vv in v[1].items():
+                    # outputs the parameter for the current step
+                    match kk:
+                        case "channel_ids":
+                            # case is the interpolation channel IDs
+                            pre_str = f"{pre_str}  - {kk}:\n"
+                            for ch_id in vv:
+                                pre_str = f"{pre_str}    * {ch_id}\n"
+
+                        case _:
+                            # default case
+                            pre_str = f"{pre_str}  - {kk}: {vv}\n"
+
+        else:
+            # case is preprocessing has not taken place
+            pre_str = f"{pre_str} * Session Not Preprocessed\n"
+
+        return pre_str
+
+    def setup_sorting_string(self, use_hdr=True):
+
+        # string initialisation
+        sort_str = "Spike Sorting Information:\n" if use_hdr else ""
+
+        # sets up the spike sorting information string
+        if not self.session_obj.is_session_sorted():
+            # case is spike sorting has not taken place
+            sort_str = f"{sort_str} * Session Not Spike Sorted\n"
+            return sort_str
+
+        # case is the session has been spike sorted
+        sort_path = self.session_obj.get_sorting_folder_paths()
+        param_file = os.path.join(sort_path[0][0], self.param_name)
+
+        # Open the file and parse the full JSON content
+        with open(param_file, 'r', encoding='utf-8') as file:
+            data = json.load(file)
+
+        # sets up the spike sorting parameter fields
+        for k, v in data.items():
+            if isinstance(v, dict):
+                # case is value field is a dictionary
+                sort_str = f"{sort_str} * {k}:\n"
+                for kk, vv in v.items():
+                    sort_str = f"{sort_str}  - {kk}: {vv}\n"
+
+            else:
+                # otherwise, set the data field
+                sort_str = f"{sort_str} * {k}: {v}\n"
+
+        return sort_str
+
+    def setup_postprocessing_string(self, use_hdr=True):
+
+        # module import
+        import spykit.common.common_widget as cw
+
+        # string initialisation
+        post_str = "Postprocessing Information:\n" if use_hdr else ""
+
+        # sets up the spike sorting information string
+        if (self.session_obj.post_data is None) or (self.session_obj.post_data.n_mmap == 0):
+            # case is the session has been postprocessed
+            return f"{post_str} * Session Not Postprocessed\n"
+
+        # retrieves the postprocessed solution file name
+        pp_data = self.session_obj.post_data
+        if pp_data.is_saved[pp_data.i_mmap]:
+            # case is the solution has been saved
+            mmap_file = pp_data.mmap_name[pp_data.i_mmap]
+            post_str = f"{post_str} * Solution File = {mmap_file}\n"
+
+        else:
+            # case is the solution has not been saved to file
+            mmap_file = 'File Not Saved'
+            post_str = f"{post_str} * File Not Saved\n"
+
+        # postprocessing classification parameters
+        post_str = f"{post_str} * Classification Parameters:\n"
+        for k, v in cw.param_map.items():
+            p_val = self.session_obj.get_mem_map_field(k)
+            post_str = f"{post_str}  -  {v} = {p_val}\n"
+
+        return post_str
 
 # ----------------------------------------------------------------------------------------------------------------------
 

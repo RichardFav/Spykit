@@ -6,13 +6,13 @@ import traceback
 from datetime import datetime
 
 # spike pipeline imports
+import spykit.common.common_func as cf
 import spykit.common.common_widget as cw
-from spykit.common.common_func import q_yes_no, q_no
 
 # pyqt6 module import
 from PyQt6.QtWidgets import QMessageBox, QVBoxLayout, QHBoxLayout, QDialog, QFrame, QPlainTextEdit
 
-########################################################################################################################
+# ----------------------------------------------------------------------------------------------------------------------
 
 """
     ErrorHandlerDlg:
@@ -121,7 +121,7 @@ class ErrorHandlerDlg(QDialog):
 
         self.reject()
 
-########################################################################################################################
+# ----------------------------------------------------------------------------------------------------------------------
 
 """
     ErrorHandler:
@@ -129,7 +129,8 @@ class ErrorHandlerDlg(QDialog):
 
 class ErrorHandler:
     # logger properties
-    fmt_str = ('[%(asctime)s]\n\nSession = %(ses_info)s\n\n%(message)s')
+    break_str = '*' * 100
+    fmt_str = ('[%(asctime)s]\n\n%(message)s\n%(ses_info)s')
 
     def __init__(self):
 
@@ -148,19 +149,20 @@ class ErrorHandler:
 
     def error_logger(self, et, v, tb):
 
+        err_msg = self.setup_error_msg(et, v, tb)
+
         # Log the complete error message along with its traceback stack
         logger = self.create_logger()
         logger.error(
-            "",
-            exc_info=(et, v, tb),
-            extra={"ses_info": self.get_session_info()}
+            f"{self.break_str}\n\n{err_msg}",
+            extra={"ses_info": self.get_session_info()},
         )
 
         # closes the logger file
         self.close_logger(logger)
 
         # displays the error message to screen
-        self.err_dlg.set_error_message(self.setup_error_msg(et, v, tb))
+        self.err_dlg.set_error_message(err_msg)
         if self.err_dlg.exec() == QDialog.DialogCode.Rejected:
             # closes the program if prompted
             self.main_window.can_close = True
@@ -182,23 +184,33 @@ class ErrorHandler:
 
         return logger
 
-    def get_session_info(self):
-
-        if self.main_window.session_obj.session is None:
-            return "No Session Loaded"
-
-        else:
-            session = self.main_window.session_obj.session
-            s_props = session.get_session_props()
-
-            return 'Moo'
+    # ---------------------------------------------------------------------------
+    # Class Getter Functions
+    # ---------------------------------------------------------------------------
 
     def get_log_file_name(self):
 
         now = datetime.now()
         date_str = now.strftime("%Y_%m_%d_%H_%M_%S")
 
-        return os.path.join(cw.log_dir, f"error ({date_str}).log")
+        return os.path.join(cw.log_dir, f"error_log ({date_str}).log")
+
+    def get_session_info(self):
+
+        if self.main_window.session_obj.session is None:
+            # case is no session is loaded
+            ses_info = "No Session Loaded\n"
+
+        else:
+            # sets up the session information object
+            s_info = cf.SessionInfo(self.main_window.session_obj)
+            ses_info = s_info.get_full_session_info()
+
+        return f"{self.break_str}\n\n{ses_info}\n{self.break_str}"
+
+    # ---------------------------------------------------------------------------
+    # Class Getter Functions
+    # ---------------------------------------------------------------------------
 
     def set_main_window(self, main_window):
 
@@ -211,6 +223,10 @@ class ErrorHandler:
         handler = logger.handlers[0]
         handler.close()
         logger.removeHandler(handler)
+
+    # ---------------------------------------------------------------------------
+    # String Setup Functions
+    # ---------------------------------------------------------------------------
 
     @staticmethod
     def setup_error_msg(et, v, tb):

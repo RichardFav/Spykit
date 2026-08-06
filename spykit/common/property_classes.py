@@ -98,19 +98,6 @@ class SessionWorkBook(QObject):
 
         return probe_rec.get_channel_ids()
 
-        # if (len(self.session._s._pp_runs) == 0) or is_raw:
-        #     # case is no preprocessing has taken place
-        #     rec_runs = self.session._s._raw_runs[0]._raw
-        #     rec_run = rec_runs[list(rec_runs.keys())[0]]
-        #
-        # else:
-        #     # case is preprocessing has taken place
-        #     pp = self.session._s._pp_runs[0]._preprocessed
-        #     rec_runs = list(pp.values())[0]
-        #     rec_run = rec_runs[list(rec_runs.keys())[-1]]
-        #
-        # return rec_run.get_channel_ids()
-
     def get_info_data_frame(self, probe=None):
 
         # array fields
@@ -774,7 +761,6 @@ class SessionWorkBook(QObject):
 
 # ----------------------------------------------------------------------------------------------------------------------
 
-
 """
     SessionObject:
 """
@@ -1357,7 +1343,7 @@ class PostProcessData(QObject):
     def read_post_process(self, mm_file):
 
         # creates the memory map object
-        pmm_obj = PostMemMap(self.parent())
+        pmm_obj = PostMemMap(self.parent().session_obj)
 
         if (self.n_mmap == 0):
             self.i_mmap = 0

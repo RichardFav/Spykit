@@ -22,12 +22,12 @@ class PostMemMap(QObject):
     n_hdr_nonsoma = 2
     n_dim_para = 11
 
-    def __init__(self, parent):
+    def __init__(self, session_obj, parent=None):
         super(PostMemMap, self).__init__(parent)
 
         # field initialsiation
         self.mmap_file = None
-        self.session_obj = self.parent().session_obj
+        self.session_obj = session_obj
 
     def set_mmap_file(self, mmap_file_new):
 
