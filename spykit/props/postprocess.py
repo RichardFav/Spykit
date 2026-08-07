@@ -161,7 +161,7 @@ class PostProcProps(PropWidget):
 
         # resets the post-processing tabs/views
         if not self.is_updating:
-            self.sp_main.post_process_change(h_combo.currentIndex())
+            self.sp_main.prop_manager.post_process_change(h_combo.currentIndex())
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions

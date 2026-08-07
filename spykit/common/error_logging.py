@@ -176,7 +176,7 @@ class ErrorHandler:
         logger.setLevel(logging.ERROR)
 
         # creates file handler
-        f_handler = logging.FileHandler(self.get_log_file_name())
+        f_handler = logging.FileHandler(self.get_log_file_name(), mode="w", encoding="utf-8")
 
         # creates formatter and adds to handler
         formatter = logging.Formatter(self.fmt_str)

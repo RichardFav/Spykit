@@ -963,7 +963,7 @@ class SessionFile(QWidget):
 
         if not self.is_updating:
             self.use_run[item.row()] = item.checkState() == cf.chk_state[True]
-            self.parent().set_toolbar_props('open', np.any(self.use_run))
+            self.open_ses.set_toolbar_props('open', np.any(self.use_run))
 
     def set_styling(self):
 

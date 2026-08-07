@@ -581,7 +581,7 @@ class MainWindow(QMainWindow):
         mm_file = self.session_obj.setup_mmap_files(mm_name)
 
         # creates the memory map object
-        pmm_obj = PostMemMap(self)
+        pmm_obj = PostMemMap(self.session_obj)
         pmm_obj.progress_fcn.connect(self.postprocessing_progress)
 
         # array dimensioning

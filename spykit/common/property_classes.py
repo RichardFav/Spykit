@@ -50,8 +50,11 @@ class SessionWorkBook(QObject):
     # c_hdr_ch = ['', 'Keep?', 'Status', 'Channel ID#', 'Contact ID#', 'Channel Index', 'X-Coord', 'Y-Coord', 'Shank ID']
     c_hdr_ch = ['', 'Keep?', 'Status', 'Channel ID#', 'Contact ID#', 'X-Coord', 'Y-Coord', 'Shank ID']
 
-    def __init__(self, parent):
-        super(SessionWorkBook, self).__init__(parent)
+    def __init__(self, sp_main):
+        super(SessionWorkBook, self).__init__(sp_main)
+
+        # main class fields
+        self.sp_main = sp_main
 
         # initialisation flag
         self.state = 0
@@ -662,7 +665,7 @@ class SessionWorkBook(QObject):
     def reset_session(self, ses_data, ssf_file):
 
         # resets the session object
-        self.session = SessionObject(self.parent(), ses_data['session_props'], ssf_file, self.worker_job_started)
+        self.session = SessionObject(self.sp_main, ses_data['session_props'], ssf_file, self.worker_job_started)
         self.session.channel_calc.connect(self.channel_calc)
         self.session.prep_prop_update.connect(self.prep_prop_update)
 
@@ -704,7 +707,7 @@ class SessionWorkBook(QObject):
 
         if self.post_data is not None:
             # removes the item from the
-            pp_tab = self.parent().prop_manager.get_prop_tab('postprocess')
+            pp_tab = self.sp_main.prop_manager.get_prop_tab('postprocess')
             pp_tab.remove_soln_file(i_mmap_rmv)
 
             # removes the memory map
@@ -736,7 +739,7 @@ class SessionWorkBook(QObject):
             _probe_current = _self.get_current_recording_probe()
             _self.channel_data = ChannelData(_probe_current)
             _self.session_props = SessionProps(_probe_current)
-            _self.post_data = PostProcessData(_self.parent())
+            _self.post_data = PostProcessData(_self.sp_main)
             _self.session.load_sorting_para(_self)
 
             # connects the signal functions
@@ -775,8 +778,8 @@ class SessionObject(QObject):
     # parameters
     dy_min = 1.5
 
-    def __init__(self, parent, s_props, ssf_file=None, sig_fcn=None):
-        super(SessionObject, self).__init__(parent)
+    def __init__(self, sp_main, s_props, ssf_file=None, sig_fcn=None):
+        super(SessionObject, self).__init__(sp_main)
 
         # class field initialisations
         self._s = None
@@ -784,7 +787,7 @@ class SessionObject(QObject):
         self.sig_fcn = sig_fcn
 
         # other class field retrieval
-        self.sp_main = self.parent().parent()
+        self.sp_main = sp_main
 
         # bad/sync channels
         self.bad_ch = None
@@ -1318,9 +1321,12 @@ class PostProcessData(QObject):
     # pyqtsignal functions
     added_pp = pyqtSignal(str)
 
-    def __init__(self, parent):
+    def __init__(self, sp_main):
         # initialises the property widget
-        super(PostProcessData, self).__init__(parent)
+        super(PostProcessData, self).__init__(sp_main)
+
+        # main class fields
+        self.sp_main = sp_main
 
         # field initialisation
         self.mmap = []
@@ -1343,7 +1349,7 @@ class PostProcessData(QObject):
     def read_post_process(self, mm_file):
 
         # creates the memory map object
-        pmm_obj = PostMemMap(self.parent().session_obj)
+        pmm_obj = PostMemMap(self.sp_main.session_obj)
 
         if (self.n_mmap == 0):
             self.i_mmap = 0
