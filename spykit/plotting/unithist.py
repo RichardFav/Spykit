@@ -173,9 +173,15 @@ class UnitHistPlot(PlotWidget):
 
     def update_hist_config(self, check_dim=True):
 
+        # determines if the array dimensions are equal
+        if self.plot_layout.g_id is None:
+            is_dim_equal = False
+        else:
+            is_dim_equal = np.array_equal(self.plot_layout.g_id.shape, [self.n_r + 1, self.n_c])
+
         # if there is no change in configuration, then exit
-        if check_dim and (self.plot_layout.g_id is not None):
-            if np.array_equal(self.plot_layout.g_id.shape, [self.n_r + 1, self.n_c]):
+        if (self.plot_layout.g_id is not None) and check_dim:
+            if is_dim_equal:
                 return
 
         # memory allocation
@@ -187,6 +193,11 @@ class UnitHistPlot(PlotWidget):
         xi_g[self.n_c:(self.n_c + len(self.i_met))] = self.i_met + 2
         g_id = xi_g.reshape(self.n_r + 1, self.n_c)
         g_id[0, :] = 1
+
+        # hides and sub-plots which have been deselected
+        if self.plot_layout.g_id is not None:
+            for g_idh in self.plot_layout.g_id[self.plot_layout.g_id > 1]:
+                self.plot_layout._items[g_idh].widget().hide()
 
         # updates the plot layout
         self.plot_layout.updateID(g_id)
@@ -385,6 +396,7 @@ class UnitHist(UnitPlotLayout):
     # widget dimensions
     py_gap = 0.15
     px_gap = 0.02
+    py_max = 0.05
     py_thresh = 0.9
     grid_alpha = 0.25
     py_title = 5
@@ -456,6 +468,8 @@ class UnitHist(UnitPlotLayout):
         # creates the title label
         self.title_lbl = cw.create_text_label(
             None, 'TEST', font=self.unit_props.title_sub_font, align='center')
+        # self.title_lbl.setStyleSheet("background-color: transparent;")
+
         self.sp_layout.addWidget(self.title_lbl, 0, 0, 1, 1)
         self.title_lbl.raise_()
 
@@ -788,7 +802,7 @@ class UnitHist(UnitPlotLayout):
 
         # sets the overall y-axis max limit
         y_max_h = np.floor(math.log10(y_max) - 1)
-        self.y_lim_max = cf.round_up(y_max, -y_max_h)
+        self.y_lim_max = (1 + self.py_max) * cf.round_up(y_max, -y_max_h)
         self.y_lim_min = [self.get_max_lim_value(0.01),
                           self.get_max_lim_value(self.py_gap)]
 

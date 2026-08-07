@@ -795,6 +795,7 @@ class PlotLayout(QLayout):
 
         # field initialisation
         self.g_id = g_id
+        self.g_id0 = g_id
         self._items = []
         self._sz_hint = sz_hint
         self.p_dim = [None, None]
@@ -877,6 +878,7 @@ class PlotLayout(QLayout):
 
     def updateID(self, _g_id, force_update=True):
         """Updates the grid ID flags"""
+        self.g_id0 = deepcopy(self.g_id)
         self.g_id = _g_id
 
         if force_update:

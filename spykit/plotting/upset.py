@@ -201,14 +201,20 @@ class UpSetPlot(PlotWidget):
         # Interaction Size Subplot
         # -----------------------------------------------------------------------
 
-        # plotting values
-        x_int = np.array(range(len(n_count))) + 0.5
+        # updates the interaction bar graph item
+        if len(n_count):
+            x_int = np.array(range(len(n_count))) + 0.5
+            self.bg_int.setOpts(x=x_int, height=n_count, width=0.6)
+            self.h_plot[0].plotItem.vb.setYRange(0, n_count[0], padding=self.x_pad)
+            self.h_plot[0].plotItem.vb.setXRange(0, len(n_count), padding=self.x_pad)
+            y_tick_int = self.set_axis_tick_labels(self.h_plot[0].plotItem, 1)
 
-        # updates the interatction bar graph item
-        self.bg_int.setOpts(x=x_int, height=n_count, width=0.6)
-        self.h_plot[0].plotItem.vb.setYRange(0, n_count[0], padding=self.x_pad)
-        self.h_plot[0].plotItem.vb.setXRange(0, len(n_count), padding=self.x_pad)
-        y_tick_int = self.set_axis_tick_labels(self.h_plot[0].plotItem, 1)
+        else:
+            x_int = np.array(1) + 0.5
+            self.bg_int.setOpts(x=x_int, height=[1], width=0.6)
+            self.h_plot[0].plotItem.vb.setYRange(0, 1, padding=self.x_pad)
+            self.h_plot[0].plotItem.vb.setXRange(0, 1, padding=self.x_pad)
+            y_tick_int = self.set_axis_tick_labels(self.h_plot[0].plotItem, 1)
 
         # other axes properties
         v_rng_int = self.h_plot[0].plotItem.vb.viewRange()
@@ -224,7 +230,14 @@ class UpSetPlot(PlotWidget):
         # creates the bar plot
         self.bg_set.setOpts(x0=0, y=y_set, height=0.6, width=s_count)
         self.h_plot[1].plotItem.vb.setYRange(0, n_data, padding=self.x_pad)
-        self.h_plot[1].plotItem.vb.setXRange(0, np.max(s_count), padding=self.y_pad)
+
+        # resets the plot x-axis range
+        if np.max(s_count) == 0:
+            self.h_plot[1].plotItem.vb.setXRange(0, 1, padding=self.y_pad)
+        else:
+            self.h_plot[1].plotItem.vb.setXRange(0, np.max(s_count), padding=self.y_pad)
+
+        # updates the axis ticklabels
         self.set_axis_tick_labels(self.h_plot[1].plotItem, 0)
 
         # #
@@ -280,7 +293,10 @@ class UpSetPlot(PlotWidget):
                                 symbol='o', symbolpen='k', symbolSize=self.m_size)
 
         # y-axis dummy tick labels
-        y_tick_set = [(y_plt[-1], y_tick_int[-1][1])]
+        if len(p_type):
+            y_tick_set = [(y_plt[-1], y_tick_int[-1][1])]
+        else:
+            y_tick_set = [(1.5, y_tick_int[-1][1])]
 
         # updates the viewbox properties
         self.h_plot[2].plotItem.vb.setYRange(y_lim_set[0], y_lim_set[1], padding=0)
