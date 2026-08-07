@@ -698,7 +698,7 @@ class InfoManager(QObject):
         # retrieves the table widget
         table_obj = self.get_table_widget(t_type)
         i_row = int(table_obj.item(i_row_s, self.i_col_ch).text()) - 1
-        self.update()
+        self.main_widget.update()
 
         match t_type.lower():
             case 'channel':

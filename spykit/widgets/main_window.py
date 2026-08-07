@@ -1121,8 +1121,7 @@ class MenuBar(QObject):
 
     def error_test(self):
 
-        # REMOVE ME LATER
-        a
+        raise ValueError("This is a test error")
 
     # ---------------------------------------------------------------------------
     # Load Menubar Functions
