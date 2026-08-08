@@ -416,7 +416,7 @@ class SessionProgress(QDialog):
 
         # sets the dialog window properties
         self.setFixedSize(self.dlg_width, self.dlg_height)
-        self.setWindowTitle('Spykit Session Properties')
+        self.setWindowTitle('Spykit Session Information')
         self.setLayout(self.main_layout)
         self.setModal(True)
 
