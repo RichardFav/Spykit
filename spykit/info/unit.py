@@ -430,6 +430,9 @@ class UnitInfoTab(InfoWidget):
         if self.is_updating:
             return
 
+        elif self.is_filt is None:
+            self.get_filtered_items()
+
         # field retrieval
         item_sel = self.table.selectedItems()
         i_col = item_sel[0].column() if len(item_sel) else 0

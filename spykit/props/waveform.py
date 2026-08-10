@@ -70,6 +70,7 @@ class WaveFormPara(PropPara):
     # trace property observer properties
     i_unit = cf.ObservableProperty(pfcn(_edit_update, 'i_unit'))
     unit_type = cf.ObservableProperty(pfcn(_checklist_update, 'unit_type'))
+    use_global_lim = cf.ObservableProperty(pfcn(_check_update, 'use_global_lim'))
     show_grid = cf.ObservableProperty(pfcn(_check_update, 'show_grid'))
     trace_col = cf.ObservableProperty(pfcn(_colorpick_update, 'trace_col'))
     unit_col = cf.ObservableProperty(pfcn(_colorpick_update, 'unit_col'))
@@ -123,6 +124,7 @@ class WaveFormProps(PropWidget):
             'unit_type': self.create_para_field('Waveform Unit Type', 'checklist', show_unit, p_list=unit_lbl),
             'trace_col': self.create_para_field('Waveform Colour', 'colorpick', trace_col0),
             'unit_col': self.create_para_field('Selected Unit Colour', 'colorpick', unit_col0),
+            'use_global_lim': self.create_para_field('Use Global Y-Axis Limits', 'checkbox', True),
             'show_grid': self.create_para_field('Show Plot Gridlines', 'checkbox', False),
         }
 
@@ -143,6 +145,7 @@ class WaveFormProps(PropWidget):
         h_edit = self.findChild(cw.QLineEdit,name=p_str)
         nw_val = h_edit.text()
 
+        # parameter specific limits
         match p_str:
             case 'i_unit':
                 min_val, max_val = 1, self.get_field('q_met').shape[0]
