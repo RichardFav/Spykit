@@ -1,8 +1,8 @@
 # module imports
 import time
-import functools
 import numpy as np
 from copy import deepcopy
+from functools import partial as pfcn
 
 # custom module imports
 import spykit.common.common_func as cf
@@ -136,7 +136,7 @@ class PlotManager(QObject):
             plot_new.hide()
 
         # connects the hide button
-        cb_fcn = functools.partial(self.clear_plot_view, p_type)
+        cb_fcn = pfcn(self.clear_plot_view, p_type)
         plot_new.hide_plot.connect(cb_fcn)
 
         match p_type:
@@ -375,6 +375,12 @@ class PlotManager(QObject):
 
         # field retrieval
         self.update_plot_config(obj_rcfig.c_id)
+
+    def update_unit_type(self, unit_type, i_type):
+
+        # updates the associated plot views
+        for pt in ['waveform', 'upset', 'unithist', 'unitmet']:
+            self.get_plot_view(pt).update_unit_type(unit_type, i_type)
 
     def update_plot_config(self, c_id):
 
@@ -653,7 +659,7 @@ class PlotWidget(QWidget):
         self.plot_widget.setLayout(self.plot_layout)
 
         # sets up the
-        cb_fcn = functools.partial(self.click_plot_region, self)
+        cb_fcn = pfcn(self.click_plot_region, self)
         self.obj_plot_gbox.mousePressEvent = cb_fcn
 
     def setup_plot_pen(self):
@@ -708,7 +714,7 @@ class PlotWidget(QWidget):
     # ---------------------------------------------------------------------------
 
     def click_plot_region(self, plot, *_):
-\
+
         if self.region_clicked:
             self.region_clicked = False
             return
@@ -1003,25 +1009,25 @@ class PlotPara(PlotParaBase):
     # ---------------------------------------------------------------------------
 
     # trace property observer properties
-    name = cf.ObservableProperty(functools.partial(para_change, 'name'))
-    p_width = cf.ObservableProperty(functools.partial(para_change, 'p_width'))
-    p_style = cf.ObservableProperty(functools.partial(para_change, 'p_style'))
-    p_col = cf.ObservableProperty(functools.partial(para_change, 'p_col'))
-    g_style = cf.ObservableProperty(functools.partial(para_change, 'g_style'))
+    name = cf.ObservableProperty(pfcn(para_change, 'name'))
+    p_width = cf.ObservableProperty(pfcn(para_change, 'p_width'))
+    p_style = cf.ObservableProperty(pfcn(para_change, 'p_style'))
+    p_col = cf.ObservableProperty(pfcn(para_change, 'p_col'))
+    g_style = cf.ObservableProperty(pfcn(para_change, 'g_style'))
 
     # trace property observer properties
-    x_min = cf.ObservableProperty(functools.partial(limit_change, 'x_min'))
-    x_max = cf.ObservableProperty(functools.partial(limit_change, 'x_max'))
-    y_min = cf.ObservableProperty(functools.partial(limit_change, 'y_min'))
-    y_max = cf.ObservableProperty(functools.partial(limit_change, 'y_max'))
+    x_min = cf.ObservableProperty(pfcn(limit_change, 'x_min'))
+    x_max = cf.ObservableProperty(pfcn(limit_change, 'x_max'))
+    y_min = cf.ObservableProperty(pfcn(limit_change, 'y_min'))
+    y_max = cf.ObservableProperty(pfcn(limit_change, 'y_max'))
 
     # trace operation observer properties
-    show_child = cf.ObservableProperty(functools.partial(prop_update, 'show_child'))
-    show_parent = cf.ObservableProperty(functools.partial(prop_update, 'show_parent'))
-    create_trace = cf.ObservableProperty(functools.partial(prop_update, 'create_trace'))
-    clip_trace = cf.ObservableProperty(functools.partial(prop_update, 'clip_trace'))
-    delete_trace = cf.ObservableProperty(functools.partial(prop_update, 'delete_trace'))
-    delete_children = cf.ObservableProperty(functools.partial(prop_update, 'delete_children'))
+    show_child = cf.ObservableProperty(pfcn(prop_update, 'show_child'))
+    show_parent = cf.ObservableProperty(pfcn(prop_update, 'show_parent'))
+    create_trace = cf.ObservableProperty(pfcn(prop_update, 'create_trace'))
+    clip_trace = cf.ObservableProperty(pfcn(prop_update, 'clip_trace'))
+    delete_trace = cf.ObservableProperty(pfcn(prop_update, 'delete_trace'))
+    delete_children = cf.ObservableProperty(pfcn(prop_update, 'delete_children'))
 
 # ----------------------------------------------------------------------------------------------------------------------
 

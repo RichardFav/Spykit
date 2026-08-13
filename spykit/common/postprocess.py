@@ -90,7 +90,7 @@ class PostMemMap(QObject):
             dim_vals = struct.unpack(f'{self.n_dim_para}i', data_bytes)
 
             # returns the memory map
-            return np.memmap(self.mmap_file, dtype=self.get_dtype(), mode='r', shape=(1,))
+            return np.memmap(self.mmap_file, dtype=self.get_dtype(), mode='r+', shape=(1,))
 
     def get_array_dim(self):
 

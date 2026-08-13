@@ -37,7 +37,7 @@ q_yes_no = q_yes | q_no
 q_yes_no_cancel = q_yes_no | q_cancel
 
 # boolean flags
-is_testing = False
+is_testing = True
 is_win = platform.system() == 'Windows'
 
 # common parameters

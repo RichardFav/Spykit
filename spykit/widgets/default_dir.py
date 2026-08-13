@@ -1,9 +1,9 @@
 # module import
 import os
 import pickle
-import functools
 from pathlib import Path
 from copy import deepcopy
+from functools import partial as pfcn
 
 # spike pipeline imports
 import spykit.common.common_func as cf
@@ -106,7 +106,7 @@ class DefaultDir(QDialog):
             self.main_layout.addWidget(obj_file_spec)
 
             # sets up the slot functions
-            cb_fcn = functools.partial(self.button_file_spec, gs)
+            cb_fcn = pfcn(self.button_file_spec, gs)
             obj_file_spec.connect(cb_fcn)
 
         # other initialisations

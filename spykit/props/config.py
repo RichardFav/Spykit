@@ -2,7 +2,6 @@
 import os
 import time
 import colorsys
-import functools
 import numpy as np
 
 # spike pipeline imports

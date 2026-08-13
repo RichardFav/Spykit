@@ -326,6 +326,11 @@ class UpSetPlot(PlotWidget):
         self.h_plot[1].getAxis('left').setTickFont(self.lbl_font)
         self.h_plot[1].getAxis('bottom').setTickFont(self.tick_font)
 
+    def update_unit_type(self, unit_type, i_type):
+
+        # updates the plot
+        self.update_plot()
+
     # ---------------------------------------------------------------------------
     # Plot Button Event Functions
     # ---------------------------------------------------------------------------
@@ -518,24 +523,6 @@ class UpSetPlot(PlotWidget):
 
         self.plot_view = plot_view_new
 
-    @staticmethod
-    def set_axis_tick_labels(p_item, ax_dim):
-
-        # field retrieval
-        vb_rng = p_item.vb.viewRange()
-        h_axis = p_item.getAxis('left' if ax_dim else 'bottom')
-        ax_size = h_axis.size().height() if ax_dim else h_axis.size().width()
-
-        # sets up the ticklabel array
-        tick_pos = h_axis.tickValues(vb_rng[ax_dim][0], vb_rng[ax_dim][1], ax_size)[0][1]
-        _, i_tick = np.unique([str(int(x)) for x in tick_pos], return_index=True)
-        tick_lbl = [(t_pos, str(int(t_pos))) for t_pos in np.array(tick_pos)[i_tick]]
-
-        # resets the y-axes ticklabels
-        h_axis.setTicks([tick_lbl])
-
-        return tick_lbl
-
     # ---------------------------------------------------------------------------
     # Widget Event Callback Functions
     # ---------------------------------------------------------------------------
@@ -583,6 +570,24 @@ class UpSetPlot(PlotWidget):
 
             case 'show_grid':
                 _self.update_axes_grid()
+
+    @staticmethod
+    def set_axis_tick_labels(p_item, ax_dim):
+
+        # field retrieval
+        vb_rng = p_item.vb.viewRange()
+        h_axis = p_item.getAxis('left' if ax_dim else 'bottom')
+        ax_size = h_axis.size().height() if ax_dim else h_axis.size().width()
+
+        # sets up the ticklabel array
+        tick_pos = h_axis.tickValues(vb_rng[ax_dim][0], vb_rng[ax_dim][1], ax_size)[0][1]
+        _, i_tick = np.unique([str(int(x)) for x in tick_pos], return_index=True)
+        tick_lbl = [(t_pos, str(int(t_pos))) for t_pos in np.array(tick_pos)[i_tick]]
+
+        # resets the y-axes ticklabels
+        h_axis.setTicks([tick_lbl])
+
+        return tick_lbl
 
     # trace property observer properties
     unit_type = cf.ObservableProperty(pfcn(update_para, 'unit_type'))

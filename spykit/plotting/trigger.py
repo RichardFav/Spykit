@@ -2,9 +2,9 @@
 import os
 import time
 import colorsys
-import functools
 import numpy as np
 from copy import deepcopy
+from functools import partial as pfcn
 
 # spike pipeline imports
 import spykit.common.common_func as cf
@@ -153,7 +153,7 @@ class TriggerPlot(PlotWidget):
 
         # sets the plot button callback functions
         for pb in self.plot_but:
-            cb_fcn = functools.partial(self.plot_button_clicked, pb.objectName())
+            cb_fcn = pfcn(self.plot_button_clicked, pb.objectName())
             pb.clicked.connect(cb_fcn)
 
         # sets the axis limits
@@ -251,8 +251,8 @@ class TriggerPlot(PlotWidget):
         # creates the linear region
         l_reg = LinearRegionItem([nw_row[1], nw_row[2]], bounds=[0, self.t_dur], span=[0, 1],
                                  pen=self.l_pen, hoverPen=self.l_pen_hover, brush=self.l_brush)
-        l_reg.sigRegionChanged.connect(functools.partial(self.xtrig_region_move, l_reg))
-        l_reg.sigRegionChangeFinished.connect(functools.partial(self.xtrig_region_moved, l_reg))
+        l_reg.sigRegionChanged.connect(pfcn(self.xtrig_region_move, l_reg))
+        l_reg.sigRegionChangeFinished.connect(pfcn(self.xtrig_region_moved, l_reg))
         l_reg.setZValue(10)
 
         # stores the linear region object

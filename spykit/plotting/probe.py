@@ -1,5 +1,4 @@
 # module import
-import functools
 import numpy as np
 from copy import deepcopy
 from functools import partial as pfcn
@@ -503,72 +502,6 @@ class ProbePlot(PlotWidget):
         self.reset_highlight.emit(False, None)
 
     # ---------------------------------------------------------------------------
-    # Miscellaneous Functions
-    # ---------------------------------------------------------------------------
-
-    def get_new_inset_id(self, p_pos=None):
-
-        if p_pos is None:
-            h_roi = self.main_view.roi
-            p_pos = [h_roi.x(), h_roi.y(), h_roi.size()]
-
-        p_poly = self.main_view.pos_to_polygonf(p_pos)
-        self.inset_id = [i for i, c in enumerate(self.main_view.c_poly) if c.intersects(p_poly)]
-
-    def reset_probe_views(self):
-
-        # recreates the plot view
-        self.main_view.create_probe_plot()
-        self.sub_view.create_probe_plot()
-
-        if self.session_obj.is_per_shank():
-            # case is plotting a specifc shank
-            i_shank = self.session_obj.get_shank_index()
-            self.main_view.reset_axes_limits(False, i_shank=i_shank)
-            self.reset_shank_roi(i_shank)
-
-            # resets the previous shank index
-            self.i_shank_pr = i_shank
-
-        else:
-            # case is plotting all shanks simultaneously
-            self.main_view.reset_axes_limits(False)
-
-            # resets the previous shank index
-            self.i_shank_pr = None
-
-        self.main_view.roi.setVisible(True)
-
-    def reset_out_line(self, ch_status):
-
-        # determines the "out" channels
-        is_out = np.array(list(ch_status.values())) == 'out'
-
-        # calculates the out location
-        if np.any(is_out):
-            # retrieves the position of the out channels
-            probe = self.session_obj.get_raw_recording_probe()
-            p_loc0 = probe.get_channel_locations()
-            p_loc = p_loc0[is_out, 1]
-
-            # determines the out location
-            if np.min(p_loc0) in p_loc:
-                # case is from the bottom
-                y_out = np.max(p_loc)
-
-            else:
-                # case is from the top
-                y_out = np.min(p_loc)
-
-        else:
-            # case is no out channels were detected
-            y_out = None
-
-        # resets the sub-view probe out line
-        self.main_view.reset_out_line(y_out)
-        self.sub_view.reset_out_line(y_out)
-
-    # ---------------------------------------------------------------------------
     # Other Plot View Functions
     # ---------------------------------------------------------------------------
 
@@ -665,6 +598,10 @@ class ProbePlot(PlotWidget):
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
     # ---------------------------------------------------------------------------
+
+    def update_unit_type(self, unit_type, i_type):
+
+        pass
 
     def convert_coords(self, is_main, is_out=False):
 
@@ -774,6 +711,72 @@ class ProbePlot(PlotWidget):
         i_ch_map = self.sub_view.ch_map[i_shank][i_ch_unit - 1]
         self.reset_selected_unit_highlight(i_ch_map, type_lbl)
 
+    def reset_probe_views(self):
+
+        # recreates the plot view
+        self.main_view.create_probe_plot()
+        self.sub_view.create_probe_plot()
+
+        if self.session_obj.is_per_shank():
+            # case is plotting a specifc shank
+            i_shank = self.session_obj.get_shank_index()
+            self.main_view.reset_axes_limits(False, i_shank=i_shank)
+            self.reset_shank_roi(i_shank)
+
+            # resets the previous shank index
+            self.i_shank_pr = i_shank
+
+        else:
+            # case is plotting all shanks simultaneously
+            self.main_view.reset_axes_limits(False)
+
+            # resets the previous shank index
+            self.i_shank_pr = None
+
+        self.main_view.roi.setVisible(True)
+
+    def reset_out_line(self, ch_status):
+
+        # determines the "out" channels
+        is_out = np.array(list(ch_status.values())) == 'out'
+
+        # calculates the out location
+        if np.any(is_out):
+            # retrieves the position of the out channels
+            probe = self.session_obj.get_raw_recording_probe()
+            p_loc0 = probe.get_channel_locations()
+            p_loc = p_loc0[is_out, 1]
+
+            # determines the out location
+            if np.min(p_loc0) in p_loc:
+                # case is from the bottom
+                y_out = np.max(p_loc)
+
+            else:
+                # case is from the top
+                y_out = np.min(p_loc)
+
+        else:
+            # case is no out channels were detected
+            y_out = None
+
+        # resets the sub-view probe out line
+        self.main_view.reset_out_line(y_out)
+        self.sub_view.reset_out_line(y_out)
+
+    def get_new_inset_id(self, p_pos=None):
+
+        if p_pos is None:
+            h_roi = self.main_view.roi
+            p_pos = [h_roi.x(), h_roi.y(), h_roi.size()]
+
+        p_poly = self.main_view.pos_to_polygonf(p_pos)
+        self.inset_id = [i for i, c in enumerate(self.main_view.c_poly) if c.intersects(p_poly)]
+
+    # ---------------------------------------------------------------------------
+    # Static Methods
+    # ---------------------------------------------------------------------------
+
     @staticmethod
     def reset_roi_coord(p, r_dim, ax_lim):
 
@@ -783,10 +786,6 @@ class ProbePlot(PlotWidget):
             return ax_lim[1] - r_dim / 2
         else:
             return p - r_dim / 2
-
-    # ---------------------------------------------------------------------------
-    # Static Methods
-    # ---------------------------------------------------------------------------
 
     @staticmethod
     def update_probe(_self):

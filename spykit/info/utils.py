@@ -58,6 +58,7 @@ class InfoManager(QObject):
 
     # table cell item flags
     norm_item_flag = Qt.ItemFlag.ItemIsEnabled
+    combo_item_flag = norm_item_flag | Qt.ItemFlag.ItemIsEditable
     check_item_flag = norm_item_flag | Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsSelectable
 
     def __init__(self, sp_main, info_width):
@@ -572,20 +573,26 @@ class InfoManager(QObject):
     # Table Widget Functions
     # ---------------------------------------------------------------------------
 
-    def get_table_widget(self, t_type):
+    def get_tab_index(self, t_type):
 
         # module import
         import spykit.info.info_type as it
 
         info_c = it.info_types[t_type.split()[0].lower()]
-        i_tab = next(i for i, x in enumerate(self.tabs) if isinstance(x, info_c))
-        return self.tabs[i_tab].table
+        return next(i for i, x in enumerate(self.tabs) if isinstance(x, info_c))
+
+    def get_table_widget(self, t_type):
+
+        return self.tabs[self.get_tab_index(t_type)].table
 
     def setup_info_table(self, data, t_type, c_hdr, set_values=True, table_dim=None):
 
-        # retrieves the table widget
-        i_col_ch = c_hdr.index('Channel ID#')
+        # widget handle retrieval
         table_obj = self.get_table_widget(t_type)
+
+        # column indices
+        i_col_ch = c_hdr.index('Channel ID#')
+        i_col_type = c_hdr.index('Unit Type') if ('Unit Type' in c_hdr) else None
 
         # table dimensions (if not provided externally)
         if table_dim is None:
@@ -628,7 +635,12 @@ class InfoManager(QObject):
 
                 else:
                     # case is a string field
-                    item.setFlags(self.norm_item_flag)
+                    if i_col == i_col_type:
+                        item.setFlags(self.combo_item_flag)
+
+                    else:
+                        item.setFlags(self.norm_item_flag)
+
                     if set_values:
                         value = data.iloc[i_row][data.columns[i_col]]
                         item.setText(str(value))
@@ -643,6 +655,19 @@ class InfoManager(QObject):
         # resizes the table to the contents
         if set_values:
             self.set_other_table_props(table_obj, t_type, 3)
+
+        # sets the table delegate
+        if i_col_type is not None:
+            # creates the table combobox delegate
+            unit_tab = self.tabs[self.get_tab_index(t_type)]
+            items = cw.get_unit_labels(self.get_field('splitGoodAndMua_NonSomatic'))
+            unit_tab.table_delegate = cw.ComboBoxDelegate(table_obj, items)
+
+            # connects the table delegate signal function
+            unit_tab.table_delegate.valueChanged.connect(unit_tab.combo_type_change)
+
+            # sets the delegate for the unit type column
+            table_obj.setItemDelegateForColumn(i_col_type, unit_tab.table_delegate)
 
     def set_other_table_props(self, table_obj, t_type, i_col_sort):
 
@@ -836,6 +861,10 @@ class InfoManager(QObject):
 
         # returns the probe view
         return self.sp_main.plot_manager.get_plot_view('probe')
+
+    def get_field(self, p_fld):
+
+        return self.session_obj.get_mem_map_field(p_fld)
 
     # ---------------------------------------------------------------------------
     # Class Setter Functions

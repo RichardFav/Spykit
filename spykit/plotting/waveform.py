@@ -15,6 +15,7 @@ from spykit.plotting.utils import PlotWidget, setup_default_layout
 # pyqt6 module import
 from PyQt6.QtWidgets import QWidget
 from PyQt6.QtCore import pyqtSignal, Qt
+from PyQt6.QtGui import QPainterPath
 
 # pyqtgraph modules
 import pyqtgraph as pg
@@ -204,6 +205,7 @@ class WaveFormPlot(PlotWidget):
         for i_type in range(self.n_plt):
             # determines if there are any units of the current type
             is_unit = u_type[:, 0] == i_type
+            hp = self.p_item[i_type].items
             if np.any(is_unit):
                 # if so, set up the waveform plot points
                 self.i_type_unit[i_type] = np.where(is_unit)[0] + 1
@@ -215,12 +217,15 @@ class WaveFormPlot(PlotWidget):
 
                 # creates the unit waveform traces
                 y_plt_flat = self.y_plt[i_type].flatten()
-                hp = self.p_item[i_type].items[0]
-                hp.setPath(pg.arrayToQPath(np.tile(self.t, sum(is_unit)), y_plt_flat, c_arr.flatten()))
+                hp[0].setPath(pg.arrayToQPath(np.tile(self.t, sum(is_unit)), y_plt_flat, c_arr.flatten()))
 
                 # sets the axes properties
                 self.y_plt_min[i_type] = np.min(y_plt_flat)
                 self.y_plt_max[i_type] = np.max(y_plt_flat)
+            else:
+                # otherwise, clear the subplot
+                if len(hp):
+                    hp[0].setPath(QPainterPath())
 
         # updates the plot y-axes limits
         self.update_axes_limits()
@@ -334,6 +339,14 @@ class WaveFormPlot(PlotWidget):
             if self.lbl_showing:
                 self.lbl_showing = False
                 self.h_lbl[i_type].setVisible(False)
+
+    def update_unit_type(self, unit_type, i_unit):
+
+        # resets the unit traces
+        self.reset_unit_traces()
+
+        # updates the selected trace
+        self.update_selected_trace()
 
     # ---------------------------------------------------------------------------
     # Plot Event Functions

@@ -4,7 +4,6 @@ import sys
 import time
 import mmap
 import pathlib
-import functools
 import numpy as np
 from pathlib import Path
 from copy import deepcopy

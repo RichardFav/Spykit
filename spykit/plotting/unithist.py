@@ -237,6 +237,11 @@ class UnitHistPlot(PlotWidget):
         t_str_nw = "Unit #{0} Quality Metrics ({1})".format(self.i_unit, u_type)
         self.title_lbl.setText(t_str_nw)
 
+    def update_unit_type(self, unit_type, i_type):
+
+        # updates the plot title
+        self.update_plot_title()
+
     # ---------------------------------------------------------------------------
     # Plot Button Event Functions
     # ---------------------------------------------------------------------------

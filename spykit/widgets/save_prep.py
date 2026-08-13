@@ -1,8 +1,8 @@
 # module import
 import os
-import functools
 from pathlib import Path
 from copy import deepcopy
+from functools import partial as pfcn
 
 # spike pipeline imports
 import spykit.info.preprocess as pp
@@ -116,7 +116,7 @@ class SavePrep(QDialog):
         obj_lbl_work = cw.QLabelEdit(None, tl_work, self.n_worker, font_lbl=cw.font_lbl, name="n_worker")
         self.para_layout.addWidget(obj_lbl_work.obj_lbl, 0, 0)
         self.para_layout.addWidget(obj_lbl_work.obj_edit, 0, 1)
-        cb_fcn_nw = functools.partial(self.edit_worker_count, "n_worker")
+        cb_fcn_nw = pfcn(self.edit_worker_count, "n_worker")
         obj_lbl_work.connect(cb_fcn_nw)
 
         # creates the label/editbox object
@@ -124,7 +124,7 @@ class SavePrep(QDialog):
         obj_lbl_dir = cw.QLabelEdit(None, tl_dir, self.user_dir, font_lbl=cw.font_lbl, name="user_dir")
         self.para_layout.addWidget(obj_lbl_dir.obj_lbl, 1, 0)
         self.para_layout.addWidget(obj_lbl_dir.obj_edit, 1, 1)
-        cb_fcn_fn = functools.partial(self.edit_folder_name, "user_dir")
+        cb_fcn_fn = pfcn(self.edit_folder_name, "user_dir")
         obj_lbl_dir.connect(cb_fcn_fn)
 
     def init_cont_buttons(self):

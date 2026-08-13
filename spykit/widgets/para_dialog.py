@@ -2,8 +2,8 @@
 import os
 import re
 import pickle
-import functools
 from copy import deepcopy
+from functools import partial as pfcn
 
 # custom module import
 import spykit.common.common_widget as cw
@@ -244,7 +244,7 @@ class ParaDialog(QMainWindow):
             self.h_tab_grp[p].addTab(h_tab, grp_info[gn]['name'])
 
         # sets the callback function
-        cb_fcn = functools.partial(self.para_tab_change, p)
+        cb_fcn = pfcn(self.para_tab_change, p)
         self.h_tab_grp[p].currentChanged.connect(cb_fcn)
 
     # COLLAPSIBLE PANEL EVENT FUNCTIONS ---------------------------------------
@@ -253,7 +253,7 @@ class ParaDialog(QMainWindow):
 
         # sets the label click event function
         for h_txt in h_panel_c.findChildren(QLabel):
-            h_txt.mousePressEvent = functools.partial(self.link_click, h_txt)
+            h_txt.mousePressEvent = pfcn(self.link_click, h_txt)
 
     def link_click(self, h_txt, *_):
 
@@ -385,7 +385,7 @@ class ParaDialog(QMainWindow):
                 h_panel.setObjectName(p_name)
 
                 # sets the panel event function
-                p_fcn = functools.partial(self.group_panel_click, h_panel, p_str_l)
+                p_fcn = pfcn(self.group_panel_click, h_panel, p_str_l)
                 h_panel.clicked.connect(p_fcn)
 
                 # adds the groupbox panel to the parent object
@@ -421,7 +421,7 @@ class ParaDialog(QMainWindow):
                     obj_tab_grp.setCurrentWidget(h_tab)
 
                 # sets up the slot function
-                cb_fcn = functools.partial(self.tab_change, obj_tab_grp, p_str_l)
+                cb_fcn = pfcn(self.tab_change, obj_tab_grp, p_str_l)
                 obj_tab_grp.currentChanged.connect(cb_fcn)
 
                 # exits the function
@@ -468,7 +468,7 @@ class ParaDialog(QMainWindow):
                 layout.addRow(obj_lbl, obj_edit)
 
                 # sets up the label/editbox slot function
-                cb_fcn = functools.partial(self.edit_para_change, obj_edit, p_str_l)
+                cb_fcn = pfcn(self.edit_para_change, obj_edit, p_str_l)
                 obj_edit.editingFinished.connect(cb_fcn)
                 obj_edit.setFixedSize(edit_width, cf.edit_height)
                 obj_lbl.setStyleSheet('padding-top: 2 px;')
@@ -487,7 +487,7 @@ class ParaDialog(QMainWindow):
                 layout.addRow(obj_lbl, obj_cbox)
 
                 # sets up the slot function
-                cb_fcn = functools.partial(self.combobox_para_change, obj_cbox, p_str_l)
+                cb_fcn = pfcn(self.combobox_para_change, obj_cbox, p_str_l)
                 obj_cbox.currentIndexChanged.connect(cb_fcn)
                 obj_cbox.setFixedSize(combo_width, cf.combo_height)
                 obj_lbl.setStyleSheet('padding-top: 3 px;')
@@ -505,7 +505,7 @@ class ParaDialog(QMainWindow):
                 layout.addRow(obj_checkbox)
 
                 # sets up the slot function
-                cb_fcn = functools.partial(self.checkbox_para_change, obj_checkbox, p_str_l)
+                cb_fcn = pfcn(self.checkbox_para_change, obj_checkbox, p_str_l)
                 obj_checkbox.connect(cb_fcn)
 
                 # appends the parameter search objects
@@ -520,7 +520,7 @@ class ParaDialog(QMainWindow):
                 layout.addRow(obj_file_spec)
 
                 # sets up the slot function
-                cb_fcn = functools.partial(self.button_file_spec, p_str_l)
+                cb_fcn = pfcn(self.button_file_spec, p_str_l)
                 obj_file_spec.connect(cb_fcn)
 
                 # appends the parameter search objects

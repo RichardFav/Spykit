@@ -282,6 +282,11 @@ class UnitMetricPlot(PlotWidget):
         # resets the run duration
         self.t_dur = self.session_obj.get_current_session_duration()
 
+    def update_unit_type(self, unit_type, i_unit):
+
+        # updates the plot title
+        self.update_plot_title()
+
     # ---------------------------------------------------------------------------
     # Plot Button Event Functions
     # ---------------------------------------------------------------------------

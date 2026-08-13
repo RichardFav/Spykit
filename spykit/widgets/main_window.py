@@ -106,9 +106,9 @@ class MainWindow(QMainWindow):
         # sets the widget style sheets
         self.set_styles()
 
-        # # REMOVE ME LATER
-        # cf.is_dev():
-        #     self.testing()
+        # REMOVE ME LATER
+        if cf.is_dev():
+            self.testing()
 
     # ---------------------------------------------------------------------------
     # Class Widget Setup Functions
@@ -792,16 +792,16 @@ class MainWindow(QMainWindow):
 
         # tiny examples
         #  => (CS/SS = Combined/Separated Shank; SR/CR = Separated/Concated Runs)
-        f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/session/Preprocessed/Tiny Example (1 - NS).ssf"
+        # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/session/Preprocessed/Tiny Example (1 - NS).ssf"
         # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/session/Preprocessed/Tiny Example (2 - SS).ssf"
         # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/session/Preprocessed/Tiny Example (3 - NC).ssf"
-        # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/session/Preprocessed/Tiny Example (4 - SC).ssf"
+        f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/session/Preprocessed/Tiny Example (4 - SC).ssf"
 
         # # large examples
         # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/Large Example/large_example.ssf"
 
         # loads the session
-        self.menu_bar.load_session(f_file, False)
+        self.menu_bar.load_session(f_file, True)
 
         # retrieves the configuration tab object
         config_tab = self.prop_manager.get_prop_tab('config')

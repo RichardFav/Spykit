@@ -1,9 +1,9 @@
 # module import
 import os
-import functools
 import numpy as np
 import pyqtgraph as pg
 from copy import deepcopy
+from functools import partial as pfcn
 
 # pyqt6 module import
 from PyQt6.QtWidgets import (QDialog, QWidget, QVBoxLayout, QFormLayout, QGridLayout, QHBoxLayout,
@@ -525,7 +525,7 @@ class QPlotPara(QWidget):
         obj_panel_c.setFixedWidth(grp_width)
 
         # sets the button click event function
-        cb_fcn_c = functools.partial(self.expand, obj_panel_c)
+        cb_fcn_c = pfcn(self.expand, obj_panel_c)
         obj_panel_c.connect(cb_fcn_c)
 
         # sets the collapsible panel object properties
@@ -711,7 +711,7 @@ class QPlotPara(QWidget):
                 layout.addRow(obj_fspec)
 
                 # sets up the slot function
-                cb_fcn = functools.partial(self.button_file_spec, p_str_l)
+                cb_fcn = pfcn(self.button_file_spec, p_str_l)
                 obj_fspec.connect(cb_fcn)
 
     def reset_para_props(self, tr_obj):
@@ -996,7 +996,7 @@ class QPlotPara(QWidget):
             return self.widget_para_update
 
         else:
-            return functools.partial(self.widget_para_update, h_widget)
+            return pfcn(self.widget_para_update, h_widget)
 
     def set_styles(self):
 
@@ -1821,22 +1821,22 @@ class QParaClass(QParaTrace):
             _self.update_limits.emit(p_str)
 
     # trace property observer properties
-    name = cf.ObservableProperty(functools.partial(para_change, 'name'))
-    p_width = cf.ObservableProperty(functools.partial(para_change, 'p_width'))
-    p_style = cf.ObservableProperty(functools.partial(para_change, 'p_style'))
-    p_col = cf.ObservableProperty(functools.partial(para_change, 'p_col'))
-    g_style = cf.ObservableProperty(functools.partial(para_change, 'g_style'))
+    name = cf.ObservableProperty(pfcn(para_change, 'name'))
+    p_width = cf.ObservableProperty(pfcn(para_change, 'p_width'))
+    p_style = cf.ObservableProperty(pfcn(para_change, 'p_style'))
+    p_col = cf.ObservableProperty(pfcn(para_change, 'p_col'))
+    g_style = cf.ObservableProperty(pfcn(para_change, 'g_style'))
 
     # trace operation observer properties
-    show_child = cf.ObservableProperty(functools.partial(prop_update, 'show_child'))
-    show_parent = cf.ObservableProperty(functools.partial(prop_update, 'show_parent'))
-    create_trace = cf.ObservableProperty(functools.partial(prop_update, 'create_trace'))
-    clip_trace = cf.ObservableProperty(functools.partial(prop_update, 'clip_trace'))
-    delete_trace = cf.ObservableProperty(functools.partial(prop_update, 'delete_trace'))
-    delete_children = cf.ObservableProperty(functools.partial(prop_update, 'delete_children'))
+    show_child = cf.ObservableProperty(pfcn(prop_update, 'show_child'))
+    show_parent = cf.ObservableProperty(pfcn(prop_update, 'show_parent'))
+    create_trace = cf.ObservableProperty(pfcn(prop_update, 'create_trace'))
+    clip_trace = cf.ObservableProperty(pfcn(prop_update, 'clip_trace'))
+    delete_trace = cf.ObservableProperty(pfcn(prop_update, 'delete_trace'))
+    delete_children = cf.ObservableProperty(pfcn(prop_update, 'delete_children'))
 
     # trace property observer properties
-    x_min = cf.ObservableProperty(functools.partial(limit_change, 'x_min'))
-    x_max = cf.ObservableProperty(functools.partial(limit_change, 'x_max'))
-    y_min = cf.ObservableProperty(functools.partial(limit_change, 'y_min'))
-    y_max = cf.ObservableProperty(functools.partial(limit_change, 'y_max'))
+    x_min = cf.ObservableProperty(pfcn(limit_change, 'x_min'))
+    x_max = cf.ObservableProperty(pfcn(limit_change, 'x_max'))
+    y_min = cf.ObservableProperty(pfcn(limit_change, 'y_min'))
+    y_max = cf.ObservableProperty(pfcn(limit_change, 'y_max'))

@@ -430,6 +430,7 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
 
     # table cell item flags
     norm_item_flag = Qt.ItemFlag.ItemIsEnabled
+    combo_item_flag = norm_item_flag  | Qt.ItemFlag.ItemIsEditable
     check_item_flag = norm_item_flag | Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsSelectable
 
     # editbox style sheet
@@ -452,12 +453,10 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
 
         # sets up the parameter fields
         self.p_props = TraceSpikePara(self.p_info['ch_fld'])
-        self.i_run = self.prop_manager.session_obj.get_current_run_index()
-        self.i_shank = self.prop_manager.session_obj.get_shank_index()
+        self.i_run = self.session_obj.get_current_run_index()
+        self.i_shank = self.session_obj.get_shank_index()
 
         # other class widgets
-        # self.unit_label = cw.QLabelText(None, lbl_str="Selected Unit:", text_str='N/A',
-        #                                 font_lbl=cw.font_lbl, font_txt=cw.font_lbl)
         self.table = cw.QInfoTable(None, self.type, False)
         self.filt_but = cw.create_push_button(None, 'Open Unit Filter', cw.font_lbl)
         self.spinbox_spike = self.findChild(cw.QLabelSpinbox, name='i_spike')
@@ -475,15 +474,16 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
         # other class fields
         self.h_spike = {}
         self.i_unit_sp = {}
+        self.type_filt = None
         self.i_frm_pr = None
         self.i_row_sel = None
-        self.type_filt = None
+        self.i_col_unit = None
 
         self.in_win = None
         self.i_spike_win = None
         self.spk_cluster_win = None
         self.spk_channel_win = None
-        self.s_freq = self.prop_manager.session_obj.session_props.s_freq
+        self.s_freq = self.session_obj.session_props.s_freq
 
         # initialises the other class fields
         self.init_other_class_fields()
@@ -498,7 +498,6 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
 
         # sets the parameter layout properties
         self.f_layout.setSpacing(5)
-        # self.f_layout.addWidget(self.unit_label)
         self.f_layout.addWidget(self.table)
         self.f_layout.addWidget(self.filt_but)
 
@@ -515,12 +514,13 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
         self.table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.resizeColumnsToContents()
+        self.table.leaveEvent = self.table_mouse_leave
 
         # sets the table header properties
         table_hdr = self.table.horizontalHeader()
         table_hdr.setFont(self.table_hdr_font)
         table_hdr.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
-        table_hdr.setStretchLastSection(True)
+        table_hdr.setSectionResizeMode(self.i_col_type, QHeaderView.ResizeMode.Stretch)
 
         # table function callback function
         self.table.cellChanged.connect(self.table_cell_changed)
@@ -531,6 +531,10 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
         self.filt_but.setFixedHeight(self.hght_but)
         self.filt_but.setStyleSheet(self.button_style_sheet)
         self.filt_but.clicked.connect(self.open_filt_dlg)
+
+        # retrieves the unit information table handle
+        self.unit_info_tab = self.sp_main.info_manager.get_info_tab('unit')
+        self.unit_info_tab.unit_spike_tab = self
 
         # sets the other widget properties
         self.spinbox_spike.set_enabled(False)
@@ -574,7 +578,7 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
 
         # memory allocation
         self.n_unit = self.get_field('n_unit')
-        self.n_unit_pp = self.prop_manager.parent().session_obj.post_data.n_unit_pp
+        self.n_unit_pp = self.session_obj.post_data.n_unit_pp
         self.data = np.empty(self.n_unit_pp.shape, dtype=object)
         self.i_spike_info = np.empty(self.n_unit_pp.shape, dtype=object)
 
@@ -631,6 +635,10 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
                     # case is a boolean field
                     item.setFlags(self.check_item_flag)
 
+                elif i_col == self.i_col_type:
+                    # case is a string field
+                    item.setFlags(self.combo_item_flag)
+
                 else:
                     # case is a string field
                     item.setFlags(self.norm_item_flag)
@@ -638,6 +646,11 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
                 # adds the item to the table
                 item.setTextAlignment(cf.align_type['center'])
                 self.table.setItem(i_row, i_col, item)
+
+        # creates the table combobox delegate
+        self.table_delegate = cw.ComboBoxDelegate(self.table, self.unit_lbl)
+        self.table_delegate.valueChanged.connect(self.combo_type_change)
+        self.table.setItemDelegateForColumn(self.i_col_type, self.table_delegate)
 
         # resets the update flag
         self.is_updating = False
@@ -727,6 +740,14 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
         self.reset_spike_trace_view()
         self.set_row_highlight(False)
         self.spinbox_spike.set_enabled(False)
+
+    # ---------------------------------------------------------------------------
+    # Mouse Event Functions
+    # ---------------------------------------------------------------------------
+
+    def table_mouse_leave(self, event):
+
+        self.table_delegate.force_close()
 
     # ---------------------------------------------------------------------------
     # Parameter Update Event Functions
@@ -836,6 +857,30 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
         # updates the spike markers
         self.reset_spike_markers()
 
+    def combo_type_change(self, index, c_box):
+
+        # field retrieval
+        unit_type, i_row = c_box.currentText(), index.row()
+        i_type_new = self.table_delegate.items.index(unit_type)
+
+        # exit if there is no change in unit type
+        i_type_prev = self.get_field('unit_type', i_row)[0]
+        if i_type_prev == i_type_new:
+            return
+
+        # # updates the unit type field
+        self.set_field('unit_type', i_type_new, i_row)
+
+        # updates the trace spikes/unit type tabs
+        self.update_unit_type(unit_type, i_row, False)
+        self.unit_info_tab.update_unit_type(unit_type, i_row)
+
+        # updates the plot view unit types
+        self.sp_main.plot_manager.update_unit_type(unit_type, i_row)
+
+        # remove me later
+        pass
+
     # ---------------------------------------------------------------------------
     # Unit Filter Functions
     # ---------------------------------------------------------------------------
@@ -848,10 +893,14 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
     # Class Setter Functions
     # ---------------------------------------------------------------------------
 
+    def set_field(self, p_fld, p_val, i_fld=None):
+
+        return self.session_obj.set_mem_map_field(p_fld, p_val, i_fld)
+
     def set_trace_view(self, trace_view_new):
 
         self.trace_view = trace_view_new
-        self.n_sample = self.prop_manager.session_obj.session_props.n_samples
+        self.n_sample = self.session_obj.session_props.n_samples
 
     def set_para_value(self, p_fld, p_val):
 
@@ -863,8 +912,9 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
         self.table.blockSignals(True)
 
         # sets the table row colour
+        row_colour = cw.get_unit_col(c_stat)
         for i_col in range(self.table.columnCount()):
-            self.table.item(i_row, i_col).setBackground(cw.get_unit_col(c_stat))
+            self.table.item(i_row, i_col).setBackground(row_colour)
 
         # removes signal block
         self.table.blockSignals(False)
@@ -910,16 +960,20 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
     # Class Getter Functions
     # ---------------------------------------------------------------------------
 
+    def get_field(self, p_fld, i_fld=None):
+
+        return self.session_obj.get_mem_map_field(p_fld, i_fld)
+
     def get_table_data_frame(self):
 
         # retrieves the raw metric data frame
-        q_met_df = self.prop_manager.parent().session_obj.get_metric_table_values()[self.c_hdr_0].astype(int)
+        q_met_df = self.session_obj.get_metric_table_values()[self.c_hdr_0].astype(int)
 
         # field retrieval
         ch_pos0 = self.get_field('ch_pos')
-        self.i_run = self.prop_manager.session_obj.get_current_run_index()
-        self.i_shank = self.prop_manager.session_obj.get_shank_index()
-        probe_view = self.prop_manager.parent().plot_manager.get_plot_view('probe')
+        self.i_run = self.session_obj.get_current_run_index()
+        self.i_shank = self.session_obj.get_shank_index()
+        probe_view = self.sp_main.plot_manager.get_plot_view('probe')
 
         # re-maps the bombcell channel indices by height
         i_pk_ch0 = q_met_df['maxChannels'].astype(int)
@@ -955,10 +1009,6 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
     def get_para_value(self, p_fld):
 
         return getattr(self.p_props, p_fld)
-
-    def get_field(self, p_fld):
-
-        return self.prop_manager.session_obj.get_mem_map_field(p_fld)
 
     def get_unit_indices(self):
 
@@ -997,6 +1047,22 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
 
         self.set_row_highlight(True, i_row)
 
+    def update_unit_type(self, unit_type, i_row, update_table=True):
+
+        # updates the unit type within the table (if required)
+        if update_table:
+            self.is_updating = True
+            self.table.item(i_row, self.i_col_type).setText(unit_type)
+            self.is_updating = False
+
+        # data field updates
+        self.set_data('Unit Type', i_row, unit_type)
+
+        # updates the table row colour
+        self.set_table_row_colour(i_row, unit_type)
+        self.set_row_highlight(True, i_row)
+        self.reset_spike_markers()
+
     def update_spike_data_fields(self):
 
         self.spk_cluster = self.get_field('spk_cluster')[:, 0]
@@ -1005,8 +1071,8 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
     def update_run_shank_fields(self):
 
         # resets the run/shank indices
-        self.i_run = self.prop_manager.session_obj.get_current_run_index()
-        self.i_shank = self.prop_manager.session_obj.get_shank_index()
+        self.i_run = self.session_obj.get_current_run_index()
+        self.i_shank = self.session_obj.get_shank_index()
 
         # resets the table data
         self.update_spike_data_fields()

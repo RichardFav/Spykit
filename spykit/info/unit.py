@@ -73,6 +73,10 @@ class UnitInfoTab(InfoWidget):
         self.data_flds = None
         self.unit_lbl = None
         self.i_unit_sel = None
+        self.unit_spike_tab = None
+
+        # table properties/event functions
+        self.table_delegate = None
         self.table_move_fcn = None
         self.table_leave_fcn = None
         self.table_click_fcn = None
@@ -152,6 +156,10 @@ class UnitInfoTab(InfoWidget):
     # Class Getter Functions
     # ---------------------------------------------------------------------------
 
+    def get_field(self, p_fld, i_fld=None):
+
+        return self.session_obj.get_mem_map_field(p_fld, i_fld)
+
     def get_filtered_items(self):
 
         # initialisations
@@ -173,10 +181,6 @@ class UnitInfoTab(InfoWidget):
         if self.i_unit_sel is not None:
             self.set_row_highlight(self.is_filt[self.i_unit_sel - 1], True)
 
-    def get_field(self, p_fld):
-
-        return self.session_obj.get_mem_map_field(p_fld)
-
     def get_unit_indices(self):
 
         # retrieves the unit ID's for each row
@@ -191,10 +195,15 @@ class UnitInfoTab(InfoWidget):
     # Class Setter Functions
     # ---------------------------------------------------------------------------
 
+    def set_field(self, p_fld, p_val, i_fld=None):
+
+        return self.session_obj.set_mem_map_field(p_fld, p_val, i_fld)
+
     def set_table_row_colour(self, i_row, c_stat):
 
+        row_colour = cw.get_unit_col(c_stat)
         for i_col in range(self.table.columnCount()):
-            self.table.item(i_row, i_col).setBackground(cw.get_unit_col(c_stat))
+            self.table.item(i_row, i_col).setBackground(row_colour)
 
     def set_combobox_props(self):
 
@@ -262,12 +271,16 @@ class UnitInfoTab(InfoWidget):
 
         self.table_leave_fcn(evnt)
         self.mouse_leave.emit(evnt)
+        self.table_delegate.force_close()
 
     def table_cell_click(self, i_row, i_col):
 
         # removes any previous row highlights
         if self.i_unit_sel is not None:
             self.set_row_highlight(False)
+
+        # force closes the combobox (if open)
+        self.table_delegate.force_close()
 
         # resets the selected unit index
         unit_lbl = self.table.item(i_row, self.i_col_unit).text()
@@ -336,6 +349,31 @@ class UnitInfoTab(InfoWidget):
         if not self.is_updating:
             self.shank_change.emit(self)
 
+    def combo_type_change(self, index, c_box):
+
+        # field retrieval
+        unit_type = c_box.currentText()
+        i_row, i_col = index.row(), index.column()
+        i_type_new = self.table_delegate.items.index(unit_type)
+
+        # exit if there is no change in unit type
+        i_type_prev = self.get_field('unit_type', i_row)[0]
+        if i_type_prev == i_type_new:
+            return
+
+        # updates the unit type field
+        self.set_field('unit_type', i_type_new, i_row)
+
+        # updates the trace spikes/unit type tabs
+        self.update_unit_type(unit_type, i_row, False)
+        self.unit_spike_tab.update_unit_type(unit_type, i_row)
+
+        # updates the plot view unit types
+        self.sp_main.plot_manager.update_unit_type(unit_type, i_row)
+
+        # remove me later
+        pass
+
     # ---------------------------------------------------------------------------
     # Miscellaneous Methods
     # ---------------------------------------------------------------------------
@@ -393,6 +431,44 @@ class UnitInfoTab(InfoWidget):
         else:
             # otherwise, update the class fields
             self.df_unit, self.c_hdr, self.unit_lbl = df_unit_nw, c_hdr_nw, unit_lbl_nw
+
+    def update_unit_type(self, unit_type, i_row, update_table=True):
+
+        # updates the unit type within the table (if required)
+        if update_table:
+            self.is_updating = True
+            self.table.item(i_row, self.i_col_type).setText(unit_type)
+            self.is_updating = False
+
+        # resets the class fields
+        self.df_unit['Unit Type'][i_row] = unit_type
+
+        # resets the class widget properties
+        self.set_table_row_colour(i_row, unit_type)
+        self.reset_unit_status()
+
+        # resets the table properties and filtered items
+        self.set_table_rows()
+        self.check_filter_item()
+
+    def reset_unit_status(self):
+
+        # field retrieval
+        unit_type = self.get_field('unit_type')
+
+        # initialisations
+        self.is_updating = True
+        self.status_filter.blockSignals(True)
+
+        # resets the status filter
+        for i_filt, s_filt in enumerate(self.unit_lbl):
+            n_unit = sum(unit_type == i_filt)[0]
+            unit_lbl_filt = f"{s_filt} ({n_unit})"
+            self.status_filter.reset_item(i_filt, unit_lbl_filt)
+
+        # resets the update flag
+        self.is_updating = False
+        self.status_filter.blockSignals(False)
 
     def update_unit_status(self):
 

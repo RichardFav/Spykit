@@ -439,11 +439,11 @@ class SessionWorkBook(QObject):
         # return the overall search match results
         return f_path
 
-    def get_mem_map_field(self, p_fld):
+    def get_mem_map_field(self, p_fld, i_fld=None):
 
         i_run = self.get_current_run_index()
         i_shank = self.get_shank_index()
-        return self.post_data.get_mem_map_field(i_run, i_shank, p_fld)
+        return self.post_data.get_mem_map_field(i_run, i_shank, p_fld, i_fld)
 
     def get_metric_table_values(self):
 
@@ -507,6 +507,12 @@ class SessionWorkBook(QObject):
     # ---------------------------------------------------------------------------
     # Class Setter Functions
     # ---------------------------------------------------------------------------
+
+    def set_mem_map_field(self, p_fld, p_val, i_fld=None):
+
+        i_run = self.get_current_run_index()
+        i_shank = self.get_shank_index()
+        return self.post_data.set_mem_map_field(i_run, i_shank, p_fld, p_val, i_fld)
 
     def set_all_channel_states(self, is_checked):
 
@@ -1486,7 +1492,7 @@ class PostProcessData(QObject):
                 # recreates the memory mapped file
                 os.rename(self.mmap_file[self.i_mmap][i_run, i_shank], mmap_file_new[i_run, i_shank])
                 self.mmap[self.i_mmap][i_run, i_shank] = (
-                    np.memmap(mmap_file_new[i_run, i_shank], dtype=dt, mode='r', shape=(1,)))
+                    np.memmap(mmap_file_new[i_run, i_shank], dtype=dt, mode='r+', shape=(1,)))
 
         # resets the other fields
         self.is_saved[self.i_mmap] = True
@@ -1496,6 +1502,19 @@ class PostProcessData(QObject):
     # ---------------------------------------------------------------------------
     # Class Setter Functions
     # ---------------------------------------------------------------------------
+
+    def set_mem_map_field(self, i_run, i_shank, p_fld, p_val, i_fld=None):
+
+        if i_fld is None:
+            # case is updating a scale value
+            self.mmap[self.i_mmap][i_run, i_shank][p_fld][0] = p_val
+
+        else:
+            # case is updating a vector value
+            self.mmap[self.i_mmap][i_run, i_shank][p_fld][0][i_fld] = p_val
+
+        # # applies the value to the memory map
+        # self.mmap[self.i_mmap][i_run, i_shank].flush()        # is this permanent?
 
     def set_mmap_index(self, i_mmap_new):
 
@@ -1512,6 +1531,9 @@ class PostProcessData(QObject):
     # Class Getter Functions
     # ---------------------------------------------------------------------------
 
-    def get_mem_map_field(self, i_run, i_shank, p_fld):
+    def get_mem_map_field(self, i_run, i_shank, p_fld, i_fld=None):
 
-        return self.mmap[self.i_mmap][i_run, i_shank][p_fld][0]
+        if i_fld is None:
+            return self.mmap[self.i_mmap][i_run, i_shank][p_fld][0]
+        else:
+            return self.mmap[self.i_mmap][i_run, i_shank][p_fld][0][i_fld]

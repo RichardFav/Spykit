@@ -1,15 +1,15 @@
 # module import
 import os
 import re
+import time
 import pickle
 import colorsys
 import textwrap
-import functools
-import time
 
 import numpy as np
 from copy import deepcopy
 from pathlib import PosixPath
+from functools import partial as pfcn
 from skimage.measure import label, regionprops
 
 # spykit module import
@@ -27,7 +27,8 @@ from PyQt6.QtWidgets import (QWidget, QHBoxLayout, QGridLayout, QVBoxLayout, QPu
                              QHeaderView, QStyleOptionButton, QTableWidgetItem, QProgressBar, QSpacerItem, QMessageBox,
                              QStyledItemDelegate, QDialog, QTableWidget, QListWidget, QSpinBox, QAbstractSpinBox)
 from PyQt6.QtCore import (Qt, QRect, QRectF, QMimeData, pyqtSignal, QItemSelectionModel, QAbstractTableModel,
-                          QSizeF, QSize, QObject, QVariant, QTimeLine, QEvent, QPoint, QPointF, QTimer)
+                          QSizeF, QSize, QObject, QVariant, QTimeLine, QEvent, QPoint, QPointF, QTimer,
+                          QModelIndex, QAbstractItemModel)
 from PyQt6.QtGui import (QFont, QDrag, QCursor, QStandardItemModel, QStandardItem, QPalette, QPixmap, QImage,
                          QTextDocument, QAbstractTextDocumentLayout, QIcon, QColor, QMouseEvent, QGuiApplication)
 
@@ -598,7 +599,7 @@ class QRegionConfig(QWidget):
             obj_lbl_edit.obj_lbl.setStyleSheet("padding-left: 5px;")
 
             # sets the callback function
-            cb_fcn_rc = functools.partial(self.edit_dim_update, ps)
+            cb_fcn_rc = pfcn(self.edit_dim_update, ps)
             obj_lbl_edit.connect(cb_fcn_rc)
 
         # adds the combo object
@@ -1120,7 +1121,7 @@ class QAxesLimits(QWidget):
                 lim_layout.addWidget(h_edit_new, i + 1, j + 1, 1, 1)
 
                 # sets the editbox event callback function
-                cb_fcn = functools.partial(self.edit_limit_para, h_edit_new)
+                cb_fcn = pfcn(self.edit_limit_para, h_edit_new)
                 h_edit_new.editingFinished.connect(cb_fcn)
                 h_edit_new.setStyleSheet(edit_style_sheet)
 
@@ -1816,7 +1817,7 @@ class QFileSpec(QGroupBox):
         self.h_edit.setToolTip(f_str)
 
     def connect(self, cb_fcn0):
-        cb_fcn = functools.partial(cb_fcn0, self)
+        cb_fcn = pfcn(cb_fcn0, self)
         self.h_but.clicked.connect(cb_fcn)
 
 
@@ -1855,7 +1856,7 @@ class QEditButton(QWidget):
         self.obj_but.setStyleSheet("border: 1px solid black;")
 
     def connect(self, cb_fcn):
-        cb_fcn = functools.partial(cb_fcn, self)
+        cb_fcn = pfcn(cb_fcn, self)
         self.obj_but.clicked.connect(cb_fcn)
 
 
@@ -2471,7 +2472,7 @@ class QLabelEdit(QWidget):
         self.obj_edit.setEnabled(state)
 
     def connect(self, cb_fcn0):
-        cb_fcn = functools.partial(cb_fcn0, self.obj_edit)
+        cb_fcn = pfcn(cb_fcn0, self.obj_edit)
         self.obj_edit.editingFinished.connect(cb_fcn)
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -2527,7 +2528,7 @@ class QLabelSpinbox(QWidget):
         self.obj_spinbox.setEnabled(state)
 
     def connect(self, cb_fcn0):
-        cb_fcn = functools.partial(cb_fcn0, self.obj_spinbox)
+        cb_fcn = pfcn(cb_fcn0, self.obj_spinbox)
         self.obj_spinbox.editingFinished.connect(cb_fcn)
         self.obj_spinbox.valueChanged.connect(cb_fcn)
 
@@ -2564,7 +2565,7 @@ class QLabelButton(QWidget):
         self.obj_but.setCursor(Qt.CursorShape.PointingHandCursor)
 
     def connect(self, cb_fcn0):
-        cb_fcn = functools.partial(cb_fcn0, self.obj_but)
+        cb_fcn = pfcn(cb_fcn0, self.obj_but)
         self.obj_but.clicked.connect(cb_fcn)
 
 
@@ -2603,7 +2604,7 @@ class QButtonPair(QWidget):
     def connect(self, cb_fcn):
 
         for i, b in enumerate(self.obj_but):
-            b.clicked.connect(functools.partial(cb_fcn, i))
+            b.clicked.connect(pfcn(cb_fcn, i))
 
     def set_enabled(self, i_button, state):
 
@@ -2699,7 +2700,7 @@ class QLabelCombo(QWidget):
             return
 
         elif add_widget:
-            cb_fcn = functools.partial(cb_fcn, self.obj_cbox)
+            cb_fcn = pfcn(cb_fcn, self.obj_cbox)
 
         self.is_connected = True
         self.obj_cbox.currentIndexChanged.connect(cb_fcn)
@@ -2764,7 +2765,7 @@ class QLabelChecklist(QWidget):
             return
 
         elif add_widget:
-            cb_fcn = functools.partial(cb_fcn, self.obj_cbox)
+            cb_fcn = pfcn(cb_fcn, self.obj_cbox)
 
         self.is_connected = True
         self.obj_cbox.currentIndexChanged.connect(cb_fcn)
@@ -3023,6 +3024,9 @@ class QLabelCheckCombo(QWidget):
 
     def add_item(self, t, state=False):
         self.h_combo.add_item(t, state)
+
+    def reset_item(self, it, t):
+        self.h_combo.setItemText(it, t)
 
     def get_selected_items(self):
         return [x.strip() for x in self.h_combo.get_selected_items()]
@@ -3952,6 +3956,64 @@ class QTableWidgetItemSortable(QTableWidgetItem):
         else:
             return np.nan
 
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+"""
+    ComboBoxDelegate:
+"""
+
+class ComboBoxDelegate(QStyledItemDelegate):
+    # pyqtsignal functions
+    valueChanged = pyqtSignal(QModelIndex, QComboBox)
+
+    def __init__(self, parent, items):
+        super().__init__(parent)
+
+        self.items = items
+        self.active_editors = {}
+
+    def createEditor(self, parent, option, index):
+        # creates the combobox object
+        editor = create_combo_box(parent)
+        editor.addItems(self.items)
+        self.active_editors[index] = editor
+
+        # connects the combobox signal functions
+        editor.currentIndexChanged.connect(lambda: self.commitData.emit(editor))
+        editor.currentIndexChanged.connect(lambda: self.valueChanged.emit(index, editor))
+        editor.activated.connect(lambda: self.closeEditor.emit(editor))
+
+        return editor
+
+    def destroyEditor(self, editor, index):
+
+        # clears editor when closed
+        self.active_editors.pop(index, None)
+        super().destroyEditor(editor, index)
+
+    def setEditorData(self, editor, index):
+
+        # resets the combobox index/current text
+        current_text = index.data(Qt.ItemDataRole.EditRole) or index.data(Qt.ItemDataRole.DisplayRole)
+        cb_index = editor.findText(str(current_text))
+
+        if cb_index >= 0:
+            editor.setCurrentIndex(cb_index)
+
+    def setModelData(self, editor, model, index):
+
+        # updates the model data field
+        model.parent().blockSignals(True)
+        model.setData(index, editor.currentText(), Qt.ItemDataRole.EditRole)
+        model.parent().blockSignals(False)
+
+    def force_close(self, force_close=False):
+
+        if len(self.active_editors):
+            editor = list(self.active_editors.values())
+            if (not editor[0].view().isVisible()) or force_close:
+                self.closeEditor.emit(editor[0])
 
 # ----------------------------------------------------------------------------------------------------------------------
 # WIDGET STYLE CLASSES

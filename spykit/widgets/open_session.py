@@ -1,11 +1,11 @@
 # module import
 import os
 import time
-import functools
 import numpy as np
 from pathlib import Path
 from copy import deepcopy
 from datetime import timedelta
+from functools import partial as pfcn
 from bigtree import dataframe_to_tree, tree_to_dict
 
 # custom module import
@@ -535,7 +535,7 @@ class SessionFile(QWidget):
         # ---------------------------------------------------------------------------
 
         # sets up the slot function
-        cb_fcn = functools.partial(self.tab_change)
+        cb_fcn = pfcn(self.tab_change)
         self.tab_group.currentChanged.connect(cb_fcn)
         self.tab_group.setContentsMargins(0, 0, 0, 0)
 
@@ -653,7 +653,7 @@ class SessionFile(QWidget):
                     layout.addWidget(obj_edit.obj_edit, self.n_para, 1, 1, 1)
 
                 # sets up the label/editbox slot function
-                cb_fcn = functools.partial(self.prop_update, p_str)
+                cb_fcn = pfcn(self.prop_update, p_str)
                 obj_edit.connect(cb_fcn)
 
             # case is a checkbox
@@ -670,7 +670,7 @@ class SessionFile(QWidget):
                     layout.addWidget(obj_checkbox, self.n_para, 0, 1, 2)
 
                 # sets up the slot function
-                cb_fcn = functools.partial(self.prop_update, p_str)
+                cb_fcn = pfcn(self.prop_update, p_str)
                 obj_checkbox.stateChanged.connect(cb_fcn)
 
             # case is a combobox
@@ -690,7 +690,7 @@ class SessionFile(QWidget):
                     layout.addWidget(obj_combo.obj_cbox, self.n_para, 1, 1, 1)
 
                 # sets up the slot function
-                cb_fcn = functools.partial(self.prop_update, p_str)
+                cb_fcn = pfcn(self.prop_update, p_str)
                 obj_combo.connect(cb_fcn)
 
             case 'exptfolder':
@@ -722,7 +722,7 @@ class SessionFile(QWidget):
                     layout.addWidget(obj_file_spec, self.n_para, 0, 1, 3)
 
                 # sets up the slot function
-                cb_fcn = functools.partial(self.prop_update, p_str)
+                cb_fcn = pfcn(self.prop_update, p_str)
                 obj_file_spec.connect(cb_fcn)
 
     # ---------------------------------------------------------------------------

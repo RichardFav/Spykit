@@ -2,10 +2,9 @@
 import os
 import time
 import colorsys
-import functools
-from copy import deepcopy
-
 import numpy as np
+from copy import deepcopy
+from functools import partial as pfcn
 
 # pyqtgraph modules
 from pyqtgraph import (exporters, mkPen, mkColor, TextItem, ImageItem, PlotCurveItem, LinearRegionItem,
@@ -308,7 +307,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
         # sets the plot button callback functions
         for pb in self.plot_but:
-            cb_fcn = functools.partial(self.plot_button_clicked, pb.objectName())
+            cb_fcn = pfcn(self.plot_button_clicked, pb.objectName())
             pb.clicked.connect(cb_fcn)
 
         # adds the traces to the main plot
