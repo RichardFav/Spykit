@@ -806,7 +806,7 @@ class ProbePlot(PlotWidget):
 class ProbeView(GraphicsObject):
     # parameters
     dp = 0.1
-    pw = 0.05
+    pw = 0.15
     n_ar = 3
     p_gap = 0.05
     p_exp_shank = 0.2
