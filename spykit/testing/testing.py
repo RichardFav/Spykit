@@ -4,10 +4,6 @@ import os
 # import sys
 # from importlib import reload
 
-# Spike only
-# os.environ['LD_LIBRARY_PATH'] = '/opt/MATLAB/R2024b/runting/glnxa64:/lib/x86_64-linux-gnu'
-os.environ['LD_LIBRARY_PATH'] = '/opt/MATLAB/R2024b/runtime/glnxa64'
-
 # other imports
 # import spykit.common.misc_func as mf
 import spykit.common.common_widget as cw

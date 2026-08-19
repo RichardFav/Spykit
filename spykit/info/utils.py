@@ -1083,7 +1083,7 @@ class InfoWidgetPara(InfoWidget, SearchMixin):
             # creates the header label
             h_lbl = cw.create_text_label(None, pp_h['name'], font=self.item_font)
             h_lbl.setAlignment(Qt.AlignmentFlag.AlignVCenter)
-            h_lbl.setStyleSheet("background-color: '#A0A0A0;")
+            h_lbl.setStyleSheet("background-color: #A0A0A0;")
             self.tree_prop.setItemWidget(item, 0, h_lbl)
 
             # sets the item properties

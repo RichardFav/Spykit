@@ -55,7 +55,10 @@ class ThreadWorker(QThread):
 
     def reset_error_hook(self):
 
-        sys.excepthook = self.parent().orig_error_hook
+        if hasattr(self.parent(), 'sp_main'):
+            sys.excepthook = self.parent().sp_main.orig_error_hook
+        else:
+            sys.excepthook = self.parent().orig_error_hook
 
 # ----------------------------------------------------------------------------------------------------------------------
 
