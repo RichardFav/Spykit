@@ -230,8 +230,11 @@ class UnitMetricProps(PropWidget):
 
     def get_unit_type(self, i_unit):
 
-        i_type = int(self.get_field('unit_type')[i_unit])
-        return self.unit_lbl[i_type]
+        i_type = self.get_field('unit_type')[i_unit]
+        if isinstance(i_type, np.memmap):
+            return self.unit_lbl[int(i_type[0])]
+        else:
+            return self.unit_lbl[int(i_type)]
 
     def get_metric_table_values(self):
 

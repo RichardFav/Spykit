@@ -249,13 +249,14 @@ class BombCellPara(object):
         # ---------------------------------------------------------------------------
 
         # memory allocation
+        file_sep = '\\' if cf.is_win else '/'
         self.raw_file = np.empty(self.n_run, dtype=object)
         self.meta_file = np.empty(self.n_run, dtype=object)
 
         for i_run in range(self.n_run):
             # determines if the binary/meta data files exist somewhere in the expt folder
-            r_file = [x for x in Path(self.expt_dir).rglob(f'**\\run-00{i_run + 1}*.ap.bin')]
-            m_file = [x for x in Path(self.expt_dir).rglob(f'**\\run-00{i_run + 1}*.ap.meta')]
+            r_file = [x for x in Path(self.expt_dir).rglob(f'**{file_sep}run-00{i_run + 1}*.ap.bin')]
+            m_file = [x for x in Path(self.expt_dir).rglob(f'**{file_sep}run-00{i_run + 1}*.ap.meta')]
 
             if bool(len(r_file)) and bool(len(m_file)):
                 # if successful, set the file names
@@ -649,7 +650,7 @@ class BombCellInfoTab(InfoWidgetPara):
                             p_value = int(p_value)
 
                         elif (p_type == 'EditS'):
-                            if isinstance(p_value, pathlib.WindowsPath):
+                            if isinstance(p_value, pathlib.WindowsPath) or isinstance(p_value, pathlib.PosixPath):
                                 # converts from a path to string
                                 p_value = str(p_value)
 

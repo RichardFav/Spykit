@@ -1012,10 +1012,10 @@ class QRegionConfig(QWidget):
 
         for p_str in ['n_row', 'n_col']:
             h_obj = self.findChild(QLineEdit, name=p_str)
-            h_obj.setEnabled(state)
+            h_obj.setEnabled(bool(state))
 
         for h_lbl in self.findChildren(QLabel):
-            h_lbl.setEnabled(state)
+            h_lbl.setEnabled(bool(state))
 
     def clear(self):
 
@@ -2353,7 +2353,7 @@ class QFileListDialog(QDialog):
     def list_select(self):
 
         item_sel = self.file_list.selectedItems()
-        self.cont_but[0].setEnabled(len(item_sel) > 0)
+        self.cont_but[0].setEnabled(bool(len(item_sel) > 0))
 
     def main_select(self):
 
@@ -2468,8 +2468,8 @@ class QLabelEdit(QWidget):
         self.obj_lbl.setToolTip(tt_str)
 
     def set_enabled(self, state):
-        self.obj_lbl.setEnabled(state)
-        self.obj_edit.setEnabled(state)
+        self.obj_lbl.setEnabled(bool(state))
+        self.obj_edit.setEnabled(bool(state))
 
     def connect(self, cb_fcn0):
         cb_fcn = pfcn(cb_fcn0, self.obj_edit)
@@ -2524,8 +2524,8 @@ class QLabelSpinbox(QWidget):
         self.obj_lbl.setToolTip(tt_str)
 
     def set_enabled(self, state):
-        self.obj_lbl.setEnabled(state)
-        self.obj_spinbox.setEnabled(state)
+        self.obj_lbl.setEnabled(bool(state))
+        self.obj_spinbox.setEnabled(bool(state))
 
     def connect(self, cb_fcn0):
         cb_fcn = pfcn(cb_fcn0, self.obj_spinbox)
@@ -2608,7 +2608,7 @@ class QButtonPair(QWidget):
 
     def set_enabled(self, i_button, state):
 
-        self.obj_but[i_button].setEnabled(state)
+        self.obj_but[i_button].setEnabled(bool(state))
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -2681,8 +2681,8 @@ class QLabelCombo(QWidget):
 
     def set_enabled(self, state):
 
-        self.obj_lbl.setEnabled(state)
-        self.obj_cbox.setEnabled(state)
+        self.obj_lbl.setEnabled(bool(state))
+        self.obj_cbox.setEnabled(bool(state))
 
     def count(self):
 
@@ -3039,8 +3039,8 @@ class QLabelCheckCombo(QWidget):
         self.checklist_change.emit(self.h_combo)
 
     def setEnabled(self, state):
-        self.h_lbl.setEnabled(state)
-        self.h_combo.setEnabled(state)
+        self.h_lbl.setEnabled(bool(state))
+        self.h_combo.setEnabled(bool(state))
 
     def clear(self):
         self.h_combo.clear()
@@ -3093,8 +3093,8 @@ class QCheckboxHTML(QWidget):
         self.h_lbl.setText(t_lbl)
 
     def set_enabled(self, state):
-        self.h_lbl.setEnabled(state)
-        self.h_chk.setEnabled(state)
+        self.h_lbl.setEnabled(bool(state))
+        self.h_chk.setEnabled(bool(state))
 
     def set_check(self, state):
         self.h_chk.setChecked(state)
@@ -3554,8 +3554,8 @@ class QDialogProgress(QWidget):
 
     def set_enabled(self, state):
 
-        self.lbl_obj.setEnabled(state)
-        self.prog_bar.setEnabled(state)
+        self.lbl_obj.setEnabled(bool(state))
+        self.prog_bar.setEnabled(bool(state))
 
     def set_label(self, m_str_nw):
 
