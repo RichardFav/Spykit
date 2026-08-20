@@ -2856,9 +2856,8 @@ class QCheckCombo(QComboBox):
         self.view().clicked.connect(self.item_click)
 
         # field initialisation
-        self.n_item = 0
         self.n_sel = 0
-        self.is_updating = False
+        self.n_item = 0
         self._title = '0 Items Selected'
 
         # sets the widget model and event functions
@@ -2873,25 +2872,14 @@ class QCheckCombo(QComboBox):
 
     def item_click(self, index):
 
-        if self.is_updating:
-            return
-
         # resets the selection count
-        self.combo_model.blockSignals(True)
         self.n_sel = len(self.get_selected_items())
 
         # runs the clicked item
         self.reset_title()
         self.item_clicked.emit(self.combo_model.itemFromIndex(index))
 
-        # resets the signal block
-        self.combo_model.blockSignals(False)
-
     def item_press(self, index):
-
-        # flag that a manual update is taking place
-        self.is_updating = True
-        self.combo_model.blockSignals(True)
 
         # updates the checkbox state
         item = self.combo_model.itemFromIndex(index)
@@ -2901,11 +2889,8 @@ class QCheckCombo(QComboBox):
             else:
                 item.setCheckState(Qt.CheckState.Checked)
 
+        # updates the main window
         QApplication.processEvents()
-
-        # resets the update flag
-        self.is_updating = False
-        self.combo_model.blockSignals(False)
 
     def get_selected_items(self):
 
