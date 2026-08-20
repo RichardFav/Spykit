@@ -104,6 +104,10 @@ combo_style_sheet = """
         border-radius: 2px; 
         border: 1px solid;
     }
+    QComboBox::indicator {
+        width: 10px;
+        height: 10px;
+    }      
 """
 
 # tab widget style sheet
@@ -2865,40 +2869,43 @@ class QCheckCombo(QComboBox):
         self.setFixedHeight(cf.combo_height)
         self.setStyleSheet(combo_style_sheet)
         self.setModel(self.combo_model)
+        self.setFont(create_font_obj())
 
     def item_click(self, index):
 
         if self.is_updating:
             return
 
-        item = self.combo_model.itemFromIndex(index)
-        if item.checkState() == Qt.CheckState.Checked:
-            self.n_sel += 1
-        else:
-            self.n_sel -= 1
+        # resets the selection count
+        self.combo_model.blockSignals(True)
+        self.n_sel = len(self.get_selected_items())
 
         # runs the clicked item
         self.reset_title()
-        self.item_clicked.emit(item)
+        self.item_clicked.emit(self.combo_model.itemFromIndex(index))
+
+        # resets the signal block
+        self.combo_model.blockSignals(False)
 
     def item_press(self, index):
 
         # flag that a manual update is taking place
         self.is_updating = True
+        self.combo_model.blockSignals(True)
 
         # updates the checkbox state
         item = self.combo_model.itemFromIndex(index)
-        if item.checkState() == Qt.CheckState.Checked:
-            item.setCheckState(Qt.CheckState.Unchecked)
-        else:
-            item.setCheckState(Qt.CheckState.Checked)
+        if cf.is_win:
+            if item.checkState() == Qt.CheckState.Checked:
+                item.setCheckState(Qt.CheckState.Unchecked)
+            else:
+                item.setCheckState(Qt.CheckState.Checked)
+
+        QApplication.processEvents()
 
         # resets the update flag
         self.is_updating = False
-
-        # runs the clicked item
-        self.reset_title()
-        self.item_clicked.emit(item)
+        self.combo_model.blockSignals(False)
 
     def get_selected_items(self):
 
@@ -2958,8 +2965,10 @@ class QCheckCombo(QComboBox):
         painter = QStylePainter(self)
         painter.setPen(self.palette().color(QPalette.ColorRole.Text))
         opt = QStyleOptionComboBox()
-        self.initStyleOption(opt)
+
+        opt.initFrom(self)
         opt.currentText = self._title
+
         painter.drawComplexControl(QStyle.ComplexControl.CC_ComboBox, opt)
         painter.drawControl(QStyle.ControlElement.CE_ComboBoxLabel, opt)
 

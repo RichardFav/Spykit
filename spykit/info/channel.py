@@ -102,7 +102,7 @@ class ChannelInfoTab(InfoWidget):
         # creates the table widget
         self.create_table_widget()
         self.get_filtered_items()
-        self.opt_layout.addWidget(self.undock_obj, 3, 2, 1, 1, alignment=cw.align_flag['right'])
+        self.opt_layout.addWidget(self.undock_obj, 3, 2, 1, 1, cw.align_flag['right'])
 
         # resets the table mouse move event
         self.table.setMouseTracking(True)

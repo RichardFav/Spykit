@@ -944,7 +944,7 @@ class BombCellSolver(BombCellPara, QDialog):
         self.fspec_group.setFixedHeight(self.hght_fspec)
 
         # sets up the slot functions
-        self.fspec_edit = cw.create_line_edit(None, "", align='right')
+        self.fspec_edit = cw.create_line_edit(None, "", align='left')
         self.fspec_layout.addWidget(self.fspec_edit)
         self.fspec_edit.setFixedHeight(cf.but_height)
         self.fspec_edit.setEnabled(False)
