@@ -4,6 +4,9 @@ import sys
 import time
 import threading
 
+# sets the qt API environmental variable
+os.environ['QT_API'] = 'pyqt6'
+
 # custom module import
 from testing.testing import Testing
 from spykit.widgets.main_window import MainWindow
@@ -12,6 +15,8 @@ from spykit.common.error_logging import ErrorHandler
 # pyqt6 module import
 from PyQt6.QtWidgets import (QApplication, QTreeWidget, QTreeWidgetItem, QTreeView, QProxyStyle, QStyleFactory, QWidget)
 from PyQt6.QtGui import QFont
+
+########################################################################################################################
 
 # debugging parameters
 is_testing = False

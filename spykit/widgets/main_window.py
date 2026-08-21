@@ -1577,21 +1577,6 @@ class MenuBar(QObject):
         # clears the spike-sorting fields
         self.clear_spike_sorting(prompt_user=False)
 
-    def run_test(self):
-
-        import matplotlib
-        matplotlib.use('Agg')
-
-        ses = self.session_obj.session
-        h_fig = ses._s.plot_preprocessed(
-            show=True,
-            time_range=(0, 0.1),
-            show_channel_ids=False,
-            mode="map",
-        )
-
-        h_fig['run-001_g0_imec0'].savefig('TestHeatmap.png')
-
     # ---------------------------------------------------------------------------
     # Spike Sorting Menubar Functions
     # ---------------------------------------------------------------------------
