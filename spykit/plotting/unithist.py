@@ -797,13 +797,14 @@ class UnitHist(UnitPlotLayout):
         # calculates the histogram
         q_met_hist = self.q_met[~np.isnan(self.q_met)]
         n_count, self.x_plt = np.histogram(q_met_hist, bins=self.n_bin, range=self.h_range)
-        self.y_plt = n_count / np.sum(n_count)
 
         # calculates the upper limit
-        if np.all(np.isnan(self.y_plt)):
-            y_max = 1.0
-        else:
+        n_count_sum = np.sum(n_count)
+        if n_count_sum > 0:
+            self.y_plt = n_count / n_count_sum
             y_max = np.max(self.y_plt)
+        else:
+            self.y_plt, y_max = 0.0, 1.0
 
         # sets the overall y-axis max limit
         y_max_h = np.floor(math.log10(y_max) - 1)

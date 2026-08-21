@@ -89,8 +89,8 @@ class TraceSpikeMixin:
 
             # creates plot marker
             self.h_spike[u_lbl_lo] = pg.ScatterPlotItem(
-                [np.nan],
-                [np.nan],
+                [-1],
+                [0],
                 symbol=self.sym,
                 size=self.get_para_value('m_size'),
                 pen=self.l_pen_spike,

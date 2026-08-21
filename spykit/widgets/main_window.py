@@ -106,9 +106,9 @@ class MainWindow(QMainWindow):
         # sets the widget style sheets
         self.set_styles()
 
-        # REMOVE ME LATER
-        if cf.is_dev():
-            self.testing()
+        # # REMOVE ME LATER
+        # if cf.is_dev():
+        #     self.testing()
 
     # ---------------------------------------------------------------------------
     # Class Widget Setup Functions
@@ -128,6 +128,9 @@ class MainWindow(QMainWindow):
         pg.setConfigOption('useOpenGL', False)
 
     def init_class_fields(self):
+
+        # Ignore overflow warnings globally
+        np.seterr(over='ignore')
 
         # plot parameter widget setup
         self.main_layout.addWidget(self.prop_manager.main_widget, 0, 0, 1, 1)

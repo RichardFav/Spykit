@@ -476,19 +476,25 @@ class InfoManager(QObject):
 
     def add_unit_table(self):
 
-        # resets the combobox properties
-        unit_tab = self.get_info_tab('unit')
-        unit_tab.set_combobox_props()
-        unit_tab.setup_unit_table_data()
-
-        t_worker = ThreadWorker(self.sp_main, self.create_unit_table)
-        t_worker.work_finished.connect(self.set_unit_table_data)
+        # sets up the unit table data
+        t_worker = ThreadWorker(self.sp_main, self.setup_unit_table_data)
+        t_worker.work_finished.connect(self.create_unit_table)
         t_worker.start()
 
-    def create_unit_table(self, _):
+    def setup_unit_table_data(self, _):
 
         # field retrieval
         unit_tab = self.get_info_tab('unit')
+
+        # sets up the unit table data
+        return unit_tab.setup_unit_table_data(True)
+
+    def create_unit_table(self, thread_data):
+
+        # field retrieval/setting
+        unit_tab = self.get_info_tab('unit')
+        unit_tab.df_unit, unit_tab.c_hdr, unit_tab.unit_lbl = thread_data
+        unit_tab.set_combobox_props()
 
         # disables the table
         self.set_tab_visible('unit', False)
@@ -513,7 +519,8 @@ class InfoManager(QObject):
         self.set_tab_visible('unit', True)
         self.set_tab_enabled('unit', True)
 
-        return []
+        # sets the unit table data
+        self.set_unit_table_data()
 
     def set_unit_table_data(self, thread_data=None):
 

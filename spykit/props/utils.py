@@ -609,14 +609,14 @@ class PropManager(QObject):
 
     def add_spike_table(self):
 
-        t_worker = ThreadWorker(self.sp_main, self.create_spike_table)
-        t_worker.work_finished.connect(self.set_spike_table_data)
-        t_worker.start()
+        # creates and sets up the unit spike data table
+        self.create_spike_table()
+        self.set_spike_table_data()
 
         # pause for a little bit...
         time.sleep(0.05)
 
-    def create_spike_table(self, _):
+    def create_spike_table(self):
 
         # field retrieval
         spike_tab = self.get_prop_tab('tracespike')
