@@ -803,7 +803,7 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
 
     def table_cell_clicked(self, i_row=None, i_col=None):
 
-        if self.is_updating:
+        if self.is_updating or (self.i_row_sel is None):
             return
 
         elif i_row is None:
@@ -814,18 +814,26 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
         i_spike = int(self.get_para_value('i_spike'))
         n_spike_unit = self.get_data('Count')[i_unit]
         is_unit_sel = self.is_filt[self.i_run, self.i_shank][i_unit, 0]
+        update_spike = self.trace_view.show_spikes and is_unit_sel
 
         # sets the table
         self.toggle_row_highlight(i_row)
         self.spinbox_spike.set_range(1, self.get_data('Count')[i_row])
         self.spinbox_spike.set_enabled(is_unit_sel and self.trace_view.show_spikes)
 
-        # resets the spike count
+        # determines if the unit's spike index is feasible
         if i_spike > n_spike_unit:
+            # if not, then resets the spike index
+            i_spike = n_spike_unit
             self.spinbox_spike.set_value(n_spike_unit)
-            if self.trace_view.show_spikes:
-                self.set_para_value('i_spike', n_spike_unit)
-                # self.edit_update('i_spike')
+
+            # if selected and viewing, then update the viewed spike
+            if update_spike:
+                self.set_para_value('i_spike', i_spike)
+
+        elif update_spike:
+            # otherwise, update the selected spike index
+            self.spinbox_update('i_spike')
 
     def table_cell_changed(self, i_row, i_col):
 
@@ -856,6 +864,9 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
 
         # updates the spike markers
         self.reset_spike_markers()
+
+        if new_state and self.trace_view.show_spikes:
+            self.spinbox_update('i_spike')
 
     def combo_type_change(self, index, c_box):
 

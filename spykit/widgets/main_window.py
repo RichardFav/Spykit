@@ -106,9 +106,9 @@ class MainWindow(QMainWindow):
         # sets the widget style sheets
         self.set_styles()
 
-        # # REMOVE ME LATER
-        # if cf.is_dev():
-        #     self.testing()
+        # REMOVE ME LATER
+        if cf.is_dev():
+            self.testing()
 
     # ---------------------------------------------------------------------------
     # Class Widget Setup Functions
@@ -804,7 +804,7 @@ class MainWindow(QMainWindow):
         # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/Large Example/large_example.ssf"
 
         # loads the session
-        self.menu_bar.load_session(f_file, True)
+        self.menu_bar.load_session(f_file, False)
 
         # retrieves the configuration tab object
         config_tab = self.prop_manager.get_prop_tab('config')
@@ -1607,6 +1607,14 @@ class MenuBar(QObject):
     # ---------------------------------------------------------------------------
 
     def run_bomb_cell(self):
+
+        # determines if kilosort4 was used for spike sorting
+        s_info = cf.SessionInfo(self.sp_main.session_obj)
+        if s_info.get_sorter_type() != 'kilosort4':
+            # if not, then output an error to screen and exit
+            e_str = "BombCell can only be run on sessions that have been spike sorted using Kilosort4."
+            cf.show_error(e_str, "Incorrect Spike Sorter")
+            return
 
         if self.bombcell_dlg is None:
             # sets up the experiment base directory

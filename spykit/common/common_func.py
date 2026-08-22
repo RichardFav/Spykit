@@ -278,15 +278,8 @@ class SessionInfo:
             sort_str = f"{sort_str} {self.arrow} Session Not Spike Sorted\n"
             return sort_str
 
-        # case is the session has been spike sorted
-        sort_path = self.session_obj.get_sorting_folder_paths()
-        param_file = os.path.join(sort_path[0][0], self.param_name)
-
-        # Open the file and parse the full JSON content
-        with open(param_file, 'r', encoding='utf-8') as file:
-            data = json.load(file)
-
         # sets up the spike sorting parameter fields
+        data = self.get_param_file_data()
         for k, v in data.items():
             if isinstance(v, dict):
                 # case is value field is a dictionary
@@ -332,6 +325,24 @@ class SessionInfo:
             post_str = f"{post_str}  {self.dot} {v}: {p_val}\n"
 
         return post_str
+
+    def get_param_file_data(self):
+
+        # gets the parameter file path
+        sort_path = self.session_obj.get_sorting_folder_paths()
+        param_file = os.path.join(sort_path[0][0], self.param_name)
+
+        # Open the file and parse the full JSON content
+        with open(param_file, 'r', encoding='utf-8') as file:
+            data = json.load(file)
+
+        return data
+
+    def get_sorter_type(self):
+
+        # retrieves the parameter file data
+        return self.get_param_file_data()['sorter_name']
+
 
 # ----------------------------------------------------------------------------------------------------------------------
 
