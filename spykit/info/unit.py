@@ -38,6 +38,10 @@ int_col = [
 
 # ----------------------------------------------------------------------------------------------------------------------
 
+"""
+    UnitInfoTab:
+"""
+
 
 class UnitInfoTab(InfoWidget):
     # pyqtSignal signal functions
@@ -273,7 +277,7 @@ class UnitInfoTab(InfoWidget):
         self.mouse_leave.emit(evnt)
         self.table_delegate.force_close()
 
-    def table_cell_click(self, i_row, i_col):
+    def table_cell_click(self, i_row, i_col, update_spike_table=True):
 
         # removes any previous row highlights
         if self.i_unit_sel is not None:
@@ -292,7 +296,7 @@ class UnitInfoTab(InfoWidget):
         # resets the probe unit highlight marker
         self.reset_probe_roi_location(i_row)
 
-        # retrieves
+        # updates the post-processing tabs
         post_tab = self.sp_main.prop_manager.get_prop_tab('postprocess')
         if post_tab is not None:
             # flag that manual updating is occuring
@@ -308,6 +312,11 @@ class UnitInfoTab(InfoWidget):
             # resets the update flag
             self.is_updating = False
 
+        # resets the spike trace property tab properties
+        if update_spike_table:
+            spike_tab = self.sp_main.prop_manager.get_prop_tab('tracespike')
+            spike_tab.table_cell_clicked(i_row, update_unit_table=False)
+
     def reset_probe_roi_location(self, i_row=None):
 
         if self.i_unit_sel is None:
@@ -317,7 +326,7 @@ class UnitInfoTab(InfoWidget):
         i_ch_unit = self.i_pk_ch[self.i_unit_sel - 1]
         ch_pos_unit = self.ch_pos[self.i_pk_ch[self.i_unit_sel - 1] - 1, :]
 
-        # resets the roi position
+        # resets the probe roi position
         probe_view = self.sp_main.plot_manager.get_plot_view('probe')
         if probe_view is not None:
             type_lbl = self.table.item(i_row, self.i_col_type).text().lower()

@@ -801,13 +801,18 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
 
         self.filt_dlg.show_dialog()
 
-    def table_cell_clicked(self, i_row=None, i_col=None):
+    def table_cell_clicked(self, i_row=None, i_col=None, update_unit_table=True):
 
-        if self.is_updating or (self.i_row_sel is None):
+        if self.is_updating:
             return
 
         elif i_row is None:
-            i_row = self.i_row_sel
+            if self.i_row_sel is None:
+                # if there is no previous row selected, then return
+                return
+            else:
+                # otherwise, update the row index
+                i_row = self.i_row_sel
 
         # field retrieval
         i_unit = self.get_unit_index(i_row) - 1
@@ -816,7 +821,7 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
         is_unit_sel = self.is_filt[self.i_run, self.i_shank][i_unit, 0]
         update_spike = self.trace_view.show_spikes and is_unit_sel
 
-        # sets the table
+        # sets the table properties
         self.toggle_row_highlight(i_row)
         self.spinbox_spike.set_range(1, self.get_data('Count')[i_row])
         self.spinbox_spike.set_enabled(is_unit_sel and self.trace_view.show_spikes)
@@ -834,6 +839,10 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
         elif update_spike:
             # otherwise, update the selected spike index
             self.spinbox_update('i_spike')
+
+        # resets the unit information tab properties
+        if update_unit_table:
+            self.update_unit_table_props(i_row, i_unit)
 
     def table_cell_changed(self, i_row, i_col):
 
@@ -864,6 +873,9 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
 
         # updates the spike markers
         self.reset_spike_markers()
+
+        # resets the unit information tab properties
+        self.update_unit_table_props(i_row, i_unit)
 
         if new_state and self.trace_view.show_spikes:
             self.spinbox_update('i_spike')
@@ -1092,3 +1104,13 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
         # resets the spike markers
         self.i_frm_pr = None
         self.reset_spike_markers()
+
+    def update_unit_table_props(self, i_row, i_unit):
+
+        # field retrieval
+        unit_tab = self.sp_main.info_manager.get_info_tab('unit')
+
+        # updates the unit table properties
+        unit_tab.set_row_highlight(False)
+        unit_tab.i_unit_sel = i_unit
+        unit_tab.table_cell_click(i_row, unit_tab.i_col_unit, update_spike_table=False)

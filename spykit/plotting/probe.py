@@ -815,11 +815,13 @@ class ProbeView(GraphicsObject):
     pen = mkPen(width=2, color='b')
     pen_h = mkPen(width=2, color='g')
 
-    # probe polygon colours
+    # colours fields
     p_col_probe = cf.get_colour_value('r', 100)
     c_col_probe = cf.get_colour_value('w', 128)
     c_col_hover = cf.get_colour_value('c', 220)
     c_col_selected = cf.get_colour_value('g', 128)
+    l_pen_out_col = cf.get_colour_value('w')
+    pen_sel_col = cf.get_colour_value('y')
 
     # pyqtsignal functions
     update_roi = pyqtSignal(object)
@@ -837,8 +839,8 @@ class ProbeView(GraphicsObject):
         self.session_obj = session_obj
 
         # line pen widgets
-        self.pen_sel = mkPen(color='k', width=l_wid)
-        self.l_pen_out = mkPen(color=cf.get_colour_value('k'), width=l_wid)
+        self.pen_sel = mkPen(color=self.pen_sel_col, width=l_wid)
+        self.l_pen_out = mkPen(color=self.l_pen_out_col, width=l_wid)
         self.l_pen_highlight = mkPen(color=cf.get_colour_value('y'), width=2 * l_wid)
 
         # field initialisation
@@ -1399,17 +1401,22 @@ class ProbeView(GraphicsObject):
 
         return cp.containsPoint(m_pos, Qt.FillRule.OddEvenFill)
 
+
 # ----------------------------------------------------------------------------------------------------------------------
 
 """
     UnitMarker:
 """
 
+
 class UnitMarker(pg.QtWidgets.QGraphicsEllipseItem):
     # marker dimensions
     p_wid = 1
     pw_y = 1.05
     pw_x = 1.05
+
+    # colour fields
+    u_pen_sel_col = cf.get_colour_value('w')
 
     def __init__(self, view_obj, p, r, i_ch, u_type, i_unit, u_col):
         super().__init__(p[0] + self.p_wid / 2, p[1] + self.p_wid / 2, r - self.p_wid, r - self.p_wid)
@@ -1425,7 +1432,7 @@ class UnitMarker(pg.QtWidgets.QGraphicsEllipseItem):
         self.h_lbl = view_obj.unit_label
         self.v_box = view_obj.main_obj.getViewBox()
         self.u_pen = QPen(u_col, self.p_wid)
-        self.u_pen_sel = QPen(cf.get_colour_value('k'), self.p_wid)
+        self.u_pen_sel = QPen(self.u_pen_sel_col, self.p_wid)
 
         # sets widget property fields
         self.setAcceptHoverEvents(True)
