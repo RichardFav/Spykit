@@ -120,8 +120,13 @@ class PropManager(QObject):
 
         # creates the tab-objects
         for t_type in tab_type_new:
-            # only add if tab does not exist
             if t_type in self.t_types:
+                # if the tab exists, then reset the properties
+                prop_tab = self.get_prop_tab(t_type)
+                if hasattr(prop_tab, "reset_prop_fields"):
+                    prop_tab.reset_prop_fields()
+
+                # continue to the next tab type
                 continue
 
             # creates the tab widget (based on type)
@@ -312,63 +317,63 @@ class PropManager(QObject):
         trig_update = False
         new_type = tab_obj.data_type.current_text()
         i_run_sel = channel_tab.run_type.current_index()
-        is_concat = self.session_obj.is_concat_run()
         has_pp = self.session_obj.post_data.n_mmap > 0
         ch_status = self.session_obj.session.bad_ch[0]
         t_dur_run = np.round(self.session_obj.get_run_durations(), cf.n_dp)
+        is_concat = self.session_obj.is_concat_run() and self.session_obj.has_pp_runs()
 
-        if self.session_obj.is_raw_run() and self.session_obj.session.prep_obj.concat_runs:
-            # case is changing from a raw data to concatenated preprocessed data type
-
-            # TraceView limit update
-            if i_run_sel > 0:
-                # if the run index is > 0, then reset the trace view
-                t_ofs = np.round(np.sum(t_dur_run[:self.sp_main.info_manager.i_run_pr]), cf.n_dp)
-                trace_view.t_lim += t_ofs
-                trig_view.t_lim += t_ofs
-
-            # TriggerView limit update
-            if self.sp_main.info_manager.i_run_pr is None:
-                full_zoom = True
-            else:
-                full_zoom = np.array_equal(np.array([0, t_dur_run[self.sp_main.info_manager.i_run_pr]]),
-                                           np.array(trig_view.l_reg_x.getRegion()))
-            if full_zoom:
-                # case is using full zoom
-                trig_view.t_lim = np.array([0, np.sum(t_dur_run)])
-
-            # updates the TriggerView duration
-            trig_update = True
-            trig_view.gen_props.set_n('t_dur', np.round(np.sum(t_dur_run), cf.n_dp))
-
-        elif (new_type == "Raw") and self.session_obj.is_concat_run():
-            # case is changing from concatenated preprocessed data type to raw data
-
-            # determines the run that the trace view starts in
-            t_dur_sum = np.cumsum(t_dur_run)
-            self.sp_main.info_manager.i_run_pr = (
-                next((i for i, x in enumerate(t_dur_sum) if x >= trace_view.t_lim[0])))
-            if self.sp_main.info_manager.i_run_pr != i_run_sel:
-                # updates the run comoobox if it does not match
-                channel_tab.is_updating = True
-                channel_tab.run_type.set_current_index(self.sp_main.info_manager.i_run_pr)
-                channel_tab.is_updating = False
-
-            # resets the trace view time range
-            if self.sp_main.info_manager.i_run_pr > 0:
-                trace_view.t_lim -= t_dur_sum[self.sp_main.info_manager.i_run_pr - 1]
-
-            # ensures the upper limit is within the run duration
-            trace_view.t_lim[1] = np.min([trace_view.t_lim[1], t_dur_run[self.sp_main.info_manager.i_run_pr]])
-            if not np.array_equal(trace_view.l_reg_x.getRegion(), trace_view.t_lim):
-                trace_view.is_updating = True
-                trace_view.l_reg_x.setRegion(trace_view.t_lim)
-                trace_view.is_updating = False
-
-            # updates the TriggerView duration
-            trig_update = True
-            trig_view.gen_props.set_n('t_dur', t_dur_run[self.sp_main.info_manager.i_run_pr])
-            trig_view.t_lim = np.array([0, t_dur_run[self.sp_main.info_manager.i_run_pr]])
+        # if self.session_obj.is_raw_run() and self.session_obj.session.prep_obj.concat_runs:
+        #     # case is changing from a raw data to concatenated preprocessed data type
+        #
+        #     # TraceView limit update
+        #     if i_run_sel > 0:
+        #         # if the run index is > 0, then reset the trace view
+        #         t_ofs = np.round(np.sum(t_dur_run[:self.sp_main.info_manager.i_run_pr]), cf.n_dp)
+        #         trace_view.t_lim += t_ofs
+        #         trig_view.t_lim += t_ofs
+        #
+        #     # TriggerView limit update
+        #     if self.sp_main.info_manager.i_run_pr is None:
+        #         full_zoom = True
+        #     else:
+        #         full_zoom = np.array_equal(np.array([0, t_dur_run[self.sp_main.info_manager.i_run_pr]]),
+        #                                    np.array(trig_view.l_reg_x.getRegion()))
+        #     if full_zoom:
+        #         # case is using full zoom
+        #         trig_view.t_lim = np.array([0, np.sum(t_dur_run)])
+        #
+        #     # updates the TriggerView duration
+        #     trig_update = True
+        #     trig_view.gen_props.set_n('t_dur', np.round(np.sum(t_dur_run), cf.n_dp))
+        #
+        # elif (new_type == "Raw") and self.session_obj.is_concat_run():
+        #     # case is changing from concatenated preprocessed data type to raw data
+        #
+        #     # determines the run that the trace view starts in
+        #     t_dur_sum = np.cumsum(t_dur_run)
+        #     self.sp_main.info_manager.i_run_pr = (
+        #         next((i for i, x in enumerate(t_dur_sum) if x >= trace_view.t_lim[0])))
+        #     if self.sp_main.info_manager.i_run_pr != i_run_sel:
+        #         # updates the run comoobox if it does not match
+        #         channel_tab.is_updating = True
+        #         channel_tab.run_type.set_current_index(self.sp_main.info_manager.i_run_pr)
+        #         channel_tab.is_updating = False
+        #
+        #     # resets the trace view time range
+        #     if self.sp_main.info_manager.i_run_pr > 0:
+        #         trace_view.t_lim -= t_dur_sum[self.sp_main.info_manager.i_run_pr - 1]
+        #
+        #     # ensures the upper limit is within the run duration
+        #     trace_view.t_lim[1] = np.min([trace_view.t_lim[1], t_dur_run[self.sp_main.info_manager.i_run_pr]])
+        #     if not np.array_equal(trace_view.l_reg_x.getRegion(), trace_view.t_lim):
+        #         trace_view.is_updating = True
+        #         trace_view.l_reg_x.setRegion(trace_view.t_lim)
+        #         trace_view.is_updating = False
+        #
+        #     # updates the TriggerView duration
+        #     trig_update = True
+        #     trig_view.gen_props.set_n('t_dur', t_dur_run[self.sp_main.info_manager.i_run_pr])
+        #     trig_view.t_lim = np.array([0, t_dur_run[self.sp_main.info_manager.i_run_pr]])
 
         # updates the current preprocessing data type
         if tab_obj.data_flds is not None:
@@ -382,7 +387,7 @@ class PropManager(QObject):
         channel_tab.is_updating = True
 
         # run/concatenation types (based on selection)
-        is_per_shank = self.session_obj.is_per_shank(not has_pp)
+        is_per_shank = self.session_obj.is_per_shank(not has_pp) and self.session_obj.has_pp_runs()
 
         # resets the run index (if displaying a concatenated run)
         if is_concat:
@@ -393,7 +398,7 @@ class PropManager(QObject):
             self.sp_main.info_manager.i_run_pr = None
 
         # updates the run type properties (disable if displaying concatenate run)
-        channel_tab.run_type.set_enabled(not is_concat)
+        # channel_tab.run_type.set_enabled(not is_concat)
         channel_tab.shank_type.set_enabled(is_per_shank)
 
         # resets the shank list
@@ -416,9 +421,9 @@ class PropManager(QObject):
         self.sp_main.plot_manager.reset_trace_views(reset_type)
         self.sp_main.plot_manager.reset_probe_views()
 
-        # updates the trigger view (if required)
-        if trig_update:
-            self.sp_main.plot_manager.reset_trig_views()
+        # # updates the trigger view (if required)
+        # if trig_update:
+        #     self.sp_main.plot_manager.reset_trig_views()
 
         # resets the update flags
         self.is_updating = False
@@ -562,14 +567,11 @@ class PropManager(QObject):
             match pt:
                 case 'general':
                     # case is the general property tab
-                    p_tab.t_dur = p_tab.p_props.t_dur[i_run_sel]
                     p_tab.check_update(False)
-                    p_tab.edit_update('t_dur')
-                    p_tab.reset_slot_functions()
 
                 case 'trigger':
                     p_tab.reset_table_data()
-                    p_tab.reset_slot_functions()
+                    p_tab.readd_all_regions()
 
             # resets the update flag
             p_tab.is_updating = False
@@ -597,7 +599,7 @@ class PropManager(QObject):
                 case 'general':
                     # case is the general property tab
                     p_tab.t_dur = self.session_obj.session_props.t_dur
-                    p_tab.check_update(False)
+                    p_tab.check_update(True)
                     p_tab.reset_slot_functions()
 
             # resets the update flag
@@ -860,6 +862,7 @@ class PropWidget(QWidget):
         # other class field retrieval
         self.sp_main = prop_manager.parent()
         self.session_obj = self.sp_main.session_obj
+        self.time_manager = self.sp_main.time_manager
 
         # common class widgets
         self.outer_layout = QVBoxLayout()

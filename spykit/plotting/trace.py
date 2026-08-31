@@ -171,10 +171,10 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
         # experiment properties
         s_props = self.session_obj.session_props
-        self.t_dur = s_props.get_value('t_dur')
         self.s_freq = s_props.get_value('s_freq')
         self.n_channels = s_props.get_value('n_channels')
-        self.n_samples = s_props.get_value('n_samples')
+        self.t_dur0 = np.round(self.time_manager.get('t_dur'), cf.n_dp)
+        self.n_run = self.session_obj.session.get_run_count()
 
         # plot item mouse event functions
         self.enter_fcn = None
@@ -194,12 +194,13 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.trace_props = None
         self.spike_props = None
 
-        # axes limits
+        # axes/trace limit class fields
+        self.x_lim = []
         self.y_lim = []
         self.y_lim_tr = self.y_ofs / 2
-        self.x_window = np.min([self.t_dur, self.t_dur_max0])
-        self.t_lim = np.array([0, self.x_window])
         self.pt_lim = np.array([0, 1])
+        self.x_window = np.min([self.t_dur0, self.t_dur_max0])
+        self.t_lim = np.array([0, self.x_window])
         self.t_lim_prev = deepcopy(self.t_lim)
 
         # axes zoom class fields
@@ -214,13 +215,13 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.n_show = 0
         self.i_frm0 = None
         self.i_frm1 = None
-        self.t_start_ofs = 0
         self.labels = []
         self.l_pen_status = {}
         self.i_trace = None
         self.y_trace = None
         self.show_lbl = False
         self.show_spikes = False
+        self.t_start_ofs = [np.zeros(self.n_run, dtype=float), [None]]
 
         # class widgets
         self.c_map = None
@@ -233,7 +234,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.ximage_item = ImageItem()
         self.yimage_item = ImageItem()
 
-        #
+        # unit marker fields
         self.unit_mark = {}
 
         # creates the label object
@@ -299,9 +300,12 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.plot_item.setDownsampling(auto=True)
         self.plot_item.setClipToView(True)
 
+        # sets the trace domain limits
+        self.x_lim = [0, self.t_dur0]
+
         # sets the axis limits
         self.v_box[0, 0].setXRange(self.t_lim[0], self.t_lim[1], padding=0)
-        self.v_box[0, 0].setLimits(xMin=0, xMax=self.session_obj.session_props.t_dur, yMin=0, yMax=self.y_lim_tr)
+        self.v_box[0, 0].setLimits(xMin=0, xMax=self.x_lim[1], yMin=0, yMax=self.y_lim_tr)
         self.v_box[0, 0].setMouseMode(self.v_box[0, 0].RectMode)
         self.v_box[0, 0].wheelEvent = self.mouse_wheel_move
 
@@ -352,7 +356,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
         # creates the image transform
         tr_x = QtGui.QTransform()
-        tr_x.scale(self.t_dur / self.n_col_img, 1.0)
+        tr_x.scale(self.t_dur0 / self.n_col_img, 1.0)
 
         # sets the plot item properties
         self.xframe_item.setMouseEnabled(y=False)
@@ -368,7 +372,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.h_plot[1, 0].addItem(self.ximage_item)
 
         # creates the linear region
-        self.l_reg_x = LinearRegionItem([0, self.x_window], bounds=[0, self.t_dur], span=[0, 1],
+        self.l_reg_x = LinearRegionItem([0, self.x_window], bounds=[0, self.t_dur0], span=[0, 1],
                                         pen=self.l_pen, hoverPen=self.l_pen_hover, swapMode='none')
         self.l_reg_x.sigRegionChanged.connect(self.xframe_region_move)
         self.l_reg_x.sigRegionChangeFinished.connect(self.xframe_region_finished)
@@ -455,12 +459,12 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
                 # determines if the window finish time/span is feasible
                 t_finish_1 = t_start_0 + t_span_0
-                if t_finish_1 > self.t_dur:
+                if t_finish_1 > self.x_lim[1]:
                     # if not, reset the finish time
                     t_finish_1 = self.t_dur
 
                     # recalculates the window time span
-                    t_span_1 = self.t_dur - t_start_0
+                    t_span_1 = self.x_lim[1] - t_start_0
                     self.x_window = t_span_1
                     self.trace_props.reset_para_field('t_span', t_span_1)
 
@@ -474,12 +478,12 @@ class TracePlot(TraceLabelMixin, PlotWidget):
                 # determines if the window start time/span is feasible
                 t_start_1 = t_finish_0 - t_span_0
 
-                if t_start_1 < 0:
+                if t_start_1 < x_lim[0]:
                     # if not, reset the start time
-                    t_start_1 = 0
+                    t_start_1 = x_lim[0]
 
                     # recalculates the window time span
-                    t_span_1 = t_finish_0
+                    t_span_1 = x_lim[0] + t_finish_0
                     self.x_window = t_span_1
                     self.trace_props.reset_para_field('t_span', t_span_1)
 
@@ -499,8 +503,12 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
         if reset_xlimits:
             # resets the trace properties
-            self.x_window = np.diff(self.t_lim)
+            self.x_window = np.diff(self.t_lim)[0]
             self.zx_full = deepcopy(self.t_lim)
+
+            # resets the start point
+            is_pp, i_run = self.get_run_props()
+            self.t_start_ofs[is_pp][i_run] = self.t_lim[0]
 
             # updates the start/finish parameters
             t_lim_p = np.round(self.get_prop_xlimits(), cf.n_dp)
@@ -525,43 +533,80 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.l_reg_x.setRegion((t_lim_p[0], t_lim_p[1]))
         self.is_updating = False
 
-    def reset_gen_props(self):
+    def update_prop_fields(self, p_type):
 
-        # calculates the change in start time
-        t_start_ofs_new = self.gen_props.get('t_start')
-        dt_start_ofs = t_start_ofs_new - self.t_start_ofs
+        # field retrieval
+        update_tstart = True
+        get_fcn = self.time_manager.get
+        use_full = get_fcn('use_full')
+        is_pp, i_run = self.get_run_props()
 
-        # retrieves the new duration value
-        self.t_dur = self.gen_props.get('t_dur')
-        self.l_reg_x.setBounds([0., self.t_dur])
-        self.t_start_ofs = t_start_ofs_new
+        if use_full:
+            # case is using the full experimental run
+            self.x_lim = [0., get_fcn('t_run')]
+            self.t_lim = self.t_start_ofs[is_pp][i_run] + np.array([0, self.x_window])
+            self.zx_full = deepcopy(self.t_lim)
 
-        # ensures the limits are correct
-        self.t_lim -= dt_start_ofs
-        if self.t_lim[0] < 0:
-            self.t_lim = np.array([0, self.x_window])
+        else:
+            if p_type in ['update_all', 't_dur']:
+                # resets the linear region time bounds
+                self.x_lim[1] = self.x_lim[0] + get_fcn('t_dur')
 
-        elif self.t_lim[1] > self.t_dur:
-            self.t_lim = self.t_dur - np.asarray([self.x_window, 0])
+            if p_type in ['update_all', 't_start']:
+                # case is resetting the trace start time
 
-        # resets the plot view axis
+                # resets the start time
+                self.x_lim[0] = get_fcn('t_start')
+
+            if p_type in ['update_all', 't_finish']:
+                # case is resetting the trace finish time
+
+                # resets the finish time
+                self.x_lim[1] = get_fcn('t_finish')
+
+            if p_type == 'update_all':
+                self.t_lim = self.t_start_ofs[is_pp][i_run] + np.array([0, self.x_window])
+                self.zx_full = deepcopy(self.t_lim)
+
+        # ensures the trace limits are correct
+        if self.t_lim[0] < self.x_lim[0]:
+            self.t_lim = self.x_lim[0] + np.array([0, self.x_window])
+            self.zx_full = deepcopy(self.t_lim)
+
+        elif self.t_lim[1] > self.x_lim[1]:
+            self.t_lim = self.x_lim[1] - np.asarray([self.x_window, 0])
+            self.zx_full = deepcopy(self.t_lim)
+
+        # calculates the change in/resets the start time
+        if not (use_full or (p_type == 'update_all')):
+            self.t_start_ofs[is_pp][i_run] = deepcopy(self.t_lim[0])
+
+        # flag manual update
+        self.is_updating = True
+
+        # resets the viewbox limits
         t_lim_p = self.get_prop_xlimits()
-        self.v_box[0, 0].setLimits(xMin=0, xMax=self.t_dur)
-        self.v_box[1, 0].setLimits(xMin=0, xMax=self.t_dur)
+        self.v_box[0, 0].setLimits(xMin=self.x_lim[0], xMax=self.x_lim[1])
+        self.v_box[1, 0].setLimits(xMin=self.x_lim[0], xMax=self.x_lim[1])
         self.v_box[0, 0].setXRange(t_lim_p[0], t_lim_p[1], padding=0)
-        self.reset_trace_view()
-        self.update_trace_props()
 
         # resets the x-axis linear item transform
         tr_x = QtGui.QTransform()
-        tr_x.scale(self.t_dur / self.n_col_img, 1.0)
+        tr_x.translate(self.x_lim[0],  0.0)
+        tr_x.scale(np.diff(self.x_lim)[0] / self.n_col_img, 1.0)
         self.ximage_item.setTransform(tr_x)
 
-        # resets the linear region
-        self.is_updating = True
-        self.v_box[1, 0].setXRange(0, self.t_dur, padding=0)
+        # resets the trace time axis linear region
+        self.v_box[1, 0].setXRange(self.x_lim[0], self.x_lim[1], padding=0)
         self.l_reg_x.setRegion((t_lim_p[0], t_lim_p[1]))
+        self.l_reg_x.setBounds(self.x_lim)
+
+        # resets the update flag
         self.is_updating = False
+
+        # resets the trace view/properties
+        self.reset_trace_view()
+        self.update_trace_props()
 
     def update_trace_props(self):
 
@@ -582,8 +627,6 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.trace_props.set_n('t_finish', t_finish)
         self.trace_props.edit_finish.setText('{0:.4f}'.format(t_finish))
 
-        # print('Start/Finish = {0}/{1}'.format(t_start, t_finish))
-
         # resets the update flag
         self.trace_props.is_updating = False
 
@@ -592,6 +635,16 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         c_map_name = self.trace_props.get('c_map')
         self.c_map = colormap.get(c_map_name, source="matplotlib", skipCache=False)
         self.image_item.setColorMap(self.c_map)
+
+    def reset_pp_start_times(self):
+
+        if self.session_obj.is_concat_run():
+            # case is concatenated runs
+            self.t_start_ofs[1] = np.array([0.0])
+
+        else:
+            # case is separated runs
+            self.t_start_ofs[1] = np.zeros(self.n_run, dtype=float)
 
     # ---------------------------------------------------------------------------
     # Other Reset Functions
@@ -606,7 +659,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.n_plt = len(i_channel)
         self.reset_plot_items()
 
-        # case is there are no plots (collapse y-axis range)
+        # recalculates the y-axis limits
         self.y_lim_tr = self.calc_yaxis_limit()
 
         # flag that manual updating is taking place
@@ -640,6 +693,8 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.is_updating = False
 
         if self.n_plt:
+            # case is there is at least one trace to plot
+
             # field retrieval
             use_diff = self.use_diff_signal()
             plot_id_orig = deepcopy(self.plot_id)
@@ -647,8 +702,10 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
             # sets the frame range indices
             t_lim_p = self.get_prop_xlimits()
-            self.i_frm0 = int((self.t_lim[0] + self.t_start_ofs) * s_freq)
-            self.i_frm1 = int((self.t_lim[1] + self.t_start_ofs) * s_freq)
+            self.i_frm0 = int(self.t_lim[0] * s_freq)
+            self.i_frm1 = int(self.t_lim[1] * s_freq)
+
+            # calculates the trace frame count (exit if no valid frames)
             n_frm = (self.i_frm1 - self.i_frm0) - int(use_diff)
             if n_frm == 0:
                 return
@@ -734,11 +791,12 @@ class TracePlot(TraceLabelMixin, PlotWidget):
                     self.update_trace(self.inset_trace, self.inset_tr)
 
                 # spike marker update
-                # if (self.spike_props is not None):
                 if (self.spike_props is not None) and self.show_spikes:
                     self.spike_props.reset_spike_markers()
 
         else:
+            # case is there are no traces to plot
+
             # resets the zoom limits
             self.reset_xaxis_limits()
             self.reset_yaxis_limits()
@@ -758,9 +816,9 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.plot_item.setDownsampling(auto=True)
         self.plot_item.setClipToView(True)
 
-        # # resets the y-axis range
-        # if reset_type == 0:
-        #     self.reset_yaxis_limits()
+        # resets the y-axis range
+        if reset_type == 2:
+            self.reset_yaxis_limits()
 
         # # updates the plot labels
         # if self.show_lbl and (not is_map):
@@ -923,8 +981,8 @@ class TracePlot(TraceLabelMixin, PlotWidget):
                 if (x_lim_zoom[0] < cw.t_span_min / 2.):
                     x_lim_zoom = np.array([0, cw.t_span_min], dtype=float)
 
-                elif x_lim_zoom[1] > (self.t_dur - cw.t_span_min / 2.):
-                    x_lim_zoom = self.t_dur - np.array([cw.t_span_min, 0], dtype=float)
+                elif x_lim_zoom[1] > (self.x_lim[1] - cw.t_span_min / 2.):
+                    x_lim_zoom = self.x_lim[1] - np.array([cw.t_span_min, 0], dtype=float)
 
                 else:
                     x_lim_zoom = np.mean(x_lim_zoom) + np.array([-1, 1], dtype=float) * (cw.t_span_min / 2.)
@@ -1245,13 +1303,13 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         i_side = np.argmax(np.abs(dt_reg_p))
         self.t_lim += dt_reg_p[i_side]
 
-        if self.t_lim[0] < 0:
+        if self.t_lim[0] < self.x_lim[0]:
             # case is the left side is before the expt start
-            self.t_lim -= self.t_lim[0]
+            self.t_lim += (self.x_lim[0] - self.t_lim[0])
 
-        elif self.t_lim[1] > self.t_dur:
+        elif self.t_lim[1] > self.x_lim[1]:
             # case is the right side is after the expt finish
-            self.t_lim -= (self.t_lim[1] - self.t_dur)
+            self.t_lim -= (self.t_lim[1] - self.x_lim[1])
 
         # resets the full x-limit field
         self.zx_full = self.t_lim
@@ -1272,7 +1330,12 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
         # stores the zoomed limits
         if not self.is_updating:
+            # resets the x-zoom
             self.zx_full = self.t_lim
+
+            # resets the start time
+            is_pp, i_run = self.get_run_props()
+            self.t_start_ofs[is_pp][i_run] = self.t_lim[0]
 
             self.reset_xreg_pos()
             self.store_zoom_limits()
@@ -1467,9 +1530,11 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
         return self.session_obj.session.get_run_index(self.session_obj.current_run)
 
-    def use_diff_signal(self):
+    def get_run_props(self):
 
-        return self.trace_props.get('sig_type') == 'Difference'
+        is_pp = self.session_obj.has_pp_runs()
+        is_concat = self.session_obj.is_concat_run()
+        return int(is_pp), 0 if is_concat else self.get_run_index()
 
     # ---------------------------------------------------------------------------
     # Other Plot View Functions
@@ -1560,6 +1625,10 @@ class TracePlot(TraceLabelMixin, PlotWidget):
     def det_moved_direction(self, t_lim_reg):
 
         return np.sign(t_lim_reg - self.t_lim_prev[1])
+
+    def use_diff_signal(self):
+
+        return self.trace_props.get('sig_type') == 'Difference'
 
     # ---------------------------------------------------------------------------
     # Static Methods

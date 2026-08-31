@@ -59,10 +59,8 @@ class TriggerPlot(PlotWidget):
         self.t_start_ofs = 0
 
         # trace fields
-        self.x_tr = None
         self.y_tr = None
         self.n_run = None
-        self.n_samples = None
         self.i_run_reg = None
 
         # plot item mouse event functions
@@ -71,7 +69,6 @@ class TriggerPlot(PlotWidget):
         self.release_fcn = None
 
         # other class fields
-        self.t_dur = None
         self.t_lim = None
         self.s_props = None
         self.l_reg_x = None
@@ -96,38 +93,6 @@ class TriggerPlot(PlotWidget):
     # ---------------------------------------------------------------------------
     # Class Widget Setup Functions
     # ---------------------------------------------------------------------------
-
-    def reset_session_fields(self):
-
-        # field retrieval
-        self.s_props = self.session_obj.session_props
-        self.t_dur = self.s_props.get_value('t_dur')
-        self.t_lim = np.array([0, self.t_dur])
-
-        # experiment properties
-        self.i_run_reg = self.get_run_index()
-        self.n_samples = self.s_props.get_value('n_samples')
-        self.n_run = self.session_obj.session.get_run_count()
-
-        # field retrieval
-        s_freq = self.s_props.get_value('s_freq')
-        self.x_tr = np.arange(self.n_samples) / s_freq
-        self.reset_trace_values()
-
-        # linear region objects
-        self.l_reg_xs = np.empty(self.n_run, dtype=object)
-        self.n_reg_xs = np.zeros(self.n_run, dtype=int)
-
-        # resets main trace x-axis limits
-        self.v_box[0, 0].setLimits(xMin=0, xMax=self.t_dur, yMin=0.01, yMax=0.99)
-        self.update_trigger_trace()
-
-        # creates the image transform
-        self.reset_ximage_scale()
-
-        # linear region position update
-        self.l_reg_x.setPos(0, self.t_dur)
-        self.l_reg_x.setBounds([0, self.t_dur])
 
     def init_class_fields(self):
 
@@ -194,69 +159,104 @@ class TriggerPlot(PlotWidget):
         # disables the viewbox pan/zooming on the frame selection panel
         self.v_box[1, 0].setMouseEnabled(False, False)
 
-    def update_trigger_trace(self, reset_run=False):
+    def reset_session_fields(self):
 
-        # flag that manual updating is taking place
-        self.is_updating = True
+        # field retrieval
+        get_fcn = self.time_manager.get
+        self.s_props = self.session_obj.session_props
 
-        # sets up the trace plot
-        t_dur = self.session_obj.get_run_durations()
-        if self.session_obj.is_concat_run(True):
-            i_run = 0
-            y_tr_run = self.y_tr[1]
-            t_dur_x = np.sum(t_dur)
-
+        if get_fcn('use_full'):
+            self.t_lim = np.array([0, get_fcn('t_run')])
         else:
-            i_run = self.get_run_index()
-            y_tr_run = self.y_tr[0][i_run]
-            t_dur_x = np.round(t_dur[i_run], cf.n_dp)
+            self.t_lim = np.array([get_fcn('t_start'), get_fcn('t_finish')])
+
+        # experiment properties
+        if self.time_manager.is_concat():
+            self.n_run, self.i_run_reg = 1, 1
+        else:
+            self.i_run_reg = self.get_run_index()
+            self.n_run = self.session_obj.session.get_run_count()
+
+        # resets the trace values
+        self.reset_trace_values()
+
+        # linear region objects
+        self.l_reg_xs = np.empty(self.n_run, dtype=object)
+        self.n_reg_xs = np.zeros(self.n_run, dtype=int)
+
+        # resets main trace x-axis limits
+        self.v_box[0, 0].setLimits(xMin=0, xMax=self.t_lim[1], yMin=0.01, yMax=0.99)
+        self.update_trigger_trace()
+
+        # creates the image transform
+        self.reset_ximage_scale()
+
+        # linear region position update
+        self.l_reg_x.setPos(0, self.t_lim[1])
+        self.l_reg_x.setBounds(self.t_lim)
+
+    def setup_frame_image(self):
+
+        return np.linspace(0, 1, self.n_col_img).reshape(-1, 1)
+
+    def update_trigger_trace(self, reset_run=False, reset_time_limits=False):
+
+        # field retrieval
+        get_fcn = self.time_manager.get
+        is_concat = self.time_manager.is_concat()
+        i_run = self.get_run_index(is_concat)
+
+        # time range values
+        if get_fcn('use_full'):
+            t_start, t_finish = 0, get_fcn('t_run')
+        else:
+            t_start, t_finish = get_fcn('t_start'), get_fcn('t_finish')
+
+        # resets the time limits
+        if reset_time_limits:
+            self.t_lim = [t_start, t_finish]
+
+        # trigger trace values
+        y_tr_run = self.y_tr[int(is_concat)][i_run]
 
         if reset_run:
             # hides the current linear regions
-            if self.n_reg_xs[self.i_run_reg]:
-                [x.hide() for x in self.l_reg_xs[self.i_run_reg]]
-
-            # hides the current linear regions
-            if self.n_reg_xs[i_run]:
-                [x.show() for x in self.l_reg_xs[i_run]]
+            self.hide_regions(self.i_run_reg)
+            self.show_regions(i_run)
 
             # resets the run index
             self.i_run_reg = i_run
-            self.reset_gen_props(False)
 
         # sets up the scaled trigger trace
         s_freq = self.get_sample_freq()
         trig_path = arrayToQPath(y_tr_run[:, 0] / s_freq, y_tr_run[:, 1], connect='all')
         self.trig_trace.setPath(trig_path)
 
-        # updates the other properties
-        self.h_plot[0, 0].setXRange(0., t_dur_x)
-        self.v_box[0, 0].setLimits(xMax=t_dur_x)
-        self.l_reg_x.setBounds([0, t_dur_x])
+        # updates the other axes properties
+        self.is_updating = True
+        self.h_plot[0, 0].setXRange(t_start, t_finish)
+        self.v_box[0, 0].setLimits(xMin=t_start, xMax=t_finish)
+        self.l_reg_x.setBounds(self.t_lim)
         self.l_reg_x.setRegion(self.t_lim)
-
-        # resets the manual update flag
         self.is_updating = False
-
-    def setup_frame_image(self):
-
-        return np.linspace(0, 1, self.n_col_img).reshape(-1, 1)
 
     # ---------------------------------------------------------------------------
     # Suppression Region Functions
     # ---------------------------------------------------------------------------
 
-    def add_region(self, nw_row):
+    def add_region(self, nw_row, i_run=None):
+
+        if i_run is None:
+            i_run = self.get_run_index()
 
         # creates the linear region
-        l_reg = LinearRegionItem([nw_row[1], nw_row[2]], bounds=[0, self.t_dur], span=[0, 1],
+        l_reg = LinearRegionItem([nw_row[1], nw_row[2]], bounds=self.t_lim, span=[0, 1],
                                  pen=self.l_pen, hoverPen=self.l_pen_hover, brush=self.l_brush)
         l_reg.sigRegionChanged.connect(pfcn(self.xtrig_region_move, l_reg))
         l_reg.sigRegionChangeFinished.connect(pfcn(self.xtrig_region_moved, l_reg))
         l_reg.setZValue(10)
 
         # stores the linear region object
-        i_run = self.get_run_index()
         if self.n_reg_xs[i_run] == 0:
             # case is this is the first linear region
             self.l_reg_xs[i_run] = [l_reg]
@@ -270,6 +270,7 @@ class TriggerPlot(PlotWidget):
 
         # adds the region to the trigger trace
         self.h_plot[0, 0].addItem(l_reg)
+        self.xtrig_region_moved(l_reg)
 
     def delete_region(self, i_reg, i_run=None):
 
@@ -304,19 +305,78 @@ class TriggerPlot(PlotWidget):
         # updates the region limits
         self.xtrig_region_moved(l_reg)
 
+    def reset_regions(self, p_fld):
+
+        # field retrieval
+        i_run = self.get_run_index()
+        reset_limits, reset_row_count = False, False
+
+        # exit if there are no regions for the current run
+        if self.n_reg_xs[i_run] == 0:
+            return
+
+        # region upper bound limit check
+        for i_reg in reversed(range(self.n_reg_xs[i_run])):
+            t_arr = self.trig_props.get_table_row(i_reg)
+            if t_arr[1] > self.t_lim[1]:
+                # case is the region is no longer feasible
+                self.trig_props.delete_region(i_run, i_reg, True)
+                reset_limits = True
+
+            elif t_arr[2] > self.t_lim[1]:
+                # case is the upper bound is no longer feasible
+                self.reset_region_pos(self.l_reg_xs[i_run][i_reg], t_arr[1], self.t_lim[1])
+                self.trig_props.set_table_cell(i_reg, 2, self.t_lim[1])
+                reset_limits = True
+                break
+
+            else:
+                # otherwise, current region is feasible
+                break
+
+        # region lower bound limit check
+        for i_reg in range(self.n_reg_xs[i_run]):
+            t_arr = self.trig_props.get_table_row(0)
+            if self.t_lim[0] > t_arr[2]:
+                # case is the region is no longer feasible
+                self.trig_props.delete_region(i_run, 0, True)
+                reset_limits, reset_row_count = True, True
+
+            elif self.t_lim[0] > t_arr[1]:
+                # case is the lower bound is no longer feasible
+                self.reset_region_pos(self.l_reg_xs[i_run][0], self.t_lim[0], t_arr[2])
+                self.trig_props.set_table_cell(0, 1, self.t_lim[0])
+                reset_limits = True
+                break
+
+            else:
+                # otherwise, current region is feasible
+                break
+
+        # resets the table row count
+        if reset_row_count:
+            for i_row in range(self.n_reg_xs[i_run]):
+                self.trig_props.set_table_cell(i_row, 0, i_row + 1)
+
+        # updates the region limits (if a change was made)
+        if reset_limits:
+            self.update_region_limits(i_run)
+
     def hide_regions(self, i_run=None):
 
         if i_run is None:
             i_run = self.get_run_index()
 
-        [x.hide() for x in self.l_reg_xs[i_run]]
+        if self.n_reg_xs[i_run]:
+            [x.hide() for x in self.l_reg_xs[i_run]]
 
     def show_regions(self, i_run=None):
 
         if i_run is None:
             i_run = self.get_run_index()
 
-        [x.show() for x in self.l_reg_xs[i_run]]
+        if self.n_reg_xs[i_run]:
+            [x.show() for x in self.l_reg_xs[i_run]]
 
     # ---------------------------------------------------------------------------
     # Frame Region Event Functions
@@ -341,8 +401,8 @@ class TriggerPlot(PlotWidget):
         i_reg = next((i for i, x in enumerate(self.l_reg_xs[i_run]) if l_reg == x))
 
         # updates the trigger table cells
-        self.trig_props.set_table_cell(i_reg, 1, np.round(x_reg[0], 4))
-        self.trig_props.set_table_cell(i_reg, 2, np.round(x_reg[1], 4))
+        self.trig_props.set_table_cell(i_reg, 1, np.round(x_reg[0], cf.n_dp_trig))
+        self.trig_props.set_table_cell(i_reg, 2, np.round(x_reg[1], cf.n_dp_trig))
 
     def xtrig_region_moved(self, l_reg):
 
@@ -374,7 +434,7 @@ class TriggerPlot(PlotWidget):
         # resets the previous region limits
         if i_reg0 == 0:
             # previous region is the first region
-            l_reg0.setBounds([0, x_reg1[0]])
+            l_reg0.setBounds([self.t_lim[0], x_reg1[0]])
 
         else:
             # otherwise, reset regions based on region preceeding previous
@@ -384,7 +444,7 @@ class TriggerPlot(PlotWidget):
         # resets the region limits
         if (i_reg1 + 1) == self.n_reg_xs[i_run]:
             # next region is the last region
-            l_reg1.setBounds([x_reg0[1], self.t_dur])
+            l_reg1.setBounds([x_reg0[1], self.t_lim[1]])
 
         else:
             # otherwise, reset regions based on region proceeding next
@@ -394,7 +454,8 @@ class TriggerPlot(PlotWidget):
     def reset_ximage_scale(self):
 
         tr_x = QtGui.QTransform()
-        tr_x.scale(self.t_dur / self.n_col_img, 1.0)
+        tr_x.translate(self.t_lim[0], 0.0)
+        tr_x.scale(np.diff(self.t_lim) / self.n_col_img, 1.0)
         self.ximage_item.setTransform(tr_x)
 
     # ---------------------------------------------------------------------------
@@ -451,7 +512,8 @@ class TriggerPlot(PlotWidget):
             PlotWidget.mousePressEvent(self, evnt)
 
             # updates the time limits
-            self.t_lim = np.array([0, self.t_dur])
+            get_fcn = self.time_manager.get
+            self.t_lim = np.array([get_fcn('t_start'), get_fcn('t_finish')])
             self.h_plot[0, 0].setXRange(self.t_lim[0], self.t_lim[1], padding=0)
             self.l_reg_x.setRegion(self.t_lim)
 
@@ -462,66 +524,54 @@ class TriggerPlot(PlotWidget):
     # Property Object Functions
     # ---------------------------------------------------------------------------
 
-    def reset_gen_props(self, shift_time=True):
-
-        # calculates the change in start time
-        t_start_ofs_new = self.gen_props.get('t_start')
-        dt_start_ofs = t_start_ofs_new - self.t_start_ofs
+    def update_prop_fields(self, p_fld):
 
         # class field updates
-        self.t_start_ofs = t_start_ofs_new
-        self.t_dur = self.gen_props.get('t_dur')
+        i_run = self.get_run_index()
+        get_fcn = self.time_manager.get
 
-        # ensures the limits are correct
-        if shift_time:
-            if self.t_lim is None:
-                self.t_lim = np.array([0, self.t_dur])
-
-            self.t_lim -= dt_start_ofs
-            if self.t_lim[0] < 0:
-                self.t_lim[0] = 0
-
-            if self.t_lim[1] > self.t_dur:
-                self.t_lim[1] = self.t_dur
-
-            # resets the region times
-            self.trig_props.reset_region_timing(self.t_dur, dt_start_ofs)
-
+        # time range values
+        if get_fcn('use_full'):
+            self.t_lim = [0, get_fcn('t_run')]
         else:
-            # resets the region limits
-            t_reg_x = np.array(self.l_reg_x.getRegion())
-            dt_reg_x = np.diff(t_reg_x)[0]
+            self.t_lim = [get_fcn('t_start'), get_fcn('t_finish')]
 
-            if dt_reg_x > self.t_dur:
-                self.t_lim = np.array([0, self.t_dur])
+        # resets the trigger regions (if post-processing completed)
+        if (p_fld == 'pp_change'):
+            # deletes all regions
+            self.delete_all_regions()
 
-            elif t_reg_x[1] > self.t_dur:
-                self.t_lim[1] = self.t_dur
+            # resets the region indices
+            self.reset_region_indices()
 
-        # creates the image transform
+            # resets the suppression region objects
+            self.trig_props.p_props.reset_table_array(self.n_run)
+            self.trig_props.reset_table_data()
+            self.trig_props.readd_all_regions(True)
+
+            # re-shows the regions
+            self.show_regions(0)
+
+        # resets the image scale/suppression regions
         self.reset_ximage_scale()
+        self.reset_regions(p_fld)
 
         # resets the plot view properties
-        self.v_box[0, 0].setLimits(xMin=0, xMax=self.t_dur)
         self.v_box[0, 0].setLimits(yMin=-0.1, yMax=100.1)
+        self.v_box[0, 0].setLimits(xMin=self.t_lim[0], xMax=self.t_lim[1])
         self.v_box[0, 0].setXRange(self.t_lim[0], self.t_lim[1], padding=0)
 
         # updates the time linear region properties
-        self.v_box[1, 0].setLimits(xMin=0, xMax=self.t_dur)
+        self.v_box[1, 0].setLimits(xMin=self.t_lim[0], xMax=self.t_lim[1])
 
         # updates the trigger trace
-        if shift_time:
-            self.update_trigger_trace()
+        self.update_trigger_trace(p_fld in ['i_run', 'concat_run'], False)
+        self.update_region_limits(i_run)
 
         # resets the linear region
         self.is_updating = True
         self.l_reg_x.setRegion((self.t_lim[0], self.t_lim[1]))
         self.is_updating = False
-
-    def set_gen_props(self, gen_props_new):
-
-        self.gen_props = gen_props_new
-        gen_props_new.set_trig_view(self)
 
     def set_trig_props(self, trig_props_new):
 
@@ -549,9 +599,15 @@ class TriggerPlot(PlotWidget):
     # Miscellaneous Functions
     # ---------------------------------------------------------------------------
 
-    def get_run_index(self):
+    def get_run_index(self, is_concat=None):
 
-        return self.session_obj.session.get_run_index(self.session_obj.current_run)
+        if is_concat is None:
+            is_concat = self.time_manager.is_concat()
+
+        if is_concat:
+            return 0
+        else:
+            return self.session_obj.session.get_run_index(self.session_obj.current_run)
 
     def get_region_index(self, l_reg, i_run):
 
@@ -564,6 +620,17 @@ class TriggerPlot(PlotWidget):
 
         else:
             return self.s_props.get_value('s_freq')
+
+    def update_region_limits(self, i_run):
+
+        if self.n_reg_xs[i_run] == 1:
+            # case is there is one region
+            self.xtrig_region_moved(self.l_reg_xs[i_run][0])
+
+        elif self.n_reg_xs[i_run] > 1:
+            # case is there are multiple regions
+            self.xtrig_region_moved(self.l_reg_xs[i_run][0])
+            self.xtrig_region_moved(self.l_reg_xs[i_run][-1])
 
     def reset_trace_values(self):
 
@@ -617,4 +684,99 @@ class TriggerPlot(PlotWidget):
             # removes any repeated value rows
             is_keep = np.hstack((np.ones(1, dtype=bool), np.diff(A[:, 1]) != 0))
             is_keep[-1] = True
-            self.y_tr[1] = A[is_keep, :]
+            self.y_tr[1] = [A[is_keep, :]]
+
+    def reset_region_pos(self, l_reg, t_min, t_max):
+
+        self.is_updating = True
+        l_reg.setRegion([t_min, t_max])
+        self.is_updating = False
+
+    def reset_region_indices(self):
+
+        if self.time_manager.has_pp_fcn():
+            # combines the region indices (if pre-processing)
+            reg_index_raw = deepcopy(self.trig_props.p_props.region_index)
+            self.trig_props.p_props.region_index_raw = reg_index_raw
+            reg_index_new = self.combine_region_indices(reg_index_raw)
+
+        else:
+            # reverts back to the raw region indices (if clearing pre-processing)
+            reg_index_new = deepcopy(self.trig_props.p_props.region_index_raw)
+
+        # resets the region indices
+        self.trig_props.p_props.region_index = reg_index_new
+
+    def split_region_indices(self, reg_index0):
+
+        # field retrieval
+        tm = self.time_manager
+        t_dur = tm.get('t_dur', True)
+        t_start = tm.get('t_start', True)
+
+        # memory allocation
+        n_run = len(t_dur[0])
+        if len(reg_index0) == n_run:
+            # case is splitting a separate run
+
+            # removes the start time from all non-empty region indices
+            reg_index = deepcopy(reg_index0)
+            for ri, ts in zip(reg_index, t_start[0]):
+                if len(ri):
+                    ri[:, 1:] += ts
+
+        else:
+            # case is splitting a concatenated run
+
+            # other initialisations
+            reg_index = np.empty(n_run, dtype=object)
+            t_dur_sum = np.insert(np.cumsum(t_dur[0]), 0, 0)
+
+            # resets the region indices over each experimental run
+            for i_run in range(n_run):
+                # determines the regions belonging to the current run
+                ii = np.logical_and(
+                    reg_index0[0][:, 1] >= t_dur_sum[i_run],
+                    reg_index0[0][:, 2] <= t_dur_sum[i_run + 1]
+                )
+
+                # resets the region index timing
+                if np.any(ii):
+                    t_ofs = t_dur_sum[i_run] - t_start[0][i_run]
+                    reg_index[i_run] = reg_index0[0][ii, :] - t_ofs
+                    reg_index[i_run][:, 0] = np.array(range(np.sum(ii))) + 1
+                else:
+                    reg_index[i_run] = []
+
+        return reg_index
+
+
+    def combine_region_indices(self, reg_index):
+
+        # field retrieval
+        tm = self.time_manager
+        t_dur = tm.get('t_dur', True)
+        t_start = tm.get('t_start', True)
+
+        # case is session is preprocessed
+        if tm.concat_fcn():
+            # case is runs are concatenated
+
+            # combines the region indices over all runs
+            ii = [(len(ri) > 0) for ri in reg_index]
+            t_ofs = np.insert(np.cumsum(t_dur[0])[:-1], 0, 0)
+            t_index = np.vstack([(ri[:, 1:] + to - ts) for ri, ts, to in zip(reg_index[ii], t_start[0][ii], t_ofs[ii])])
+
+            # sets up the full region index array
+            n_row = t_index.shape[0]
+            reg_index = [np.hstack([np.array(range(n_row)).reshape(n_row, -1) + 1, t_index])]
+
+        else:
+            # case is runs are seperated
+
+            # removes the start time from all non-empty region indices
+            for ri, ts in zip(reg_index, t_start[0]):
+                if len(ri):
+                    ri[:, 1:] -= ts
+
+        return reg_index

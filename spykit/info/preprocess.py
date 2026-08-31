@@ -277,16 +277,16 @@ class PreprocessInfoTab(InfoWidgetPara):
 
 class PreprocessSetup(QMainWindow):
     # pyqtSignal functions
-    close_preprocessing = pyqtSignal(bool)
+    close_preprocessing = pyqtSignal(bool, bool)
 
     # parameters
     n_but = 4
     gap_sz = 5
     n_prog = 2
     but_height = 20
+    dlg_width = 450
     dlg_height_orig = 300
     dlg_height_auto = 130
-    dlg_width = 450
     p_row = np.array([7, 2, 1])
 
     # array class fields
@@ -352,6 +352,7 @@ class PreprocessSetup(QMainWindow):
         self.concat_runs = False
         self.is_running = False
         self.is_updating = False
+        self.is_change = False
 
         # index/scalar class fields
         self.i_run = None
@@ -601,7 +602,7 @@ class PreprocessSetup(QMainWindow):
             self.list_layout.setRowStretch(2, self.p_row[2])
 
     # ---------------------------------------------------------------------------
-    # Class Property Widget Setup Functions
+    # Class Widget Callback Functions
     # ---------------------------------------------------------------------------
 
     def checkbox_split_shank(self):
@@ -719,6 +720,9 @@ class PreprocessSetup(QMainWindow):
                 prep_opt = (self.per_shank, self.concat_runs)
                 self.setup_preprocessing_worker((prep_task, prep_opt))
 
+            # flag that a change has been made
+            self.is_change = True
+
         else:
             # stops the worker
             self.t_worker.force_quit()
@@ -732,6 +736,9 @@ class PreprocessSetup(QMainWindow):
             # resets the other properties
             self.set_preprocess_props(True)
             self.button_control[4].setText(self.prep_str[0])
+
+            # resets the change flag
+            self.is_change = False
 
     def close_window(self):
 
@@ -759,7 +766,7 @@ class PreprocessSetup(QMainWindow):
             self.sp_main.menu_bar.set_menu_enabled_blocks('sorted-without-preprocess')
 
         # runs the post window close functions
-        self.close_preprocessing.emit(self.has_pp)
+        self.close_preprocessing.emit(self.has_pp, self.is_change)
 
         # closes the window
         self.close()
@@ -1073,11 +1080,11 @@ class RunPreProcessing(QObject):
         "drift_correct": correct_motion,
     }
 
-    def __init__(self, s):
-        super(RunPreProcessing, self).__init__()
+    def __init__(self, session):
+        super(RunPreProcessing, self).__init__(session)
 
-        # session object
-        self.s = s
+        # main class fields
+        self.s = session._s
 
         # boolean class fields
         self.per_shank = False
@@ -1126,10 +1133,17 @@ class RunPreProcessing(QObject):
             self.pp_steps_tot = pp_steps
 
             # sets the raw runs to preprocess
-            if concat_runs:
-                runs_to_pp = [self.s._get_concat_raw_run()]
+            use_full = self.parent().get_fcn('use_full', True)[0]
+            if np.all(use_full):
+                # case is using the full experiments over all runs
+                if concat_runs:
+                    runs_to_pp = [self.s._get_concat_raw_run()]
+                else:
+                    runs_to_pp = self.s._raw_runs
+
             else:
-                runs_to_pp = self.s._raw_runs
+                # case is using at least one partial experimental run
+                runs_to_pp = self.parent().get_part_raw_runs(concat_runs)
 
             # retrieves the run-specific information
             self.run_name = [run._run_name for run in runs_to_pp]
@@ -1221,14 +1235,14 @@ class RunPreProcessing(QObject):
             if self.per_shank and (pp_name == 'interpolate_channels'):
                 # if analysing by shank, and interpolating bad channels, then ensure the channels for removal exist
                 # on the current shank
-                shank_id = np.intersect1d(pp_opt['channel_ids'], pp_data[prev_name].channel_ids)
-                if len(shank_id):
-                    # if there are bad channels, then reset the field
-                    pp_opt['channel_ids'] = shank_id
-
-                else:
-                    # if there are no bad channels, then continue
-                    run_pp_step = False
+                pp_opt['channel_ids'] = np.intersect1d(pp_opt['channel_ids'], pp_data[prev_name].channel_ids)
+                # if len(shank_id):
+                #     # if there are bad channels, then reset the field
+                #     pp_opt['channel_ids'] = shank_id
+                #
+                # else:
+                #     # if there are no bad channels, then continue
+                #     run_pp_step = False
 
             if run_pp_step:
                 if (pp_name == 'drift_correct') and (pp_data[prev_name]._dtype.kind == 'i'):

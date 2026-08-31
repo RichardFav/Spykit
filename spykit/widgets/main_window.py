@@ -26,7 +26,7 @@ import spykit.common.common_widget as cw
 from spykit.info.utils import InfoManager
 from spykit.plotting.utils import PlotManager
 from spykit.props.utils import PropManager
-from spykit.common.property_classes import SessionWorkBook
+from spykit.common.property_classes import SessionWorkBook, TimeManager
 from spykit.common.postprocess import PostMemMap
 from spykit.info.preprocess import PreprocessSetup, pp_flds
 from spykit.threads.utils import ThreadWorker
@@ -90,6 +90,7 @@ class MainWindow(QMainWindow):
         self.orig_error_hook = sys.excepthook
 
         # main class widget setup
+        self.time_manager = TimeManager(self)
         self.info_manager = InfoManager(self, info_width)
         self.plot_manager = PlotManager(self, dlg_width - info_width)
         self.prop_manager = PropManager(self, info_width)
@@ -106,9 +107,9 @@ class MainWindow(QMainWindow):
         # sets the widget style sheets
         self.set_styles()
 
-        # REMOVE ME LATER
-        if cf.is_dev():
-            self.testing()
+        # # REMOVE ME LATER
+        # if cf.is_dev():
+        #     self.testing()
 
     # ---------------------------------------------------------------------------
     # Class Widget Setup Functions
@@ -177,6 +178,9 @@ class MainWindow(QMainWindow):
 
         # flag that there is session data available
         self.has_session = True
+
+        # initialises the time manager
+        self.time_manager.init_class_fields()
 
         # -----------------------------------------------------------------------
         # Plot View Setup
@@ -453,10 +457,14 @@ class MainWindow(QMainWindow):
         self.h_app.close_preprocessing.connect(self.on_preprocessing_close)
         self.h_app.show()
 
-    def on_preprocessing_close(self, has_pp):
+    def on_preprocessing_close(self, has_pp, is_change):
 
         # runs the preprocessing specifc updates
         if has_pp:
+            # resets the run name fields (if runs are concatenated)
+            if self.session_obj.is_concat_run():
+                self.info_manager.reset_run_names(True)
+
             # resets the preprocessing data type combobox
             self.session_obj.reset_current_session(True)
             pp_data_flds = self.session_obj.get_current_prep_data_names()
@@ -479,8 +487,12 @@ class MainWindow(QMainWindow):
             # updates the post-processing menu item blocks
             self.menu_bar.set_menu_enabled_blocks('post-preprocess')
 
+            # updates the time manager
+            if is_change:
+                self.time_manager.field_update('pp_change')
+
         # updates the trace views
-        self.plot_manager.reset_trace_views()
+        # self.plot_manager.reset_trace_views()
         self.info_manager.prog_widget.update_message_label()
 
     # ---------------------------------------------------------------------------
@@ -847,6 +859,7 @@ class MenuBar(QObject):
         self.info_manager = self.sp_main.info_manager
         self.prop_manager = self.sp_main.prop_manager
         self.plot_manager = self.sp_main.plot_manager
+        self.time_manager = self.sp_main.time_manager
         self.bombcell_dlg = self.sp_main.bombcell_dlg
 
         # tool/menubar setup
@@ -1155,10 +1168,6 @@ class MenuBar(QObject):
         # field retrieval
         channel_data = ses_data['channel_data']
 
-        # resets the trace start time to 0
-        ses_data['prop_para']['trace']['t_start'] = 0
-        ses_data['prop_para']['trace']['t_finish'] = ses_data['prop_para']['trace']['t_span']
-
         # resets the session data
         self.session_obj.reset_session(ses_data, ssf_file)
 
@@ -1177,18 +1186,26 @@ class MenuBar(QObject):
 
         # resets the multi-run property fields
         self.update_progress_bar('Resetting Info Parameters', 0.4)
-        n_run = self.session_obj.session.get_run_count()
-        for pt in ['general', 'trigger']:
-            # retrieves the property tab
-            prop_tab = self.prop_manager.get_prop_tab(pt)
-            prop_tab.p_props.reset_prop_para(prop_tab.p_info['ch_fld'], n_run)
+        self.prop_manager.get_prop_tab('trigger').reset_prop_para()
 
-        # resets the traceview properties
+        # resets the time manager fields
+        if 'time_para' in ses_data:
+            # if available, reset the time manager class fields
+            self.sp_main.time_manager.reset_class_fields(ses_data['time_para'])
+
+        # resets the trace view plot properties
         self.prop_manager.get_prop_tab('traceview').reset_prop_para()
+
+        # n_run = self.session_obj.session.get_run_count()
+        # for pt in ['general', 'trigger']:
+        #     # retrieves the property tab
+        #     prop_tab = self.prop_manager.get_prop_tab(pt)
+        #     prop_tab.p_props.reset_prop_para(prop_tab.p_info['ch_fld'], n_run)
 
         # resets the property/information panel fields
         self.prop_manager.set_prop_para(ses_data['prop_para'])
         self.info_manager.set_info_para(ses_data['info_para'])
+        self.sp_main.time_manager.field_update('i_run')
         QApplication.processEvents()
 
         # sets/runs the config field/routines
@@ -1417,6 +1434,7 @@ class MenuBar(QObject):
             'sorting_props': ses_obj.session.sort_obj.s_props,
             'prop_para': self.prop_manager.get_prop_para(prop_list),
             'info_para': self.info_manager.get_info_para(info_list),
+            'time_para': self.time_manager.get_time_para(),
             'channel_data': {
                 'bad': ses_obj.session.bad_ch,
                 'sync': ses_obj.session.sync_ch,
@@ -1565,10 +1583,16 @@ class MenuBar(QObject):
         prep_tab = self.info_manager.get_info_tab('preprocess')
         prep_tab.configs.clear()
 
+        # resets the raw experimental run names
+        self.sp_main.info_manager.reset_run_names(False)
+
         # resets the combobox fields
         trace_tab = self.prop_manager.get_prop_tab('traceview')
         trace_tab.reset_data_types(["Raw"])
         self.prop_manager.data_type_combobox_update(trace_tab)
+
+        # updates the time-manager fields
+        self.sp_main.time_manager.field_update('pp_change')
 
         # disable menu items
         self.set_menu_enabled_blocks('clear-preprocess')

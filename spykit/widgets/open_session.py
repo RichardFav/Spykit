@@ -284,6 +284,9 @@ class OpenSession(QMainWindow):
             # clears the post-processing memory map/temporary files
             self.session_obj.clear_all_postprocessing()
 
+            # flag that the time manager needs re-initalising
+            self.sp_main.time_manager.re_init_fields = True
+
             # resets the session object
             self.session_obj.session = self.session
             time.sleep(0.1)

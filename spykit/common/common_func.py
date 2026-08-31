@@ -78,6 +78,7 @@ combo_height = 22
 
 # other parameters
 n_dp = 4
+n_dp_trig = 4
 n_col_max = 20
 Cls = TypeVar('Cls')
 

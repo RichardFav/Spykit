@@ -141,74 +141,82 @@ class GeneralProps(PropWidget):
         # updates the class field
         self.p_info = {'name': 'General', 'type': 'v_panel', 'ch_fld': p_tmp}
 
+    def reset_prop_fields(self):
+
+        a = 1
+
     # ---------------------------------------------------------------------------
     # Parameter Update Event Functions
     # ---------------------------------------------------------------------------
 
-    def check_update(self, reset_view=True):
+    def check_update(self, run_change=False):
+
+        # field retrieval
+        use_full = self.get('use_full')
 
         # updates the editbox properties
-        i_run = self.get_run_index()
-        self.edit_start.setEnabled(not self.p_props.use_full[i_run])
-        self.edit_finish.setEnabled(not self.p_props.use_full[i_run])
-        self.edit_dur.setEnabled(not self.p_props.use_full[i_run])
+        self.set_edit_props(use_full)
 
-        if self.is_init:
-            # resets the start/finish duration fields
-            self.p_props.is_updating = True
-            if self.get('use_full', i_run):
-                # case is using the entire experiment
-                self.set_n('t_start', 0., i_run)
-                self.set_n('t_finish', self.t_dur, i_run)
+        # updates the time manager field
+        if run_change:
+            self.time_manager.field_update('i_run')
 
-            else:
-                # case is using the partial experiment
-                self.set_n('t_start', float(self.edit_start.text()), i_run)
-                self.set_n('t_finish', float(self.edit_finish.text()), i_run)
+        elif self.is_init:
+            self.time_manager.set('use_full', use_full)
 
-            # updates the duration flag
-            t_dur = np.round(self.get('t_finish', i_run) - self.get('t_start', i_run), cf.n_dp)
-            self.set_n('t_dur', t_dur, i_run)
-            self.p_props.is_updating = False
-
-            # resets the plot views
-            if reset_view:
-                self.reset_plot_views()
+        # if self.is_init:
+        #     # resets the start/finish duration fields
+        #     self.p_props.is_updating = True
+        #     if use_full:
+        #         # case is using the entire experiment
+        #         self.set_n('t_start', 0., i_run)
+        #         self.set_n('t_finish', self.t_dur, i_run)
+        #
+        #     else:
+        #         # case is using the partial experiment
+        #         self.set_n('t_start', float(self.edit_start.text()), i_run)
+        #         self.set_n('t_finish', float(self.edit_finish.text()), i_run)
+        #
+        #     # updates the duration flag
+        #     t_dur = np.round(self.get('t_finish', i_run) - self.get('t_start', i_run), cf.n_dp)
+        #     self.set_n('t_dur', t_dur, i_run)
+        #     self.p_props.is_updating = False
+        #
+        #     # resets the plot views
+        #     if reset_view:
+        #         self.reset_plot_views()
 
     def edit_update(self, p_str):
 
-        # flag that property values are being updated manually
-        i_run = self.get_run_index()
-        self.p_props.is_updating = True
-
         # updates the dependent field(s)
-        fld_update = []
         match p_str:
             case p_str if p_str in ['t_start', 't_finish']:
+                # case is resetting the start/finish time
                 fld_update = ['t_dur']
-                t_dur = np.round(self.get('t_finish', i_run) - self.get('t_start', i_run), cf.n_dp)
-                self.set_n('t_dur', t_dur, i_run)
+                fld_value = [np.round(self.get('t_finish') - self.get('t_start'), cf.n_dp)]
 
             case 't_dur':
+                # case is resetting the run duration
                 fld_update = ['t_finish']
-                t_finish = np.round(self.get('t_start', i_run) + self.get('t_dur', i_run), cf.n_dp)
-                self.set_n('t_finish', t_finish, i_run)
+                fld_value = [np.round(self.get('t_start') + self.get('t_dur'), cf.n_dp)]
 
         # resets the parameter fields
-        for pf in fld_update:
-            edit_obj = self.findChild(cw.QLineEdit, name=pf)
-            edit_obj.setText(str(self.get(pf)))
+        for pf, pv in zip(fld_update, fld_value):
+            self.set_n(pf, pv)
+            self.time_manager.set(pf, pv, False)
+            self.set_edit_value(pf)
 
-        # resets the property check flag
-        self.p_props.is_updating = False
-
-        # resets the plot views
-        if self.is_init:
-            self.reset_plot_views()
+        # updates the time manager field
+        self.time_manager.set(p_str, self.get(p_str))
 
     # ---------------------------------------------------------------------------
-    # Plot View Setter Functions
+    # Class Setter Functions
     # ---------------------------------------------------------------------------
+
+    def set_edit_value(self, pf):
+
+        edit_obj = self.findChild(cw.QLineEdit, name=pf)
+        edit_obj.setText(str(self.get(pf)))
 
     def set_trig_view(self, trig_view_new):
 
@@ -218,24 +226,67 @@ class GeneralProps(PropWidget):
 
         self.trace_view = trace_view_new
 
-    # ---------------------------------------------------------------------------
-    # Plot View Update Functions
-    # ---------------------------------------------------------------------------
+    def set_edit_props(self, use_full):
 
-    def reset_plot_views(self):
-
-        if self.trace_view is not None:
-            self.trace_view.t_start_ofs = self.get('t_start')
-            self.trace_view.reset_gen_props()
-
-        if self.trig_view is not None:
-            self.trig_view.reset_gen_props()
+        self.edit_start.setEnabled(not use_full)
+        self.edit_finish.setEnabled(not use_full)
+        self.edit_dur.setEnabled(not use_full)
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
     # ---------------------------------------------------------------------------
 
+    def update_prop_fields(self, p_str):
+
+        match p_str:
+            case p_str if p_str in ['update_all', 'pp_change']:
+                # case updating all parameter fields
+                p_fld_update = ['t_dur', 't_start', 't_finish']
+
+                # re-calculates experimental timing (if post-processing complete)
+                if (p_str == 'pp_change') and self.time_manager.has_pp_fcn():
+                    self.reset_pp_timing()
+
+            case _:
+                # case is the other parameter fiels
+                p_fld_update = [p_str]
+
+        # resets the parameter fields
+        for pf in p_fld_update:
+            self.set_n(pf, np.round(self.time_manager.get(pf), cf.n_dp))
+            self.set_edit_value(pf)
+
+        # resets the checkbox fields
+        if p_str == 'pp_change':
+            self.is_init = False
+            use_full = self.time_manager.get('use_full')
+            self.check_use_full.setCheckState(cf.chk_state[use_full])
+            self.set_edit_props(use_full)
+            self.is_init = True
+
     def reset_slot_functions(self):
 
         self.p_props.edit_update.connect(self.edit_update)
         self.p_props.check_update.connect(self.check_update)
+
+
+    def reset_pp_timing(self):
+
+        # field retrieval
+        tm = self.time_manager
+        t_dur_raw = tm.get('t_dur', True)[0]
+
+        if self.time_manager.concat_fcn():
+            # case is runs are concatenated
+            td = np.array([np.sum(t_dur_raw)])
+            ts, uf = np.array([0.0]), np.array([True])
+
+        else:
+            # case is runs are seperated
+            td = deepcopy(t_dur_raw)
+            uf = np.ones(len(t_dur_raw), dtype=bools)
+            ts = np.zeros(len(t_dur_raw), dtype=float)
+
+        # updates the class fields
+        tm.t_start[1], tm.use_full[1] = ts, uf
+        tm.t_dur[1], tm.t_run[1], tm.t_finish[1] = (deepcopy(td) for _ in range(3))

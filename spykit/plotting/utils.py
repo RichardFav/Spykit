@@ -152,13 +152,11 @@ class PlotManager(QObject):
             case 'trace':
                 # case is the trace view
                 plot_new.reset_highlight.connect(self.probe_highlight)
-                plot_new.set_gen_props(self.get_prop_tab('general'))
                 plot_new.set_trace_props(self.get_prop_tab('traceview'))
                 plot_new.set_spike_props(self.get_prop_tab('tracespike'))
 
             case 'trigger':
                 # case is the trigger view
-                plot_new.set_gen_props(self.get_prop_tab('general'))
                 plot_new.set_trig_props(self.get_prop_tab(p_type))
 
             case p_type if p_type in ['unithist','unitmet']:
@@ -205,126 +203,6 @@ class PlotManager(QObject):
 
         return self.sp_main.prop_manager.get_prop_tab(p_type)
 
-    # ---------------------------------------------------------------------------
-    # Probe-View Specific Functions
-    # ---------------------------------------------------------------------------
-
-    def clicked_probe(self, i_row):
-
-        value = self.session_obj.channel_data.is_selected[i_row]
-        self.sp_main.info_manager.update_table_value("Channel Info", i_row, value)
-        self.reset_trace_views(2)
-
-        # updates the trace spike markers (if removing channel selection)
-        if (self.session_obj.post_data.n_mmap > 0):
-            for i_r, v in zip(i_row, value):
-                if not v:
-                    spike_tab = self.sp_main.prop_manager.get_prop_tab('tracespike')
-                    spike_tab.clear_table_channel_selections(i_r + 1)
-
-    def trace_highlight(self, is_on, i_contact=None):
-
-        if 'trace' in self.types:
-            plt_trace = self.plots[self.types['trace'] - 1]
-            plt_trace.reset_trace_highlight(is_on, i_contact)
-
-    def inset_highlight(self, inset_id):
-
-        self.probe_inset_button.emit(inset_id)
-
-    def probe_roi_moved(self, ch_id):
-
-        if 'trace' in self.types:
-            plt_trace = self.plots[self.types['trace'] - 1]
-            plt_trace.reset_inset_highlight(ch_id)
-
-    def create_unit_markers(self):
-
-        # field retrieval
-        plt_probe = self.plots[self.types['probe'] - 1]
-        unit_tab = self.sp_main.info_manager.get_info_tab('unit')
-        plt_probe.setup_unit_markers(unit_tab)
-
-    def probe_highlight(self, i_contact):
-
-        if 'probe' in self.types:
-            # retrieves the plot probe
-            plt_probe = self.plots[self.types['probe'] - 1]
-
-            # updates the highlighted channel properties
-            if i_contact < 0:
-                plt_probe.hide_channel_highlights()
-
-            else:
-                plt_probe.show_channel_highlights()
-                plt_probe.reset_channel_highlights(i_contact)
-
-    def reset_probe_views(self):
-
-        if 'probe' in self.types:
-            plt_probe = self.plots[self.types['probe'] - 1]
-            plt_probe.reset_probe_views()
-
-    def reset_trace_views(self, reset_type=0):
-
-        if 'trace' not in self.types:
-            return
-
-        # resets the offset time
-        plt_trace = self.plots[self.types['trace'] - 1]
-        plt_trace.t_start_ofs = plt_trace.gen_props.get('t_start')
-
-        # resets the trace duration
-        is_per_shank = self.session_obj.is_per_shank()
-        probe = self.session_obj.get_current_recording_probe(is_per_shank)
-        t_dur_new = np.round(probe.get_total_duration(), cf.n_dp)
-
-        # determines if there is a significant change in expt duration
-        if np.abs(plt_trace.gen_props.get('t_dur') - t_dur_new) > self.eps:
-            # sets the other plot trace fields
-            plt_trace.gen_props.set('t_dur', t_dur_new, 0)
-            plt_trace.v_box[1, 0].setLimits(xMax=t_dur_new)
-            plt_trace.h_plot[1, 0].setXRange(0, t_dur_new, padding=0)
-
-            # updates the linear region bounds
-            plt_trace.is_updating = True
-            plt_trace.l_reg_x.setBounds([0, t_dur_new])
-            plt_trace.is_updating = False
-
-            # updates the editbox value
-            gen_props = self.get_prop_tab('general')
-            gen_props.reset_para_field('t_dur', t_dur_new)
-
-            # ensures the linear region is within the new bounds
-            l_reg_pos = plt_trace.l_reg_x.getRegion()
-            if l_reg_pos[1] > t_dur_new:
-                new_pos = [t_dur_new - np.diff(l_reg_pos), t_dur_new]
-                plt_trace.l_reg_x.setRegion(new_pos)
-
-        match reset_type:
-            case 2:
-                # case is resising the y-axis
-
-                # if the frame is partially zoomed, then determine if enough channels have
-                # been removed to warrent resizing the y-axis
-                if plt_trace.n_plt > 0:
-                    if plt_trace.reset_yzoom_limits():
-                        plt_trace.iz_lvl = -1
-                        plt_trace.pz_lvl[:] = None
-
-                    else:
-                        reset_type = 0
-
-        # resets the general properties and the trace view
-        plt_trace.reset_gen_props()
-        plt_trace.reset_trace_view(reset_type)
-
-    def reset_trig_views(self):
-
-        if 'trigger' in self.types:
-            plt_trig = self.plots[self.types['trigger'] - 1]
-            plt_trig.update_trigger_trace(True)
-
     def get_prop_views(self, c_id):
 
         # memory allocation
@@ -362,6 +240,133 @@ class PlotManager(QObject):
 
         type_rev = cf.rev_dict(self.types)
         return [type_rev[x] for x in np.unique(self.grid_id)]
+
+    # ---------------------------------------------------------------------------
+    # Probe-View Specific Functions
+    # ---------------------------------------------------------------------------
+
+    def clicked_probe(self, i_row):
+
+        value = self.session_obj.channel_data.is_selected[i_row]
+        self.sp_main.info_manager.update_table_value("Channel Info", i_row, value)
+        self.reset_trace_views(2)
+
+        # updates the trace spike markers (if removing channel selection)
+        if (self.session_obj.post_data.n_mmap > 0):
+            for i_r, v in zip(i_row, value):
+                if not v:
+                    spike_tab = self.sp_main.prop_manager.get_prop_tab('tracespike')
+                    spike_tab.clear_table_channel_selections(i_r + 1)
+
+    def probe_roi_moved(self, ch_id):
+
+        if 'trace' in self.types:
+            plt_trace = self.plots[self.types['trace'] - 1]
+            plt_trace.reset_inset_highlight(ch_id)
+
+    def probe_highlight(self, i_contact):
+
+        if 'probe' in self.types:
+            # retrieves the plot probe
+            plt_probe = self.plots[self.types['probe'] - 1]
+
+            # updates the highlighted channel properties
+            if i_contact < 0:
+                plt_probe.hide_channel_highlights()
+
+            else:
+                plt_probe.show_channel_highlights()
+                plt_probe.reset_channel_highlights(i_contact)
+
+    def create_unit_markers(self):
+
+        # field retrieval
+        plt_probe = self.plots[self.types['probe'] - 1]
+        unit_tab = self.sp_main.info_manager.get_info_tab('unit')
+        plt_probe.setup_unit_markers(unit_tab)
+
+    def inset_highlight(self, inset_id):
+
+        self.probe_inset_button.emit(inset_id)
+
+    def reset_probe_views(self):
+
+        if 'probe' in self.types:
+            plt_probe = self.plots[self.types['probe'] - 1]
+            plt_probe.reset_probe_views()
+
+    # ---------------------------------------------------------------------------
+    # Trace-View Specific Functions
+    # ---------------------------------------------------------------------------
+
+    def trace_highlight(self, is_on, i_contact=None):
+
+        if 'trace' in self.types:
+            plt_trace = self.plots[self.types['trace'] - 1]
+            plt_trace.reset_trace_highlight(is_on, i_contact)
+
+    def reset_trace_views(self, reset_type=0):
+
+        if 'trace' not in self.types:
+            return
+
+        # resets the offset time
+        plt_trace = self.get_plot_view('trace')
+
+        # resets the trace duration
+        is_per_shank = self.session_obj.is_per_shank()
+        probe = self.session_obj.get_current_recording_probe(is_per_shank)
+        t_dur_new = np.round(probe.get_total_duration(), cf.n_dp)
+
+        # # determines if there is a significant change in expt duration
+        # if np.abs(self.sp_main.time_manager.get('t_dur') - t_dur_new) > self.eps:
+        #     # sets the other plot trace fields
+        #     self.sp_main.time_manager.set('t_dur', t_dur_new)
+            # plt_trace.v_box[1, 0].setLimits(xMax=t_dur_new)
+            # plt_trace.h_plot[1, 0].setXRange(0, t_dur_new, padding=0)
+            #
+            # # updates the linear region bounds
+            # plt_trace.is_updating = True
+            # plt_trace.l_reg_x.setBounds([0, t_dur_new])
+            # plt_trace.is_updating = False
+            #
+            # # updates the editbox value
+            # gen_props = self.get_prop_tab('general')
+            # gen_props.reset_para_field('t_dur', t_dur_new)
+            #
+            # # ensures the linear region is within the new bounds
+            # l_reg_pos = plt_trace.l_reg_x.getRegion()
+            # if l_reg_pos[1] > t_dur_new:
+            #     new_pos = [t_dur_new - np.diff(l_reg_pos), t_dur_new]
+            #     plt_trace.l_reg_x.setRegion(new_pos)
+
+        match reset_type:
+            case 2:
+                # case is resising the y-axis
+
+                # if the frame is partially zoomed, then determine if enough channels have
+                # been removed to warrent resizing the y-axis
+                if plt_trace.n_plt > 0:
+                    if plt_trace.reset_yzoom_limits():
+                        plt_trace.iz_lvl = -1
+                        plt_trace.pz_lvl[:] = None
+
+                    else:
+                        reset_type = 0
+
+        # resets the general properties and the trace view
+        # plt_trace.reset_gen_props()
+        plt_trace.reset_trace_view(reset_type)
+
+    # ---------------------------------------------------------------------------
+    # Trigger-View Specific Functions
+    # ---------------------------------------------------------------------------
+
+    def reset_trig_views(self):
+
+        if 'trigger' in self.types:
+            plt_trig = self.plots[self.types['trigger'] - 1]
+            plt_trig.update_trigger_trace(True)
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
@@ -456,6 +461,10 @@ class PlotManager(QObject):
                 plt_view = self.plots[self.types[pt] - 1]
                 plt_view.show_view() if i_ad else plt_view.hide_view()
 
+    # ---------------------------------------------------------------------------
+    # Static Methods
+    # ---------------------------------------------------------------------------
+
     @staticmethod
     def det_diff_plot_ids(g_id, c_id):
 
@@ -545,6 +554,7 @@ class PlotWidget(QWidget):
         self.v_box = []
         self.plot_but = []
         self.plt_manager = None
+        self.time_manager = sp_main.time_manager
 
         # boolean class fields
         self.is_updating = False

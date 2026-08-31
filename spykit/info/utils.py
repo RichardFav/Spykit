@@ -70,6 +70,7 @@ class InfoManager(QObject):
 
         # sub-class field retrieval
         self.session_obj = self.sp_main.session_obj
+        self.time_manager = self.sp_main.time_manager
 
         # class property fields
         self.n_para = 0
@@ -297,8 +298,9 @@ class InfoManager(QObject):
                         trace_view.t_lim -= (trace_view.t_lim[1] - t_dur_run)
 
                 # resets the trace/trigger view
+                # self.time_manager.field_update('i_run')
                 self.sp_main.plot_manager.reset_trace_views()
-                self.sp_main.plot_manager.reset_trig_views()
+                # self.sp_main.plot_manager.reset_trig_views()
 
                 # resets the previous run index
                 self.i_run_pr = tab_obj.run_type.current_index()
@@ -418,6 +420,35 @@ class InfoManager(QObject):
 
         # pauses for update...
         time.sleep(0.05)
+
+    def reset_run_names(self, is_concat_run):
+
+        # case is runs are separated
+        run_list = self.session_obj.session.get_run_names()
+        self.session_obj.set_current_run(run_list[0])
+
+        if is_concat_run:
+            # case is runs are concatenated
+            run_list = ['Concatenated Run']
+
+        for tt in ['channel', 'unit']:
+            # field retrieval
+            t_tab = self.get_info_tab(tt)
+
+            # flag that the widgets are being manually updated
+            t_tab.is_updating = True
+            t_tab.run_type.blockSignals(True)
+
+            # sets the run type comobobox properties
+            t_tab.run_type.addItems(run_list, True)
+            t_tab.run_type.set_enabled((not is_concat_run) and (len(run_list) > 1))
+
+            # resets the run index (if concatenating runs)
+            t_tab.run_type.set_current_index(0)
+
+            # flag that the widgets are being manually updated
+            t_tab.is_updating = False
+            t_tab.run_type.blockSignals(False)
 
     # ---------------------------------------------------------------------------
     # Unit Tab Event Functions

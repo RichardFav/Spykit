@@ -7,6 +7,7 @@ import glob
 import numpy as np
 import pandas as pd
 from pathlib import Path
+from copy import deepcopy
 from functools import partial as pfcn
 
 # pyqt6 module imports
@@ -17,6 +18,7 @@ from PyQt6.QtCore import Qt, QSize, QRect, pyqtSignal, pyqtBoundSignal, QObject
 # spikeinterface/spikewrap module import
 import spikewrap as sw
 import spikeinterface as si
+from spikewrap.structure._raw_run import ConcatRawRun
 from spikeinterface.sorters import available_sorters
 from spikeinterface.core import order_channels_by_depth
 
@@ -227,7 +229,7 @@ class SessionWorkBook(QObject):
     def get_current_recording_probe(self, use_per_shank=None):
 
         if use_per_shank is None:
-            use_per_shank = self.is_per_shank()
+            use_per_shank = self.is_per_shank() and self.has_pp_runs()
 
         if use_per_shank:
             i_shank = self.get_shank_index()
@@ -439,12 +441,6 @@ class SessionWorkBook(QObject):
         # return the overall search match results
         return f_path
 
-    def get_mem_map_field(self, p_fld, i_fld=None):
-
-        i_run = self.get_current_run_index()
-        i_shank = self.get_shank_index()
-        return self.post_data.get_mem_map_field(i_run, i_shank, p_fld, i_fld)
-
     def get_metric_table_values(self):
 
         q_hdr = self.get_mem_map_field('q_hdr')[0]
@@ -503,6 +499,12 @@ class SessionWorkBook(QObject):
 
         # returns the memory map file
         return mmap_files
+
+    def get_mem_map_field(self, p_fld, i_fld=None):
+
+        i_run = self.get_current_run_index()
+        i_shank = self.get_shank_index()
+        return self.post_data.get_mem_map_field(i_run, i_shank, p_fld, i_fld)
 
     # ---------------------------------------------------------------------------
     # Class Setter Functions
@@ -794,6 +796,7 @@ class SessionObject(QObject):
 
         # other class field retrieval
         self.sp_main = sp_main
+        self.get_fcn = sp_main.time_manager.get
 
         # bad/sync channels
         self.bad_ch = None
@@ -840,7 +843,7 @@ class SessionObject(QObject):
 
         # loads the raw data and channel data
         self._s.load_raw_data()
-        self.prep_obj = RunPreProcessing(self._s)
+        self.prep_obj = RunPreProcessing(self)
         self.sort_obj = RunSpikeSorting(self._s)
         # self.prep_obj.update_prog.connect(self.update_prog)
 
@@ -1108,7 +1111,12 @@ class SessionObject(QObject):
         if (pp_type is None) or (pp_type.endswith('raw')):
             if isinstance(run_type, int) or (run_type is None):
                 # case is the run type is not specified
-                run = self._s._raw_runs[i_run]
+
+                if self.prep_obj.concat_runs:
+                    run = self.get_part_raw_runs(True)[0]
+                else:
+                    run = self._s._raw_runs[i_run]
+
                 if i_shank is None:
                     return run
                 else:
@@ -1175,6 +1183,32 @@ class SessionObject(QObject):
                 if tw.is_running:
                     tw.force_quit()
                     self.channel_calc.emit(tw.desc, self)
+
+    def get_part_raw_runs(self, concat_runs):
+
+        # memory allocation
+        raw_runs = deepcopy(self._s._raw_runs)
+        t_s = self.get_fcn('t_start', True)[0]
+        t_f = self.get_fcn('t_finish', True)[0]
+
+        for i_rr, rr in enumerate(raw_runs):
+            # calculates the start/finish frame indices
+            s_freq = rr._raw['grouped'].get_sampling_frequency()
+            i_s, i_f = int(t_s[i_rr] * s_freq), int(t_f[i_rr] * s_freq)
+
+            # resets the experimental run slice
+            rr._raw['grouped'] = rr._raw['grouped'].frame_slice(start_frame=i_s, end_frame=i_f)
+
+        # creates a concatenated raw run object (if required)
+        if concat_runs:
+            raw_runs = [ConcatRawRun(
+                raw_runs,
+                self._s._parent_input_path,
+                self._s._ses_name,
+                self._s._file_format
+            )]
+
+        return raw_runs
 
     # ---------------------------------------------------------------------------
     # Protected Properties
@@ -1322,6 +1356,7 @@ class SessionProps:
 """
     PostProcessData: class to store the post-processing memory map files/objects
 """
+
 
 class PostProcessData(QObject):
     # pyqtsignal functions
@@ -1537,3 +1572,211 @@ class PostProcessData(QObject):
             return self.mmap[self.i_mmap][i_run, i_shank][p_fld][0]
         else:
             return self.mmap[self.i_mmap][i_run, i_shank][p_fld][0][i_fld]
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+"""
+    TimeManager: 
+"""
+
+
+class TimeManager(QObject):
+    # parameter field strings
+    p_fld0 = ['t_run', 't_start', 't_finish', 'use_full']
+
+    def __init__(self, sp_main):
+        super(TimeManager, self).__init__(sp_main)
+
+        # observable parameter class fields
+        self.t_run = None
+        self.t_start = None
+        self.t_finish = None
+        self.use_full = None
+
+        # boolean class fields
+        self.re_init_fields = True
+        self.is_trig_init = False
+        self.is_objects_init = False
+
+        # other class fields
+        self.n_run = None
+        self.t_dur = None
+
+        # plot property tab class fields
+        self.gen_tab = None
+        self.trig_tab = None
+        self.trace_tab = None
+
+        # information tab class fields
+        self.channel_tab = None
+        self.unit_tab = None
+
+        # plot view class fields
+        self.trig_view = None
+        self.trace_view = None
+
+        # function handles class fields
+        self.session_obj = sp_main.session_obj
+        self.is_raw_fcn = self.session_obj.is_raw_run
+        self.has_pp_fcn = self.session_obj.has_pp_runs
+        self.concat_fcn = self.session_obj.is_concat_run
+        self.duration_fcn = self.session_obj.get_run_durations
+        self.run_index_fcn = self.session_obj.get_current_run_index
+
+    def init_class_fields(self, force_reset=False):
+
+        # if not re-initialising class fields, then exit
+        if (not self.re_init_fields) and (not force_reset):
+            return
+
+        # field retrieval
+        self.n_run = self.session_obj.session.get_run_count()
+
+        # field initialisation
+        td = self.duration_fcn()
+        self.use_full = [np.ones(self.n_run, dtype=bool), None]
+        self.t_start = [np.zeros(self.n_run, dtype=float), None]
+        self.t_run, self.t_dur, self.t_finish = (deepcopy([td, None]) for _ in range(3))
+
+    def reset_class_fields(self, time_para):
+
+        # resets all the parameter fields
+        for pf, pv in time_para.items():
+            setattr(self, pf, pv)
+
+        # resets the class fields
+        self.field_update('i_run')
+
+    def init_class_objects(self):
+
+        # field retrieval
+        plot_manager = self.parent().plot_manager
+        prop_manager = self.parent().prop_manager
+
+        if (not self.is_trig_init) and (self.session_obj.session.sync_ch is not None):
+            # retrieves the trigger property tab/plot view
+            self.trig_tab = prop_manager.get_prop_tab('trigger')
+            self.trig_view = plot_manager.get_plot_view('trigger')
+
+            # flag that the fields have been initialised
+            self.is_trig_init = True
+
+        if not self.is_objects_init:
+            # plot property tab class fields
+            self.gen_tab = prop_manager.get_prop_tab('general')
+            self.trace_tab = prop_manager.get_prop_tab('trace')
+
+            # information tab class fields
+            info_manager = self.parent().info_manager
+            self.channel_tab = info_manager.get_info_tab('channel')
+            self.unit_tab = info_manager.get_info_tab('unit')
+
+            # plot view class fields
+            self.trace_view = plot_manager.get_plot_view('trace')
+
+            # flag that the field have been initialised
+            self.is_objects_init = True
+
+    # ---------------------------------------------------------------------------
+    # Class Field Callback Functions
+    # ---------------------------------------------------------------------------
+
+    def field_update(self, p_fld):
+
+        # initialises the class objects (if not done so already)
+        if (not self.is_objects_init) and (not self.is_trig_init):
+            self.init_class_objects()
+
+        # updates the dependent field(s)
+        match p_fld:
+            case 'pp_change':
+                # case is post pre-preprocessing
+                p_fld_update = 'update_all'
+                self.gen_tab.update_prop_fields('pp_change')
+
+            case p_fld if p_fld in ['use_full', 'i_run']:
+                # case is resetting the miscellaneous fields
+                p_fld_update = 'update_all'
+                self.gen_tab.update_prop_fields(p_fld_update)
+
+            case _:
+                # case is the other parameter fields
+                p_fld_update = p_fld
+
+        # memory reallocation (if pre-processing is complete)
+        if (p_fld == 'pp_change') and self.has_pp_fcn():
+            self.trace_view.reset_pp_start_times()
+
+        # updates the general property and trace view
+        self.trace_view.update_prop_fields(p_fld_update)
+
+        # updates the trigger view
+        if self.is_trig_init:
+            self.trig_view.update_prop_fields(p_fld)
+
+    # ---------------------------------------------------------------------------
+    # Class Setter Functions
+    # ---------------------------------------------------------------------------
+
+    def set(self, p_fld, p_val, update_field=True):
+
+        # field retrieval
+        data = getattr(self, p_fld)
+
+        # case is multi-dimensional fields
+        data[int(self.has_pp_fcn())][self.run_index_fcn()] = p_val
+
+        # runs the field update
+        if update_field:
+            self.field_update(p_fld)
+
+    def set_pp_fld_vals(self):
+
+        if self.concat_fcn():
+            # case is a concatenated run
+            self.use_full[1] = np.ones(1, dtype=bool)
+
+        else:
+            # case is separated runs
+            self.use_full[1] = np.ones(self.n_run, dtype=bool)
+
+    # ---------------------------------------------------------------------------
+    # Class Getter Functions
+    # ---------------------------------------------------------------------------
+
+    def get(self, p_fld, get_all=False):
+
+        # field retrieval
+        data = getattr(self, p_fld)
+        if get_all:
+            return data
+        else:
+            return data[int(self.has_pp_fcn())][self.run_index_fcn()]
+
+    def get_time_para(self):
+
+        # memory allocation
+        time_para = {}
+        p_fld = ['use_full', 't_start', 't_finish', 't_dur', 't_run']
+
+        # retrieves the parameter fields
+        for pf in p_fld:
+            time_para[pf] = getattr(self, pf)
+
+        return time_para
+
+    # ---------------------------------------------------------------------------
+    # Miscellaneous Functions
+    # ---------------------------------------------------------------------------
+
+    def run_index_fcn(self):
+
+        if self.has_pp_fcn():
+            return 0 if self.concat_fcn() else self.run_index_fcn()
+        else:
+            return self.run_index_fcn()
+
+    def is_concat(self):
+
+        return self.concat_fcn() and self.has_pp_fcn()
