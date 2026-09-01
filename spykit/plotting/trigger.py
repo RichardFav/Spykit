@@ -217,7 +217,7 @@ class TriggerPlot(PlotWidget):
             self.t_lim = [t_start, t_finish]
 
         # trigger trace values
-        y_tr_run = self.y_tr[int(is_concat)][i_run]
+        y_tr_run = self.y_tr[i_run]
 
         if reset_run:
             # hides the current linear regions
@@ -543,6 +543,7 @@ class TriggerPlot(PlotWidget):
 
             # resets the region indices
             self.reset_region_indices()
+            self.reset_sync_channels()
 
             # resets the suppression region objects
             self.trig_props.p_props.reset_table_array(self.n_run)
@@ -579,6 +580,109 @@ class TriggerPlot(PlotWidget):
         trig_props_new.set_trig_view(self)
 
     # ---------------------------------------------------------------------------
+    # Trigger Channel Functions
+    # ---------------------------------------------------------------------------
+
+    def reset_sync_channels(self):
+
+        # field retrieval
+        sync_ch_raw = self.get_raw_sync_channels()
+
+        if self.time_manager.has_pp_fcn():
+            # combines the trigger channel (if pre-processing)
+            sync_ch_new = self.combine_sync_channels(sync_ch_raw)
+            self.session_obj.reset_sync_channel(sync_ch_new)
+
+        else:
+            # reverts back to the raw trigger channel (if clearing pre-processing)
+            self.session_obj.reset_sync_channel(sync_ch_raw)
+
+        # resets the trigger trace values
+        self.reset_trace_values()
+
+    def combine_sync_channels(self, sync_ch):
+
+        # field retrieval
+        tm = self.time_manager
+        t_s = tm.get('t_start', True)[0]
+        t_f = tm.get('t_finish', True)[0]
+        u_f = tm.get('use_full', True)[0]
+
+        # retrieves the sync channel slices
+        for i_run in range(len(sync_ch)):
+            if not u_f[i_run]:
+                sync_ch[i_run] = self.get_sync_channel_slice(sync_ch[i_run], t_s[i_run], t_f[i_run])
+
+        if tm.concat_fcn():
+            # case is experimental runs are concatenated
+            return np.array([np.hstack(sync_ch)])
+
+        else:
+            # case is experimental runs are separated
+            return sync_ch
+
+    def get_sync_channel_slice(self, sync_ch, t_s, t_f):
+
+        # start/end frame indices
+        s_freq = self.session_obj.session_props.get_value('s_freq')
+        ind_s, ind_f = int(t_s * s_freq), int(np.min([t_f * s_freq, len(sync_ch) - 1]))
+
+        return sync_ch[ind_s:ind_f]
+
+    def get_raw_sync_channels(self):
+
+        return deepcopy(self.session_obj.session.sync_ch_raw)
+
+    # ---------------------------------------------------------------------------
+    # Trigger Channel Region Indices Functions
+    # ---------------------------------------------------------------------------
+
+    def reset_region_indices(self):
+
+        if self.time_manager.has_pp_fcn():
+            # combines the region indices (if pre-processing)
+            reg_index_raw = deepcopy(self.trig_props.p_props.region_index)
+            self.trig_props.p_props.region_index_raw = deepcopy(reg_index_raw)
+            reg_index_new = self.combine_region_indices(reg_index_raw)
+
+        else:
+            # reverts back to the raw region indices (if clearing pre-processing)
+            reg_index_new = deepcopy(self.trig_props.p_props.region_index_raw)
+
+        # resets the region indices
+        self.trig_props.p_props.region_index = deepcopy(reg_index_new)
+
+    def combine_region_indices(self, reg_index):
+
+        # field retrieval
+        tm = self.time_manager
+        t_dur = tm.get('t_dur', True)[0]
+        t_start = tm.get('t_start', True)[0]
+
+        # case is session is preprocessed
+        if tm.concat_fcn():
+            # case is runs are concatenated
+
+            # combines the region indices over all runs
+            ii = [(len(ri) > 0) for ri in reg_index]
+            t_ofs = np.insert(np.cumsum(t_dur)[:-1], 0, 0)
+            t_index = np.vstack([(ri[:, 1:] + to - ts) for ri, ts, to in zip(reg_index[ii], t_start[ii], t_ofs[ii])])
+
+            # sets up the full region index array
+            n_row = t_index.shape[0]
+            reg_index = [np.hstack([np.array(range(n_row)).reshape(n_row, -1) + 1, t_index])]
+
+        else:
+            # case is runs are seperated
+
+            # removes the start time from all non-empty region indices
+            for ri, ts in zip(reg_index, t_start):
+                if len(ri):
+                    ri[:, 1:] -= ts
+
+        return reg_index
+
+    # ---------------------------------------------------------------------------
     # Other Plot View Functions
     # ---------------------------------------------------------------------------
 
@@ -599,6 +703,14 @@ class TriggerPlot(PlotWidget):
     # Miscellaneous Functions
     # ---------------------------------------------------------------------------
 
+    def get_sample_freq(self):
+
+        if self.s_props is None:
+            return self.session_obj.session_props.get_value('s_freq')
+
+        else:
+            return self.s_props.get_value('s_freq')
+
     def get_run_index(self, is_concat=None):
 
         if is_concat is None:
@@ -613,13 +725,59 @@ class TriggerPlot(PlotWidget):
 
         return next((i for i, x in enumerate(self.l_reg_xs[i_run]) if l_reg == x))
 
-    def get_sample_freq(self):
+    def reset_trace_values(self):
 
-        if self.s_props is None:
-            return self.session_obj.session_props.get_value('s_freq')
+        # field retrieval
+        is_concat = self.time_manager.is_concat()
+        sync_ch = self.session_obj.session.sync_ch
 
-        else:
-            return self.s_props.get_value('s_freq')
+        # memory allocation
+        n_tr, n_run = [len(sc) for sc in sync_ch], len(sync_ch)
+        self.y_tr = np.empty(n_run, dtype=object)
+
+        for i_run in range(n_run):
+            # sets the start end values
+            y_tr_0 = np.array([0, sync_ch[i_run][0]])
+            y_tr_1 = np.array([(n_tr[i_run]-1), sync_ch[i_run][-1]])
+
+            # determines the points where the trigger channel changes
+            i_ch = np.where(np.diff(sync_ch[i_run]) != 0)[0]
+            if len(i_ch):
+                # case is there is a trigger for this run
+                x_tr_m = np.vstack((i_ch, i_ch)).transpose().flatten()
+                y_tr_m = np.vstack((sync_ch[i_run][i_ch], sync_ch[i_run][i_ch+1])).transpose().flatten()
+                xy_tr_m = np.vstack((x_tr_m, y_tr_m)).transpose()
+                self.y_tr[i_run] = np.vstack((y_tr_0, xy_tr_m, y_tr_1))
+
+            else:
+                # case is there is no trigger channel signal for this run
+                self.y_tr[i_run] = np.vstack((y_tr_0, y_tr_1))
+
+        # # sets the concatenated run change indices (if multi-run)
+        # if is_concat:
+        #     # initialisations
+        #     i_ofs = 0.
+        #     A = np.empty(n_run, dtype=object)
+        #
+        #     # combines the trigger channel change indices over all runs
+        #     for i_run in range(n_run):
+        #         # updates the change indices
+        #         A[i_run] = deepcopy(self.y_tr[i_run]) + np.array([i_ofs, 0.])
+        #         i_ofs += n_tr[i_run]
+        #
+        #     # combines the sub arrays over all runs
+        #     A = np.vstack(A)
+        #
+        #     # removes any repeated value rows
+        #     is_keep = np.hstack((np.ones(1, dtype=bool), np.diff(A[:, 1]) != 0))
+        #     is_keep[-1] = True
+        #     self.y_tr[1] = [A[is_keep, :]]
+
+    def reset_region_pos(self, l_reg, t_min, t_max):
+
+        self.is_updating = True
+        l_reg.setRegion([t_min, t_max])
+        self.is_updating = False
 
     def update_region_limits(self, i_run):
 
@@ -631,152 +789,3 @@ class TriggerPlot(PlotWidget):
             # case is there are multiple regions
             self.xtrig_region_moved(self.l_reg_xs[i_run][0])
             self.xtrig_region_moved(self.l_reg_xs[i_run][-1])
-
-    def reset_trace_values(self):
-
-        # field retrieval
-        t_dur = self.session_obj.get_run_durations()
-        n_run = self.session_obj.session.get_run_count()
-
-        # memory allocation
-        n_tr = []
-        self.y_tr = np.empty(1 + int(n_run > 1), dtype=object)
-        self.y_tr[0] = np.empty(n_run, dtype=object)
-
-        #
-        for i_run in range(n_run):
-            # retrieves the current sync channel data
-            sync_ch = self.session_obj.session.sync_ch[i_run]
-
-            # sets the start end values
-            n_tr.append(len(sync_ch))
-            y_tr_0 = np.array([0, sync_ch[0]])
-            y_tr_1 = np.array([(n_tr[i_run]-1), sync_ch[-1]])
-
-            # determines the points where the trigger channel changes
-            i_ch = np.where(np.diff(sync_ch) != 0)[0]
-            if len(i_ch):
-                # case is there is a trigger for this run
-                x_tr_m = np.vstack((i_ch, i_ch)).transpose().flatten()
-                y_tr_m = np.vstack((sync_ch[i_ch], sync_ch[i_ch+1])).transpose().flatten()
-                xy_tr_m = np.vstack((x_tr_m, y_tr_m)).transpose()
-                self.y_tr[0][i_run] = np.vstack((y_tr_0, xy_tr_m, y_tr_1))
-
-            else:
-                # case is there is no trigger channel signal for this run
-                self.y_tr[0][i_run] = np.vstack((y_tr_0, y_tr_1))
-
-        # sets the concatenated run change indices (if multi-run)
-        if n_run > 1:
-            # initialisations
-            i_ofs = 0.
-            A = np.empty(n_run, dtype=object)
-
-            # combines the trigger channel change indices over all runs
-            for i_run in range(n_run):
-                # updates the change indices
-                A[i_run] = deepcopy(self.y_tr[0][i_run]) + np.array([i_ofs, 0.])
-                i_ofs += n_tr[i_run]
-
-            # combines the sub arrays over all runs
-            A = np.vstack(A)
-
-            # removes any repeated value rows
-            is_keep = np.hstack((np.ones(1, dtype=bool), np.diff(A[:, 1]) != 0))
-            is_keep[-1] = True
-            self.y_tr[1] = [A[is_keep, :]]
-
-    def reset_region_pos(self, l_reg, t_min, t_max):
-
-        self.is_updating = True
-        l_reg.setRegion([t_min, t_max])
-        self.is_updating = False
-
-    def reset_region_indices(self):
-
-        if self.time_manager.has_pp_fcn():
-            # combines the region indices (if pre-processing)
-            reg_index_raw = deepcopy(self.trig_props.p_props.region_index)
-            self.trig_props.p_props.region_index_raw = reg_index_raw
-            reg_index_new = self.combine_region_indices(reg_index_raw)
-
-        else:
-            # reverts back to the raw region indices (if clearing pre-processing)
-            reg_index_new = deepcopy(self.trig_props.p_props.region_index_raw)
-
-        # resets the region indices
-        self.trig_props.p_props.region_index = reg_index_new
-
-    def split_region_indices(self, reg_index0):
-
-        # field retrieval
-        tm = self.time_manager
-        t_dur = tm.get('t_dur', True)
-        t_start = tm.get('t_start', True)
-
-        # memory allocation
-        n_run = len(t_dur[0])
-        if len(reg_index0) == n_run:
-            # case is splitting a separate run
-
-            # removes the start time from all non-empty region indices
-            reg_index = deepcopy(reg_index0)
-            for ri, ts in zip(reg_index, t_start[0]):
-                if len(ri):
-                    ri[:, 1:] += ts
-
-        else:
-            # case is splitting a concatenated run
-
-            # other initialisations
-            reg_index = np.empty(n_run, dtype=object)
-            t_dur_sum = np.insert(np.cumsum(t_dur[0]), 0, 0)
-
-            # resets the region indices over each experimental run
-            for i_run in range(n_run):
-                # determines the regions belonging to the current run
-                ii = np.logical_and(
-                    reg_index0[0][:, 1] >= t_dur_sum[i_run],
-                    reg_index0[0][:, 2] <= t_dur_sum[i_run + 1]
-                )
-
-                # resets the region index timing
-                if np.any(ii):
-                    t_ofs = t_dur_sum[i_run] - t_start[0][i_run]
-                    reg_index[i_run] = reg_index0[0][ii, :] - t_ofs
-                    reg_index[i_run][:, 0] = np.array(range(np.sum(ii))) + 1
-                else:
-                    reg_index[i_run] = []
-
-        return reg_index
-
-
-    def combine_region_indices(self, reg_index):
-
-        # field retrieval
-        tm = self.time_manager
-        t_dur = tm.get('t_dur', True)
-        t_start = tm.get('t_start', True)
-
-        # case is session is preprocessed
-        if tm.concat_fcn():
-            # case is runs are concatenated
-
-            # combines the region indices over all runs
-            ii = [(len(ri) > 0) for ri in reg_index]
-            t_ofs = np.insert(np.cumsum(t_dur[0])[:-1], 0, 0)
-            t_index = np.vstack([(ri[:, 1:] + to - ts) for ri, ts, to in zip(reg_index[ii], t_start[0][ii], t_ofs[ii])])
-
-            # sets up the full region index array
-            n_row = t_index.shape[0]
-            reg_index = [np.hstack([np.array(range(n_row)).reshape(n_row, -1) + 1, t_index])]
-
-        else:
-            # case is runs are seperated
-
-            # removes the start time from all non-empty region indices
-            for ri, ts in zip(reg_index, t_start[0]):
-                if len(ri):
-                    ri[:, 1:] -= ts
-
-        return reg_index

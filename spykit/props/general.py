@@ -257,7 +257,7 @@ class GeneralProps(PropWidget):
             self.set_edit_value(pf)
 
         # resets the checkbox fields
-        if p_str == 'pp_change':
+        if p_str in ['update_all', 'pp_change']:
             self.is_init = False
             use_full = self.time_manager.get('use_full')
             self.check_use_full.setCheckState(cf.chk_state[use_full])
@@ -268,7 +268,6 @@ class GeneralProps(PropWidget):
 
         self.p_props.edit_update.connect(self.edit_update)
         self.p_props.check_update.connect(self.check_update)
-
 
     def reset_pp_timing(self):
 
@@ -284,7 +283,7 @@ class GeneralProps(PropWidget):
         else:
             # case is runs are seperated
             td = deepcopy(t_dur_raw)
-            uf = np.ones(len(t_dur_raw), dtype=bools)
+            uf = np.ones(len(t_dur_raw), dtype=bool)
             ts = np.zeros(len(t_dur_raw), dtype=float)
 
         # updates the class fields

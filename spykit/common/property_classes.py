@@ -546,7 +546,7 @@ class SessionWorkBook(QObject):
         self.session.sort_obj.s_props = new_sort_props
 
     # ---------------------------------------------------------------------------
-    # Boolean Inspection Functions
+    # Boolean Class Functions
     # ---------------------------------------------------------------------------
 
     def has_pp_runs(self):
@@ -558,61 +558,9 @@ class SessionWorkBook(QObject):
         else:
             return len(self.get_pp_runs()) > 0
 
-    def is_channel_removed(self):
+    def is_raw_run(self):
 
-        ch_run = self.get_avail_channel(use_last_rec=True)
-        ch_full = self.channel_data.channel_ids
-        ch_intersect = np.intersect1d(ch_full, ch_run, return_indices=True)
-
-        is_rmv = np.ones(len(ch_full), dtype=bool)
-        is_rmv[ch_intersect[1]] = False
-
-        return is_rmv
-
-    def is_session_sorted(self):
-
-        f_path = self.get_sorting_folder_paths()
-        return np.all([os.path.exists(x) for x in f_path.flatten()])
-
-    def is_spike_sorted(self):
-
-        return self.session._s.get_output_path() is not None
-
-    def is_post_process_loaded(self, mmap_name_chk):
-
-        return mmap_name_chk in self.post_data.mmap_name
-
-    # ---------------------------------------------------------------------------
-    # Session Wrapper Functions
-    # ---------------------------------------------------------------------------
-
-    def reset_channel_data(self, ch_data):
-
-        # resets the bad/sync channels
-        self.session.bad_ch = ch_data['bad']
-        self.session.sync_ch = ch_data['sync']
-
-        # resets the channel keep field
-        self.channel_data.is_keep = ch_data['keep']
-        self.channel_data.is_removed = ch_data['removed']
-        self.keep_channel_reset.emit()
-
-    def reset_current_session(self, is_pp=False):
-
-        if is_pp:
-            # case is using preprocessing fields
-            s_keys = list(self.session._s._pp_runs[0]._preprocessed.keys())
-
-            # resets the current session name based on the shank index
-            if self.current_shank is None:
-                self.current_ses = s_keys[0]
-            else:
-                self.current_ses = s_keys[self.current_shank]
-
-        else:
-            # case is using raw data fields
-            s_keys = list(self.session._s._raw_runs[0]._raw.keys())
-            self.current_ses = s_keys[0]
+        return self.prep_type == '0-raw'
 
     def is_concat_run(self, check_raw=False):
 
@@ -636,31 +584,79 @@ class SessionWorkBook(QObject):
         else:
             return self.session.prep_obj.per_shank
 
-    def is_raw_run(self):
+    def is_channel_removed(self):
 
-        return self.prep_type == '0-raw'
+        ch_run = self.get_avail_channel(use_last_rec=True)
+        ch_full = self.channel_data.channel_ids
+        ch_intersect = np.intersect1d(ch_full, ch_run, return_indices=True)
+
+        is_rmv = np.ones(len(ch_full), dtype=bool)
+        is_rmv[ch_intersect[1]] = False
+
+        return is_rmv
+
+    def is_session_sorted(self):
+
+        f_path = self.get_sorting_folder_paths()
+        return np.all([os.path.exists(x) for x in f_path.flatten()])
+
+    def is_post_process_loaded(self, mmap_name_chk):
+
+        return mmap_name_chk in self.post_data.mmap_name
+
+    # ---------------------------------------------------------------------------
+    # Session Wrapper Functions
+    # ---------------------------------------------------------------------------
+
+    def reset_channel_data(self, ch_data):
+
+        # resets the bad/sync channels
+        self.session.bad_ch = ch_data['bad']
+        self.session.sync_ch = ch_data['sync']
+        self.session.sync_ch_raw = deepcopy(ch_data['sync'])
+
+        # resets the channel keep field
+        self.channel_data.is_keep = ch_data['keep']
+        self.channel_data.is_removed = ch_data['removed']
+        self.keep_channel_reset.emit()
+
+    def reset_current_session(self, is_pp=False):
+
+        if is_pp:
+            # case is using preprocessing fields
+            s_keys = list(self.session._s._pp_runs[0]._preprocessed.keys())
+
+            # resets the current session name based on the shank index
+            if self.current_shank is None:
+                self.current_ses = s_keys[0]
+            else:
+                self.current_ses = s_keys[self.current_shank]
+
+        else:
+            # case is using raw data fields
+            s_keys = list(self.session._s._raw_runs[0]._raw.keys())
+            self.current_ses = s_keys[0]
+
+    # ---------------------------------------------------------------------------
+    # Sync Channel Functions
+    # ---------------------------------------------------------------------------
+
+    def reset_sync_channel(self, sync_ch):
+
+        self.session.sync_ch = sync_ch
+
+    def silence_sync(self, i_run, t_s, t_f):
+
+        # calculates the start/finish frame indices
+        s_freq = self.session_props.get_value('s_freq')
+        ind_s, ind_f = int(s_freq * t_s), int(s_freq * t_f)
+
+        # silences the frames within the trigger channel
+        self.session.sync_ch[i_run][ind_s:ind_f] = 0
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
     # ---------------------------------------------------------------------------
-
-    def added_post_proc(self, mm_name):
-
-        self.added_post_process.emit(mm_name)
-
-    def setup_mmap_files(self, mm_name):
-
-        # sets up the memory mapped file names
-        pp_file = f"{mm_name}.dat"
-        mm_file = self.get_sorting_folder_paths('bombcell')
-        bc_mod = np.nditer(mm_file, flags=['refs_ok'], op_flags=['readwrite'])
-
-        # sets up the memory mapped file names
-        with bc_mod:
-            for x in bc_mod:
-                x[...] = os.path.join(str(x), pp_file)
-
-        return mm_file
 
     def toggle_channel_flag(self, i_channel, state=1, is_keep=False):
 
@@ -697,10 +693,6 @@ class SessionWorkBook(QObject):
 
         self.prep_progress_update.emit(m_str, pr_val)
 
-    def silence_sync(self, i_run, ind_s, ind_f):
-
-        self.session.sync_ch[i_run][ind_s:ind_f] = 0
-
     def clear_preprocessing(self):
 
         self.prep_type = None
@@ -710,6 +702,10 @@ class SessionWorkBook(QObject):
     # ---------------------------------------------------------------------------
     # Post-Processing Methods
     # ---------------------------------------------------------------------------
+
+    def add_post_process(self, mm_name):
+
+        self.added_post_process.emit(mm_name)
 
     def remove_post_process(self, i_mmap_rmv=None):
 
@@ -725,6 +721,20 @@ class SessionWorkBook(QObject):
 
         if self.post_data is not None:
             self.post_data.clear_all_postprocessing()
+
+    def setup_mmap_files(self, mm_name):
+
+        # sets up the memory mapped file names
+        pp_file = f"{mm_name}.dat"
+        mm_file = self.get_sorting_folder_paths('bombcell')
+        bc_mod = np.nditer(mm_file, flags=['refs_ok'], op_flags=['readwrite'])
+
+        # sets up the memory mapped file names
+        with bc_mod:
+            for x in bc_mod:
+                x[...] = os.path.join(str(x), pp_file)
+
+        return mm_file
 
     # ---------------------------------------------------------------------------
     # Static Methods
@@ -751,7 +761,7 @@ class SessionWorkBook(QObject):
             _self.session.load_sorting_para(_self)
 
             # connects the signal functions
-            _self.post_data.added_pp.connect(_self.added_post_proc)
+            _self.post_data.added_pp.connect(_self.add_post_process)
 
         else:
             # case is there is no session set (clearing session)
@@ -779,8 +789,8 @@ class SessionWorkBook(QObject):
 
 class SessionObject(QObject):
     # pyqtsignal functions
-    channel_data_setup = pyqtSignal(object)
     channel_calc = pyqtSignal(str, object)
+    channel_data_setup = pyqtSignal(object)
     prep_prop_update = pyqtSignal(str, float)
 
     # parameters
@@ -789,18 +799,23 @@ class SessionObject(QObject):
     def __init__(self, sp_main, s_props, ssf_file=None, sig_fcn=None):
         super(SessionObject, self).__init__(sp_main)
 
-        # class field initialisations
+        # main class field initialisations
         self._s = None
         self._s_props = s_props
-        self.sig_fcn = sig_fcn
-
-        # other class field retrieval
         self.sp_main = sp_main
+
+        # class function handles
+        self.sig_fcn = sig_fcn
         self.get_fcn = sp_main.time_manager.get
 
-        # bad/sync channels
+        # spykit session class fields
+        self.ssf_file = ssf_file
+        self.ssf_load = ssf_file is not None
+
+        # other class fields
         self.bad_ch = None
         self.sync_ch = None
+        self.sync_ch_raw = None
         self.prep_obj = None
         self.sort_obj = None
         self.bcell_obj = None
@@ -808,14 +823,11 @@ class SessionObject(QObject):
         self.shank_runs = None
         self.data_init = {'bad': False, 'sync': False}
 
-        self.ssf_file = ssf_file
-        self.ssf_load = ssf_file is not None
-
         # creates the session property fields from the input dictionary
         for sp in s_props:
             setattr(self, sp, s_props[sp])
 
-        # loads the session
+        # loads the spykit session
         self.load_session()
 
     # ---------------------------------------------------------------------------
@@ -862,6 +874,7 @@ class SessionObject(QObject):
         n_run = self.get_run_count()
         self.bad_ch = np.empty(n_run, dtype=object)
         self.sync_ch = np.empty(n_run, dtype=object)
+        self.sync_ch_raw = np.empty(n_run, dtype=object)
 
         # field initialisation
         self.data_init['bad'] = False
@@ -913,124 +926,6 @@ class SessionObject(QObject):
             # updates the signal function
             self.sig_fcn('sorterpara')
 
-    def recalc_bad_channel_detect(self, p_props):
-
-        # pauses for things to catch up...
-        time.sleep(0.1)
-
-        # memory allocation
-        t_worker = []
-        n_run = self.get_run_count()
-        self.bad_ch = np.empty(n_run, dtype=object)
-
-        # field initialisation
-        self.data_init['bad'] = False
-
-        for i_run in range(n_run):
-            # retrieves the raw session run object
-            ses_run = self.get_session_runs(i_run)
-
-            # sets up the bad channel detection worker
-            t_worker_new = ThreadWorker(self.sp_main, self.get_bad_channel, (ses_run, i_run, p_props))
-            t_worker_new.work_finished.connect(self.post_get_bad_channel)
-            t_worker_new.start()
-
-            # appends the worker objects
-            t_worker.append(t_worker_new)
-
-            # updates the signal function
-            if self.sig_fcn is not None:
-                if isinstance(self.sig_fcn, pyqtBoundSignal):
-                    self.sig_fcn.emit('bad')
-
-                else:
-                    self.sig_fcn('bad')
-
-        return t_worker
-
-    def update_prog(self, m_str, pr_val):
-
-        self.prep_prop_update.emit(m_str, pr_val)
-
-    # ---------------------------------------------------------------------------
-    # Thread worker functions
-    # ---------------------------------------------------------------------------
-
-    @staticmethod
-    def get_bad_channel(run_data):
-
-        # field retrieval
-        if len(run_data) == 2:
-            p_props = {}
-            ses_run, i_run = run_data
-
-        else:
-            ses_run, i_run, p_props = run_data
-
-        # retrieves the sync channels for each session/run
-        b_channel = []
-        for probe in ses_run._raw.values():
-            b_channel.append(si.preprocessing.detect_bad_channels(probe, **p_props))
-
-        # returns the bad channels
-        return b_channel, i_run
-
-    @staticmethod
-    def get_sync_channel(run_data):
-
-        # field retrieval
-        ses_obj, i_run = run_data
-
-        # returns the sync channels
-        return ses_obj.get_sync_channel(i_run).flatten(), i_run
-
-    @staticmethod
-    def calc_trace_minmax(run_data):
-
-        # field retrieval
-        ses_run, i_run = run_data
-
-        # memory allocation
-        y_min, y_max = [], []
-        sz_blk, n_bins, t_blk, n_ds = 150000, 100, 10, 10
-
-        for probe in ses_run._raw.values():
-            # retrieves the traces for the current probe
-            y_sig = probe.get_traces()
-
-            # determines the histogram block size
-            n_frm, n_ch = y_sig.shape
-            n_frm_blk = np.min([n_frm, int(probe.sampling_frequency * t_blk)])
-            n_blk = int(np.ceil(n_frm / n_frm_blk))
-
-            # allocates memory for the current probe
-            t_blk = np.zeros((n_blk, 2))
-            y_min_tmp, y_max_tmp = np.zeros((n_blk, n_ch)), np.zeros((n_blk, n_ch))
-            for i_blk in range(n_blk):
-                # retrieves the sub-signal block
-                t_blk[i_blk, 0] = i_blk * n_frm_blk
-                t_blk[i_blk, 1] = np.min([(i_blk + 1) * n_frm_blk, n_frm])
-                i_row_blk = np.arange(int(t_blk[i_blk, 0]), int(t_blk[i_blk, 1]))
-                y_sig_blk = y_sig[i_row_blk, :][::n_ds, :]
-
-                # calculates the min/max over the block
-                y_min_tmp[i_blk, :] = np.min(y_sig_blk, axis=0)
-                y_max_tmp[i_blk, :] = np.max(y_sig_blk, axis=0)
-
-            # appends the min/max values
-            y_min.append(y_min_tmp)
-            y_max.append(y_max_tmp)
-
-        # returns the min/max values
-        return t_blk, y_min, y_max, i_run
-
-    @staticmethod
-    def get_sorter_info(run_data):
-
-        # initialisations
-        ss_info = SpikeSortInfo(run_data)
-        return ss_info.setup_all_sort_para()
-
     # ---------------------------------------------------------------------------
     # Post thread worker functions
     # ---------------------------------------------------------------------------
@@ -1062,8 +957,11 @@ class SessionObject(QObject):
             # resets the signal values as being on/off
             ch_data = 100 * (ch_data > (y_min + y_max) / 2).astype(int)
 
+        # stores the sync run data
+        self.sync_ch[i_run] = deepcopy(ch_data)
+        self.sync_ch_raw[i_run] = deepcopy(ch_data)
+
         # if all runs have been detected, then run the signal function
-        self.sync_ch[i_run] = ch_data
         if np.all([x is not None for x in self.sync_ch]):
             self.data_init['sync'] = True
 
@@ -1172,18 +1070,6 @@ class SessionObject(QObject):
 
         return len(self._s._raw_runs)
 
-    def has_prep(self):
-
-        return len(self._s._pp_runs) > 0
-
-    def force_close_workers(self):
-
-        if self.t_worker is not None:
-            for tw in self.t_worker:
-                if tw.is_running:
-                    tw.force_quit()
-                    self.channel_calc.emit(tw.desc, self)
-
     def get_part_raw_runs(self, concat_runs):
 
         # memory allocation
@@ -1209,6 +1095,140 @@ class SessionObject(QObject):
             )]
 
         return raw_runs
+
+    # ---------------------------------------------------------------------------
+    # Miscellaneous Functions
+    # ---------------------------------------------------------------------------
+
+    def has_prep(self):
+
+        return len(self._s._pp_runs) > 0
+
+    def force_close_workers(self):
+
+        if self.t_worker is not None:
+            for tw in self.t_worker:
+                if tw.is_running:
+                    tw.force_quit()
+                    self.channel_calc.emit(tw.desc, self)
+
+    def recalc_bad_channel_detect(self, p_props):
+
+        # pauses for things to catch up...
+        time.sleep(0.1)
+
+        # memory allocation
+        t_worker = []
+        n_run = self.get_run_count()
+        self.bad_ch = np.empty(n_run, dtype=object)
+
+        # field initialisation
+        self.data_init['bad'] = False
+
+        for i_run in range(n_run):
+            # retrieves the raw session run object
+            ses_run = self.get_session_runs(i_run)
+
+            # sets up the bad channel detection worker
+            t_worker_new = ThreadWorker(self.sp_main, self.get_bad_channel, (ses_run, i_run, p_props))
+            t_worker_new.work_finished.connect(self.post_get_bad_channel)
+            t_worker_new.start()
+
+            # appends the worker objects
+            t_worker.append(t_worker_new)
+
+            # updates the signal function
+            if self.sig_fcn is not None:
+                if isinstance(self.sig_fcn, pyqtBoundSignal):
+                    self.sig_fcn.emit('bad')
+
+                else:
+                    self.sig_fcn('bad')
+
+        return t_worker
+
+    def update_prog(self, m_str, pr_val):
+
+        self.prep_prop_update.emit(m_str, pr_val)
+
+    # ---------------------------------------------------------------------------
+    # Static Class Methods
+    # ---------------------------------------------------------------------------
+
+    @staticmethod
+    def get_bad_channel(run_data):
+
+        # field retrieval
+        if len(run_data) == 2:
+            p_props = {}
+            ses_run, i_run = run_data
+
+        else:
+            ses_run, i_run, p_props = run_data
+
+        # retrieves the sync channels for each session/run
+        b_channel = []
+        for probe in ses_run._raw.values():
+            b_channel.append(si.preprocessing.detect_bad_channels(probe, **p_props))
+
+        # returns the bad channels
+        return b_channel, i_run
+
+    @staticmethod
+    def get_sync_channel(run_data):
+
+        # field retrieval
+        ses_obj, i_run = run_data
+
+        # returns the sync channels
+        return ses_obj.get_sync_channel(i_run).flatten(), i_run
+
+    @staticmethod
+    def calc_trace_minmax(run_data):
+
+        # field retrieval
+        ses_run, i_run = run_data
+
+        # memory allocation
+        y_min, y_max = [], []
+        sz_blk, n_bins, t_blk, n_ds = 150000, 100, 10, 10
+
+        for probe in ses_run._raw.values():
+            # retrieves the traces for the current probe
+            y_sig = probe.get_traces()
+
+            # determines the histogram block size
+            n_frm, n_ch = y_sig.shape
+            n_frm_blk = np.min([n_frm, int(probe.sampling_frequency * t_blk)])
+            n_blk = int(np.ceil(n_frm / n_frm_blk))
+
+            # allocates memory for the current probe
+            t_blk = np.zeros((n_blk, 2))
+            y_min_tmp, y_max_tmp = np.zeros((n_blk, n_ch)), np.zeros((n_blk, n_ch))
+            for i_blk in range(n_blk):
+                # retrieves the sub-signal block
+                t_blk[i_blk, 0] = i_blk * n_frm_blk
+                t_blk[i_blk, 1] = np.min([(i_blk + 1) * n_frm_blk, n_frm])
+                i_row_blk = np.arange(int(t_blk[i_blk, 0]), int(t_blk[i_blk, 1]))
+                y_sig_blk = y_sig[i_row_blk, :][::n_ds, :]
+
+                # calculates the min/max over the block
+                y_min_tmp[i_blk, :] = np.min(y_sig_blk, axis=0)
+                y_max_tmp[i_blk, :] = np.max(y_sig_blk, axis=0)
+
+            # appends the min/max values
+            y_min.append(y_min_tmp)
+            y_max.append(y_max_tmp)
+
+        # returns the min/max values
+        return t_blk, y_min, y_max, i_run
+
+    @staticmethod
+    def get_sorter_info(run_data):
+
+        # initialisations
+        ss_info = SpikeSortInfo(run_data)
+        return ss_info.setup_all_sort_para()
 
     # ---------------------------------------------------------------------------
     # Protected Properties
@@ -1447,45 +1467,6 @@ class PostProcessData(QObject):
         if not is_save:
             self.added_pp.emit(self.mmap_name[-1])
 
-    def clear_all_postprocessing(self):
-
-        # exits if there is no data loaded
-        if self.n_mmap == 0:
-            return
-
-        # clears and deletes the temporary memory mapped files
-        for i_map in range(self.n_mmap):
-            # field retrieval
-            if i_map == 0:
-                n_run, n_shank = self.mmap[i_map].shape
-
-            for i_run in range(self.n_run_pp):
-                for i_shank in range(self.n_shank_pp):
-                    # clears the memory maps
-                    self.mmap[i_map][i_run, i_shank].flush()
-                    self.mmap[i_map][i_run, i_shank] = None
-                    time.sleep(0.1)
-
-                    # deletes the temporary file
-                    if not self.is_saved[i_map]:
-                        try:
-                            os.remove(self.mmap_file[i_map][i_run, i_shank])
-                        except:
-                            pass
-
-        # resets the class fields
-        self.mmap = []
-        self.mmap_file = []
-        self.mmap_name = []
-        self.is_saved = []
-        self.n_unit_pp = []
-
-        # resets the scalar fields
-        self.i_mmap = 0
-        self.n_mmap = 0
-        self.n_run_pp = 0
-        self.n_shank_pp = 0
-
     def remove_post_process(self, i_mmap_rmv=None):
 
         # default memory map array index
@@ -1533,6 +1514,45 @@ class PostProcessData(QObject):
         self.is_saved[self.i_mmap] = True
         self.mmap_file[self.i_mmap] = mmap_file_new
         self.mmap_name[self.i_mmap] = os.path.split(mmap_file_new[0, 0])[1]
+
+    def clear_all_postprocessing(self):
+
+        # exits if there is no data loaded
+        if self.n_mmap == 0:
+            return
+
+        # clears and deletes the temporary memory mapped files
+        for i_map in range(self.n_mmap):
+            # field retrieval
+            if i_map == 0:
+                n_run, n_shank = self.mmap[i_map].shape
+
+            for i_run in range(self.n_run_pp):
+                for i_shank in range(self.n_shank_pp):
+                    # clears the memory maps
+                    self.mmap[i_map][i_run, i_shank].flush()
+                    self.mmap[i_map][i_run, i_shank] = None
+                    time.sleep(0.1)
+
+                    # deletes the temporary file
+                    if not self.is_saved[i_map]:
+                        try:
+                            os.remove(self.mmap_file[i_map][i_run, i_shank])
+                        except:
+                            pass
+
+        # resets the class fields
+        self.mmap = []
+        self.mmap_file = []
+        self.mmap_name = []
+        self.is_saved = []
+        self.n_unit_pp = []
+
+        # resets the scalar fields
+        self.i_mmap = 0
+        self.n_mmap = 0
+        self.n_run_pp = 0
+        self.n_shank_pp = 0
 
     # ---------------------------------------------------------------------------
     # Class Setter Functions
@@ -1639,15 +1659,6 @@ class TimeManager(QObject):
         self.t_start = [np.zeros(self.n_run, dtype=float), None]
         self.t_run, self.t_dur, self.t_finish = (deepcopy([td, None]) for _ in range(3))
 
-    def reset_class_fields(self, time_para):
-
-        # resets all the parameter fields
-        for pf, pv in time_para.items():
-            setattr(self, pf, pv)
-
-        # resets the class fields
-        self.field_update('i_run')
-
     def init_class_objects(self):
 
         # field retrieval
@@ -1677,6 +1688,15 @@ class TimeManager(QObject):
 
             # flag that the field have been initialised
             self.is_objects_init = True
+
+    def reset_class_fields(self, time_para):
+
+        # resets all the parameter fields
+        for pf, pv in time_para.items():
+            setattr(self, pf, pv)
+
+        # resets the class fields
+        self.field_update('i_run')
 
     # ---------------------------------------------------------------------------
     # Class Field Callback Functions
