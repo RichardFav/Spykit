@@ -253,7 +253,9 @@ class GeneralProps(PropWidget):
 
         # resets the parameter fields
         for pf in p_fld_update:
-            self.set_n(pf, np.round(self.time_manager.get(pf), cf.n_dp))
+            # resets the edit parameter value
+            pv = self.time_manager.get(pf)
+            self.set_n(pf, np.round(pv, cf.n_dp))
             self.set_edit_value(pf)
 
         # resets the checkbox fields
@@ -274,6 +276,12 @@ class GeneralProps(PropWidget):
         # field retrieval
         tm = self.time_manager
         t_dur_raw = tm.get('t_dur', True)[0]
+        t_run_raw = tm.get('t_run', True)[0]
+
+        # resets the durations of full experimental runs
+        for i_uf, uf in enumerate(tm.get('t_dur', True)[0]):
+            if uf:
+                t_dur_raw[i_uf] = t_run_raw[i_uf]
 
         if self.time_manager.concat_fcn():
             # case is runs are concatenated

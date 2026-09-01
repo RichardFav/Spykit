@@ -513,7 +513,11 @@ class TriggerPlot(PlotWidget):
 
             # updates the time limits
             get_fcn = self.time_manager.get
-            self.t_lim = np.array([get_fcn('t_start'), get_fcn('t_finish')])
+            if get_fcn('use_full'):
+                self.t_lim = np.array([0.0, get_fcn('t_run')])
+            else:
+                self.t_lim = np.array([get_fcn('t_start'), get_fcn('t_finish')])
+
             self.h_plot[0, 0].setXRange(self.t_lim[0], self.t_lim[1], padding=0)
             self.l_reg_x.setRegion(self.t_lim)
 
@@ -657,7 +661,13 @@ class TriggerPlot(PlotWidget):
         # field retrieval
         tm = self.time_manager
         t_dur = tm.get('t_dur', True)[0]
+        t_run = tm.get('t_run', True)[0]
         t_start = tm.get('t_start', True)[0]
+
+        # resets the durations/start times of full experimental runs
+        for i_uf, uf in enumerate(tm.get('use_full', True)[0]):
+            if uf:
+                t_dur[i_uf], t_start[i_uf] = t_run[i_uf], 0.0
 
         # case is session is preprocessed
         if tm.concat_fcn():
@@ -677,7 +687,8 @@ class TriggerPlot(PlotWidget):
 
             # removes the start time from all non-empty region indices
             for ri, ts in zip(reg_index, t_start):
-                if len(ri):
+                if (ri is not None) and len(ri):
+                    # otherwise, remove the region indices start time
                     ri[:, 1:] -= ts
 
         return reg_index

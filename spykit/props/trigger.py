@@ -488,11 +488,13 @@ class TriggerProps(PropWidget):
 
         # re-adds the new regions
         for i_run in range(self.get_run_count()):
-            # resets the current run name
-            self.session_obj.set_current_run(run_names[i_run])
-
             # re-adds the trigger regions for the current run
             data_run = self.p_props.t_arr[i_run].data
+            if (data_run is None) or (len(data_run) == 0):
+                continue
+
+            # resets the current run name
+            self.session_obj.set_current_run(run_names[i_run])
 
             # resets the table dimensions (if required)
             if add_table_rows and (i_run == 0):
