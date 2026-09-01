@@ -660,9 +660,9 @@ class TriggerPlot(PlotWidget):
 
         # field retrieval
         tm = self.time_manager
-        t_dur = tm.get('t_dur', True)[0]
-        t_run = tm.get('t_run', True)[0]
-        t_start = tm.get('t_start', True)[0]
+        t_dur = deepcopy(tm.get('t_dur', True)[0])
+        t_run = deepcopy(tm.get('t_run', True)[0])
+        t_start = deepcopy(tm.get('t_start', True)[0])
 
         # resets the durations/start times of full experimental runs
         for i_uf, uf in enumerate(tm.get('use_full', True)[0]):
