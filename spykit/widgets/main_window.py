@@ -56,6 +56,9 @@ min_height = 820
 font_lbl = cw.create_font_obj(is_bold=True, font_weight=QFont.Weight.Bold)
 font_hdr = cw.create_font_obj(size=9, is_bold=True, font_weight=QFont.Weight.Bold)
 
+import matplotlib
+matplotlib.use('module://matplotlib_inline.backend_inline')
+
 # ----------------------------------------------------------------------------------------------------------------------
 
 """
@@ -199,14 +202,17 @@ class MainWindow(QMainWindow):
                 # retrieves the plot view widget
                 plot_view = self.plot_manager.get_plot_view(p_view.lower())
 
-                # performs specific view updates
+                # performs specific plot view updates
                 match p_view.lower():
                     case 'probe':
+                        # case is the probe plot view
                         plot_view.probe_rec = self.session_obj.get_current_recording_probe()
                         self.plot_manager.reset_probe_views()
 
                     case 'trace':
-                        pass
+                        # case is the trace plot view
+                        plot_view.reset_raw_start_times()
+                        plot_view.update_prop_fields('update_all')
 
             else:
                 self.plot_manager.add_plot_view(p_view.lower())
@@ -956,7 +962,8 @@ class MenuBar(QObject):
         # adds the file menu items
         self.add_menu_items(h_session_load, p_lbl, cb_fcn, p_str, False)
 
-        # disables the load post processed data files
+        # disables the load pre/post processed data files
+        self.set_menu_enabled('load_preprocessed', False)
         self.set_menu_enabled('load_postprocessed', False)
 
         # ---------------------------------------------------------------------------
@@ -1824,13 +1831,16 @@ class MenuBar(QObject):
                 # case is initialising/resetting
                 tool_off = ['save']
                 menu_off = ['save', 'clear', 'info', 'preprocessing', 'sorting', 'postprocess',
-                            'clear_prep', 'clear_sort', 'clear_bombcell', 'load_trigger',
-                            'load_config', 'load_postprocessed', 'save_preprocessed', 'save_preprocessed']
+                            'clear_prep', 'clear_sort', 'clear_bombcell', 'load_trigger', 'load_config',
+                            'load_preprocessed', 'load_postprocessed', 'save_preprocessed', 'save_preprocessed']
 
             case 'session-open':
                 # case is opening a bew session
                 tool_on = ['save']
-                menu_on = ['save', 'clear', 'info', 'preprocessing', 'load_trigger', 'load_config']
+                menu_on = ['save', 'clear', 'info', 'load_trigger', 'load_config', 'preprocessing']
+
+                if self.session_obj.has_pp_run_output():
+                    menu_on += ['load_preprocessed']
 
             case 'post-preprocess':
                 # case is post pre-processing

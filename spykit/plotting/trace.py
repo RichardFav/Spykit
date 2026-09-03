@@ -174,7 +174,7 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         self.s_freq = s_props.get_value('s_freq')
         self.n_channels = s_props.get_value('n_channels')
         self.t_dur0 = np.round(self.time_manager.get('t_dur'), cf.n_dp)
-        self.n_run = self.session_obj.session.get_run_count()
+        self.get_run_count()
 
         # plot item mouse event functions
         self.enter_fcn = None
@@ -635,6 +635,12 @@ class TracePlot(TraceLabelMixin, PlotWidget):
         c_map_name = self.trace_props.get('c_map')
         self.c_map = colormap.get(c_map_name, source="matplotlib", skipCache=False)
         self.image_item.setColorMap(self.c_map)
+
+    def reset_raw_start_times(self):
+
+        # field retrieval
+        self.get_run_count()
+        self.t_start_ofs[0] = np.zeros(self.n_run, dtype=float)
 
     def reset_pp_start_times(self):
 
@@ -1521,6 +1527,10 @@ class TracePlot(TraceLabelMixin, PlotWidget):
 
         p_type = self.trace_props.get('plot_type')
         return (p_type == 'Heatmap') or ((p_type == 'Auto') and (n_channel >= self.n_plt_max))
+
+    def get_run_count(self):
+
+        self.n_run = self.session_obj.session.get_run_count()
 
     def get_channel_count(self):
 

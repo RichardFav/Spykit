@@ -209,6 +209,8 @@ class SpikeSortingDialog(QMainWindow):
         self.cont_frame.setContentsMargins(x_gap, x_gap, x_gap, x_gap)
         self.cont_frame.setLayout(self.cont_layout)
         self.cont_frame.setStyleSheet(self.frame_border_style)
+
+        # button group layout properties
         self.cont_layout.setContentsMargins(0, 0, 0, 0)
         self.cont_layout.setSpacing(x_gap)
 

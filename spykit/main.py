@@ -8,7 +8,7 @@ import threading
 os.environ['QT_API'] = 'pyqt6'
 
 # custom module import
-from testing.testing import Testing
+# from testing.testing import Testing
 from spykit.widgets.main_window import MainWindow
 from spykit.common.error_logging import ErrorHandler
 

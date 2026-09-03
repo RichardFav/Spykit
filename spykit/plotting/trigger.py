@@ -660,9 +660,9 @@ class TriggerPlot(PlotWidget):
 
         # field retrieval
         tm = self.time_manager
-        t_dur = deepcopy(tm.get('t_dur', True)[0])
-        t_run = deepcopy(tm.get('t_run', True)[0])
-        t_start = deepcopy(tm.get('t_start', True)[0])
+        t_dur = tm.get('t_dur', True)[0]
+        t_run = tm.get('t_run', True)[0]
+        t_start = tm.get('t_start', True)[0]
 
         # resets the durations/start times of full experimental runs
         for i_uf, uf in enumerate(tm.get('use_full', True)[0]):
@@ -674,13 +674,14 @@ class TriggerPlot(PlotWidget):
             # case is runs are concatenated
 
             # combines the region indices over all runs
-            ii = [(len(ri) > 0) for ri in reg_index]
-            t_ofs = np.insert(np.cumsum(t_dur)[:-1], 0, 0)
-            t_index = np.vstack([(ri[:, 1:] + to - ts) for ri, ts, to in zip(reg_index[ii], t_start[ii], t_ofs[ii])])
+            ii = [(ri is not None) and (len(ri) > 0) for ri in reg_index]
+            if np.any(ii):
+                t_ofs = np.insert(np.cumsum(t_dur)[:-1], 0, 0)
+                t_index = np.vstack([(ri[:, 1:] + to - ts) for ri, ts, to in zip(reg_index[ii], t_start[ii], t_ofs[ii])])
 
-            # sets up the full region index array
-            n_row = t_index.shape[0]
-            reg_index = [np.hstack([np.array(range(n_row)).reshape(n_row, -1) + 1, t_index])]
+                # sets up the full region index array
+                n_row = t_index.shape[0]
+                reg_index = [np.hstack([np.array(range(n_row)).reshape(n_row, -1) + 1, t_index])]
 
         else:
             # case is runs are seperated
@@ -763,26 +764,6 @@ class TriggerPlot(PlotWidget):
             else:
                 # case is there is no trigger channel signal for this run
                 self.y_tr[i_run] = np.vstack((y_tr_0, y_tr_1))
-
-        # # sets the concatenated run change indices (if multi-run)
-        # if is_concat:
-        #     # initialisations
-        #     i_ofs = 0.
-        #     A = np.empty(n_run, dtype=object)
-        #
-        #     # combines the trigger channel change indices over all runs
-        #     for i_run in range(n_run):
-        #         # updates the change indices
-        #         A[i_run] = deepcopy(self.y_tr[i_run]) + np.array([i_ofs, 0.])
-        #         i_ofs += n_tr[i_run]
-        #
-        #     # combines the sub arrays over all runs
-        #     A = np.vstack(A)
-        #
-        #     # removes any repeated value rows
-        #     is_keep = np.hstack((np.ones(1, dtype=bool), np.diff(A[:, 1]) != 0))
-        #     is_keep[-1] = True
-        #     self.y_tr[1] = [A[is_keep, :]]
 
     def reset_region_pos(self, l_reg, t_min, t_max):
 

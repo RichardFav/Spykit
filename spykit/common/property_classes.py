@@ -131,7 +131,23 @@ class SessionWorkBook(QObject):
         if probe is None:
             probe = self.get_current_recording_probe().get_probe()
 
-        return probe.to_dataframe(complete=True)
+        # retrieves the probe dataframe
+        p_dframe = probe.to_dataframe(complete=True)
+
+        # ensures the shank IDs field is set correctly
+        if probe.get_shank_count() == 1:
+            if "shank_ids" in p_dframe.columns:
+                # retrieves the shank ID flags
+                shank_ids = p_dframe['shank_ids']
+                if np.all(shank_ids == ''):
+                    # if no ID flags are set, then set default values
+                    p_dframe = p_dframe.assign(shank_ids='1')
+
+            else:
+                s_id = ['1'] * len(p_dframe)
+                p_dframe.insert(len(p_dframe.columns), 'shank_ids', s_id)
+
+        return p_dframe
 
     def get_keep_channels(self):
 
@@ -558,6 +574,20 @@ class SessionWorkBook(QObject):
         else:
             return len(self.get_pp_runs()) > 0
 
+    def has_pp_run_output(self):
+
+        # determines if the non-concatenated preprocessing folder exists
+        if np.all([pp_pr.exists() for pp_pr in self.setup_prep_folder_path()]):
+            return True
+
+        elif np.all([pp_pr.exists() for pp_pr in self.setup_prep_folder_path(is_concat_run=True)]):
+            # case is there are concatenated
+            return True
+
+        else:
+            # flag that there is no output folder match
+            return False
+
     def is_raw_run(self):
 
         return self.prep_type == '0-raw'
@@ -700,6 +730,89 @@ class SessionWorkBook(QObject):
         self.session._s._pp_runs = []
 
     # ---------------------------------------------------------------------------
+    # Folder Path Methods
+    # ---------------------------------------------------------------------------
+
+    def setup_prep_folder_path(self, is_concat_run=False, n_run=None, n_shank=None):
+
+        # field retrieval
+        path_fcn = self.setup_folder_path
+
+        if is_concat_run:
+            # case is concatenated experimental runs
+            if n_shank is not None:
+                # case is multi-shank
+                return [path_fcn(s_type='preprocessing', is_concat_run=True, i_shank=i_s) for i_s in range(n_shank)]
+
+            else:
+                # case is single/non-separated shanks
+                return [path_fcn(s_type='preprocessing', is_concat_run=True)]
+
+        else:
+            # sets the default run count
+            n_run = self.session.get_run_count()
+
+            # case is non-concatenated runs
+            if n_shank is not None:
+                # case is multi-run/multi-shank
+                return [[path_fcn(s_type='preprocessing', i_shank=i_s, i_run=i_r)
+                         for i_s in range(n_shank)] for i_r in range(n_run)]
+
+            else:
+                # case is single shank/multi-run
+                return [path_fcn(s_type='preprocessing', i_run=i_r) for i_r in range(n_run)]
+
+    def setup_folder_path(self, p_type='derivatives', s_type=None,
+                          is_concat_run=False, i_run=None, i_shank=None):
+
+        # field retrieval
+        s_props = self.session._s_props
+        p_comp = s_props['subject_path'].split('/')
+
+        # sets the base output directory path
+        out_dir = Path('/'.join(p_comp[:-2])) / p_type
+        if s_type is None:
+            return out_dir
+
+        # appends the subject name
+        out_dir /= p_comp[-1]
+        if s_type == 'sub_dir':
+            return out_dir
+
+        # appends the session name
+        out_dir /= s_props['session_name']
+        if s_type == 'ses_dir':
+            return out_dir
+
+        # appends the run directory
+        out_dir = out_dir / "ephys" / self.setup_run_dir_name(i_run, is_concat_run)
+        if s_type == 'run_dir':
+            return out_dir
+
+        # appends the sub-type directory
+        if i_shank is not None:
+            # case is separating by shank
+            return out_dir / s_type / "shank_{0}".format(i_shank)
+        else:
+            # case is not separating by shank
+            return out_dir / s_type
+
+    def setup_run_dir_name(self, i_run=None, is_concat_run=False):
+
+        # sets run folder name
+        if is_concat_run:
+            # case is a concatenated run
+            return 'concat_run'
+
+        elif i_run is None:
+            # case is using the current run index
+            return self.current_run
+
+        else:
+            # case is outputting a specific run
+            return self.session.get_run_names()[i_run]
+
+    # ---------------------------------------------------------------------------
     # Post-Processing Methods
     # ---------------------------------------------------------------------------
 
@@ -799,6 +912,8 @@ class SessionObject(QObject):
     def __init__(self, sp_main, s_props, ssf_file=None, sig_fcn=None):
         super(SessionObject, self).__init__(sp_main)
 
+        from spykit.widgets.open_session import OpenSession
+
         # main class field initialisations
         self._s = None
         self._s_props = s_props
@@ -806,7 +921,11 @@ class SessionObject(QObject):
 
         # class function handles
         self.sig_fcn = sig_fcn
-        self.get_fcn = sp_main.time_manager.get
+
+        if isinstance(sp_main, OpenSession):
+            self.get_fcn = sp_main.parent().time_manager.get
+        else:
+            self.get_fcn = sp_main.time_manager.get
 
         # spykit session class fields
         self.ssf_file = ssf_file
@@ -1770,9 +1889,9 @@ class TimeManager(QObject):
         # field retrieval
         data = getattr(self, p_fld)
         if get_all:
-            return data
+            return deepcopy(data)
         else:
-            return data[int(self.has_pp_fcn())][self.run_index_fcn()]
+            return deepcopy(data[int(self.has_pp_fcn())][self.run_index_fcn()])
 
     def get_time_para(self):
 

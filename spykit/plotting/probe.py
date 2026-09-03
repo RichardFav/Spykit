@@ -896,8 +896,11 @@ class ProbeView(GraphicsObject):
         self.c_poly = [QPolygonF(x) for x in self.c_vert]
 
         # separates the shank-contact ID mapping array
-        s_id0, idx = np.unique(probe._shank_ids, return_inverse=True)
-        self.s_id = [np.where(idx == i)[0] for i in range(len(s_id0))]
+        if probe.get_shank_count() == 1:
+            self.s_id = [0]
+        else:
+            s_id0, idx = np.unique(probe._shank_ids, return_inverse=True)
+            self.s_id = [np.where(idx == i)[0] for i in range(len(s_id0))]
 
         # probe properties
         self.p_title = probe.get_title()

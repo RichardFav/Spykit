@@ -1378,7 +1378,7 @@ class SessionProbe(QWidget):
 
         # probe information retrieval
         self.p, self.p_rec = self.root.get_session_run(self.current_run, self.current_ses)
-        self.p_dframe = self.get_channel_dataframe()
+        self.p_dframe = self.session_obj.get_channel_info()
 
         # PROBE PLOT SETUP ----------------------------------------------
 
@@ -1513,19 +1513,6 @@ class SessionProbe(QWidget):
         i_col = list(self.p_dframe.columns).index(item.text().strip())
         self.channel_table.setColumnHidden(i_col, not is_sel)
         self.channel_table.resizeColumnToContents(i_col)
-
-    def get_channel_dataframe(self):
-
-        # retrieves the channel information dataframe
-        p_dframe = self.p.to_dataframe(complete=True)
-
-        # retrieves the shank ID flags
-        shank_ids = p_dframe['shank_ids']
-        if np.all(shank_ids == ''):
-            # if no ID flags are set, then set default values
-            p_dframe = p_dframe.assign(shank_ids='1')
-
-        return p_dframe
 
     def calc_duration(self):
 
