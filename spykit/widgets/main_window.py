@@ -13,6 +13,8 @@ from pathlib import Path
 from copy import deepcopy
 from functools import partial as pfcn
 
+from multiprocess.managers import SyncManager
+
 # pyqt6 module import
 from PyQt6.QtWidgets import (QMainWindow, QHBoxLayout, QFormLayout, QWidget, QGridLayout, QScrollArea,
                              QMessageBox, QInputDialog, QDialog, QMenuBar, QToolBar, QMenu, QApplication)
@@ -32,7 +34,7 @@ from spykit.info.preprocess import PreprocessSetup, pp_flds
 from spykit.threads.utils import ThreadWorker
 from spykit.widgets.open_session import OpenSession
 from spykit.widgets.default_dir import DefaultDir
-from spykit.widgets.save_prep import SavePrep
+from spykit.widgets.save_prep import SavePrep, PrepSyncManager
 from spykit.widgets.spike_sorting import SpikeSortingDialog
 from spykit.widgets.bomb_cell import BombCellSolver
 from spykit.common.error_logging import ErrorHandler
@@ -97,6 +99,7 @@ class MainWindow(QMainWindow):
         self.info_manager = InfoManager(self, info_width)
         self.plot_manager = PlotManager(self, dlg_width - info_width)
         self.prop_manager = PropManager(self, info_width)
+        self.sync_manager = PrepSyncManager(self)
         self.menu_bar = MenuBar(self)
 
         # boolean class fields
@@ -110,9 +113,9 @@ class MainWindow(QMainWindow):
         # sets the widget style sheets
         self.set_styles()
 
-        # # REMOVE ME LATER
-        # if cf.is_dev():
-        #     self.testing()
+        # REMOVE ME LATER
+        if cf.is_dev():
+            self.testing()
 
     # ---------------------------------------------------------------------------
     # Class Widget Setup Functions
@@ -1137,6 +1140,9 @@ class MenuBar(QObject):
         # closes the post-proessing dialog window (if open)
         if self.bombcell_dlg is not None:
             self.bombcell_dlg.close_window(True)
+
+        # closes the multiprocessing synchronisation manager
+        self.sp_main.sync_manager.close_sync_manager()
 
         # closes the window
         self.sp_main.can_close = True

@@ -1,15 +1,17 @@
 # module import
 import os
 import time
+import dill
 from pathlib import Path
 from copy import deepcopy
 from functools import partial as pfcn
+from multiprocess.managers import SyncManager
 
 # spykit module imports
 import spykit.info.preprocess as pp
 import spykit.common.common_func as cf
 import spykit.common.common_widget as cw
-from spykit.threads.utils import SavePrepThreadWorker
+from spykit.threads.utils import ThreadWorker, SavePrepThreadWorker
 
 # spikeinterface module imports
 import spikeinterface.core as si
@@ -49,6 +51,7 @@ class SavePrep(QDialog):
         # input arguments
         self.sp_main = sp_main
         self.session_obj = self.sp_main.session_obj
+        self.sync_manager = self.sp_main.sync_manager
 
         # class layouts
         self.main_layout = QVBoxLayout()
@@ -201,17 +204,26 @@ class SavePrep(QDialog):
 
     def setup_save_prep_data_worker(self):
 
+        # wait until the sync manager is initialised
+        while not self.sync_manager.is_init:
+            time.sleep(0.1)
+
+        # sets up the preprocessing output data
+        pp_rec, out_folder = self.setup_prep_output_data()
+        save_data = (pp_rec, out_folder, self.n_worker)
+
         # creates the threadworker object
-        self.t_worker = SavePrepThreadWorker(self.sp_main, self.save_prep_data, None)
+        self.t_worker = SavePrepThreadWorker(self.sp_main, self.sync_manager, save_data)
         self.t_worker.work_finished.connect(self.save_prep_data_complete)
+        self.t_worker.work_progress.connect(self.save_prep_data_progress)
 
         # starts the worker object
         self.t_worker.start()
 
-    @staticmethod
-    def save_prep_data(pp_rec):
+    def setup_prep_output_data(self):
 
         # field retrieval
+        pp_rec, out_folder = [], []
         n_run = range(1) if self.is_concat_run else range(len(self.run_names))
 
         # outputs the preprocessed data for all specified experimental runs
@@ -219,67 +231,53 @@ class SavePrep(QDialog):
             if self.is_per_shank:
                 for i_shank in range(self.n_shank):
                     # sets up the output folder
-                    out_folder = self.folder_path_fcn(
+                    out_folder.append(self.folder_path_fcn(
                         s_type='preprocessing',
                         is_concat_run=self.is_concat_run,
                         i_run=i_run,
                         i_shank=i_shank
-                    )
+                    ))
 
                     # retrieves the recording object
                     run_type = "shank_{0}".format(i_shank)
-                    pp_rec = self.session_obj.session.get_session_runs(
+                    pp_rec_new = self.session_obj.session.get_session_runs(
                         i_run, run_type, self.pp_data_flds[self.i_sel_pp], i_shank)
-
-                    # out_folder_json = out_folder / "provenance.json"
-                    # pp_data = si.load(out_folder_json, relative_paths=False, base_folder=out_folder)
-                    # a = 1
-
-                    # outputs the binary file
-                    pp_rec.save(
-                        format="binary",
-                        folder=out_folder,
-                        n_jobs=self.n_worker,
-                        progres_bar=True,
-                        overwrite=True
-                    )
+                    pp_rec.append(dill.dumps(pp_rec_new))
 
             else:
                 # sets up the output folder
-                out_folder = self.folder_path_fcn(
+                out_folder.append(self.folder_path_fcn(
                     s_type='preprocessing',
                     is_concat_run=self.is_concat_run,
                     i_run=i_run,
-                )
+                ))
 
                 # retrieves the recording object
-                pp_rec = self.session_obj.session.get_session_runs(
-                            i_run, "grouped", self.pp_data_flds[self.i_sel_pp])
+                pp_rec_new = self.session_obj.session.get_session_runs(
+                    i_run, "grouped", self.pp_data_flds[self.i_sel_pp])
+                pp_rec.append(dill.dumps(pp_rec_new))
 
-                # outputs the binary file
-                pp_rec.save(
-                    format="binary",
-                    folder=out_folder,
-                    n_jobs=self.n_worker,
-                    progres_bar=True,
-                    overwrite=True
-                )
+        return pp_rec, out_folder
 
-        return []
+    def save_prep_data_progress(self, i_out, n_out):
+
+        self.prog_bar.set_label(f'Saving Folder - {i_out} of {n_out}')
 
     def save_prep_data_complete(self, save_flag):
 
-        # stops and updates the progressbar
-        self.prog_bar.stop_timer()
-
-        if len(save_msg):
-            # Finish Me!
-            pass
+        if save_flag:
+            # case is the data output was successful
+            self.prog_bar.stop_timer()
+            self.prog_bar.set_label('Data Save Complete!')
+            self.prog_bar.set_full_prog()
 
         else:
-            # resets the progressbar
-            self.prog_bar.set_label('Data Save Complete')
-            self.prog_bar.set_full_prog()
+            # case is the user cancelled
+            self.prog_bar.set_progbar_state(False)
+
+        # resets the running flag
+        self.is_running = False
+        self.t_worker.timer.stop()
 
         # resets the other properties
         self.set_dialog_props(True)
@@ -317,30 +315,25 @@ class SavePrep(QDialog):
         time.sleep(0.05)
 
         if self.is_running:
-            # disables the progressbar fields
-            self.prog_bar.set_progbar_state(False)
-
-            # resets the other properties
-            self.set_dialog_props(True)
-
             # stops the worker
             self.t_worker.force_quit()
             time.sleep(0.01)
 
         else:
+            # flag that the worker is running
+            self.is_running = True
+
             # disables the panel properties
             self.set_dialog_props(False)
             self.cont_button[0].setChecked(True)
 
             # updates the progressbar
-            self.prog_bar.set_label("Saving Data")
+            self.prog_bar.set_label("Initialising Data Output")
             self.prog_bar.set_progbar_state(True)
             time.sleep(0.1)
 
             # saves the preprocessing data
             self.setup_save_prep_data_worker()
-
-        self.is_running ^= True
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
@@ -361,3 +354,52 @@ class SavePrep(QDialog):
 
         # closes the dialog window
         self.close()
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+"""
+    PrepSyncManager: 
+"""
+
+class PrepSyncManager(object):
+
+    def __init__(self, sp_main):
+        super(PrepSyncManager, self).__init__()
+
+        # class fields
+        self.sp_main = sp_main
+        self.s_manager = None
+        self.s_queue = None
+
+        # boolean class fields
+        self.is_init = False
+
+        # initialises the class fields
+        self.init_class_fields()
+
+    def init_class_fields(self):
+
+        # creates the threadworker object
+        self.t_worker = ThreadWorker(self.sp_main, self.init_sync_manager, None)
+        self.t_worker.work_finished.connect(self.init_sync_manager_complete)
+
+        # starts the worker object
+        self.t_worker.start()
+
+    def init_sync_manager(self, *args):
+
+        sync_manager = SyncManager()
+        sync_manager.start()
+        sync_queue = sync_manager.Queue()
+
+        return (sync_manager, sync_queue)
+
+    def init_sync_manager_complete(self, thread_data):
+
+        self.s_manager, self.s_queue = thread_data
+        self.is_init = True
+
+    def close_sync_manager(self):
+
+        if self.is_init:
+            self.s_manager.shutdown()

@@ -1,9 +1,11 @@
 # module import
 import sys
-
-# pyqt5 module import
+import dill
+from multiprocess import Queue
 from pathos.multiprocessing import ProcessingPool
-from PyQt6.QtCore import QObject, QThread, pyqtSignal
+
+# pyqt6 module import
+from PyQt6.QtCore import QObject, QThread, QTimer, pyqtSignal
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -69,17 +71,37 @@ class ThreadWorker(QThread):
     SaveThreadWorker: 
 """
 
+def save_prep_data(save_para, queue):
+
+    # field retrieval
+    pp_rec_bin, out_folder, n_worker = save_para
+
+    for i_out, (pp_rb, o_f) in enumerate(zip(pp_rec_bin, out_folder)):
+        # updates the progressbar label
+        queue.put([i_out + 1, len(pp_rec_bin)])
+
+        # outputs the data to file
+        pp_r = dill.loads(pp_rb)
+        pp_r.save(
+            format="binary",
+            folder=o_f,
+            n_jobs=n_worker,
+            progres_bar=True,
+            overwrite=True,
+        )
+
 class SavePrepThreadWorker(QThread):
     # pyqtsignal objects
     work_started = pyqtSignal()
     work_finished = pyqtSignal(bool)
+    work_progress = pyqtSignal(int, int)
 
-    def __init__(self, parent, work_fcn, work_para=None):
+    def __init__(self, parent, sync_manager, save_data):
         super(SavePrepThreadWorker, self).__init__(parent)
 
         # sets the input arguments
-        self.work_fcn = work_fcn
-        self.work_para = work_para
+        self.work_para = save_data
+        self.queue = sync_manager.s_queue
 
         # class fields
         self.process = None
@@ -88,58 +110,41 @@ class SavePrepThreadWorker(QThread):
         self.is_ok = True
         self.is_running = False
 
+        # Set up a timer to periodically check the queue in the GUI thread
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.check_queue)
+        self.timer.start(100)
+
     def run(self):
 
         # emits the work start signal
         self.is_running = True
         self.work_started.emit()
 
-        # remove me later
-        i_run = 0
-        i_shank = 0
-        ses_obj = self.parent().session_obj
-        is_concat_run = ses_obj.is_concat_run()
-        pp_steps = ses_obj.get_preprocessing_steps()
-        pp_data_flds = ses_obj.get_current_prep_data_names()
-        i_sel_pp = len(pp_steps)
-
-        # # sets up the output folder
-        # out_folder = ses_obj.setup_folder_path(
-        #     s_type='preprocessing',
-        #     is_concat_run=is_concat_run,
-        #     i_run=i_run,
-        #     i_shank=i_shank
-        # )
-        # run_type = "shank_{0}".format(i_shank)
-        # pp_rec = ses_obj.session.get_session_runs(
-        #     i_run, run_type, pp_data_flds[i_sel_pp], i_shank)
-
-        # sets up the output folder
-        out_folder = ses_obj.setup_folder_path(
-            s_type='preprocessing',
-            is_concat_run=is_concat_run,
-            i_run=i_run,
-        )
-        pp_rec = ses_obj.session.get_session_runs(
-            i_run, 'grouped', pp_data_flds[i_sel_pp])
-
         # creates the worker process object
         self.process = ProcessingPool()
-        self.process.map(self.work_fcn, [pp_rec])
+        self.process.map(save_prep_data, [self.work_para], [self.queue])
         self.process.close()
         self.process.join()
+        self.process.clear()
 
         # runs the house-keeping functions
         self.is_running = False
         self.work_finished.emit(True)
         self.reset_error_hook()
 
+    def check_queue(self):
+
+        while not self.queue.empty():
+            result = self.queue.get()
+            self.work_progress.emit(result[0], result[1])
+
     def force_quit(self):
 
-        if self.process and self.process.is_alive():
+        if self.process and self.is_running:
             # terminates the process
             self.process.terminate()
-            self.process.join()
+            self.process.clear()
 
             # runs the house-keeping functions
             self.is_running = False
