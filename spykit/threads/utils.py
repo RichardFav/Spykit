@@ -86,7 +86,8 @@ def save_prep_data(save_para, queue):
             format="binary",
             folder=o_f,
             n_jobs=n_worker,
-            progres_bar=True,
+            verbose=False,
+            progress_bar=False,
             overwrite=True,
         )
 
@@ -144,6 +145,7 @@ class SavePrepThreadWorker(QThread):
         if self.process and self.is_running:
             # terminates the process
             self.process.terminate()
+            self.process.join()
             self.process.clear()
 
             # runs the house-keeping functions

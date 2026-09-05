@@ -820,6 +820,11 @@ def map_bombcell_channels(i_pk_ch0, ch_pos):
     return np.array([next((i for i, y in enumerate(ia) if (y == (x - 1)))) for x in i_pk_ch0]) + 1, ch_pos[ia, :]
 
 
+def flatten_list(l_list):
+
+    return list(itertools.chain.from_iterable(l_list))
+
+
 def flatten_mixed(m_list):
 
     for item in m_list:

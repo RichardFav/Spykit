@@ -2,6 +2,8 @@
 import os
 import time
 import dill
+import shutil
+import numpy as np
 from pathlib import Path
 from copy import deepcopy
 from functools import partial as pfcn
@@ -33,8 +35,10 @@ class SavePrep(QDialog):
     hght_gbox = 150
     hght_button_frame = 40
 
-    # array class fields
+    # string class fields
     save_str = ['Save Data', 'Cancel Data Save']
+    t_str = 'Overwrite Existing Preprocessed Folders?'
+    m_str = 'This will overwrite existing preprocessed data. Do you still want to continue?'
 
     # widget styles/stylesheets
     border_style = "border: 1px solid;"
@@ -81,12 +85,14 @@ class SavePrep(QDialog):
         # boolean class fields
         self.is_running = False
         self.is_updating = False
-        self.is_per_shank = self.session_obj.is_per_shank
+        self.is_per_shank = self.session_obj.is_per_shank()
         self.is_concat_run = self.session_obj.is_concat_run()
 
         # other class fields
         self.n_worker = 10
         self.t_worker = None
+        self.path_alt = None
+        self.path_curr = None
         self.i_sel_pp = len(self.pp_steps)
         self.folder_path_fcn = self.session_obj.setup_folder_path
 
@@ -199,90 +205,6 @@ class SavePrep(QDialog):
         self.cont_button[0].setCheckable(True)
 
     # ---------------------------------------------------------------------------
-    # Preprocessing Data Output Methods
-    # ---------------------------------------------------------------------------
-
-    def setup_save_prep_data_worker(self):
-
-        # wait until the sync manager is initialised
-        while not self.sync_manager.is_init:
-            time.sleep(0.1)
-
-        # sets up the preprocessing output data
-        pp_rec, out_folder = self.setup_prep_output_data()
-        save_data = (pp_rec, out_folder, self.n_worker)
-
-        # creates the threadworker object
-        self.t_worker = SavePrepThreadWorker(self.sp_main, self.sync_manager, save_data)
-        self.t_worker.work_finished.connect(self.save_prep_data_complete)
-        self.t_worker.work_progress.connect(self.save_prep_data_progress)
-
-        # starts the worker object
-        self.t_worker.start()
-
-    def setup_prep_output_data(self):
-
-        # field retrieval
-        pp_rec, out_folder = [], []
-        n_run = range(1) if self.is_concat_run else range(len(self.run_names))
-
-        # outputs the preprocessed data for all specified experimental runs
-        for i_run in n_run:
-            if self.is_per_shank:
-                for i_shank in range(self.n_shank):
-                    # sets up the output folder
-                    out_folder.append(self.folder_path_fcn(
-                        s_type='preprocessing',
-                        is_concat_run=self.is_concat_run,
-                        i_run=i_run,
-                        i_shank=i_shank
-                    ))
-
-                    # retrieves the recording object
-                    run_type = "shank_{0}".format(i_shank)
-                    pp_rec_new = self.session_obj.session.get_session_runs(
-                        i_run, run_type, self.pp_data_flds[self.i_sel_pp], i_shank)
-                    pp_rec.append(dill.dumps(pp_rec_new))
-
-            else:
-                # sets up the output folder
-                out_folder.append(self.folder_path_fcn(
-                    s_type='preprocessing',
-                    is_concat_run=self.is_concat_run,
-                    i_run=i_run,
-                ))
-
-                # retrieves the recording object
-                pp_rec_new = self.session_obj.session.get_session_runs(
-                    i_run, "grouped", self.pp_data_flds[self.i_sel_pp])
-                pp_rec.append(dill.dumps(pp_rec_new))
-
-        return pp_rec, out_folder
-
-    def save_prep_data_progress(self, i_out, n_out):
-
-        self.prog_bar.set_label(f'Saving Folder - {i_out} of {n_out}')
-
-    def save_prep_data_complete(self, save_flag):
-
-        if save_flag:
-            # case is the data output was successful
-            self.prog_bar.stop_timer()
-            self.prog_bar.set_label('Data Save Complete!')
-            self.prog_bar.set_full_prog()
-
-        else:
-            # case is the user cancelled
-            self.prog_bar.set_progbar_state(False)
-
-        # resets the running flag
-        self.is_running = False
-        self.t_worker.timer.stop()
-
-        # resets the other properties
-        self.set_dialog_props(True)
-
-    # ---------------------------------------------------------------------------
     # Class Widget Event Functions
     # ---------------------------------------------------------------------------
 
@@ -320,6 +242,11 @@ class SavePrep(QDialog):
             time.sleep(0.01)
 
         else:
+            # checks if the user is overwriting existing output
+            if not self.check_existing_prep_output():
+                self.cont_button[0].setChecked(False)
+                return
+
             # flag that the worker is running
             self.is_running = True
 
@@ -336,8 +263,130 @@ class SavePrep(QDialog):
             self.setup_save_prep_data_worker()
 
     # ---------------------------------------------------------------------------
+    # Preprocessing Data Output Methods
+    # ---------------------------------------------------------------------------
+
+    def setup_save_prep_data_worker(self):
+
+        # wait until the sync manager is initialised
+        while not self.sync_manager.is_init:
+            time.sleep(0.1)
+
+        # sets up the preprocessing output data
+        pp_rec = self.setup_prep_output_data()
+        save_data = (pp_rec, self.path_curr, self.n_worker)
+
+        # creates the threadworker object
+        self.t_worker = SavePrepThreadWorker(self.sp_main, self.sync_manager, save_data)
+        self.t_worker.work_finished.connect(self.save_prep_data_complete)
+        self.t_worker.work_progress.connect(self.save_prep_data_progress)
+
+        # starts the worker object
+        self.t_worker.start()
+
+    def setup_prep_output_data(self):
+
+        # field retrieval
+        pp_rec = []
+
+        # outputs the preprocessed data for all specified experimental runs
+        for i_run in range(self.get_run_count()):
+            if self.is_per_shank:
+                for i_shank in range(self.n_shank):
+                    # retrieves the recording object
+                    run_type = "shank_{0}".format(i_shank)
+                    pp_rec_new = self.session_obj.session.get_session_runs(
+                        i_run, run_type, self.pp_data_flds[self.i_sel_pp], i_shank)
+                    pp_rec.append(dill.dumps(pp_rec_new))
+
+            else:
+                # retrieves the recording object
+                pp_rec_new = self.session_obj.session.get_session_runs(
+                    i_run, "grouped", self.pp_data_flds[self.i_sel_pp])
+                pp_rec.append(dill.dumps(pp_rec_new))
+
+        return pp_rec
+
+    def save_prep_data_progress(self, i_out, n_out):
+
+        self.prog_bar.set_label(f'Saving Folder - {i_out} of {n_out}')
+
+    def save_prep_data_complete(self, save_flag):
+
+        if save_flag:
+            # case is the data output was successful
+            self.prog_bar.stop_timer()
+            self.prog_bar.set_label('Data Save Complete!')
+            self.prog_bar.set_full_prog()
+
+        else:
+            # case is the user cancelled
+            self.prog_bar.set_progbar_state(False)
+
+        # resets the running flag
+        self.is_running = False
+        self.t_worker.timer.stop()
+        # self.t_worker.deleteLater()
+
+        # resets the other properties
+        self.set_dialog_props(True)
+
+        # deletes any existing folders
+        if not save_flag:
+            time.sleep(0.5)
+            self.remove_prep_folders(self.path_curr)
+
+    # ---------------------------------------------------------------------------
     # Miscellaneous Functions
     # ---------------------------------------------------------------------------
+
+    def check_existing_prep_output(self):
+
+        # field retrieval
+        path_fcn = self.session_obj.setup_prep_folder_path
+
+        # retrieves the split/combined shank preprocessing paths
+        if self.is_concat_run:
+            # case is concatenated runs
+            path_comb_shank = path_fcn(True)
+            path_split_shank = path_fcn(True, n_shank=self.n_shank)
+
+        else:
+            # case is non-concatenated runs
+            n_run = self.get_run_count()
+            path_comb_shank = path_fcn(False, n_run=n_run)
+            path_split_shank = path_fcn(False, n_run=n_run, n_shank=self.n_shank)
+
+            if isinstance(path_split_shank, list):
+                path_split_shank = cf.flatten_list(path_split_shank)
+
+        # sets the current/alternate folder paths
+        if self.is_per_shank:
+            # case is split shank analysis
+            self.path_curr, self.path_alt = path_split_shank, path_comb_shank
+
+        else:
+            # case is non-split shank analysis
+            self.path_curr, self.path_alt = path_comb_shank, path_split_shank
+
+        # determines if the alternate configuration exists
+        if np.any([p.exists() for p in self.path_curr + self.path_alt]):
+            # if so, prompt the user if they wish to continue
+            u_choice = QMessageBox.question(
+                self.sp_main, self.t_str, self.m_str, cf.q_yes_no, cf.q_yes)
+            if u_choice == cf.q_no:
+                # case is the user cancelled
+                return False
+
+            elif np.any([p.exists() for p in self.path_alt]):
+                # otherwise, deletes any existing alternate preprocessed data
+                self.remove_prep_folders(self.path_alt)
+
+        return True
+
+    def get_run_count(self):
+
+        return 1 if self.is_concat_run else len(self.run_names)
 
     def set_dialog_props(self, state):
 
@@ -354,6 +403,23 @@ class SavePrep(QDialog):
 
         # closes the dialog window
         self.close()
+
+    @staticmethod
+    def remove_prep_folders(pp_path):
+
+        # removes all preprocessing folders
+        for p in pp_path:
+            # attempts to delete the folder
+            if p.exists():
+                shutil.rmtree(p)
+
+        # removes the preprocessing parent folder (if it exists)
+        if pp_path[0].parent.name == 'preprocessing':
+            time.sleep(0.1)
+            pp_parent = pp_path[0].parent
+            if os.path.exists(pp_parent):
+                os.rmdir(str(pp_parent))
+
 
 # ----------------------------------------------------------------------------------------------------------------------
 
