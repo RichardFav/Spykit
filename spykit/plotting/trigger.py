@@ -651,7 +651,10 @@ class TriggerPlot(PlotWidget):
 
         else:
             # reverts back to the raw region indices (if clearing pre-processing)
-            reg_index_new = deepcopy(self.trig_props.p_props.region_index_raw)
+            if hasattr(self.trig_props.p_props, 'region_index_raw'):
+                reg_index_new = deepcopy(self.trig_props.p_props.region_index_raw)
+            else:
+                reg_index_new = deepcopy(self.trig_props.p_props.region_index)
 
         # resets the region indices
         self.trig_props.p_props.region_index = deepcopy(reg_index_new)
