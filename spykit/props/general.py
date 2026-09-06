@@ -275,11 +275,11 @@ class GeneralProps(PropWidget):
 
         # field retrieval
         tm = self.time_manager
-        t_dur_raw = tm.get('t_dur', True)[0]
-        t_run_raw = tm.get('t_run', True)[0]
+        t_dur_raw = deepcopy(tm.get('t_dur', True)[0])
+        t_run_raw = deepcopy(tm.get('t_run', True)[0])
 
         # resets the durations of full experimental runs
-        for i_uf, uf in enumerate(tm.get('t_dur', True)[0]):
+        for i_uf, uf in enumerate(tm.get('use_full', True)[0]):
             if uf:
                 t_dur_raw[i_uf] = t_run_raw[i_uf]
 

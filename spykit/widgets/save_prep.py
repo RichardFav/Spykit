@@ -174,7 +174,7 @@ class SavePrep(QDialog):
 
         # initialisations
         but_str = [self.save_str[0], 'Close Window']
-        cb_fcn = [self.start_button_click, self.close_window]
+        cb_fcn = [self.start_button_click, self.close_window_click]
 
         # creates the button group frame
         self.main_layout.addWidget(self.button_frame)
@@ -262,6 +262,11 @@ class SavePrep(QDialog):
             # saves the preprocessing data
             self.setup_save_prep_data_worker()
 
+    def close_window_click(self):
+
+        # closes the dialog window
+        self.close()
+
     # ---------------------------------------------------------------------------
     # Preprocessing Data Output Methods
     # ---------------------------------------------------------------------------
@@ -326,7 +331,6 @@ class SavePrep(QDialog):
         # resets the running flag
         self.is_running = False
         self.t_worker.timer.stop()
-        # self.t_worker.deleteLater()
 
         # resets the other properties
         self.set_dialog_props(True)
@@ -398,11 +402,6 @@ class SavePrep(QDialog):
 
         # pause for update...
         time.sleep(0.01)
-
-    def close_window(self):
-
-        # closes the dialog window
-        self.close()
 
     @staticmethod
     def remove_prep_folders(pp_path):

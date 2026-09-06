@@ -35,6 +35,7 @@ from spykit.threads.utils import ThreadWorker
 from spykit.widgets.open_session import OpenSession
 from spykit.widgets.default_dir import DefaultDir
 from spykit.widgets.save_prep import SavePrep, PrepSyncManager
+from spykit.widgets.load_prep import LoadPrep
 from spykit.widgets.spike_sorting import SpikeSortingDialog
 from spykit.widgets.bomb_cell import BombCellSolver
 from spykit.common.error_logging import ErrorHandler
@@ -825,7 +826,7 @@ class MainWindow(QMainWindow):
         # f_file = "C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/z - session files/Large Example/large_example.ssf"
 
         # loads the session
-        self.menu_bar.load_session(f_file, False)
+        self.menu_bar.load_session(f_file, True)
 
         # retrieves the configuration tab object
         config_tab = self.prop_manager.get_prop_tab('config')
@@ -1273,7 +1274,7 @@ class MenuBar(QObject):
 
     def load_preprocessed(self):
 
-        pass
+        LoadPrep(self.sp_main).show()
 
     def load_postprocessed(self):
 

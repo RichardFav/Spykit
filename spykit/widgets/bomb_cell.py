@@ -9,16 +9,16 @@ import numpy as np
 from pathlib import Path
 from copy import deepcopy
 
-# Capture and discard standard output during the import
-old_stdout = sys.stdout
-sys.stdout = io.StringIO()
+# # Capture and discard standard output during the import
+# old_stdout = sys.stdout
+# sys.stdout = io.StringIO()
 
 # bombcell packages
 import BombCellPkg
 import bombcell as bc
 
-# Restore standard output
-sys.stdout = old_stdout
+# # Restore standard output
+# sys.stdout = old_stdout
 
 # spike pipeline imports
 import spykit.common.common_func as cf
