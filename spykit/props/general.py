@@ -132,10 +132,10 @@ class GeneralProps(PropWidget):
 
         # sets up the subgroup fields
         p_tmp = {
-            'use_full': self.create_para_field('Use Full Experiment', 'checkbox', True),
-            't_start': self.create_para_field('Start Time (s)', 'edit', 0.),
-            't_finish': self.create_para_field('Finish Time (s)', 'edit', self.t_dur),
-            't_dur': self.create_para_field('Duration (s)', 'edit', self.t_dur),
+            'use_full': cw.create_para_field('Use Full Experiment', 'checkbox', True),
+            't_start': cw.create_para_field('Start Time (s)', 'edit', 0.),
+            't_finish': cw.create_para_field('Finish Time (s)', 'edit', self.t_dur),
+            't_dur': cw.create_para_field('Duration (s)', 'edit', self.t_dur),
         }
 
         # updates the class field

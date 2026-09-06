@@ -134,15 +134,15 @@ class SpikeSortingDialog(QMainWindow):
         self.cont_layout = QHBoxLayout()
         self.checkbox_layout = QHBoxLayout()
 
-        # class widgets
+        # container class fields
         self.sort_frame = QFrame(self)
         self.progress_frame = QFrame(self)
         self.checkbox_frame = QFrame(self)
         self.cont_frame = QFrame(self)
+
+        # other widget class fields
         self.tab_group_sort = QTabWidget(self)
         self.prog_bar = cw.QDialogProgress(font=cw.font_lbl, is_task=True, timer_lbl=True)
-
-        # other class widget
         self.button_cont = []
         self.checkbox_opt = []
         self.solver_tab = {}
@@ -895,13 +895,6 @@ class SpikeSortingDialog(QMainWindow):
     # ---------------------------------------------------------------------------
     # Static Methods
     # ---------------------------------------------------------------------------
-
-    @staticmethod
-    def create_para_field(name, obj_type, value, p_fld=None, p_list=None, p_misc=None,
-                          p_min=None, p_max=None, ch_fld=None):
-
-        return {'name': name, 'type': obj_type, 'value': value, 'ch_fld': ch_fld, 'p_fld': p_fld,
-                'p_list': p_list, 'p_misc': p_misc, 'p_min': p_min, 'p_max': p_max}
 
     @staticmethod
     def get_sorter_name(s_desc):

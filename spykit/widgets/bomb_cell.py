@@ -641,13 +641,13 @@ class BombCellInfoTab(InfoWidgetPara):
                 match p_type:
                     case 'Checkbox':
                         # case is a checkbox
-                        p_props_g[_ps] = self.create_para_field(p_desc, 'checkbox', bool(p_value))
+                        p_props_g[_ps] = cw.create_para_field(p_desc, 'checkbox', bool(p_value))
 
                     case 'Popup':
                         # case is a popup menu
                         p_list = p_info['p_list']
                         p_value = p_list[int(p_value)]
-                        p_props_g[_ps] = self.create_para_field(p_desc, 'combobox', p_value, p_list=p_list)
+                        p_props_g[_ps] = cw.create_para_field(p_desc, 'combobox', p_value, p_list=p_list)
 
                     case _:
                         # case is an editbox
@@ -667,7 +667,7 @@ class BombCellInfoTab(InfoWidgetPara):
                                 p_value = ''
 
                         # case is an editbox
-                        p_props_g[_ps] = self.create_para_field(p_desc, 'edit', p_value)
+                        p_props_g[_ps] = cw.create_para_field(p_desc, 'edit', p_value)
 
                 # updates the property value field
                 self.p_props[pg][_ps] = p_props_g[_ps]['value']
@@ -677,16 +677,6 @@ class BombCellInfoTab(InfoWidgetPara):
                 'name': self.bc_dlg.p_map[pg],
                 'props': p_props_g,
             }
-
-    # ---------------------------------------------------------------------------
-    # Static Methods
-    # ---------------------------------------------------------------------------
-
-    @staticmethod
-    def create_para_field(name, obj_type, value, p_fld=None, p_list=None, p_misc=None, ch_fld=None):
-
-        return {'name': name, 'type': obj_type, 'value': value, 'p_fld': p_fld,
-                'p_list': p_list, 'p_misc': p_misc, 'ch_fld': ch_fld}
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions

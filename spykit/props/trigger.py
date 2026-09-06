@@ -233,8 +233,8 @@ class TriggerProps(PropWidget):
 
         # sets up the subgroup fields
         p_tmp = {
-            'button_flag': self.create_para_field(self.b_str, 'buttonpair', 0),
-            'region_index': self.create_para_field('Region Indices', 'table', None),
+            'button_flag': cw.create_para_field(self.b_str, 'buttonpair', 0),
+            'region_index': cw.create_para_field('Region Indices', 'table', None),
         }
 
         # updates the class field

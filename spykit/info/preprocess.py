@@ -113,6 +113,59 @@ class PreprocessConfig(object):
             "concat_runs": False,
         }
 
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+"""
+    PreprocessPara:
+"""
+
+class PreprocessPara(object):
+    # list arrays
+    mode_list = ['global', 'local']
+    operator_list = ['median', 'average']
+    reference_list = ['global', 'single', 'local']
+    preset_list = ['dredge', 'dredge_fast', 'nonrigid_accurate',
+                   'nonrigid_fast_and_accurate', 'rigid_fast', 'kilosort_like']
+
+    # sorter tab groupings
+    para_groups = ['bandpass_filter', 'common_reference', 'phase_shift', 'drift_correct'] #, 'whitening', 'sparce_opt']
+
+    def __init__(self):
+        super(PreprocessPara, self).__init__()
+
+        # sets up t
+        self.setup_para_groups()
+
+    def setup_para_groups(self):
+
+        for pp_g in para_groups:
+            match pp_g:
+                case 'bandpass_filter':
+                    # case is bandpass filtering
+                    pass
+
+                case 'common_reference':
+                    # case is common referencing
+                    pass
+
+                case 'phase_shift':
+                    # case is phase shifting
+                    pass
+
+                case 'drift_correct':
+                    # case is drift correction
+                    pass
+
+                case 'whitening':
+                    # case is whitening
+                    pass
+
+                case 'sparce_opt':
+                    # case is the sparsity options
+                    pass
+
+
 # ----------------------------------------------------------------------------------------------------------------------
 
 """
@@ -153,37 +206,37 @@ class PreprocessInfoTab(InfoWidgetPara):
         pp_str = {
             # bandpass filter parameters
             'bandpass_filter': {
-                'freq_min': self.create_para_field('Min Frequency', 'edit', 300),
-                'freq_max': self.create_para_field('Max Frequency', 'edit', 6000),
-                'margin_ms': self.create_para_field('Margin (ms)', 'edit', 5),
+                'freq_min': cw.create_para_field('Min Frequency', 'edit', 300),
+                'freq_max': cw.create_para_field('Max Frequency', 'edit', 6000),
+                'margin_ms': cw.create_para_field('Margin (ms)', 'edit', 5),
             },
 
             # common reference parameters
             'common_reference': {
-                'operator': self.create_para_field('Operator', 'combobox', operator_list[0], p_list=operator_list),
-                'reference': self.create_para_field('Reference', 'combobox', reference_list[0], p_list=reference_list),
+                'operator': cw.create_para_field('Operator', 'combobox', operator_list[0], p_list=operator_list),
+                'reference': cw.create_para_field('Reference', 'combobox', reference_list[0], p_list=reference_list),
             },
 
             # phase shift parameters
             'phase_shift': {
-                'margin_ms': self.create_para_field('Margin (ms)', 'edit', 40),
+                'margin_ms': cw.create_para_field('Margin (ms)', 'edit', 40),
             },
 
             # drift correction parameters
             'drift_correct': {
-                'preset': self.create_para_field('Preset', 'combobox', preset_list[0], p_list=preset_list),
+                'preset': cw.create_para_field('Preset', 'combobox', preset_list[0], p_list=preset_list),
             },
 
             # # whitening parameters
             # 'whitening': {
-            #     'apply_mean': self.create_para_field('Subtract Mean', 'checkbox', False),
-            #     'mode': self.create_para_field('Mode', 'combobox', mode_list[0], p_list=mode_list),
-            #     'radius_um': self.create_para_field('Radius (um)', 'edit', 100),
+            #     'apply_mean': cw.create_para_field('Subtract Mean', 'checkbox', False),
+            #     'mode': cw.create_para_field('Mode', 'combobox', mode_list[0], p_list=mode_list),
+            #     'radius_um': cw.create_para_field('Radius (um)', 'edit', 100),
             # },
 
             # # sparsity option parameters
             # 'sparce_opt': {
-            #     'sparse': self.create_para_field('Use Sparsity?', 'checkpanel', True, ch_fld=pp_sp),
+            #     'sparse': cw.create_para_field('Use Sparsity?', 'checkpanel', True, ch_fld=pp_sp),
             # },
         }
 
@@ -285,14 +338,15 @@ class PreprocessSetup(QMainWindow):
     n_prog = 2
     but_height = 20
     dlg_width = 450
-    dlg_height_orig = 300
+    dlg_height_orig = 510
     dlg_height_auto = 130
-    p_row = np.array([7, 2, 1])
+    p_row = np.array([7, 7, 2, 1])
 
     # array class fields
     prep_str = ['Start Preprocessing', 'Cancel Preprocessing']
     b_icon = ['arrow_right', 'arrow_left', 'arrow_up', 'arrow_down']
     tt_str = ['Add Task', 'Remove Task', 'Move Task Up', 'Move Task Down']
+    l_task = ['Phase Shift', 'Bandpass Filter', 'Channel Interpolation', 'Common Reference', 'Drift Correction']
 
     # widget stylesheets
     border_style = "border: 1px solid;"
@@ -305,20 +359,21 @@ class PreprocessSetup(QMainWindow):
     def __init__(self, sp_main, prep_obj_auto):
         super(PreprocessSetup, self).__init__(sp_main)
 
-        # creates the preprocessing run class object
+        # input arguments
         self.sp_main = sp_main
+        self.prep_obj_auto = prep_obj_auto
+        self.is_auto = prep_obj_auto is not None
+
+        # field retrieval
         self.session_obj = self.sp_main.session_obj
         self.info_manager = self.sp_main.info_manager
         self.session = self.session_obj.session
 
-        # input arguments
-        self.prep_obj_auto = prep_obj_auto
-        self.is_auto = prep_obj_auto is not None
-
         # sets the central widget
         self.main_widget = QWidget(self)
 
-        # class layouts
+        # layout class fields
+        self.para_layout = QVBoxLayout()
         self.list_layout = QGridLayout()
         self.checkbox_layout = QHBoxLayout()
         self.button_layout = QVBoxLayout()
@@ -326,12 +381,15 @@ class PreprocessSetup(QMainWindow):
         self.progress_layout = QVBoxLayout()
         self.control_layout = QHBoxLayout()
 
-        # class widgets
-        self.button_frame = QFrame(self)
+        # container class fields
+        self.para_frame = QFrame(self)
         self.task_frame = QFrame(None if self.is_auto else self)
         self.progress_frame = QFrame(self)
         self.checkbox_frame = QWidget()
+        self.button_frame = QFrame(self)
 
+        # other widget class fields
+        self.tab_group_para = QTabWidget(self)
         self.add_list = QListWidget(None)
         self.task_list = QListWidget(None)
         self.spacer_top = QSpacerItem(20, 60, cf.q_min, cf.q_max)
@@ -370,6 +428,7 @@ class PreprocessSetup(QMainWindow):
 
         # initialises the class fields
         self.init_class_fields()
+        self.init_prep_para_frame()
         self.init_task_para_frame()
         self.init_progress_frame()
         self.init_control_buttons()
@@ -394,6 +453,23 @@ class PreprocessSetup(QMainWindow):
         # resets the frame object names
         for qf in self.findChildren(QFrame):
             qf.setObjectName('prepFrame')
+
+    def init_prep_para_frame(self):
+
+        # initialises the frame properties
+        self.para_frame.setLayout(self.para_layout)
+        self.para_frame.setStyleSheet(self.frame_border_style)
+
+        # the frame layout properties
+        self.para_layout.setSpacing(0)
+        self.para_layout.setContentsMargins(x_gap, x_gap, x_gap, x_gap)
+        self.para_layout.addWidget(self.tab_group_para)
+
+        # # sets up the preprocessing step tab group
+        # for i_task, pp_task in self.l_task:
+        #     # creates the parameter tab
+        #     pp_tab = self.create_para_group_tab(pp_task)
+        #     self.tab_group_sort.addTab(pp_tab, pp_task)
 
     def init_task_para_frame(self):
 
@@ -593,13 +669,13 @@ class PreprocessSetup(QMainWindow):
         else:
             # adds the main widgets to the main layout
             self.list_layout.addWidget(self.task_frame, 0, 0, 1, 1)
-            self.list_layout.addWidget(self.progress_frame, 1, 0, 1, 1)
-            self.list_layout.addWidget(self.button_frame, 2, 0, 1, 1)
+            self.list_layout.addWidget(self.para_frame, 1, 0, 1, 1)
+            self.list_layout.addWidget(self.progress_frame, 2, 0, 1, 1)
+            self.list_layout.addWidget(self.button_frame, 3, 0, 1, 1)
 
             # set the grid layout column sizes
-            self.list_layout.setRowStretch(0, self.p_row[0])
-            self.list_layout.setRowStretch(1, self.p_row[1])
-            self.list_layout.setRowStretch(2, self.p_row[2])
+            for i_r, p_r in enumerate(self.p_row):
+                self.list_layout.setRowStretch(i_r, p_r)
 
     # ---------------------------------------------------------------------------
     # Class Widget Callback Functions

@@ -543,8 +543,8 @@ class TraceSpikeProps(TraceSpikeMixin, PropWidget):
 
         # sets up the subgroup fields
         p_tmp = {
-            'i_spike': self.create_para_field('Unit Spike Index', 'spinbox', 1),
-            'm_size': self.create_para_field('Spike Marker Size', 'edit', 15),
+            'i_spike': cw.create_para_field('Unit Spike Index', 'spinbox', 1),
+            'm_size': cw.create_para_field('Spike Marker Size', 'edit', 15),
         }
 
         # updates the class field

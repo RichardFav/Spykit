@@ -1474,16 +1474,6 @@ class PropWidget(QWidget):
         ses_obj = self.prop_manager.session_obj
         return ses_obj.session.get_run_index(ses_obj.current_run)
 
-    # ---------------------------------------------------------------------------
-    # Static Methods
-    # ---------------------------------------------------------------------------
-
-    @staticmethod
-    def create_para_field(name, obj_type, value, p_fld=None, p_list=None, p_misc=None, ch_fld=None):
-
-        return {'name': name, 'type': obj_type, 'value': value, 'p_fld': p_fld,
-                'p_list': p_list, 'p_misc': p_misc, 'ch_fld': ch_fld, 'is_odd': None, 'is_int': False}
-
 
 # ----------------------------------------------------------------------------------------------------------------------
 

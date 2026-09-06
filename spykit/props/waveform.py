@@ -120,12 +120,12 @@ class WaveFormProps(PropWidget):
 
         # sets up the subgroup fields
         p_tmp = {
-            'i_unit': self.create_para_field('Cluster Unit ID#', 'edit', 1),
-            'unit_type': self.create_para_field('Waveform Unit Type', 'checklist', show_unit, p_list=unit_lbl),
-            'trace_col': self.create_para_field('Waveform Colour', 'colorpick', trace_col0),
-            'unit_col': self.create_para_field('Selected Unit Colour', 'colorpick', unit_col0),
-            'use_global_lim': self.create_para_field('Use Global Y-Axis Limits', 'checkbox', True),
-            'show_grid': self.create_para_field('Show Plot Gridlines', 'checkbox', False),
+            'i_unit': cw.create_para_field('Cluster Unit ID#', 'edit', 1),
+            'unit_type': cw.create_para_field('Waveform Unit Type', 'checklist', show_unit, p_list=unit_lbl),
+            'trace_col': cw.create_para_field('Waveform Colour', 'colorpick', trace_col0),
+            'unit_col': cw.create_para_field('Selected Unit Colour', 'colorpick', unit_col0),
+            'use_global_lim': cw.create_para_field('Use Global Y-Axis Limits', 'checkbox', True),
+            'show_grid': cw.create_para_field('Show Plot Gridlines', 'checkbox', False),
         }
 
         # updates the class field

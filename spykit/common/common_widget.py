@@ -4141,6 +4141,7 @@ def create_spin_box(parent, value, font=None, align='center', name=None):
     # returns the object
     return h_sbox
 
+
 def create_push_button(parent, text, font=None, name=None):
     # creates a default font object (if not provided)
     if font is None:
@@ -4257,6 +4258,13 @@ def create_icon_button(icon_name, but_dim):
     return icon_but
 
 
+def create_para_field(name, obj_type, value, p_fld=None, p_list=None, p_misc=None,
+                      p_min=None, p_max=None, ch_fld=None):
+
+    return {'name': name, 'type': obj_type, 'value': value, 'ch_fld': ch_fld, 'p_fld': p_fld,
+            'p_list': p_list, 'p_misc': p_misc, 'p_min': p_min, 'p_max': p_max}
+
+
 def copy_table(table_orig, is_filt):
     # precalculations and initialisations
     col_hdr = []
@@ -4296,6 +4304,7 @@ def copy_table(table_orig, is_filt):
     h_header.setSectionResizeMode(h_header.ResizeMode.Fixed)
 
     return table_copy
+
 
 def setup_colour_map(n_lvl):
 

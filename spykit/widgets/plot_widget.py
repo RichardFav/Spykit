@@ -16,7 +16,7 @@ from PyQt6.QtGui import QFont, QColor, QIcon
 import spykit.common.common_widget as cw
 import spykit.common.common_func as cf
 from spykit.common.common_widget import (QCollapseGroup, QLabelEdit, QCheckboxHTML, QLabelCombo,
-                                                 QTraceTree, QRegionConfig, QLabelButton, QFileSpec)
+                                         QTraceTree, QRegionConfig, QLabelButton, QFileSpec)
 
 # label/header font objects
 font_lbl = cw.create_font_obj(is_bold=True, font_weight=QFont.Weight.Bold)
@@ -452,7 +452,7 @@ class QPlotPara(QWidget):
 
         # sets up the subgroup fields
         p_tmp = {
-            'obj_tree': self.create_para_field('Trace Structure', 'tree', None),
+            'obj_tree': cw.create_para_field('Trace Structure', 'tree', None),
         }
 
         # updates the class field
@@ -462,7 +462,7 @@ class QPlotPara(QWidget):
 
         # sets up the subgroup fields
         p_tmp = {
-            'r_config': self.create_para_field('Region Configuration', 'rconfig', None),
+            'r_config': cw.create_para_field('Region Configuration', 'rconfig', None),
         }
 
         # updates the class field
@@ -476,11 +476,11 @@ class QPlotPara(QWidget):
 
         # sets up the subgroup fields
         p_tmp = {
-            'name': self.create_para_field('Name', 'edit', self.p_props.name),
-            'p_width': self.create_para_field('Line Width', 'edit', self.p_props.p_width),
-            'p_style': self.create_para_field('Line Style', 'combobox', self.p_props.p_style, p_list=style_list),
-            'p_col': self.create_para_field('Trace Colour', 'colorpick', self.p_props.p_col),
-            'g_style': self.create_para_field('Grid Style', 'combobox', self.p_props.g_style, p_list=grid_list),
+            'name': cw.create_para_field('Name', 'edit', self.p_props.name),
+            'p_width': cw.create_para_field('Line Width', 'edit', self.p_props.p_width),
+            'p_style': cw.create_para_field('Line Style', 'combobox', self.p_props.p_style, p_list=style_list),
+            'p_col': cw.create_para_field('Trace Colour', 'colorpick', self.p_props.p_col),
+            'g_style': cw.create_para_field('Grid Style', 'combobox', self.p_props.g_style, p_list=grid_list),
         }
 
         # updates the class field
@@ -490,12 +490,12 @@ class QPlotPara(QWidget):
 
         # sets up the subgroup fields
         p_tmp = {
-            'show_child': self.create_para_field('Show Sub-Trace Region', 'checkbox', False),
-            'show_parent': self.create_para_field('Show Parent Region', 'checkbox', False),
-            'create_trace': self.create_para_field('Create New Sub-Trace', 'pushbutton', None),
-            'clip_trace': self.create_para_field('Clip Highlighted Region', 'pushbutton', None),
-            'delete_trace': self.create_para_field('Delete Current Trace', 'pushbutton', None),
-            'delete_children': self.create_para_field('Delete Descendent Traces', 'pushbutton', None),
+            'show_child': cw.create_para_field('Show Sub-Trace Region', 'checkbox', False),
+            'show_parent': cw.create_para_field('Show Parent Region', 'checkbox', False),
+            'create_trace': cw.create_para_field('Create New Sub-Trace', 'pushbutton', None),
+            'clip_trace': cw.create_para_field('Clip Highlighted Region', 'pushbutton', None),
+            'delete_trace': cw.create_para_field('Delete Current Trace', 'pushbutton', None),
+            'delete_children': cw.create_para_field('Delete Descendent Traces', 'pushbutton', None),
         }
 
         # updates the class field
@@ -505,7 +505,7 @@ class QPlotPara(QWidget):
 
         # sets up the subgroup fields
         p_tmp = {
-            'ax_lim': self.create_para_field('Axis Limits', 'axeslimits', None)
+            'ax_lim': cw.create_para_field('Axis Limits', 'axeslimits', None)
         }
 
         # updates the class field
@@ -1002,16 +1002,6 @@ class QPlotPara(QWidget):
 
         # sets the style sheets
         self.h_scroll.setStyleSheet("background-color: rgba(120, 152, 229, 255) ;")
-
-    # ---------------------------------------------------------------------------
-    # Static Methods
-    # ---------------------------------------------------------------------------
-
-    @staticmethod
-    def create_para_field(name, obj_type, value, p_fld=None, p_list=None, p_misc=None, ch_fld=None):
-
-        return {'name': name, 'type': obj_type, 'value': value, 'p_fld': p_fld,
-                'p_list': p_list, 'p_misc': p_misc, 'ch_fld': ch_fld}
 
 
 # ----------------------------------------------------------------------------------------------------------------------

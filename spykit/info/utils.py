@@ -968,17 +968,6 @@ class InfoManager(QObject):
         self.session_obj.channel_data.is_selected[i_rmv] = False
         self.session_obj.channel_data.is_keep[i_rmv] = False
 
-    # ---------------------------------------------------------------------------
-    # Static Methods
-    # ---------------------------------------------------------------------------
-
-    @staticmethod
-    def create_para_field(name, obj_type, value, p_fld=None, p_list=None, p_misc=None, ch_fld=None):
-
-        return {'name': name, 'type': obj_type, 'value': value, 'p_fld': p_fld,
-                'p_list': p_list, 'p_misc': p_misc, 'ch_fld': ch_fld}
-
-
 # ----------------------------------------------------------------------------------------------------------------------
 
 """
@@ -1454,14 +1443,5 @@ class InfoWidgetPara(InfoWidget, SearchMixin):
         self.h_grp[group_str] = item
         self.grp_name.append(self.tree_prop.itemWidget(item, 0).text())
 
-    # ---------------------------------------------------------------------------
-    # Static Methods
-    # ---------------------------------------------------------------------------
-
-    @staticmethod
-    def create_para_field(name, obj_type, value, p_fld=None, p_list=None, p_misc=None, ch_fld=None):
-
-        return {'name': name, 'type': obj_type, 'value': value, 'p_fld': p_fld,
-                'p_list': p_list, 'p_misc': p_misc, 'ch_fld': ch_fld}
 
 # ----------------------------------------------------------------------------------------------------------------------

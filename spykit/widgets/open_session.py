@@ -465,7 +465,7 @@ class SessionFile(QWidget):
 
         # sets up the file tab property fields
         p_tmp_folder = {
-            'f_input': self.create_para_field(None, 'exptfolder', None),
+            'f_input': cw.create_para_field(None, 'exptfolder', None),
         }
 
         # updates the class field
@@ -473,15 +473,15 @@ class SessionFile(QWidget):
 
         # sets up the file tab property fields
         p_tmp_file = {
-            'f_input': self.create_para_field('Input File Path', 'filespec', None, p_misc=f_mode_ssf),
-            'n_channel': self.create_para_field('Channel Count', 'edit', None),
-            's_freq': self.create_para_field('Sampling Frequency (Hz)', 'edit', None),
-            'gain_to_uV': self.create_para_field('Signal Gain (uV)', 'edit', None),
-            'offset_to_uV': self.create_para_field('Signal Offset (uV)', 'edit', None),
-            'd_type': self.create_para_field(
+            'f_input': cw.create_para_field('Input File Path', 'filespec', None, p_misc=f_mode_ssf),
+            'n_channel': cw.create_para_field('Channel Count', 'edit', None),
+            's_freq': cw.create_para_field('Sampling Frequency (Hz)', 'edit', None),
+            'gain_to_uV': cw.create_para_field('Signal Gain (uV)', 'edit', None),
+            'offset_to_uV': cw.create_para_field('Signal Offset (uV)', 'edit', None),
+            'd_type': cw.create_para_field(
                 'Signal Offset (uV)', 'combobox', self.p_list_type[1], p_list=self.p_list_type),
-            't_axis': self.create_para_field('Time Axis', 'combobox', self.p_list_axis[0], p_list=self.p_list_axis),
-            'is_filtered': self.create_para_field('Recording Filtered?', 'checkbox', False),
+            't_axis': cw.create_para_field('Time Axis', 'combobox', self.p_list_axis[0], p_list=self.p_list_axis),
+            'is_filtered': cw.create_para_field('Recording Filtered?', 'checkbox', False),
         }
 
         # updates the class field
@@ -993,16 +993,6 @@ class SessionFile(QWidget):
 
         self.run_table.setEnabled(state)
         self.group_panel.setEnabled(state)
-
-    # ---------------------------------------------------------------------------
-    # Static Methods
-    # ---------------------------------------------------------------------------
-
-    @staticmethod
-    def create_para_field(name, obj_type, value, p_fld=None, p_list=None, p_misc=None, ch_fld=None):
-
-        return {'name': name, 'type': obj_type, 'value': value, 'p_fld': p_fld,
-                'p_list': p_list, 'p_misc': p_misc, 'ch_fld': ch_fld}
 
 
 # ----------------------------------------------------------------------------------------------------------------------

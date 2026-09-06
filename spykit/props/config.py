@@ -57,7 +57,7 @@ class ConfigProps(PropWidget):
 
         # sets up the subgroup fields
         p_tmp = {
-            'r_config': self.create_para_field('Region Configuration', 'rconfig', None),
+            'r_config': cw.create_para_field('Region Configuration', 'rconfig', None),
         }
 
         # updates the class field

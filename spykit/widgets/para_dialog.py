@@ -646,59 +646,59 @@ class ParaDialog(QMainWindow):
         # sets up the subgroup fields
         p_tmp = {}
         for pp_s, pp_h, pp_t in zip(pp_str, pp_hdr, pp_type):
-            p_tmp[pp_s] = self.create_para_field(pp_h, pp_t, None)
+            p_tmp[pp_s] = cw.create_para_field(pp_h, pp_t, None)
 
         # phase shift parameters
         p_tmp[pp_str[0]]['ch_fld'] = {
-            'margin_ms': self.create_para_field('Margin (ms)', 'edit', 40),
+            'margin_ms': cw.create_para_field('Margin (ms)', 'edit', 40),
         }
 
         # bandpass filter parameters
         p_tmp[pp_str[1]]['ch_fld'] = {
-            'freq_min': self.create_para_field('Min Frequency', 'edit', 300),
-            'freq_max': self.create_para_field('Max Frequency', 'edit', 6000),
-            'margin_ms': self.create_para_field('Border Margin (ms)', 'edit', 5),
+            'freq_min': cw.create_para_field('Min Frequency', 'edit', 300),
+            'freq_max': cw.create_para_field('Max Frequency', 'edit', 6000),
+            'margin_ms': cw.create_para_field('Border Margin (ms)', 'edit', 5),
         }
 
         # common reference parameters
         operator_list = ['median', 'average']
         reference_list = ['global', 'single', 'local']
         p_tmp[pp_str[2]]['ch_fld'] = {
-            'operator': self.create_para_field('Operator', 'combobox', operator_list[0], p_list=operator_list),
-            'reference': self.create_para_field('Reference', 'combobox', reference_list[0], p_list=reference_list),
+            'operator': cw.create_para_field('Operator', 'combobox', operator_list[0], p_list=operator_list),
+            'reference': cw.create_para_field('Reference', 'combobox', reference_list[0], p_list=reference_list),
         }
 
         # whitening parameters
         mode_list = ['global', 'local']
         p_tmp[pp_str[3]]['ch_fld'] = {
-            'apply_mean': self.create_para_field('Subtract Mean', 'checkbox', False),
-            'mode': self.create_para_field('Mode', 'combobox', mode_list[0], p_list=mode_list),
-            'radius_um': self.create_para_field('Reference Radius (um)', 'edit', 100),
+            'apply_mean': cw.create_para_field('Subtract Mean', 'checkbox', False),
+            'mode': cw.create_para_field('Mode', 'combobox', mode_list[0], p_list=mode_list),
+            'radius_um': cw.create_para_field('Reference Radius (um)', 'edit', 100),
         }
 
         # drift correction parameters
         preset_list = ['dredge', 'dredge_fast', 'nonrigid_accurate',
                        'nonrigid_fast_and_accurate', 'rigid_fast', 'kilosort_like']
         p_tmp[pp_str[4]]['ch_fld'] = {
-            'preset': self.create_para_field('Preset', 'combobox', preset_list[0], p_list=preset_list),
+            'preset': cw.create_para_field('Preset', 'combobox', preset_list[0], p_list=preset_list),
         }
 
         # sets up the sorting tab parameter fields
-        pp_k2 = {'car': self.create_para_field('Use Common Avg Reference', 'checkbox', False, p_fld='kilosort2'),
-                 'freq_min': self.create_para_field('Min Frequency', 'edit', 150, p_fld='kilosort2')}
-        pp_k2_5 = {'car': self.create_para_field('Use Common Avg Reference', 'checkbox', False, p_fld='kilosort2_5'),
-                   'freq_min': self.create_para_field('Min Frequency', 'edit', 150, p_fld='kilosort2_5'), }
-        pp_k3 = {'car': self.create_para_field('Use Common Avg Reference', 'checkbox', False, p_fld='kilosort3'),
-                 'freq_min': self.create_para_field('Min Frequency', 'edit', 300, p_fld='kilosort3'), }
-        pp_m5 = {'scheme': self.create_para_field('Scheme', 'edit', 2, p_fld='mountainsort5'),
-                 'filter': self.create_para_field('Filter', 'checkbox', False, p_fld='mountainsort5'), }
+        pp_k2 = {'car': cw.create_para_field('Use Common Avg Reference', 'checkbox', False, p_fld='kilosort2'),
+                 'freq_min': cw.create_para_field('Min Frequency', 'edit', 150, p_fld='kilosort2')}
+        pp_k2_5 = {'car': cw.create_para_field('Use Common Avg Reference', 'checkbox', False, p_fld='kilosort2_5'),
+                   'freq_min': cw.create_para_field('Min Frequency', 'edit', 150, p_fld='kilosort2_5'), }
+        pp_k3 = {'car': cw.create_para_field('Use Common Avg Reference', 'checkbox', False, p_fld='kilosort3'),
+                 'freq_min': cw.create_para_field('Min Frequency', 'edit', 300, p_fld='kilosort3'), }
+        pp_m5 = {'scheme': cw.create_para_field('Scheme', 'edit', 2, p_fld='mountainsort5'),
+                 'filter': cw.create_para_field('Filter', 'checkbox', False, p_fld='mountainsort5'), }
 
         # sets the sorting tab group parameter fields
         p_tmp[pp_str[5]]['ch_fld'] = {
-            'kilosort2': self.create_para_field('Kilosort 2', 'tab', None, ch_fld=pp_k2),
-            'kilosort2_5': self.create_para_field('Kilosort 2.5', 'tab', None, ch_fld=pp_k2_5),
-            'kilosort3': self.create_para_field('Kilosort 3', 'tab', None, ch_fld=pp_k3),
-            'mountainsort5': self.create_para_field('Mountainsort 5', 'tab', None, ch_fld=pp_m5),
+            'kilosort2': cw.create_para_field('Kilosort 2', 'tab', None, ch_fld=pp_k2),
+            'kilosort2_5': cw.create_para_field('Kilosort 2.5', 'tab', None, ch_fld=pp_k2_5),
+            'kilosort3': cw.create_para_field('Kilosort 3', 'tab', None, ch_fld=pp_k3),
+            'mountainsort5': cw.create_para_field('Mountainsort 5', 'tab', None, ch_fld=pp_m5),
         }
 
         # updates the class field
@@ -713,32 +713,32 @@ class ParaDialog(QMainWindow):
         # sets up the subgroup fields
         p_tmp = {}
         for pp_s, pp_h in zip(pp_str, pp_hdr):
-            p_tmp[pp_s] = self.create_para_field(pp_h, 'panel', None)
+            p_tmp[pp_s] = cw.create_para_field(pp_h, 'panel', None)
 
         # waveform parameter fields
         p_tmp[pp_str[0]]['ch_fld'] = {
-            'ms_before': self.create_para_field('Time Before (ms)', 'edit', 2),
-            'ms_after': self.create_para_field('Time After (ms)', 'edit', 2),
-            'max_spikes_per_unit': self.create_para_field('Max Spikes/Unit', 'edit', 500),
-            'return_scaled': self.create_para_field('Scale Results', 'checkbox', True),
+            'ms_before': cw.create_para_field('Time Before (ms)', 'edit', 2),
+            'ms_after': cw.create_para_field('Time After (ms)', 'edit', 2),
+            'max_spikes_per_unit': cw.create_para_field('Max Spikes/Unit', 'edit', 500),
+            'return_scaled': cw.create_para_field('Scale Results', 'checkbox', True),
         }
 
         # set up the sparsity option fields
         method_list = ['radius']
         peak_sign_list = ['neg', 'pos']
-        pp_sp = {'peak_sign': self.create_para_field('Operator', 'combobox', peak_sign_list[0], p_list=peak_sign_list),
-                 'method': self.create_para_field('Method', 'combobox', method_list[0], p_list=method_list),
-                 'radius_um': self.create_para_field('Radius (um)', 'edit', 75), }
+        pp_sp = {'peak_sign': cw.create_para_field('Operator', 'combobox', peak_sign_list[0], p_list=peak_sign_list),
+                 'method': cw.create_para_field('Method', 'combobox', method_list[0], p_list=method_list),
+                 'radius_um': cw.create_para_field('Radius (um)', 'edit', 75), }
 
         # sets the sparsity
         p_tmp[pp_str[1]]['ch_fld'] = {
-            'sparse': self.create_para_field('Use Sparsity?', 'checkpanel', True, ch_fld=pp_sp),
+            'sparse': cw.create_para_field('Use Sparsity?', 'checkpanel', True, ch_fld=pp_sp),
         }
 
         # sets the sparsity
         p_tmp[pp_str[2]]['ch_fld'] = {
-            'dir_path': self.create_para_field('Test Default Directory', 'filespec', para_dir),
-            'dir_file': self.create_para_field('Test Default File', 'filespec', para_file, p_misc=f_mode_p),
+            'dir_path': cw.create_para_field('Test Default Directory', 'filespec', para_dir),
+            'dir_file': cw.create_para_field('Test Default File', 'filespec', para_file, p_misc=f_mode_p),
         }
 
         # updates the class field
@@ -893,12 +893,6 @@ class ParaDialog(QMainWindow):
 
         # returns the objects
         return h_gap, h_txt
-
-    @staticmethod
-    def create_para_field(name, obj_type, value, p_fld=None, p_list=None, p_misc=None, ch_fld=None):
-
-        return {'name': name, 'type': obj_type, 'value': value, 'p_fld': p_fld,
-                'p_list': p_list, 'p_misc': p_misc, 'ch_fld': ch_fld}
 
 
 # ----------------------------------------------------------------------------------------------------------------------

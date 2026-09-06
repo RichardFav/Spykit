@@ -152,14 +152,14 @@ class UnitHistProps(PropWidget):
 
         # sets up the subgroup fields
         p_tmp = {
-            'i_unit': self.create_para_field('Cluster Unit ID#', 'edit', 1),
-            'hist_type': self.create_para_field('Metric', 'checklist', show_hist, p_list=self.p_met_fin),
-            'opt_config': self.create_para_field('Use Optimal Configuration?', 'checkbox', True),
-            'n_r': self.create_para_field('Row Count', 'edit', n_row),
-            'n_c': self.create_para_field('Column Count', 'edit', n_col),
-            'n_bin': self.create_para_field('Max Bin Count', 'edit', n_bin0),
-            'show_thresh': self.create_para_field('Show Threshold Markers', 'checkbox', True),
-            'show_grid': self.create_para_field('Show Plot Gridlines', 'checkbox', False),
+            'i_unit': cw.create_para_field('Cluster Unit ID#', 'edit', 1),
+            'hist_type': cw.create_para_field('Metric', 'checklist', show_hist, p_list=self.p_met_fin),
+            'opt_config': cw.create_para_field('Use Optimal Configuration?', 'checkbox', True),
+            'n_r': cw.create_para_field('Row Count', 'edit', n_row),
+            'n_c': cw.create_para_field('Column Count', 'edit', n_col),
+            'n_bin': cw.create_para_field('Max Bin Count', 'edit', n_bin0),
+            'show_thresh': cw.create_para_field('Show Threshold Markers', 'checkbox', True),
+            'show_grid': cw.create_para_field('Show Plot Gridlines', 'checkbox', False),
         }
 
         # updates the class field

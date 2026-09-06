@@ -148,10 +148,10 @@ class UnitMetricProps(PropWidget):
 
         # sets up the subgroup fields
         p_tmp = {
-            'i_unit': self.create_para_field('Cluster Unit ID#', 'edit', 1),
-            'show_metric': self.create_para_field('Show Metrics', 'checkbox', True),
-            'show_grid': self.create_para_field('Show Plot Gridlines', 'checkbox', False),
-            'r_cfig': self.create_para_field('', 'rconfig', None, p_list=self.p_list_plot),
+            'i_unit': cw.create_para_field('Cluster Unit ID#', 'edit', 1),
+            'show_metric': cw.create_para_field('Show Metrics', 'checkbox', True),
+            'show_grid': cw.create_para_field('Show Plot Gridlines', 'checkbox', False),
+            'r_cfig': cw.create_para_field('', 'rconfig', None, p_list=self.p_list_plot),
         }
 
         # updates the class field

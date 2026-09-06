@@ -94,8 +94,8 @@ class UpSetProps(PropWidget):
 
         # sets up the subgroup fields
         p_tmp = {
-            'unit_type': self.create_para_field('Display Unit Type', 'combobox', unit_lbl[0], p_list=unit_lbl),
-            'show_grid': self.create_para_field('Show Plot Gridlines', 'checkbox', False),
+            'unit_type': cw.create_para_field('Display Unit Type', 'combobox', unit_lbl[0], p_list=unit_lbl),
+            'show_grid': cw.create_para_field('Show Plot Gridlines', 'checkbox', False),
         }
 
         # updates the class field

@@ -138,17 +138,17 @@ class TraceViewProps(PropWidget):
 
         # sets up the subgroup fields
         p_tmp = {
-            'plot_type': self.create_para_field('Plot Type', 'combobox', self.plot_list[0], p_list=self.plot_list),
-            'data_type': self.create_para_field('Data Type', 'combobox', data_type[0], p_list=data_type),
-            'sig_type': self.create_para_field('Signal Type', 'combobox', self.sig_list[0], p_list=self.sig_list),
-            't_start': self.create_para_field('Start Time (s)', 'edit', 0),
-            't_finish': self.create_para_field('Finish Time (s)', 'edit', self.t_span0),
-            't_span': self.create_para_field('Trace Time-Span (s)', 'edit', self.t_span0),
-            'c_lim_lo': self.create_para_field('Lower Voltage Limit', 'edit', -200),
-            'c_lim_hi': self.create_para_field('Upper Voltage Limit', 'edit', 200),
-            'sort_by': self.create_para_field('Sort Signals By', 'combobox', self.sort_list[0], p_list=self.sort_list),
-            'scale_signal': self.create_para_field('Auto-Scale Trace Signals', 'checkbox', True),
-            'c_map': self.create_para_field('Colormap', 'colormapchooser', 'RdBu'),
+            'plot_type': cw.create_para_field('Plot Type', 'combobox', self.plot_list[0], p_list=self.plot_list),
+            'data_type': cw.create_para_field('Data Type', 'combobox', data_type[0], p_list=data_type),
+            'sig_type': cw.create_para_field('Signal Type', 'combobox', self.sig_list[0], p_list=self.sig_list),
+            't_start': cw.create_para_field('Start Time (s)', 'edit', 0),
+            't_finish': cw.create_para_field('Finish Time (s)', 'edit', self.t_span0),
+            't_span': cw.create_para_field('Trace Time-Span (s)', 'edit', self.t_span0),
+            'c_lim_lo': cw.create_para_field('Lower Voltage Limit', 'edit', -200),
+            'c_lim_hi': cw.create_para_field('Upper Voltage Limit', 'edit', 200),
+            'sort_by': cw.create_para_field('Sort Signals By', 'combobox', self.sort_list[0], p_list=self.sort_list),
+            'scale_signal': cw.create_para_field('Auto-Scale Trace Signals', 'checkbox', True),
+            'c_map': cw.create_para_field('Colormap', 'colormapchooser', 'RdBu'),
         }
 
         # updates the class field
