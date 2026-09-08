@@ -3565,6 +3565,25 @@ class QDialogProgress(QWidget):
 
         self.prog_bar.setValue(self.p_max)
 
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+"""
+    QClickableLineEdit: 
+"""
+
+
+class QClickableLineEdit(QLineEdit):
+    clicked = pyqtSignal()
+
+    def __init__(self, parent):
+        super(QClickableLineEdit, self).__init__(parent)
+
+    def mousePressEvent(self, event):
+        super().mousePressEvent(event)  # Preserves default focus and cursor behavior
+        self.clicked.emit()
+
+
 # ----------------------------------------------------------------------------------------------------------------------
 # TABLE WIDGET CUSTOM MODEL CLASSES
 # ----------------------------------------------------------------------------------------------------------------------
@@ -4063,7 +4082,6 @@ class PlotCrossHair(QObject):
         self.h_line.setVisible(state)
         self.v_line.setVisible(state)
 
-
 # ----------------------------------------------------------------------------------------------------------------------
 # BASE WIDGET SETUP FUNCTIONS
 # ----------------------------------------------------------------------------------------------------------------------
@@ -4092,7 +4110,7 @@ def create_text_label(parent, text, font=None, align='right', name=None):
     return h_lbl
 
 
-def create_line_edit(parent, text, font=None, align='center', name=None):
+def create_line_edit(parent, text, font=None, align='center', name=None, is_clickable=False):
     # sets the label font properties
     if font is None:
         font = create_font_obj()
@@ -4105,7 +4123,10 @@ def create_line_edit(parent, text, font=None, align='center', name=None):
         text = str(text)
 
     # creates the line edit object
-    h_ledit = QLineEdit(parent)
+    if is_clickable:
+        h_ledit = QClickableLineEdit(parent)
+    else:
+        h_ledit = QLineEdit(parent)
 
     # sets the label properties
     h_ledit.setFont(font)
@@ -4259,10 +4280,10 @@ def create_icon_button(icon_name, but_dim):
 
 
 def create_para_field(name, obj_type, value, p_fld=None, p_list=None, p_misc=None,
-                      p_min=None, p_max=None, ch_fld=None):
+                      p_min=None, p_max=None, ch_fld=None, p_dep=None):
 
     return {'name': name, 'type': obj_type, 'value': value, 'ch_fld': ch_fld, 'p_fld': p_fld,
-            'p_list': p_list, 'p_misc': p_misc, 'p_min': p_min, 'p_max': p_max}
+            'p_list': p_list, 'p_misc': p_misc, 'p_min': p_min, 'p_max': p_max, 'p_dep': p_dep}
 
 
 def copy_table(table_orig, is_filt):

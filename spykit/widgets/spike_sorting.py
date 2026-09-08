@@ -1019,10 +1019,12 @@ class SpikeSorterTab(QTabWidget):
         'kilosort4': ['Fixed']
     }
 
-    # font objects
+    # font properties
     gray_col = QColor(160, 160, 160, 255)
     item_child_font = cw.create_font_obj(8)
     item_font = cw.create_font_obj(9, True, QFont.Weight.Bold)
+
+    # label alignment
     lbl_align_r = cw.align_flag['right'] | cw.align_flag['vcenter']
     lbl_align_l = cw.align_flag['left'] | cw.align_flag['vcenter']
 
@@ -1175,7 +1177,7 @@ class SpikeSorterTab(QTabWidget):
 
     def create_child_tree_item(self, item_p, p_fld, i_edit=None):
 
-        # REMOVE ME LATER
+        # initialisations
         item_ch, h_obj = None, None
 
         # retrieves the main property values
