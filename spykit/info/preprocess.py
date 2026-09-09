@@ -57,264 +57,37 @@ pp_flds = {
 # other dimensions
 x_gap = 5
 
-# ----------------------------------------------------------------------------------------------------------------------
-
-"""
-    PreprocessConfig:
-"""
-
-
-class PreprocessConfig(object):
-    def __init__(self):
-
-        self.prep_task = []
-        self.task_name = []
-        self.task_para = {}
-
-        self.prep_opt = {
-            "per_shank": False,
-            "concat_runs": False,
-        }
-
-    def add_prep_task(self, p_task, t_para=None, t_name=None):
-
-        self.prep_task.append(p_task)
-
-        if t_para is not None:
-            self.task_para[p_task] = t_para
-
-        if t_name is not None:
-            self.task_name.append(t_name)
-
-    def set_prep_opt(self, per_shank, concat_runs):
-
-        self.prep_opt = {
-            "per_shank": per_shank,
-            "concat_runs": concat_runs,
-        }
-
-    def setup_config_dicts(self):
-
-        # sets up the configuration dictionary list
-        pp_cfig = {}
-        for i_ref, pt in enumerate(self.prep_task):
-            # sets up the configuration for the preprocessing group
-            pp_cfig[str(i_ref+1)] = [pt, self.task_para[pt]]
-
-        # returns the configuration dictionary list
-        return pp_cfig
-
-    def clear(self):
-
-        self.prep_task = []
-        self.task_name = []
-        self.task_para = {}
-
-        self.prep_opt = {
-            "per_shank": False,
-            "concat_runs": False,
-        }
-
+try:
+    import torch
+    is_torch_available = True
+except ImportError:
+    is_torch_available = False
 
 # ----------------------------------------------------------------------------------------------------------------------
 
 """
-    PreprocessParaTab:
+    PreprocessStepPara:
 """
 
-class PreprocessParaTab(QTabWidget):
-    # pyqtsignal functions
-    prop_change = pyqtSignal()
+class PreprocessStepPara(object):
 
-    # widget dimensions
-    x_gap = 5
-    hght_row = 25
-    item_row_size = 23
-    col_width = 150
-
-    # array class fields
-    tree_hdr = ['Property', 'Value']
-
-    # font properties
-    gray_col = QColor(160, 160, 160, 255)
-    item_child_font = cw.create_font_obj(8)
-
-    # label alignment
-    item_font = cw.create_font_obj(8, True, QFont.Weight.Bold)
-    item_hdr = cw.create_font_obj(9, True, QFont.Weight.Bold)
-    lbl_align_r = cw.align_flag['right'] | cw.align_flag['vcenter']
-
-    # widget stylesheets
-    tree_style = """    
-        QTreeWidget::item {
-            height: 23px;
-        }        
-        QTreeWidget::item:has-children {
-            background: #A0A0A0;
-            padding-left: 5px;
-            color: white;
-        }
-    """
-    tree_style_win = """
-        QTreeWidget {{
-            font: {font} 8px;
-            hover-background-color: transparent; 
-            selection-background-color: transparent; 
-        }}           
-    """.format(font=cw.font_base)
-    tree_header_style = """
-        QHeaderView::section {{ 
-            background-color: #646464;
-            color: white;
-        }}
-    """.format(font=cw.font_base)
-
-    def __init__(self, parent, p_grp):
-        super(PreprocessParaTab, self).__init__(parent)
+    def __init__(self, pp_step):
+        super(PreprocessStepPara, self).__init__()
 
         # input arguments
-        self.p_grp = p_grp
-
-        # widget class fields
-        self.tree_prop = QTreeWidget(self)
-        self.tab_layout = QVBoxLayout()
-
-        # boolean class fields
-        self.is_updating = False
+        self.pp_step = pp_step
 
         # other class fields
         self.p_para = {}
         self.p_props = None
 
-        # initialises the class fields/widgets
-        self.init_class_fields()
+        # sets up the parameter dictionary
         self.setup_para_groups()
-        self.setup_tab_objects()
-
-    def init_class_fields(self):
-
-        # sets the layout propeties
-        self.tab_layout.setContentsMargins(0, 0, 0, 0)
-
-        # sets the main widget names
-        self.setLayout(self.tab_layout)
-
-    def create_tree_items(self, item_p, p_prop, p_str_p=[]):
-
-        # initialisations
-        is_top_level = len(p_str_p) == 0
-
-        for pk, pv in p_prop.items():
-            # initialisations
-            p_str = p_str_p + [pk]
-            cb_fcn_base = pfcn(self.prop_update, pv, p_str)
-            h_obj, p_value0, p_type = None, self.get(p_str), pv['type']
-
-            # creates the new item
-            item = QTreeWidgetItem(item_p)
-            item.setText(0, pv['name'])
-
-            match p_type:
-                case 'subgroup':
-                    # case is a sub-grouping
-
-                    # sets the item properties
-                    item.setFont(0, self.item_hdr)
-                    item.setFirstColumnSpanned(True)
-                    item.setExpanded(True)
-
-                    # creates the sub-group parmaeters
-                    self.create_tree_items(item, pv['value'], p_str)
-
-                case 'combobox':
-                    # case is a combobox
-
-                    # case is a combobox
-                    h_obj = QComboBox()
-                    h_obj.addItems(pv['p_list'])
-
-                    # sets the widget properties
-                    h_obj.setCurrentIndex(pv['p_list'].index(p_value0))
-                    h_obj.setFont(self.item_child_font)
-
-                    # sets the object callback functions
-                    cb_fcn = pfcn(cb_fcn_base, h_obj)
-                    h_obj.currentIndexChanged.connect(cb_fcn)
-
-                case 'checkbox':
-                    # case is a checkbox
-
-                    # case is a checkbox
-                    h_obj = QCheckBox()
-
-                    # sets the widget properties
-                    h_obj.setCheckState(cf.chk_state[p_value0])
-                    h_obj.setStyleSheet("padding-left: 5px;")
-
-                    # sets the object callback functions
-                    cb_fcn = pfcn(cb_fcn_base, h_obj)
-                    h_obj.clicked.connect(cb_fcn)
-
-                case p_type if p_type in ['edit_float', 'edit_int']:
-                    # case is a float/integer editbox
-
-                    # creates the lineedit widget
-                    p_value = self.convert_edit_value(p_value0)
-                    h_obj = cw.create_line_edit(None, p_value, font=self.item_child_font, is_clickable=True)
-
-                    # sets the object callback functions
-                    cb_fcn = pfcn(cb_fcn_base, h_obj)
-                    h_obj.editingFinished.connect(cb_fcn)
-
-                    # sets the object clicked callback function
-                    cb_fcn_click = pfcn(self.edit_click, pv, p_str, h_obj)
-                    h_obj.clicked.connect(cb_fcn_click)
-
-            if h_obj is not None:
-                # sets the tree widget properties
-                h_obj.setObjectName(pk)
-                h_obj.setFixedHeight(self.item_row_size)
-                self.tree_prop.setItemWidget(item, 1, h_obj)
-
-                # sets the tree item properties
-                item.setFont(0, self.item_font)
-                item.setTextAlignment(0, self.lbl_align_r)
-
-            # adds the item to the parent
-            item_p.addTopLevelItem(item) if is_top_level else item_p.addChild(item)
-
-    def setup_tab_objects(self):
-
-        # sets the tree-view properties
-        self.tree_prop.setLineWidth(1)
-        self.tree_prop.setColumnCount(2)
-        self.tree_prop.setIndentation(12)
-        self.tree_prop.setItemsExpandable(True)
-        self.tree_prop.setStyleSheet(self.tree_style)
-        self.tree_prop.setHeaderLabels(self.tree_hdr)
-        self.tree_prop.setAlternatingRowColors(False)
-
-        # creates the parameter objects
-        self.create_tree_items(self.tree_prop, self.p_props)
-
-        # adds the tree widget to the parent widget
-        self.tab_layout.addWidget(self.tree_prop)
-
-        for pk, pv in self.p_props.items():
-            if pv['p_dep'] is not None:
-                c_txt = self.findChild(QWidget, name=pk).currentText()
-                self.set_dependent_widget_props(pv['p_dep'], c_txt)
-
-        # resizes the columns to fit, then resets to fixed size
-        tree_header = self.tree_prop.header()
-        tree_header.setDefaultAlignment(cf.align_type['center'])
-        tree_header.setStyleSheet(self.tree_header_style)
-        tree_header.resizeSection(0, self.col_width)
-        tree_header.setFont(self.item_hdr)
+        self.setup_para_dict(self.p_props)
 
     def setup_para_groups(self):
 
-        match self.p_grp:
+        match self.pp_step:
             case 'bandpass_filter':
                 # case is bandpass filtering
 
@@ -362,51 +135,48 @@ class PreprocessParaTab(QTabWidget):
 
                 # combobox lists
                 direction_list = ["x", "y", "z"]
-                interp_list = ["kriging", "idw"]
                 peak_list = ['neg', 'pos', 'both']
-                detect_list = ['by_channel', 'locally_exclusive']
-                border_list = ["remove_channels", "force_extrapolate"]
                 preset_list = ['dredge', 'dredge_fast', 'nonrigid_accurate',
                                'nonrigid_fast_and_accurate', 'rigid_fast', 'kilosort_like']
-                select_list = ['uniform', 'uniform_locations', 'smart_sampling_amplitudes',
-                               'smart_sampling_locations', 'smart_sampling_locations_and_time']
                 localise_list = ["monopolar_triangulation", "center_of_mass", "grid_convolution"]
+
+                # interp_list = ["kriging", "idw"]
+                # detect_list = ['by_channel', 'locally_exclusive']
+                # border_list = ["remove_channels", "force_extrapolate"]
+                # select_list = ['uniform', 'uniform_locations', 'smart_sampling_amplitudes',
+                #                'smart_sampling_locations', 'smart_sampling_locations_and_time']
 
                 # parameter property dictionary
                 self.p_props = {
                     'preset': cw.create_para_field('Preset', 'combobox', preset_list[0],
                                                    p_list=preset_list),
+                    'use_torch': cw.create_para_field('Use Torch?', 'checkbox', is_torch_available),
                     'detect_kwargs': cw.create_para_field('Peak Detection', 'subgroup', {
-                        'method': cw.create_para_field('Method', 'combobox', detect_list[0],
-                                                        p_list=detect_list),
-                        'detect_threshold': cw.create_para_field('Margin (ms)', 'edit_float', None),
+                        # 'method': cw.create_para_field('Method', 'combobox', detect_list[1],
+                        #                                p_list=detect_list),
                         'peak_sign': cw.create_para_field('Peak Sign', 'combobox', peak_list[0],
                                                           p_list=peak_list),
-                    }),
-                    'select_kwargs': cw.create_para_field('Peak Selection', 'subgroup', {
-                        'method': cw.create_para_field('Method', 'combobox', select_list[0],
-                                                       p_list=select_list),
-                        'n_peaks': cw.create_para_field('Max Peak Count', 'edit_int', None),
-                        'peaks_per_second': cw.create_para_field('Margin (ms)', 'edit_float', None),
+                        'detect_threshold': cw.create_para_field('Detection Threshold', 'edit_float', 5.0),
+                        'exclude_sweep_ms': cw.create_para_field('Exclusion Sweep (ms)', 'edit_float', 1.0),
                     }),
                     'localize_peaks_kwargs': cw.create_para_field('Spatial Localisation', 'subgroup', {
                         'method': cw.create_para_field('Method', 'combobox', localise_list[0],
-                                                        p_list=localise_list),
+                                                       p_list=localise_list),
                         'radius_um': cw.create_para_field('Radius (um)', 'edit_float', None),
                     }),
-                    'estimate_motion_kwargs': cw.create_para_field('Drift Inference', 'subgroup', {
+                    'estimate_motion_kwargs': cw.create_para_field('Motion Estimation', 'subgroup', {
                         'direction': cw.create_para_field('Probe Direction', 'combobox', direction_list[1],
                                                           p_list=direction_list),
                         'bin_s': cw.create_para_field('Temporal Bin Size (s)', 'edit_float', 1.0),
                         'win_step_um': cw.create_para_field('Spatial Bin Size (um)', 'edit_float', None),
                         'rigid': cw.create_para_field('Assume Rigid Drift?', 'checkbox', False),
                     }),
-                    'interpolation_kwargs': cw.create_para_field('Spatial Interpolation', 'subgroup', {
-                        'spatial_interpolation_method': cw.create_para_field(
-                            'Method', 'combobox', interp_list[0], p_list=interp_list),
-                        'border_mode': cw.create_para_field(
-                            'Border Mode', 'combobox', border_list[0], p_list=border_list),
-                    }),
+                    # 'interpolate_motion_kwargs': cw.create_para_field('Motion Interpolation', 'subgroup', {
+                    #     'spatial_interpolation_method': cw.create_para_field(
+                    #         'Method', 'combobox', interp_list[0], p_list=interp_list),
+                    #     'border_mode': cw.create_para_field(
+                    #         'Border Mode', 'combobox', border_list[0], p_list=border_list),
+                    # }),
                 }
 
             case 'whitening':
@@ -445,10 +215,6 @@ class PreprocessParaTab(QTabWidget):
                     'threshold': cw.create_para_field('Threshold', 'edit_float', None),
                 }
 
-
-        # sets up the parameter dictionary
-        self.setup_para_dict(self.p_props)
-
     def setup_para_dict(self, p_prop, p_str_p=[]):
 
         for pk, pv in p_prop.items():
@@ -469,84 +235,6 @@ class PreprocessParaTab(QTabWidget):
             else:
                 # case is another parameter type
                 self.set(p_str, pv['value'])
-
-    # ---------------------------------------------------------------------------
-    # Widget Update Event Functions
-    # ---------------------------------------------------------------------------
-
-    def edit_click(self, p_prop, p_str, h_obj):
-
-        if h_obj.text() == "NaN":
-            self.is_updating = True
-            h_obj.setText("")
-            self.is_updating = False
-
-    def prop_update(self, p_prop, p_str, h_obj):
-
-        # if manually updating elsewhere, then exit
-        if self.is_updating:
-            return
-
-        if isinstance(h_obj, QCheckBox):
-            self.check_prop_update(h_obj, p_prop, p_str)
-
-        elif isinstance(h_obj, QLineEdit):
-            self.edit_prop_update(h_obj, p_prop, p_str)
-
-        elif isinstance(h_obj, QComboBox):
-            self.combo_prop_update(h_obj, p_prop, p_str)
-
-    def check_prop_update(self, h_obj, p_prop, p_str):
-
-        # updates the value field
-        self.set(p_str, h_obj.isChecked())
-        self.prop_change.emit()
-
-    def edit_prop_update(self, h_obj, p_prop, p_str):
-
-        if self.is_updating:
-            return
-
-        # field retrieval
-        p_min = p_prop['p_min']
-        p_max = p_prop['p_max']
-        is_int = p_prop['type'] == 'edit_int'
-
-        # object properties
-        new_str = h_obj.text()
-        if len(new_str) == 0:
-            self.is_updating = True
-            h_obj.setText("NaN")
-            self.is_updating = False
-
-            self.set(p_str, None)
-            return
-
-        # determines if the new value is valid
-        chk_val = cf.check_edit_num(new_str, min_val=p_min, max_val=p_max, is_int=is_int)
-        if chk_val[1] is None:
-            # converts the editbox value (parameter dependent)
-            new_val = int(chk_val[0]) if is_int else chk_val[0]
-
-            # updates the parameter field
-            self.set(p_str, new_val)
-            self.prop_change.emit()
-
-        else:
-            # otherwise, reset to the previous valid value
-            p_val_pr = self.get(p_str)
-            h_obj.setText(self.convert_edit_value(p_val_pr))
-
-    def combo_prop_update(self, h_obj, p_prop, p_str):
-
-        # parameter specific updates
-        c_txt = h_obj.currentText()
-        if p_prop['p_dep'] is not None:
-            self.set_dependent_widget_props(p_prop['p_dep'], c_txt)
-
-        # updates the property field
-        self.set(p_str, c_txt)
-        self.prop_change.emit()
 
     # ---------------------------------------------------------------------------
     # Class Getter Methods
@@ -590,24 +278,190 @@ class PreprocessParaTab(QTabWidget):
                     # case is the other parameters
                     self.p_para[p_str[0]][p_str[1]] = p_val
 
-    def set_dependent_widget_props(self, p_dep, c_txt):
+# ----------------------------------------------------------------------------------------------------------------------
 
-        for pk, pv in p_dep.items():
-            h_obj = self.findChild(QWidget, name=pk)
-            h_obj.setEnabled(c_txt in pv)
+"""
+    PreprocessConfig:
+"""
+
+
+class PreprocessConfig(object):
+    def __init__(self, pp_step_para):
+
+        self.prep_task = []
+        self.task_name = []
+        self.task_para = {}
+        self.pp_step_para = pp_step_para
+
+        self.prep_opt = {
+            "per_shank": False,
+            "concat_runs": False,
+        }
+
+    def add_prep_task(self, p_task, t_para=None, t_name=None):
+
+        self.prep_task.append(p_task)
+
+        if t_para is not None:
+            self.task_para[p_task] = t_para
+
+        if t_name is not None:
+            self.task_name.append(t_name)
+
+    def set_prep_opt(self, per_shank, concat_runs):
+
+        self.prep_opt = {
+            "per_shank": per_shank,
+            "concat_runs": concat_runs,
+        }
+
+    def setup_config_dicts(self):
+
+        # sets up the configuration dictionary list
+        pp_cfig = {}
+        for i_ref, pt in enumerate(self.prep_task):
+            # sets up the configuration for the preprocessing group
+            pp_cfig[str(i_ref+1)] = [pt, self.task_para[pt]]
+
+        # returns the configuration dictionary list
+        return pp_cfig
+
+    def clear(self):
+
+        self.prep_task = []
+        self.task_name = []
+        self.task_para = {}
+
+        self.prep_opt = {
+            "per_shank": False,
+            "concat_runs": False,
+        }
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+"""
+    PreprocessPara:
+"""
+
+class PreprocessPara(object):
+    # class fields
+    pp_step = ['phase_shift', 'bandpass_filter', 'common_reference', 'drift_correct', 'whitening', 'sparce_opt']
+
+    def __init__(self, sp_main):
+
+        # event function retrieval
+        self.session_obj = sp_main.session_obj
+        self.bad_channel_fcn = self.session_obj.get_bad_channels
+        self.keep_channel_fcn = self.session_obj.get_keep_channels
+        self.removed_channel_fcn = self.session_obj.get_removed_channels
+        self.is_channel_removed = self.session_obj.is_channel_removed
+
+        # initalises the preprocessing step parameter class objects
+        self.pp_step_para = {}
+        for pp_n in self.pp_step:
+            self.pp_step_para[pp_n] = PreprocessStepPara(pp_n)
+
+        # initialises the preprocessing configuration fields
+        self.configs = PreprocessConfig(self.pp_step_para)
 
     # ---------------------------------------------------------------------------
-    # Static Methods
+    # Preprocessing Config Functions
     # ---------------------------------------------------------------------------
 
-    @staticmethod
-    def convert_edit_value(p_value):
+    def setup_config_dict(self, prep_task, is_sorting=False):
 
-        if p_value is None:
-            return "NaN"
+        # clears the configuration array
+        self.configs.clear()
 
-        else:
-            return '%g' % p_value
+        # determines if there are any channels to remove
+        rmv_channels = self.get_remove_channels()
+        if len(rmv_channels) and ('Remove Bad Channels' not in prep_task):
+            # if so, then append the remove channels step
+            prep_task = ['Remove Bad Channels'] + prep_task
+
+        # adds the preparation tasks to the configuration field
+        for pp_t in prep_task:
+            pp = prep_task_map[pp_t]
+
+            match pp:
+                case 'interpolate_channels':
+                    # case is interpolate channel step
+                    c_dict = {
+                        'channel_ids': self.get_interp_channels(),
+                    }
+
+                    # adds the preprocessing task to the list
+                    self.configs.add_prep_task(pp, c_dict, pp_t)
+
+                case 'remove_channels':
+                    # case is remove channel step
+
+                    # sets up the config dictionary
+                    c_dict = {
+                        'channel_ids': rmv_channels,
+                    }
+
+                    # adds the preprocessing task to the list
+                    self.configs.add_prep_task(pp, c_dict, pp_t)
+
+                case _:
+                    # case is another step type
+                    self.configs.add_prep_task(pp, self.get_task_para(pp), pp_t)
+
+        # sorting?
+        if is_sorting:
+            pass
+
+        return self.configs.setup_config_dicts()
+
+    def reset_config_dict(self, pp_config):
+
+        self.configs.clear()
+        self.configs = pp_config
+
+    def get_task_para(self, pp_task):
+
+        pp_para = deepcopy(self.pp_step_para[pp_task].p_para)
+
+        # task specific updates
+        match pp_task:
+            case 'drift_correct':
+                # case is drift correction
+                if pp_para['use_torch']:
+                    # resets parameter fields if using torch for analysis
+                    pp_para['detect_kwargs']['method'] = 'locally_exclusive_torch'
+
+                # removes the use torch field
+                pp_para.pop('use_torch')
+
+        return self.remove_none_fields(pp_para)
+
+    def get_remove_channels(self):
+
+        not_rmv = np.logical_not(self.is_channel_removed())
+        not_keep = np.logical_not(self.keep_channel_fcn())
+
+        return self.bad_channel_fcn(['out'], not_keep, not_rmv)[0]
+
+    def get_interp_channels(self):
+
+        is_keep = self.keep_channel_fcn()
+        not_rmv = np.logical_not(self.is_channel_removed())
+        is_feas = np.logical_or(is_keep, not_rmv)
+
+        return self.bad_channel_fcn(['dead', 'noise'], is_feas=is_feas)[0]
+
+    def remove_none_fields(self, pp):
+
+        pp_copy = deepcopy(pp)
+
+        for pk, pv in pp_copy.items():
+            if isinstance(pv, dict):
+                pp[pk] = self.remove_none_fields(pp[pk])
+            elif pv is None:
+                pp.pop(pk, None)
+
+        return pp
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -789,8 +643,7 @@ class PreprocessSetup(QMainWindow):
     prep_str = ['Start Preprocessing', 'Cancel Preprocessing']
     b_icon = ['arrow_right', 'arrow_left', 'arrow_up', 'arrow_down']
     tt_str = ['Add Task', 'Remove Task', 'Move Task Up', 'Move Task Down']
-    p_grp = ['phase_shift', 'bandpass_filter', 'common_reference', 'drift_correct', 'whitening', 'sparce_opt']
-    # l_task = ['Phase Shift', 'Bandpass Filter', 'Channel Interpolation', 'Common Reference', 'Drift Correction']
+    pp_step = ['phase_shift', 'bandpass_filter', 'common_reference', 'drift_correct', 'whitening', 'sparce_opt']
 
     # widget stylesheets
     border_style = "border: 1px solid;"
@@ -809,6 +662,7 @@ class PreprocessSetup(QMainWindow):
         self.is_auto = prep_obj_auto is not None
 
         # field retrieval
+        self.prep_para = self.sp_main.prep_para
         self.session_obj = self.sp_main.session_obj
         self.info_manager = self.sp_main.info_manager
         self.session = self.session_obj.session
@@ -840,13 +694,11 @@ class PreprocessSetup(QMainWindow):
         self.spacer_bottom = QSpacerItem(20, 60, cf.q_min, cf.q_max)
 
         # other class field initialisations
+        self.pp_tab = {}
         self.task_order = []
         self.checkbox_opt = []
         self.button_control = []
         self.prog_bar = []
-
-        # array class fields
-        self.l_task = ['Phase Shift', 'Bandpass Filter', 'Channel Interpolation', 'Common Reference', 'Drift Correction']
 
         # boolean class fields
         self.has_pp = False
@@ -869,6 +721,10 @@ class PreprocessSetup(QMainWindow):
         self.pr_task = None
         self.t_worker = None
         self.dlg_height = self.dlg_height_auto if self.is_auto else self.dlg_height_orig
+        self.l_task = ['Phase Shift', 'Bandpass Filter', 'Channel Interpolation', 'Common Reference', 'Drift Correction']
+
+        # event function handles
+        self.configs = self.prep_para.configs
 
         # initialises the class fields/widgets
         self.init_class_fields()
@@ -910,10 +766,10 @@ class PreprocessSetup(QMainWindow):
         self.para_layout.addWidget(self.tab_group_para)
 
         # sets up the preprocessing step tab group
-        for i_task, pg in enumerate(self.p_grp):
+        for pp_s, pp_obj in self.prep_para.pp_step_para.items():
             # creates the parameter group tab
-            pp_tab = PreprocessParaTab(self, pg)
-            self.tab_group_para.addTab(pp_tab, pp_flds[pg])
+            self.pp_tab[pp_s] = PreprocessParaTab(self, pp_obj)
+            self.tab_group_para.addTab(self.pp_tab[pp_s], pp_flds[pp_s])
 
     def init_task_para_frame(self):
 
@@ -1228,8 +1084,7 @@ class PreprocessSetup(QMainWindow):
                 self.n_task = deepcopy(self.add_list.count())
 
                 # sets the preprocessing options
-                prep_tab = self.info_manager.get_info_tab('preprocess')
-                prep_tab.configs.set_prep_opt(self.per_shank, self.concat_runs)
+                self.prep_para.configs.set_prep_opt(self.per_shank, self.concat_runs)
 
                 # retrieves the selected tasks
                 prep_task = []
@@ -1273,13 +1128,12 @@ class PreprocessSetup(QMainWindow):
         if self.has_pp:
             # updates the pre-processing information
             pr_val = self.session.prep_obj.pp_steps_tot.values()
-            prep_tab = self.info_manager.get_info_tab('preprocess')
 
             # resets the preprocessing configuration fields
-            prep_tab.configs.prep_task = [x[0] for x in pr_val]
-            prep_tab.configs.task_name = [pp_flds[x] for x in prep_tab.configs.prep_task]
-            prep_tab.configs.task_para = dict(pr_val)
-            prep_tab.configs.set_prep_opt(self.per_shank, self.concat_runs)
+            self.prep_para.configs.prep_task = [x[0] for x in pr_val]
+            self.prep_para.configs.task_name = [pp_flds[x] for x in self.prep_para.configs.prep_task]
+            self.prep_para.configs.task_para = dict(pr_val)
+            self.prep_para.configs.set_prep_opt(self.per_shank, self.concat_runs)
 
         elif self.session_obj.is_session_sorted():
             # otherwise if the session is sorted, then enable the post-processing
@@ -1311,14 +1165,11 @@ class PreprocessSetup(QMainWindow):
 
     def run_preprocessing_worker(self, prep_obj):
 
-        # runs the session pre-processing
-        prep_tab = self.info_manager.get_info_tab('preprocess')
-
         # case is running from the Preprocessing dialog
         if isinstance(prep_obj, tuple):
             prep_task, prep_opt = prep_obj
             per_shank, concat_runs = prep_opt
-            pp_config = prep_tab.setup_config_dict(prep_task)
+            pp_config = self.prep_para.setup_config_dict(prep_task)
 
         else:
             # case is running from loading session
@@ -1578,6 +1429,309 @@ class PreprocessSetup(QMainWindow):
 
         tasks[i_swap[0]], tasks[i_swap[1]] = tasks[i_swap[1]], tasks[i_swap[0]]
         return tasks
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+"""
+    PreprocessParaTab:
+"""
+
+class PreprocessParaTab(QTabWidget):
+    # pyqtsignal functions
+    prop_change = pyqtSignal()
+
+    # widget dimensions
+    x_gap = 5
+    hght_row = 25
+    item_row_size = 23
+    col_width = 160
+
+    # array class fields
+    tree_hdr = ['Property', 'Value']
+
+    # font properties
+    gray_col = QColor(160, 160, 160, 255)
+    item_child_font = cw.create_font_obj(8)
+
+    # label alignment
+    item_font = cw.create_font_obj(8, True, QFont.Weight.Bold)
+    item_hdr = cw.create_font_obj(9, True, QFont.Weight.Bold)
+    lbl_align_r = cw.align_flag['right'] | cw.align_flag['vcenter']
+
+    # widget stylesheets
+    tree_style = """    
+        QTreeWidget::item {
+            height: 23px;
+        }        
+        QTreeWidget::item:has-children {
+            background: #A0A0A0;
+            padding-left: 5px;
+            color: white;
+        }
+    """
+    tree_style_win = """
+        QTreeWidget {{
+            font: {font} 8px;
+            hover-background-color: transparent; 
+            selection-background-color: transparent; 
+        }}           
+    """.format(font=cw.font_base)
+    tree_header_style = """
+        QHeaderView::section {{ 
+            background-color: #646464;
+            color: white;
+        }}
+    """.format(font=cw.font_base)
+
+    def __init__(self, parent, pp_step_para):
+        super(PreprocessParaTab, self).__init__(parent)
+
+        # input arguments
+        self.pp_step_para = pp_step_para
+
+        # widget class fields
+        self.tree_prop = QTreeWidget(self)
+        self.tab_layout = QVBoxLayout()
+
+        # parameter step class event handles
+        self.get = self.pp_step_para.get
+        self.set = self.pp_step_para.set
+
+        # boolean class fields
+        self.is_updating = False
+
+        # initialises the class fields/widgets
+        self.init_class_fields()
+        self.setup_tab_objects()
+
+    def init_class_fields(self):
+
+        # sets the layout propeties
+        self.tab_layout.setContentsMargins(0, 0, 0, 0)
+
+        # sets the main widget names
+        self.setLayout(self.tab_layout)
+
+    def setup_tab_objects(self):
+
+        # sets the tree-view properties
+        self.tree_prop.setLineWidth(1)
+        self.tree_prop.setColumnCount(2)
+        self.tree_prop.setIndentation(12)
+        self.tree_prop.setItemsExpandable(True)
+        self.tree_prop.setStyleSheet(self.tree_style)
+        self.tree_prop.setHeaderLabels(self.tree_hdr)
+        self.tree_prop.setAlternatingRowColors(False)
+
+        # creates the parameter objects
+        self.create_tree_items(self.tree_prop, self.pp_step_para.p_props)
+
+        # adds the tree widget to the parent widget
+        self.tab_layout.addWidget(self.tree_prop)
+
+        for pk, pv in self.pp_step_para.p_props.items():
+            if pv['p_dep'] is not None:
+                c_txt = self.findChild(QWidget, name=pk).currentText()
+                self.set_dependent_widget_props(pv['p_dep'], c_txt)
+
+        # task specific updates
+        match self.pp_step_para.pp_step:
+            case 'drift_correct':
+                # case is drift correction
+                h_obj = self.findChild(QWidget, name='use_torch')
+                h_obj.setEnabled(is_torch_available)
+
+        # resizes the columns to fit, then resets to fixed size
+        tree_header = self.tree_prop.header()
+        tree_header.setDefaultAlignment(cf.align_type['center'])
+        tree_header.setStyleSheet(self.tree_header_style)
+        tree_header.resizeSection(0, self.col_width)
+        tree_header.setFont(self.item_hdr)
+
+    def create_tree_items(self, item_p, p_prop, p_str_p=[]):
+
+        # initialisations
+        is_top_level = len(p_str_p) == 0
+
+        for pk, pv in p_prop.items():
+            # initialisations
+            p_str = p_str_p + [pk]
+            cb_fcn_base = pfcn(self.prop_update, pv, p_str)
+            h_obj, p_value0, p_type = None, self.get(p_str), pv['type']
+
+            # creates the new item
+            item = QTreeWidgetItem(item_p)
+            item.setText(0, pv['name'])
+
+            match p_type:
+                case 'subgroup':
+                    # case is a sub-grouping
+
+                    # sets the item properties
+                    item.setFont(0, self.item_hdr)
+                    item.setFirstColumnSpanned(True)
+                    item.setExpanded(True)
+
+                    # creates the sub-group parmaeters
+                    self.create_tree_items(item, pv['value'], p_str)
+
+                case 'combobox':
+                    # case is a combobox
+
+                    # case is a combobox
+                    h_obj = QComboBox()
+                    h_obj.addItems(pv['p_list'])
+
+                    # sets the widget properties
+                    h_obj.setCurrentIndex(pv['p_list'].index(p_value0))
+                    h_obj.setFont(self.item_child_font)
+
+                    # sets the object callback functions
+                    cb_fcn = pfcn(cb_fcn_base, h_obj)
+                    h_obj.currentIndexChanged.connect(cb_fcn)
+
+                case 'checkbox':
+                    # case is a checkbox
+
+                    # case is a checkbox
+                    h_obj = QCheckBox()
+
+                    # sets the widget properties
+                    h_obj.setCheckState(cf.chk_state[p_value0])
+                    h_obj.setStyleSheet("padding-left: 5px;")
+
+                    # sets the object callback functions
+                    cb_fcn = pfcn(cb_fcn_base, h_obj)
+                    h_obj.clicked.connect(cb_fcn)
+
+                case p_type if p_type in ['edit_float', 'edit_int']:
+                    # case is a float/integer editbox
+
+                    # creates the lineedit widget
+                    p_value = self.convert_edit_value(p_value0)
+                    h_obj = cw.create_line_edit(None, p_value, font=self.item_child_font, is_clickable=True)
+
+                    # sets the object callback functions
+                    cb_fcn = pfcn(cb_fcn_base, h_obj)
+                    h_obj.editingFinished.connect(cb_fcn)
+
+                    # sets the object clicked callback function
+                    cb_fcn_click = pfcn(self.edit_click, pv, p_str, h_obj)
+                    h_obj.clicked.connect(cb_fcn_click)
+
+            if h_obj is not None:
+                # sets the tree widget properties
+                h_obj.setObjectName(pk)
+                h_obj.setFixedHeight(self.item_row_size)
+                self.tree_prop.setItemWidget(item, 1, h_obj)
+
+                # sets the tree item properties
+                item.setFont(0, self.item_font)
+                item.setTextAlignment(0, self.lbl_align_r)
+
+            # adds the item to the parent
+            item_p.addTopLevelItem(item) if is_top_level else item_p.addChild(item)
+
+    # ---------------------------------------------------------------------------
+    # Widget Update Event Functions
+    # ---------------------------------------------------------------------------
+
+    def prop_update(self, p_prop, p_str, h_obj):
+
+        # if manually updating elsewhere, then exit
+        if self.is_updating:
+            return
+
+        if isinstance(h_obj, QCheckBox):
+            self.check_prop_update(h_obj, p_prop, p_str)
+
+        elif isinstance(h_obj, QComboBox):
+            self.combo_prop_update(h_obj, p_prop, p_str)
+
+        elif isinstance(h_obj, QLineEdit):
+            self.edit_prop_update(h_obj, p_prop, p_str)
+
+    def check_prop_update(self, h_obj, p_prop, p_str):
+
+        # updates the value field
+        self.set(p_str, h_obj.isChecked())
+        self.prop_change.emit()
+
+    def combo_prop_update(self, h_obj, p_prop, p_str):
+
+        # parameter specific updates
+        c_txt = h_obj.currentText()
+        if p_prop['p_dep'] is not None:
+            self.set_dependent_widget_props(p_prop['p_dep'], c_txt)
+
+        # updates the property field
+        self.set(p_str, c_txt)
+        self.prop_change.emit()
+
+    def edit_prop_update(self, h_obj, p_prop, p_str):
+
+        if self.is_updating:
+            return
+
+        # field retrieval
+        p_min = p_prop['p_min']
+        p_max = p_prop['p_max']
+        is_int = p_prop['type'] == 'edit_int'
+
+        # object properties
+        new_str = h_obj.text()
+        if len(new_str) == 0:
+            self.is_updating = True
+            h_obj.setText("NaN")
+            self.is_updating = False
+
+            self.set(p_str, None)
+            return
+
+        # determines if the new value is valid
+        chk_val = cf.check_edit_num(new_str, min_val=p_min, max_val=p_max, is_int=is_int)
+        if chk_val[1] is None:
+            # converts the editbox value (parameter dependent)
+            new_val = int(chk_val[0]) if is_int else chk_val[0]
+
+            # updates the parameter field
+            self.set(p_str, new_val)
+            self.prop_change.emit()
+
+        else:
+            # otherwise, reset to the previous valid value
+            p_val_pr = self.get(p_str)
+            h_obj.setText(self.convert_edit_value(p_val_pr))
+
+    def edit_click(self, p_prop, p_str, h_obj):
+
+        if h_obj.text() == "NaN":
+            self.is_updating = True
+            h_obj.setText("")
+            self.is_updating = False
+
+    # ---------------------------------------------------------------------------
+    # Class Setter Methods
+    # ---------------------------------------------------------------------------
+
+    def set_dependent_widget_props(self, p_dep, c_txt):
+
+        for pk, pv in p_dep.items():
+            h_obj = self.findChild(QWidget, name=pk)
+            h_obj.setEnabled(c_txt in pv)
+
+    # ---------------------------------------------------------------------------
+    # Static Methods
+    # ---------------------------------------------------------------------------
+
+    @staticmethod
+    def convert_edit_value(p_value):
+
+        if p_value is None:
+            return "NaN"
+
+        else:
+            return '%g' % p_value
 
 # ----------------------------------------------------------------------------------------------------------------------
 

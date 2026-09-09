@@ -30,7 +30,7 @@ from spykit.plotting.utils import PlotManager
 from spykit.props.utils import PropManager
 from spykit.common.property_classes import SessionWorkBook, TimeManager
 from spykit.common.postprocess import PostMemMap
-from spykit.info.preprocess import PreprocessSetup, pp_flds
+from spykit.info.preprocess import PreprocessSetup, PreprocessPara, pp_flds
 from spykit.threads.utils import ThreadWorker
 from spykit.widgets.open_session import OpenSession
 from spykit.widgets.default_dir import DefaultDir
@@ -101,6 +101,7 @@ class MainWindow(QMainWindow):
         self.plot_manager = PlotManager(self, dlg_width - info_width)
         self.prop_manager = PropManager(self, info_width)
         self.sync_manager = PrepSyncManager(self)
+        self.prep_para = PreprocessPara(self)
         self.menu_bar = MenuBar(self)
 
         # boolean class fields
@@ -533,12 +534,11 @@ class MainWindow(QMainWindow):
     def run_preproccessing(self, prep_obj):
 
         # runs the session pre-processing
-        prep_tab = self.info_manager.get_info_tab('preprocess')
         if isinstance(prep_obj, tuple):
             # case is running from the Preprocessing dialog
             prep_task, prep_opt = prep_obj
             per_shank, concat_runs = prep_opt
-            pp_config = prep_tab.setup_config_dict(prep_task)
+            pp_config = self.prep_para.setup_config_dict(prep_task)
 
         else:
             # case is running from loading session
@@ -870,6 +870,7 @@ class MenuBar(QObject):
         self.prop_manager = self.sp_main.prop_manager
         self.plot_manager = self.sp_main.plot_manager
         self.time_manager = self.sp_main.time_manager
+        self.prep_para = self.sp_main.prep_para
         self.bombcell_dlg = self.sp_main.bombcell_dlg
 
         # tool/menubar setup
@@ -1225,9 +1226,7 @@ class MenuBar(QObject):
         # sets/runs the config field/routines
         if (ses_data['configs'] is not None) and len(ses_data['configs'].prep_task):
             # resets the preprocessing configuration fields
-            prep_info = self.info_manager.get_info_tab('preprocess')
-            prep_info.configs.clear()
-            prep_info.configs = ses_data['configs']
+            self.prep_para.reset_config_dict(ses_data['configs'])
             self.session_obj.set_prep_opt(ses_data['configs'].prep_opt)
 
             # enables the post-preprocessing menu items
@@ -1434,7 +1433,6 @@ class MenuBar(QObject):
 
         # field retrieval
         ses_obj = self.session_obj
-        prep_tab = self.info_manager.get_info_tab('preprocess')
 
         # info/property parameter retrieval
         info_list = ["preprocess", "status"]
@@ -1443,7 +1441,7 @@ class MenuBar(QObject):
         # sets up the session save data dictionary
         session_data = {
             'state': ses_obj.state,
-            'configs': prep_tab.configs,
+            'configs': self.prep_para.configs,
             'session_props': ses_obj.session.get_session_props(),
             'sorting_props': ses_obj.session.sort_obj.s_props,
             'prop_para': self.prop_manager.get_prop_para(prop_list),
@@ -1594,8 +1592,7 @@ class MenuBar(QObject):
         self.session_obj.clear_preprocessing()
 
         # resets the preprocessing tab properties
-        prep_tab = self.info_manager.get_info_tab('preprocess')
-        prep_tab.configs.clear()
+        self.prep_para.configs.clear()
 
         # resets the raw experimental run names
         self.sp_main.info_manager.reset_run_names(False)

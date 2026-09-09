@@ -50,7 +50,7 @@ class InfoManager(QObject):
     table_name = 'Channel/Unit Information'
     table_tab_lbl = ['Channel Info', 'Unit Info', 'Status Info']
     table_tab_type = ['channel', 'unit']
-    tab_type = ['channel', 'preprocess', 'status', 'unit']
+    tab_type = ['channel', 'status', 'unit']
 
     # font types
     table_font = cw.create_font_obj(size=8)
@@ -189,15 +189,6 @@ class InfoManager(QObject):
                     # connects the other tab widget slot functions
                     tab_widget.start_recalc.connect(self.start_recalc)
                     tab_widget.cancel_recalc.connect(self.cancel_recalc)
-
-                case 'preprocess':
-                    # case is the preprocessing tab
-
-                    # connects the other tab widget slot functions
-                    tab_widget.bad_channel_fcn = self.session_obj.get_bad_channels
-                    tab_widget.keep_channel_fcn = self.session_obj.get_keep_channels
-                    tab_widget.removed_channel_fcn = self.session_obj.get_removed_channels
-                    tab_widget.is_channel_removed = self.session_obj.is_channel_removed
 
             # appends the tab to the tab group
             self.tab_group_table.addTab(tab_widget, t_lbl)
@@ -788,10 +779,6 @@ class InfoManager(QObject):
                 # case is the unit information tab
                 self.unit_check.emit(i_row)
 
-            case 'preprocess':
-                # case is the preprocessing information tab
-                pass
-
     # ---------------------------------------------------------------------------
     # Progressbar Job Functions
     # ---------------------------------------------------------------------------
@@ -849,8 +836,11 @@ class InfoManager(QObject):
         # retrieves the parameter values for each info type
         for pt, pv in p_para.items():
             # retrieves the property tab object and parameter fields
-            p_tab = self.get_info_tab(pt)
-            p_tab.is_updating = True
+            if pt in self.t_types:
+                p_tab = self.get_info_tab(pt)
+                p_tab.is_updating = True
+            else:
+                continue
 
             # resets the parameter fields
             for gt, gv in p_tab.p_props.items():
