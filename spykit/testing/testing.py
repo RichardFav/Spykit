@@ -11,7 +11,7 @@ import spykit.common.common_widget as cw
 import spykit.common.spikeinterface_func as sf
 import spykit.threads.utils as tw
 from spykit.widgets.bomb_cell import BombCellSolver
-from spykit.info.preprocess import PreprocessInfoTab, PreprocessSetup
+from spykit.info.preprocess import PreprocessSetup
 from spykit.widgets.spike_sorting import SpikeSortingDialog, SpikeSortPara
 import spykit.info.utils as ui
 
@@ -92,7 +92,7 @@ class Testing(object):
 
             case 11:
                 # case is the property editor test
-                return self.run_prop_editor_test()
+                pass
 
             case 12:
                 # case is the preprocessing setup test
@@ -299,25 +299,6 @@ class Testing(object):
             time_range=(0, 0.5),
             show_channel_ids=False,  # also, "mode"="map" or "line"
         )
-
-        return h_app
-
-    def run_prop_editor_test(self):
-
-        # dimensions
-        dlg_hght, dlg_wid = 400, 300
-
-        # main window widget
-        h_app = QDialog()
-        h_app.setFixedSize(dlg_wid, dlg_hght)
-
-        # creates the dialog layout
-        main_layout = QVBoxLayout()
-        h_app.setLayout(main_layout)
-
-        # creates the button
-        h_prep_tab = PreprocessInfoTab('preprocess')
-        main_layout.addWidget(h_prep_tab)
 
         return h_app
 

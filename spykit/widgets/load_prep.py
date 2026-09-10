@@ -4,14 +4,17 @@ import re
 import numpy as np
 from glob import glob
 from pathlib import Path
+from copy import deepcopy
 from functools import partial as pfcn
 
 # spykit module imports
 import spykit.common.common_func as cf
 import spykit.common.common_widget as cw
+from spykit.info.preprocess import pp_flds
 
 # spikeinterface module imports
 import spikeinterface.core as si
+import spikeinterface.preprocessing as spre
 
 # pyqt6 module import
 from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QGridLayout,
@@ -27,6 +30,7 @@ class LoadPrepGroup(object):
     # regular expression fields
     r_run = re.compile(r'run-[0-9]{3}_g0_imec0')
     r_shank = re.compile(r'shank_[0-9]')
+    r_prov = re.compile(r'provenance.*')
 
     def __init__(self, pp_path0, is_concat):
         super(LoadPrepGroup, self).__init__()
@@ -56,10 +60,27 @@ class LoadPrepGroup(object):
             self.n_shank, s_type = 1, 'Grouped Shank'
             ii_s = np.zeros(len(pp_path0), dtype=int)
 
+        # memory allocation
+        A = np.empty((self.n_run, self.n_shank), dtype=object)
+        self.pp_path, self.pr_file = (deepcopy(A) for _ in range(2))
+
         # sets the preprocessing data folders
-        self.pp_path = np.empty((self.n_run, self.n_shank), dtype=object)
         for i_row, i_col, pp_0 in zip(ii_r, ii_s, pp_path0):
+            # preprocessing data folder
             self.pp_path[i_row, i_col] = pp_0
+
+            # preprocessing provenance file and parameter dictionary
+            s_path = os.path.join(str(pp_0), '**', 'provenance.*')
+            pr_file_new = glob(s_path, recursive=True)[0]
+            self.pr_file[i_row, i_col] = pr_file_new
+
+        # retrieves the parameter dictionary
+        self.pp_dict = spre.get_preprocessing_dict_from_file(pr_file_new)
+
+        # retrieves the preprocessing steps
+        self.pp_steps = []
+        for i_pk, pk in enumerate(self.pp_dict.keys()):
+            self.pp_steps.append(f'Step #{i_pk + 1} = {pp_flds[pk]}')
 
         # other class fields
         self.pp_type = f"{r_type}/{s_type}"
@@ -91,7 +112,7 @@ class LoadPrep(QDialog):
     # widget dimensions
     x_gap = 5
     width_dlg = 380
-    hght_gbox = 150
+    hght_listbox = 150
     hght_button_frame = 40
 
     # string class fields
@@ -118,16 +139,19 @@ class LoadPrep(QDialog):
         # class layouts
         self.main_layout = QVBoxLayout()
         self.prep_layout = QVBoxLayout()
+        self.task_layout = QVBoxLayout()
         self.info_layout = QHBoxLayout()
         self.button_layout = QHBoxLayout()
 
         # container class widgets
         self.prep_group = QGroupBox("Preprocessed Datasets")
         self.info_frame = QFrame(self)
+        self.task_frame = QFrame(self)
         self.button_frame = QFrame(self)
 
         # other class widgets
         self.prep_list = QListWidget()
+        self.task_list = QListWidget()
         self.info_lbls = []
         self.cont_button = []
 
@@ -138,8 +162,12 @@ class LoadPrep(QDialog):
         # initialises the class fields/objects
         self.init_class_fields()
         self.init_prep_group()
+        self.init_task_group()
         self.init_info_group()
         self.init_cont_buttons()
+
+        #
+        self.prep_list_click()
 
     # ---------------------------------------------------------------------------
     # Class Property Widget Setup Functions
@@ -172,7 +200,7 @@ class LoadPrep(QDialog):
 
         # creates the groupbox object
         self.prep_group.setLayout(self.prep_layout)
-        self.prep_group.setFixedHeight(self.hght_gbox)
+        self.prep_group.setFixedHeight(self.hght_listbox)
         self.prep_group.setFont(cw.font_panel)
         self.main_layout.addWidget(self.prep_group)
 
@@ -188,6 +216,24 @@ class LoadPrep(QDialog):
         # sets the other listbox properties
         self.prep_list.setCurrentRow(self.i_sel_pp)
         self.prep_list.itemClicked.connect(self.prep_list_click)
+        self.prep_list.setStyleSheet(self.border_style)
+
+    def init_task_group(self):
+
+        # creates the groupbox object
+        self.task_frame.setLayout(self.task_layout)
+        self.task_frame.setFixedHeight(self.hght_listbox)
+        self.task_frame.setFont(cw.font_panel)
+        self.main_layout.addWidget(self.task_frame)
+
+        # sets the button frame properties
+        self.task_frame.setLayout(self.button_layout)
+        self.task_frame.setStyleSheet(self.frame_border_style)
+
+        # creates the preprocessed items listbox
+        self.task_layout.addWidget(self.task_list)
+        self.task_list.setFont(cw.create_font_obj(size=9))
+        self.task_list.setStyleSheet(self.border_style)
 
     def init_info_group(self):
 
@@ -195,7 +241,7 @@ class LoadPrep(QDialog):
         txt_font = cw.create_font_obj(size=9)
 
         # sets the frame/layout properties
-        self.main_layout.addWidget(self.info_frame)
+        self.task_layout.addWidget(self.info_frame)
         self.info_frame.setContentsMargins(0, self.x_gap, 0, self.x_gap)
         self.info_frame.setLayout(self.info_layout)
         self.info_frame.setStyleSheet(self.frame_border_style)
@@ -254,13 +300,24 @@ class LoadPrep(QDialog):
 
         # updates the selected preprocessed dataset
         self.i_sel_pp = self.prep_list.currentRow()
+        pp_sel = self.pp_obj[self.i_sel_pp]
 
         # updates the text labels
         for i_lbl in self.info_lbls:
-            p_val = self.pp_obj[self.i_sel_pp].get_field(i_lbl.objectName())
+            p_val = pp_sel.get_field(i_lbl.objectName())
             i_lbl.set_label(p_val)
 
+        # resets the preprocessing steps listbox
+        self.task_list.clear()
+        self.task_list.addItems(pp_sel.pp_steps)
+
     def load_button_click(self):
+
+        pp_path = 'C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/spikeglx/tiny_example/derivatives/sub-001/ses-001/ephys/concat_run/preprocessing/shank_0'
+        pp_file = Path(pp_path) / 'provenance.json'
+        pp_file_2 = Path(pp_path) / 'provenance.pkl'
+
+        rec = si.load(pp_file, base_folder=pp_path)
 
         pass
 

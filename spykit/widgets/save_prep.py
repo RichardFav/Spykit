@@ -278,8 +278,8 @@ class SavePrep(QDialog):
             time.sleep(0.1)
 
         # sets up the preprocessing output data
-        pp_rec = self.setup_prep_output_data()
-        save_data = (pp_rec, self.path_curr, self.n_worker)
+        pp_rec, pp_anno = self.setup_prep_output_data()
+        save_data = (pp_rec, pp_anno, self.path_curr, self.n_worker)
 
         # creates the threadworker object
         self.t_worker = SavePrepThreadWorker(self.sp_main, self.sync_manager, save_data)
@@ -292,7 +292,7 @@ class SavePrep(QDialog):
     def setup_prep_output_data(self):
 
         # field retrieval
-        pp_rec = []
+        pp_rec, pp_anno = [], []
 
         # outputs the preprocessed data for all specified experimental runs
         for i_run in range(self.get_run_count()):
@@ -310,7 +310,9 @@ class SavePrep(QDialog):
                     i_run, "grouped", self.pp_data_flds[self.i_sel_pp])
                 pp_rec.append(dill.dumps(pp_rec_new))
 
-        return pp_rec
+            pp_anno.append(pp_rec_new._annotations)
+
+        return pp_rec, pp_anno
 
     def save_prep_data_progress(self, i_out, n_out):
 

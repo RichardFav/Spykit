@@ -51,7 +51,9 @@ pp_flds = {
     'waveforms': 'Wave Forms',
     'sparce_opt': 'Sparsity Options',
     'interpolate_channels': 'Channel Interpolation',
+    'interpolate_bad_channels': 'Bad Channel Interpolation',
     'remove_channels': 'Remove Bad Channels',
+    'astype': 'Drift Correction',
 }
 
 # other dimensions
@@ -653,161 +655,6 @@ class PreprocessPara(object):
         if pp_drift.max_bin_s < pp_drift.p_para['estimate_motion_kwargs']['bin_s']:
             p_kwargs['bin_s'] = pp_drift.max_bin_s
             m_kwargs['value']['bin_s']['value'] = pp_drift.max_bin_s
-
-# ----------------------------------------------------------------------------------------------------------------------
-
-"""
-    PreprocessInfoTab:
-"""
-
-
-class PreprocessInfoTab(InfoWidgetPara):
-    def __init__(self, sp_main, t_str):
-        super(PreprocessInfoTab, self).__init__(sp_main, t_str, layout=QFormLayout)
-
-        # class field initialisation
-        self.bad_channel_fcn = None
-        self.keep_channel_fcn = None
-        self.removed_channel_fcn = None
-        self.is_channel_removed = None
-        self.configs = PreprocessConfig()
-
-        # initialises the major widget groups
-        self.setup_prop_fields()
-        self.init_filter_edit()
-        self.init_property_frame()
-
-    # ---------------------------------------------------------------------------
-    # Class Property Widget Setup Functions
-    # ---------------------------------------------------------------------------
-
-    def setup_prop_fields(self):
-
-        # list arrays
-        mode_list = ['global', 'local']
-        operator_list = ['median', 'average']
-        reference_list = ['global', 'single', 'local']
-        preset_list = ['dredge', 'dredge_fast', 'nonrigid_accurate',
-                       'nonrigid_fast_and_accurate', 'rigid_fast', 'kilosort_like']
-
-        # sets up the parameter fields
-        pp_str = {
-            # bandpass filter parameters
-            'bandpass_filter': {
-                'freq_min': cw.create_para_field('Min Frequency', 'edit', 300),
-                'freq_max': cw.create_para_field('Max Frequency', 'edit', 6000),
-                'margin_ms': cw.create_para_field('Margin (ms)', 'edit', 5),
-            },
-
-            # common reference parameters
-            'common_reference': {
-                'operator': cw.create_para_field('Operator', 'combobox', operator_list[0], p_list=operator_list),
-                'reference': cw.create_para_field('Reference', 'combobox', reference_list[0], p_list=reference_list),
-            },
-
-            # phase shift parameters
-            'phase_shift': {
-                'margin_ms': cw.create_para_field('Margin (ms)', 'edit', 40),
-            },
-
-            # drift correction parameters
-            'drift_correct': {
-                'preset': cw.create_para_field('Preset', 'combobox', preset_list[0], p_list=preset_list),
-            },
-
-            # # whitening parameters
-            # 'whitening': {
-            #     'apply_mean': cw.create_para_field('Subtract Mean', 'checkbox', False),
-            #     'mode': cw.create_para_field('Mode', 'combobox', mode_list[0], p_list=mode_list),
-            #     'radius_um': cw.create_para_field('Radius (um)', 'edit', 100),
-            # },
-
-            # # sparsity option parameters
-            # 'sparce_opt': {
-            #     'sparse': cw.create_para_field('Use Sparsity?', 'checkpanel', True, ch_fld=pp_sp),
-            # },
-        }
-
-        # sets up the property fields for each section
-        for pp_k in pp_flds.keys():
-            # sets up the parent fields
-            self.p_props[pp_k] = {}
-            if pp_k not in pp_str:
-                continue
-
-            self.p_prop_flds[pp_k] = {
-                'name': pp_flds[pp_k],
-                'props': pp_str[pp_k],
-            }
-
-            # sets the children properties
-            for k, p in pp_str[pp_k].items():
-                self.p_props[pp_k][k] = p['value']
-
-    # ---------------------------------------------------------------------------
-    # Preprocessing Config Functions
-    # ---------------------------------------------------------------------------
-
-    def setup_config_dict(self, prep_task, is_sorting=False):
-
-        # clears the configuration array
-        self.configs.clear()
-
-        # determines if there are any channels to remove
-        rmv_channels = self.get_remove_channels()
-        if len(rmv_channels) and ('Remove Bad Channels' not in prep_task):
-            # if so, then append the remove channels step
-            prep_task = ['Remove Bad Channels'] + prep_task
-
-        # adds the preparation tasks to the configuration field
-        for pp_t in prep_task:
-            pp = prep_task_map[pp_t]
-
-            match pp:
-                case 'interpolate_channels':
-                    # case is interpolate channel step
-                    c_dict = {
-                        'channel_ids': self.get_interp_channels(),
-                    }
-
-                    # adds the preprocessing task to the list
-                    self.configs.add_prep_task(pp, c_dict, pp_t)
-
-                case 'remove_channels':
-                    # case is remove channel step
-
-                    # sets up the config dictionary
-                    c_dict = {
-                        'channel_ids': rmv_channels,
-                    }
-
-                    # adds the preprocessing task to the list
-                    self.configs.add_prep_task(pp, c_dict, pp_t)
-
-                case _:
-                    # case is another step type
-                    self.configs.add_prep_task(pp, self.p_props[pp], pp_t)
-
-        # sorting?
-        if is_sorting:
-            pass
-
-        # returns the configuration dictionaries
-        return self.configs.setup_config_dicts()
-
-    def get_remove_channels(self):
-
-        not_rmv = np.logical_not(self.is_channel_removed())
-        not_keep = np.logical_not(self.keep_channel_fcn())
-        return self.bad_channel_fcn(['out'], not_keep, not_rmv)[0]
-
-    def get_interp_channels(self):
-
-        is_keep = self.keep_channel_fcn()
-        not_rmv = np.logical_not(self.is_channel_removed())
-        is_feas = np.logical_or(is_keep, not_rmv)
-
-        return self.bad_channel_fcn(['dead', 'noise'], is_feas=is_feas)[0]
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -1572,7 +1419,7 @@ class PreprocessSetup(QMainWindow):
             self.set_button_props()
 
         # sets the close button properties
-        self.button_control[5].setEnabled(state)
+        self.button_control[6].setEnabled(state)
 
         # pause for update...
         time.sleep(0.01)
@@ -2164,7 +2011,7 @@ class RunPreProcessing(QObject):
         for i_step, (step_num, pp_info) in enumerate(self.pp_steps_new.items()):
             # updates the progressbar
             run_pp_step = True
-            pp_name, pp_opt = pp_info
+            pp_name, pp_opt = deepcopy(pp_info)
             self.update_prep_prog(3, i_step, pp_name)
 
             # retrieves the preprocessing step parameters
@@ -2181,10 +2028,21 @@ class RunPreProcessing(QObject):
                 #     run_pp_step = False
 
             if run_pp_step:
-                if (pp_name == 'drift_correct') and (pp_data[prev_name]._dtype.kind == 'i'):
-                    # special case - the motion correction code only works on float32 data types
-                    #                if the data is uint16, then covert before running
-                    preprocessed_rec = self.pp_funcs[pp_name](pp_data[prev_name].astype('float32'), **pp_opt)
+                if (pp_name == 'drift_correct'):
+                    # if drift correction, flag outputting the motion information
+                    pp_opt['output_motion_info'] = True
+
+                    if (pp_data[prev_name]._dtype.kind == 'i'):
+                        # special case - the motion correction code only works on float32 data types
+                        #                if the data is uint16, then covert before running
+                        preprocessed_rec, pp_info = (
+                            self.pp_funcs[pp_name](pp_data[prev_name].astype('float32'), **pp_opt))
+                    else:
+                        preprocessed_rec, pp_info = (
+                            self.pp_funcs[pp_name](pp_data[prev_name], **pp_opt))
+
+                    # appends the parameter field to the preprocessed recording
+                    preprocessed_rec.set_annotation('parameters', pp_info['parameters'])
 
                 elif (pp_name == 'remove_channels') and ('channel_ids' in pp_opt):
                     ch_ids = pp_data[prev_name].channel_ids
