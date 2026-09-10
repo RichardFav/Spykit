@@ -189,6 +189,7 @@ class MainWindow(QMainWindow):
 
         # initialises the time manager
         self.time_manager.init_class_fields()
+        self.prep_para.bin_size_check()
 
         # -----------------------------------------------------------------------
         # Plot View Setup
@@ -870,8 +871,8 @@ class MenuBar(QObject):
         self.prop_manager = self.sp_main.prop_manager
         self.plot_manager = self.sp_main.plot_manager
         self.time_manager = self.sp_main.time_manager
-        self.prep_para = self.sp_main.prep_para
         self.bombcell_dlg = self.sp_main.bombcell_dlg
+        self.prep_para = self.sp_main.prep_para
 
         # tool/menubar setup
         self.menu_bar = None
@@ -1581,10 +1582,11 @@ class MenuBar(QObject):
 
         # prompts the user if they want to clear
         q_str = "Are you sure you want to clear the existing data processing?"
-        u_choice = QMessageBox.question(self.sp_main, 'Clear Preprocessing?', q_str, cf.q_yes_no, cf.q_yes)
+        u_choice = QMessageBox.question(
+            self.sp_main, 'Clear Preprocessing?', q_str, cf.q_yes_no, cf.q_yes)
         if u_choice == cf.q_no:
             # exit if the user cancelled
-            return
+            return False
 
         # resets the channel data fields
         self.session_obj.channel_data.is_keep[:] = True
@@ -1611,6 +1613,8 @@ class MenuBar(QObject):
 
         # clears the spike-sorting fields
         self.clear_spike_sorting(prompt_user=False)
+
+        return True
 
     # ---------------------------------------------------------------------------
     # Spike Sorting Menubar Functions

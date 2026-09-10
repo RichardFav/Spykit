@@ -71,15 +71,17 @@ except ImportError:
 
 class PreprocessStepPara(object):
 
-    def __init__(self, pp_step):
+    def __init__(self, time_manager, pp_step):
         super(PreprocessStepPara, self).__init__()
 
         # input arguments
         self.pp_step = pp_step
+        self.time_manager = time_manager
 
         # other class fields
         self.p_para = {}
         self.p_props = None
+        self.max_bin_s = None
 
         # sets up the parameter dictionary
         self.setup_para_groups()
@@ -135,6 +137,7 @@ class PreprocessStepPara(object):
 
                 # combobox lists
                 direction_list = ["x", "y", "z"]
+                shape_list = ['gaussian', 'rect']
                 peak_list = ['neg', 'pos', 'both']
                 preset_list = ['dredge', 'dredge_fast', 'nonrigid_accurate',
                                'nonrigid_fast_and_accurate', 'rigid_fast', 'kilosort_like']
@@ -156,27 +159,24 @@ class PreprocessStepPara(object):
                         #                                p_list=detect_list),
                         'peak_sign': cw.create_para_field('Peak Sign', 'combobox', peak_list[0],
                                                           p_list=peak_list),
-                        'detect_threshold': cw.create_para_field('Detection Threshold', 'edit_float', 5.0),
-                        'exclude_sweep_ms': cw.create_para_field('Exclusion Sweep (ms)', 'edit_float', 1.0),
+                        'detect_threshold': cw.create_para_field('Detection Threshold', 'edit_float', 8.0),
+                        'exclude_sweep_ms': cw.create_para_field('Exclusion Sweep (ms)', 'edit_float', 0.8),
+                        'radius_um': cw.create_para_field('Radius (ms)', 'edit_float', 80.0),
                     }),
                     'localize_peaks_kwargs': cw.create_para_field('Spatial Localisation', 'subgroup', {
                         'method': cw.create_para_field('Method', 'combobox', localise_list[0],
                                                        p_list=localise_list),
-                        'radius_um': cw.create_para_field('Radius (um)', 'edit_float', None),
                     }),
                     'estimate_motion_kwargs': cw.create_para_field('Motion Estimation', 'subgroup', {
                         'direction': cw.create_para_field('Probe Direction', 'combobox', direction_list[1],
                                                           p_list=direction_list),
-                        'bin_s': cw.create_para_field('Temporal Bin Size (s)', 'edit_float', 1.0),
-                        'win_step_um': cw.create_para_field('Spatial Bin Size (um)', 'edit_float', None),
+                        'bin_s': cw.create_para_field('Temporal Bin Size (s)', 'edit_float', 2.0, p_min=0.1),
+                        'win_shape': cw.create_para_field('Window Shape', 'combobox', shape_list[0],
+                                                          p_list=shape_list),
+                        'win_step_um': cw.create_para_field('Spatial Step Size (um)', 'edit_float', 400.0),
+                        'win_scale_um': cw.create_para_field('Spatial Bin Size (um)', 'edit_float', 400.0),
                         'rigid': cw.create_para_field('Assume Rigid Drift?', 'checkbox', False),
                     }),
-                    # 'interpolate_motion_kwargs': cw.create_para_field('Motion Interpolation', 'subgroup', {
-                    #     'spatial_interpolation_method': cw.create_para_field(
-                    #         'Method', 'combobox', interp_list[0], p_list=interp_list),
-                    #     'border_mode': cw.create_para_field(
-                    #         'Border Mode', 'combobox', border_list[0], p_list=border_list),
-                    # }),
                 }
 
             case 'whitening':
@@ -278,6 +278,180 @@ class PreprocessStepPara(object):
                     # case is the other parameters
                     self.p_para[p_str[0]][p_str[1]] = p_val
 
+    # ---------------------------------------------------------------------------
+    # Miscellaneous Functions
+    # ---------------------------------------------------------------------------
+
+    def reset_drift_preset_para(self, c_txt):
+
+        # pre-calculations
+        default_bin_s = np.max([self.max_bin_s, 1.0])
+
+        match c_txt:
+            case 'dredge':
+                # case is dredge
+                p_para_new = {
+                    "detect_kwargs": dict(
+                        peak_sign="neg",
+                        detect_threshold=8.0,
+                        exclude_sweep_ms=0.8,
+                        radius_um=80.0,
+                    ),
+                    "localize_peaks_kwargs": dict(
+                        method="monopolar_triangulation",
+                    ),
+                    "estimate_motion_kwargs": dict(
+                        method="dredge_ap",
+                        bin_s=default_bin_s,
+                        direction="y",
+                        rigid=False,
+                        win_shape="gaussian",
+                        win_step_um=400.0,
+                        win_scale_um=400.0,
+                    ),
+                }
+
+            case 'medicine':
+                # case is medicine
+                p_para_new = {
+                    "localize_peaks_kwargs": dict(
+                        method="monopolar_triangulation",
+                    ),
+                    "estimate_motion_kwargs": dict(
+                        method="medicine",
+                        bin_s=default_bin_s,
+                    ),
+                }
+
+            case 'dredge_fast':
+                # case is faster dredge
+                p_para_new = {
+                    "detect_kwargs": dict(
+                        peak_sign="neg",
+                        detect_threshold=8.0,
+                        exclude_sweep_ms=0.8,
+                        radius_um=80.0,
+                    ),
+                    "localize_peaks_kwargs": dict(
+                        method="grid_convolution",
+                    ),
+                    "estimate_motion_kwargs": dict(
+                        method="dredge_ap",
+                        bin_s=default_bin_s,
+                        direction="y",
+                        rigid=False,
+                        win_shape="gaussian",
+                        win_step_um=400.0,
+                        win_scale_um=400.0,
+                        win_margin_um=None,
+                    ),
+                }
+
+            case 'nonrigid_accurate':
+                # case is non-rigid accurate (dredge ancestor)
+                p_para_new = {
+                    "detect_kwargs": dict(
+                        peak_sign="neg",
+                        detect_threshold=8.0,
+                        exclude_sweep_ms=0.8,
+                        radius_um=80.0,
+                    ),
+                    "localize_peaks_kwargs": dict(
+                        method="monopolar_triangulation"
+                    ),
+                    "estimate_motion_kwargs": dict(
+                        method="decentralized",
+                        bin_s=default_bin_s,
+                        direction="y",
+                        rigid=False,
+                    ),
+                }
+
+            case 'nonrigid_fast_and_accurate':
+                # case is non-rigid fast & accurate (dredge ancestor)
+                p_para_new = {
+                    "detect_kwargs": dict(
+                        peak_sign="neg",
+                        detect_threshold=8.0,
+                        exclude_sweep_ms=0.8,
+                        radius_um=80.0,
+                    ),
+                    "localize_peaks_kwargs": dict(
+                        method="grid_convolution"
+                    ),
+                    "estimate_motion_kwargs": dict(
+                        method="decentralized",
+                        bin_s=default_bin_s,
+                        direction="y",
+                        rigid=False
+                    ),
+                }
+
+            case 'rigid_fast':
+                # case is fast rigid estimation (with COM)
+                p_para_new = {
+                    "detect_kwargs": dict(
+                        peak_sign="neg",
+                        detect_threshold=8.0,
+                        exclude_sweep_ms=0.8,
+                        radius_um=75.0,
+                    ),
+                    "localize_peaks_kwargs": dict(
+                        method="center_of_mass"
+                    ),
+                    "estimate_motion_kwargs": dict(
+                        method="dredge_ap",
+                        bin_s=np.max([self.max_bin_s, 5.0]),
+                        rigid=True
+                    ),
+                }
+
+            case 'kilosort_like':
+                # case is kilosort2.5 mimic motion estimator
+                p_para_new = {
+                    "detect_kwargs": dict(
+                        peak_sign="neg",
+                        detect_threshold=8.0,
+                        exclude_sweep_ms=0.8,
+                        radius_um=50,
+                    ),
+                    "localize_peaks_kwargs": dict(
+                        method="grid_convolution",
+                        weight_method = {
+                            "mode": "gaussian_2d",
+                            "sigma_list_um": np.linspace(5, 25, 5)
+                        },
+                    ),
+                    "estimate_motion_kwargs": dict(
+                        method="iterative_template",
+                        bin_s=np.max([self.max_bin_s, 2.0]),
+                        rigid=False,
+                        win_step_um=200.0,
+                        win_scale_um=400.0,
+                        hist_margin_um=0,
+                        win_shape="rect",
+                    ),
+                }
+
+        # resets the parameter fields
+        self.reset_para_fields(p_para_new)
+
+        return p_para_new
+
+    def reset_para_fields(self, pp_dict, p_str_p=[]):
+
+        # resets the parameter value
+        for pk, pv in pp_dict.items():
+            # sets the parameter string
+            p_str = p_str_p + [pk]
+            if isinstance(pv, dict):
+                # parameter value is a dictionary
+                self.reset_para_fields(pv, p_str)
+
+            else:
+                # case is another parameter value type
+                self.set(p_str, pv)
+
 # ----------------------------------------------------------------------------------------------------------------------
 
 """
@@ -351,6 +525,7 @@ class PreprocessPara(object):
 
         # event function retrieval
         self.session_obj = sp_main.session_obj
+        self.time_manager = sp_main.time_manager
         self.bad_channel_fcn = self.session_obj.get_bad_channels
         self.keep_channel_fcn = self.session_obj.get_keep_channels
         self.removed_channel_fcn = self.session_obj.get_removed_channels
@@ -359,7 +534,7 @@ class PreprocessPara(object):
         # initalises the preprocessing step parameter class objects
         self.pp_step_para = {}
         for pp_n in self.pp_step:
-            self.pp_step_para[pp_n] = PreprocessStepPara(pp_n)
+            self.pp_step_para[pp_n] = PreprocessStepPara(self.time_manager, pp_n)
 
         # initialises the preprocessing configuration fields
         self.configs = PreprocessConfig(self.pp_step_para)
@@ -462,6 +637,22 @@ class PreprocessPara(object):
                 pp.pop(pk, None)
 
         return pp
+
+    def bin_size_check(self):
+
+        # field retrieval
+        pp_drift = self.pp_step_para['drift_correct']
+        m_kwargs = pp_drift.p_props['estimate_motion_kwargs']
+        p_kwargs = pp_drift.p_para['estimate_motion_kwargs']
+
+        # interpolation bin-size calculation
+        t_max = np.min(self.time_manager.get('t_dur', True)[0])
+        pp_drift.max_bin_s = np.pow(10.0, np.floor(np.log10(t_max)))
+
+        # resets the bin-size (if max bin-size is exceeded)
+        if pp_drift.max_bin_s < pp_drift.p_para['estimate_motion_kwargs']['bin_s']:
+            p_kwargs['bin_s'] = pp_drift.max_bin_s
+            m_kwargs['value']['bin_s']['value'] = pp_drift.max_bin_s
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -634,7 +825,7 @@ class PreprocessSetup(QMainWindow):
     gap_sz = 5
     n_prog = 2
     but_height = 20
-    dlg_width = 450
+    dlg_width = 500
     dlg_height_orig = 600
     dlg_height_auto = 130
     p_row = np.array([10, 7, 2, 1])
@@ -923,8 +1114,9 @@ class PreprocessSetup(QMainWindow):
     def init_control_buttons(self):
 
         # initialisations
-        b_str = [self.prep_str[0], 'Close Window']
-        cb_fcn = [self.start_preprocess, self.close_window]
+        has_existing_pp = len(self.session_obj.get_pp_runs())
+        b_str = [self.prep_str[0], 'Clear Preprocessing', 'Close Window']
+        cb_fcn = [self.start_preprocess, self.clear_preprocess, self.close_window]
 
         # sets the frame/layout properties
         self.button_frame.setContentsMargins(x_gap, x_gap, x_gap, x_gap)
@@ -947,6 +1139,7 @@ class PreprocessSetup(QMainWindow):
 
         # sets the control button properties
         self.button_control[4].setCheckable(True)
+        self.button_control[5].setEnabled(has_existing_pp)
         self.set_button_props()
 
     def set_widget_config(self):
@@ -1111,9 +1304,17 @@ class PreprocessSetup(QMainWindow):
             # resets the other properties
             self.set_preprocess_props(True)
             self.button_control[4].setText(self.prep_str[0])
+            self.button_control[5].setEnabled(len(self.session_obj.get_pp_runs()))
 
             # resets the change flag
             self.is_change = False
+
+    def clear_preprocess(self):
+
+        if self.sp_main.menu_bar.clear_preprocessing():
+            # closes and reopens the preprocessing dialog
+            self.close()
+            self.sp_main.menu_bar.run_preproccessing()
 
     def close_window(self):
 
@@ -1214,6 +1415,7 @@ class PreprocessSetup(QMainWindow):
             self.is_updating = True
             self.button_control[4].setChecked(False)
             self.button_control[4].setText(self.prep_str[0])
+            self.button_control[5].setEnabled(True)
             self.is_updating = False
 
         # deletes the worker object
@@ -1444,7 +1646,7 @@ class PreprocessParaTab(QTabWidget):
     x_gap = 5
     hght_row = 25
     item_row_size = 23
-    col_width = 160
+    col_width = 170
 
     # array class fields
     tree_hdr = ['Property', 'Value']
@@ -1653,11 +1855,17 @@ class PreprocessParaTab(QTabWidget):
 
     def check_prop_update(self, h_obj, p_prop, p_str):
 
+        if self.is_updating:
+            return
+
         # updates the value field
         self.set(p_str, h_obj.isChecked())
         self.prop_change.emit()
 
     def combo_prop_update(self, h_obj, p_prop, p_str):
+
+        if self.is_updating:
+            return
 
         # parameter specific updates
         c_txt = h_obj.currentText()
@@ -1667,6 +1875,19 @@ class PreprocessParaTab(QTabWidget):
         # updates the property field
         self.set(p_str, c_txt)
         self.prop_change.emit()
+
+        # task specific updates
+        match self.pp_step_para.pp_step:
+            case 'drift_correct':
+                # case is drift correction
+                match '-'.join(p_str):
+                    case 'preset':
+                        # case is the preset option
+                        p_para_preset = self.pp_step_para.reset_drift_preset_para(c_txt)
+
+                        self.is_updating = True
+                        self.reset_widget_fields(p_para_preset, self.pp_step_para.p_props)
+                        self.is_updating = False
 
     def edit_prop_update(self, h_obj, p_prop, p_str):
 
@@ -1719,6 +1940,47 @@ class PreprocessParaTab(QTabWidget):
         for pk, pv in p_dep.items():
             h_obj = self.findChild(QWidget, name=pk)
             h_obj.setEnabled(c_txt in pv)
+
+    # ---------------------------------------------------------------------------
+    # Miscellaneous Functions
+    # ---------------------------------------------------------------------------
+
+    def reset_widget_fields(self, pp_dict, p_prop, p_str_p=None):
+
+        for pk, pv in pp_dict.items():
+            if isinstance(pv, dict):
+                # case is a sub-group field
+                if pk in p_prop:
+                    self.reset_widget_fields(pv, p_prop[pk], pk)
+                else:
+                    continue
+
+            else:
+                # continue if there is no associated widget
+                if pk not in p_prop['value']:
+                    continue
+
+                # retrieves the parent tree widget item
+                p_name = p_prop['name']
+                item_p = self.tree_prop.findItems(p_name, Qt.MatchFlag.MatchExactly, 0)[0]
+
+                # retrieves the associated widget
+                ch_name = p_prop['value'][pk]['name']
+                i_ch = next((i for i in range(item_p.childCount()) if item_p.child(i).text(0) == ch_name))
+                h_obj = self.tree_prop.itemWidget(item_p.child(i_ch), 1)
+
+                # resets the widget value
+                if isinstance(h_obj, QComboBox):
+                    # case is a combobox
+                    h_obj.setCurrentText(pv)
+
+                elif isinstance(h_obj, QCheckBox):
+                    # case is a checkbox
+                    h_obj.setCheckState(cf.chk_state[pv])
+
+                elif isinstance(h_obj, cw.QClickableLineEdit):
+                    # case is a editbox
+                    h_obj.setText(self.convert_edit_value(pv))
 
     # ---------------------------------------------------------------------------
     # Static Methods
