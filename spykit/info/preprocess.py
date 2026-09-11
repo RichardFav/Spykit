@@ -51,7 +51,7 @@ pp_flds = {
     'waveforms': 'Wave Forms',
     'sparce_opt': 'Sparsity Options',
     'interpolate_channels': 'Channel Interpolation',
-    'interpolate_bad_channels': 'Bad Channel Interpolation',
+    'interpolate_bad_channels': 'Channel Interpolation',
     'remove_channels': 'Remove Bad Channels',
     'astype': 'Drift Correction',
 }
@@ -124,6 +124,15 @@ class PreprocessStepPara(object):
                         'inner_radius': cw.create_para_field('Inner Radius (um)', 'edit_float', 30.0),
                         'outer_radius': cw.create_para_field('Outer Radius (um)', 'edit_float', 55.0),
                     }),
+                }
+
+            case 'interpolate_channels':
+                # case is bad channel interpolation
+
+                # parameter property dictionary
+                self.p_props = {
+                    'p': cw.create_para_field('Exponential Shape Factor', 'edit_float', 1.3),
+                    'sigma_um': cw.create_para_field('Spatial Radius (um)', 'edit_float', 15.0),
                 }
 
             case 'phase_shift':
@@ -519,9 +528,11 @@ class PreprocessConfig(object):
     PreprocessPara:
 """
 
+
 class PreprocessPara(object):
     # class fields
-    pp_step = ['phase_shift', 'bandpass_filter', 'common_reference', 'drift_correct', 'whitening', 'sparce_opt']
+    pp_step = ['phase_shift', 'bandpass_filter', 'interpolate_channels', 'common_reference',
+               'drift_correct'] #, 'whitening', 'sparce_opt']
 
     def __init__(self, sp_main):
 
@@ -630,9 +641,7 @@ class PreprocessPara(object):
 
     def remove_none_fields(self, pp):
 
-        pp_copy = deepcopy(pp)
-
-        for pk, pv in pp_copy.items():
+        for pk, pv in list(pp.items()):
             if isinstance(pv, dict):
                 pp[pk] = self.remove_none_fields(pp[pk])
             elif pv is None:
@@ -655,6 +664,14 @@ class PreprocessPara(object):
         if pp_drift.max_bin_s < pp_drift.p_para['estimate_motion_kwargs']['bin_s']:
             p_kwargs['bin_s'] = pp_drift.max_bin_s
             m_kwargs['value']['bin_s']['value'] = pp_drift.max_bin_s
+
+    def update_config_fields(self, pr_val, per_shank, concat_runs):
+
+        # resets the preprocessing configuration fields
+        self.configs.prep_task = [x[0] for x in pr_val]
+        self.configs.task_name = [pp_flds[x] for x in self.configs.prep_task]
+        self.configs.task_para = dict(pr_val)
+        self.configs.set_prep_opt(per_shank, concat_runs)
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -681,7 +698,8 @@ class PreprocessSetup(QMainWindow):
     prep_str = ['Start Preprocessing', 'Cancel Preprocessing']
     b_icon = ['arrow_right', 'arrow_left', 'arrow_up', 'arrow_down']
     tt_str = ['Add Task', 'Remove Task', 'Move Task Up', 'Move Task Down']
-    pp_step = ['phase_shift', 'bandpass_filter', 'common_reference', 'drift_correct', 'whitening', 'sparce_opt']
+    pp_step = ['phase_shift', 'bandpass_filter', 'interpolate_channels', 'common_reference',
+               'drift_correct'] #, 'whitening', 'sparce_opt']
 
     # widget stylesheets
     border_style = "border: 1px solid;"
@@ -989,34 +1007,6 @@ class PreprocessSetup(QMainWindow):
         self.button_control[5].setEnabled(has_existing_pp)
         self.set_button_props()
 
-    def set_widget_config(self):
-
-        # main layout properties
-        self.list_layout.setHorizontalSpacing(x_gap)
-        self.list_layout.setVerticalSpacing(x_gap)
-        self.list_layout.setContentsMargins(2 * x_gap, x_gap, 2 * x_gap, 2 * x_gap)
-        # self.setLayout(self.list_layout)
-
-        if self.is_auto:
-            # adds the main widgets to the main layout
-            self.list_layout.addWidget(self.progress_frame, 0, 0, 1, 1)
-            self.list_layout.addWidget(self.button_frame, 1, 0, 1, 1)
-
-            # set the grid layout column sizes
-            self.list_layout.setRowStretch(0, self.p_row[1])
-            self.list_layout.setRowStretch(1, self.p_row[2])
-
-        else:
-            # adds the main widgets to the main layout
-            self.list_layout.addWidget(self.para_frame, 0, 0, 1, 1)
-            self.list_layout.addWidget(self.task_frame, 1, 0, 1, 1)
-            self.list_layout.addWidget(self.progress_frame, 2, 0, 1, 1)
-            self.list_layout.addWidget(self.button_frame, 3, 0, 1, 1)
-
-            # set the grid layout column sizes
-            for i_r, p_r in enumerate(self.p_row):
-                self.list_layout.setRowStretch(i_r, p_r)
-
     # ---------------------------------------------------------------------------
     # Class Widget Callback Functions
     # ---------------------------------------------------------------------------
@@ -1174,14 +1164,9 @@ class PreprocessSetup(QMainWindow):
                 return
 
         if self.has_pp:
-            # updates the pre-processing information
+            # updates the pre-processing config information
             pr_val = self.session.prep_obj.pp_steps_tot.values()
-
-            # resets the preprocessing configuration fields
-            self.prep_para.configs.prep_task = [x[0] for x in pr_val]
-            self.prep_para.configs.task_name = [pp_flds[x] for x in self.prep_para.configs.prep_task]
-            self.prep_para.configs.task_para = dict(pr_val)
-            self.prep_para.configs.set_prep_opt(self.per_shank, self.concat_runs)
+            self.prep_para.update_config_fields(pr_val, self.per_shank, self.concat_runs)
 
         elif self.session_obj.is_session_sorted():
             # otherwise if the session is sorted, then enable the post-processing
@@ -1443,6 +1428,34 @@ class PreprocessSetup(QMainWindow):
         self.button_control[3].setEnabled(is_added_sel and (i_row_add < n_added))
         self.button_control[4].setEnabled((n_added >= 0) or self.is_auto)
 
+    def set_widget_config(self):
+
+        # main layout properties
+        self.list_layout.setHorizontalSpacing(x_gap)
+        self.list_layout.setVerticalSpacing(x_gap)
+        self.list_layout.setContentsMargins(2 * x_gap, x_gap, 2 * x_gap, 2 * x_gap)
+        # self.setLayout(self.list_layout)
+
+        if self.is_auto:
+            # adds the main widgets to the main layout
+            self.list_layout.addWidget(self.progress_frame, 0, 0, 1, 1)
+            self.list_layout.addWidget(self.button_frame, 1, 0, 1, 1)
+
+            # set the grid layout column sizes
+            self.list_layout.setRowStretch(0, self.p_row[1])
+            self.list_layout.setRowStretch(1, self.p_row[2])
+
+        else:
+            # adds the main widgets to the main layout
+            self.list_layout.addWidget(self.para_frame, 0, 0, 1, 1)
+            self.list_layout.addWidget(self.task_frame, 1, 0, 1, 1)
+            self.list_layout.addWidget(self.progress_frame, 2, 0, 1, 1)
+            self.list_layout.addWidget(self.button_frame, 3, 0, 1, 1)
+
+            # set the grid layout column sizes
+            for i_r, p_r in enumerate(self.p_row):
+                self.list_layout.setRowStretch(i_r, p_r)
+
     def check_task_order(self, task_new):
 
         # first check: ensure that bad channel interpolation occurs
@@ -1484,6 +1497,7 @@ class PreprocessSetup(QMainWindow):
 """
     PreprocessParaTab:
 """
+
 
 class PreprocessParaTab(QTabWidget):
     # pyqtsignal functions
@@ -1874,7 +1888,6 @@ class RunPreProcessing(QObject):
         self.concat_runs = False
 
         # other class field initialisations
-        self.prepro_dict = None
         self.pp_steps_new = None
         self.pp_steps_tot = None
         self.run_name = None

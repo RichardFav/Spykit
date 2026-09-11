@@ -74,20 +74,21 @@ class ThreadWorker(QThread):
 def save_prep_data(save_para, queue):
 
     # field retrieval
-    pp_rec_bin, pp_rec_anno, out_folder, n_worker = save_para
+    pp_rec_bin, pp_para_bin, out_folder, n_worker = save_para
 
-    for i_out, (pp_rb, pp_anno, o_f) in enumerate(zip(pp_rec_bin, pp_rec_anno, out_folder)):
+    for i_out, (pp_rb, pp_pb, o_f) in enumerate(zip(pp_rec_bin, pp_para_bin, out_folder)):
         # updates the progressbar label
         queue.put([i_out + 1, len(pp_rec_bin)])
 
         # outputs the data to file
         pp_r = dill.loads(pp_rb)
 
-        # re-adds recorder annotations (some fields are lost when using dill)
-        pp_r._annotations = pp_anno
+        # re-adds drift correction recorder annotations (some fields are lost when using dill)
+        if pp_pb is not None:
+            pp_r.set_annotation('parameters', dill.loads(pp_pb))
 
         # outputs the recording to file
-        pp_s = pp_r.save(
+        pp_r.save(
             format="binary",
             folder=o_f,
             n_jobs=n_worker,

@@ -869,6 +869,17 @@ def setup_subplot_image(p_widget, s_plot, p_ofs=None):
     return p_map
 
 
+def rename_dict_field(d, old_key, new_key):
+
+    for k in list(d.keys()):
+        if k == old_key:
+            d[new_key] = d.pop(k)
+        else:
+            d[k] = d.pop(k)
+
+    return d
+
+
 def subplot_geometry(s_plot):
 
     # retrieves the extents of the subplot geometries

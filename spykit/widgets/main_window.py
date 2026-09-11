@@ -1230,9 +1230,6 @@ class MenuBar(QObject):
             self.prep_para.reset_config_dict(ses_data['configs'])
             self.session_obj.set_prep_opt(ses_data['configs'].prep_opt)
 
-            # enables the post-preprocessing menu items
-            self.set_menu_enabled_blocks('post-preprocess')
-
             # determines if the session has been spike sorted
             is_sorted = self.session_obj.is_session_sorted()
             if is_sorted:
@@ -1578,15 +1575,16 @@ class MenuBar(QObject):
 
         self.sp_main.run_preprocessing_dialog()
 
-    def clear_preprocessing(self):
+    def clear_preprocessing(self, prompt_user=True):
 
-        # prompts the user if they want to clear
-        q_str = "Are you sure you want to clear the existing data processing?"
-        u_choice = QMessageBox.question(
-            self.sp_main, 'Clear Preprocessing?', q_str, cf.q_yes_no, cf.q_yes)
-        if u_choice == cf.q_no:
-            # exit if the user cancelled
-            return False
+        if prompt_user:
+            # prompts the user if they want to clear
+            q_str = "Are you sure you want to clear the existing data processing?"
+            u_choice = QMessageBox.question(
+                self.sp_main, 'Clear Preprocessing?', q_str, cf.q_yes_no, cf.q_yes)
+            if u_choice == cf.q_no:
+                # exit if the user cancelled
+                return False
 
         # resets the channel data fields
         self.session_obj.channel_data.is_keep[:] = True

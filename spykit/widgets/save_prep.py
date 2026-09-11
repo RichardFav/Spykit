@@ -17,6 +17,7 @@ from spykit.threads.utils import ThreadWorker, SavePrepThreadWorker
 
 # spikeinterface module imports
 import spikeinterface.core as si
+from spikeinterface.sortingcomponents.motion import InterpolateMotionRecording
 
 # pyqt6 module import
 from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QGridLayout,
@@ -114,6 +115,7 @@ class SavePrep(QDialog):
         self.setWindowTitle('Preprocessed Data Output')
         self.setLayout(self.main_layout)
         self.main_layout.setSpacing(self.x_gap)
+        self.setModal(True)
 
         # resets the frame object names
         for qf in self.findChildren(QFrame):
@@ -278,8 +280,8 @@ class SavePrep(QDialog):
             time.sleep(0.1)
 
         # sets up the preprocessing output data
-        pp_rec, pp_anno = self.setup_prep_output_data()
-        save_data = (pp_rec, pp_anno, self.path_curr, self.n_worker)
+        pp_rec, pp_para = self.setup_prep_output_data()
+        save_data = (pp_rec, pp_para, self.path_curr, self.n_worker)
 
         # creates the threadworker object
         self.t_worker = SavePrepThreadWorker(self.sp_main, self.sync_manager, save_data)
@@ -292,7 +294,7 @@ class SavePrep(QDialog):
     def setup_prep_output_data(self):
 
         # field retrieval
-        pp_rec, pp_anno = [], []
+        pp_rec, pp_para = [], []
 
         # outputs the preprocessed data for all specified experimental runs
         for i_run in range(self.get_run_count()):
@@ -304,15 +306,25 @@ class SavePrep(QDialog):
                         i_run, run_type, self.pp_data_flds[self.i_sel_pp], i_shank)
                     pp_rec.append(dill.dumps(pp_rec_new))
 
+                    # pickles the recording object/annotation dictionary (drift correction only)
+                    if isinstance(pp_rec_new, InterpolateMotionRecording):
+                        pp_para.append(dill.dumps(pp_rec_new._annotations['parameters']))
+                    else:
+                        pp_para.append(None)
+
             else:
                 # retrieves the recording object
                 pp_rec_new = self.session_obj.session.get_session_runs(
                     i_run, "grouped", self.pp_data_flds[self.i_sel_pp])
                 pp_rec.append(dill.dumps(pp_rec_new))
 
-            pp_anno.append(pp_rec_new._annotations)
+                # pickles the recording object/annotation dictionary (drift correction only)
+                if isinstance(pp_rec_new, InterpolateMotionRecording):
+                    pp_para.append(dill.dumps(pp_rec_new._annotations['parameters']))
+                else:
+                    pp_para.append(None)
 
-        return pp_rec, pp_anno
+        return pp_rec, pp_para
 
     def save_prep_data_progress(self, i_out, n_out):
 

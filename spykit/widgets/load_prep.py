@@ -15,6 +15,15 @@ from spykit.info.preprocess import pp_flds
 # spikeinterface module imports
 import spikeinterface.core as si
 import spikeinterface.preprocessing as spre
+from spikewrap.structure._raw_run import ConcatRawRun
+from spikeinterface.preprocessing.astype import AstypeRecording
+from spikewrap.structure._preprocess_run import PreprocessedRun
+from spikeinterface.core.channelslice import ChannelSliceRecording
+from spikeinterface.preprocessing.filter import BandpassFilterRecording
+from spikeinterface.preprocessing.phase_shift import PhaseShiftRecording
+from spikeinterface.sortingcomponents.motion import InterpolateMotionRecording
+from spikeinterface.preprocessing.common_reference import CommonReferenceRecording
+from spikeinterface.preprocessing.interpolate_bad_channels import InterpolateBadChannelsRecording
 
 # pyqt6 module import
 from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QGridLayout,
@@ -32,6 +41,9 @@ class LoadPrepGroup(object):
     r_shank = re.compile(r'shank_[0-9]')
     r_prov = re.compile(r'provenance.*')
 
+    # drift correction parameter fields
+    dp_fld = ['preset', 'detect_kwargs', 'localize_peaks_kwargs', 'estimate_motion_kwargs']
+
     def __init__(self, pp_path0, is_concat):
         super(LoadPrepGroup, self).__init__()
 
@@ -39,13 +51,14 @@ class LoadPrepGroup(object):
         self.is_concat = is_concat
         if self.is_concat:
             # case is a concatenated expt
+            self.run_name = ['concat_run']
             self.n_run, r_type = 1, 'Concatenated Run'
             ii_r = np.zeros(len(pp_path0), dtype=int)
 
         else:
             # case is a non-concatenated expt
-            run_name, ii_r = np.unique([self.r_run.findall(str(x)) for x in pp_path0], return_inverse=True)
-            self.n_run, r_type = len(run_name), 'Separate Run'
+            self.run_name, ii_r = np.unique([self.r_run.findall(str(x)) for x in pp_path0], return_inverse=True)
+            self.n_run, r_type = len(self.run_name), 'Separate Run'
 
         # sets the shank count/indices
         if pp_path0[0].name.startswith('shank_'):
@@ -59,6 +72,13 @@ class LoadPrepGroup(object):
             self.is_per_shank = False
             self.n_shank, s_type = 1, 'Grouped Shank'
             ii_s = np.zeros(len(pp_path0), dtype=int)
+
+        # shank name fields
+        self.pp_type = f"{r_type}/{s_type}"
+        if self.is_per_shank:
+            self.shank_name = [f'shank_{i}' for i in range(self.n_shank)]
+        else:
+            self.shank_name = ['grouped']
 
         # memory allocation
         A = np.empty((self.n_run, self.n_shank), dtype=object)
@@ -74,16 +94,53 @@ class LoadPrepGroup(object):
             pr_file_new = glob(s_path, recursive=True)[0]
             self.pr_file[i_row, i_col] = pr_file_new
 
+        # sets up the post-processing dictionary
+        self.setup_pp_dict(pr_file_new)
+
+    def setup_pp_dict(self, pr_file):
+
         # retrieves the parameter dictionary
-        self.pp_dict = spre.get_preprocessing_dict_from_file(pr_file_new)
+        self.pp_dict = spre.get_preprocessing_dict_from_file(pr_file)
+
+        # dictionary key renaming
+        if 'interpolate_bad_channels' in self.pp_dict:
+            self.pp_dict = cf.rename_dict_field(self.pp_dict, 'interpolate_bad_channels', 'interpolate_channels')
+
+        # drift correction field retrieval
+        if 'astype' in self.pp_dict:
+            # retrieves drift correction parameters
+            drift_dict = deepcopy(self.load_rec()._annotations['parameters'])
+
+            # removes the extraneous parameter fields
+            for ddk in list(drift_dict.keys()):
+                if ddk not in self.dp_fld:
+                    drift_dict.pop(ddk)
+
+            # appends the drift correction parameters
+            self.pp_dict['drift_correct'] = drift_dict
+            self.pp_dict.pop('astype')
 
         # retrieves the preprocessing steps
+        pp_name = 'raw'
         self.pp_steps = []
-        for i_pk, pk in enumerate(self.pp_dict.keys()):
-            self.pp_steps.append(f'Step #{i_pk + 1} = {pp_flds[pk]}')
+        self.pp_steps_tot = {}
+        self.pp_steps_name = ['0-raw']
 
-        # other class fields
-        self.pp_type = f"{r_type}/{s_type}"
+        for i_pk, (pk, pv) in enumerate(self.pp_dict.items()):
+            # post-processing step names
+            self.pp_steps.append(f'Step #{i_pk + 1}: {pp_flds[pk]}')
+            self.pp_steps_tot[str(i_pk + 1)] = [pk, pv]
+
+            # post-processing step dictionary
+            pp_name = f'{pp_name}-{pk}'
+            self.pp_steps_name.append(f'{i_pk + 1}-{pp_name}')
+
+    def load_rec(self, i_run=0, i_shank=0):
+
+        return si.load(
+            self.pr_file[i_run, i_shank],
+            base_folder=self.pp_path[i_run, i_shank]
+        )
 
     def get_field(self, p_fld):
 
@@ -134,6 +191,8 @@ class LoadPrep(QDialog):
         super(LoadPrep, self).__init__(sp_main)
 
         # field retrieval
+        self.menu_bar = self.parent().menu_bar
+        self.prep_para = self.parent().prep_para
         self.session_obj = self.parent().session_obj
 
         # class layouts
@@ -145,8 +204,8 @@ class LoadPrep(QDialog):
 
         # container class widgets
         self.prep_group = QGroupBox("Preprocessed Datasets")
+        self.task_group = QGroupBox('Dataset Information')
         self.info_frame = QFrame(self)
-        self.task_frame = QFrame(self)
         self.button_frame = QFrame(self)
 
         # other class widgets
@@ -165,9 +224,6 @@ class LoadPrep(QDialog):
         self.init_task_group()
         self.init_info_group()
         self.init_cont_buttons()
-
-        #
-        self.prep_list_click()
 
     # ---------------------------------------------------------------------------
     # Class Property Widget Setup Functions
@@ -191,6 +247,7 @@ class LoadPrep(QDialog):
         self.setWindowTitle('Preprocessed Data Load')
         self.setLayout(self.main_layout)
         self.main_layout.setSpacing(self.x_gap)
+        self.setModal(True)
 
         # resets the frame object names
         for qf in self.findChildren(QFrame):
@@ -210,7 +267,7 @@ class LoadPrep(QDialog):
 
         # adds the listbox items
         for i_pp, pp_s in enumerate(self.pp_obj):
-            pp_lbl = f'Dataset #{i_pp + 1} ({pp_s.pp_type})'
+            pp_lbl = f'Dataset #{i_pp + 1}: {pp_s.pp_type}'
             self.prep_list.addItem(pp_lbl)
 
         # sets the other listbox properties
@@ -221,14 +278,14 @@ class LoadPrep(QDialog):
     def init_task_group(self):
 
         # creates the groupbox object
-        self.task_frame.setLayout(self.task_layout)
-        self.task_frame.setFixedHeight(self.hght_listbox)
-        self.task_frame.setFont(cw.font_panel)
-        self.main_layout.addWidget(self.task_frame)
+        self.task_group.setLayout(self.task_layout)
+        self.task_group.setFixedHeight(self.hght_listbox)
+        self.task_group.setFont(cw.font_panel)
+        self.main_layout.addWidget(self.task_group)
 
         # sets the button frame properties
-        self.task_frame.setLayout(self.button_layout)
-        self.task_frame.setStyleSheet(self.frame_border_style)
+        self.task_group.setLayout(self.button_layout)
+        self.task_group.setStyleSheet(self.frame_border_style)
 
         # creates the preprocessed items listbox
         self.task_layout.addWidget(self.task_list)
@@ -258,6 +315,9 @@ class LoadPrep(QDialog):
             self.info_layout.addWidget(txt_lbl_nw)
             self.info_lbls.append(txt_lbl_nw)
 
+        # initialises the property fields
+        self.prep_list_click()
+
     def init_cont_buttons(self):
 
         # initialisations
@@ -271,7 +331,6 @@ class LoadPrep(QDialog):
         self.button_frame.setContentsMargins(self.x_gap, self.x_gap, self.x_gap, self.x_gap)
         self.button_frame.setLayout(self.button_layout)
         self.button_frame.setStyleSheet(self.frame_border_style)
-        # self.button_frame.setFixedHeight(self.hght_button_frame)
 
         # button group layout properties
         self.button_layout.setContentsMargins(0, 0, 0, 0)
@@ -313,13 +372,63 @@ class LoadPrep(QDialog):
 
     def load_button_click(self):
 
-        pp_path = 'C:/Work/Other Projects/EPhys Project/Code/Spykit/spykit/resources/data/spikeglx/tiny_example/derivatives/sub-001/ses-001/ephys/concat_run/preprocessing/shank_0'
-        pp_file = Path(pp_path) / 'provenance.json'
-        pp_file_2 = Path(pp_path) / 'provenance.pkl'
+        # field retrieval
+        pp_sel = self.pp_obj[self.i_sel_pp]
+        get_session_fcn = self.session_obj.session.get_session_runs
 
-        rec = si.load(pp_file, base_folder=pp_path)
+        # clears any existing preprocessed data
+        if self.session_obj.has_pp_runs():
+            self.menu_bar.clear_preprocessing(False)
 
-        pass
+        # field reset
+        s_obj = self.session_obj.session
+        self.session_obj.session.prep_obj.concat_runs = pp_sel.is_concat
+        self.session_obj.session.prep_obj.per_shank = pp_sel.is_per_shank
+        self.session_obj.session.prep_obj.pp_steps_tot = pp_sel.pp_steps_tot
+
+        # updates the pre-processing config information
+        pr_val = pp_sel.pp_steps_tot.values()
+        self.prep_para.update_config_fields(pr_val, pp_sel.is_per_shank, pp_sel.is_concat)
+
+        # memory allocation
+        for i_run in range(pp_sel.n_run):
+            # retrieves the recording objects for the current run
+            pp_run = {}
+            for i_shank in range(pp_sel.n_shank):
+                # retrieves the raw recorder run
+                if pp_sel.is_per_shank:
+                    raw_rec = s_obj.get_session_runs(i_run, pp_type='0-raw', i_shank=i_shank)
+                else:
+                    raw_rec = s_obj.get_session_runs(i_run, pp_type='0-raw')
+
+                # sets up the preprocessing recorder chain
+                pp_rec = pp_sel.load_rec(i_run, i_shank)
+                pp_run[pp_sel.shank_name[i_shank]] = self.setup_recording_chain(pp_rec, raw_rec)
+
+            # retrieves the original run names (concatenated raw wuns only)
+            orig_run_names = (
+                raw_rec._orig_run_names if isinstance(raw_rec, ConcatRawRun) else None
+            )
+
+            # appends the preprocessed runs
+            self.session_obj.session._s._pp_runs.append(
+                PreprocessedRun(
+                    run_name=s_obj.run_names,
+                    file_format=s_obj.file_format,
+                    raw_data_path=s_obj._s_props['subject_path'],
+                    ses_name=s_obj._s_props['session_name'],
+                    session_output_path=s_obj._s._output_path,
+                    pp_steps=pp_sel.pp_steps_tot,
+                    orig_run_names=orig_run_names,
+                    preprocessed_data=pp_run,
+                )
+            )
+
+        #
+        self.parent().on_preprocessing_close(True, True)
+
+        # closes the dialog window
+        self.close()
 
     def close_window_click(self):
 
@@ -357,3 +466,35 @@ class LoadPrep(QDialog):
                     is_concat_run=self.is_concat_run,
                     i_run=i_run,
                 )
+
+    def setup_recording_chain(self, pp_rec, raw_rec):
+
+        # field retrieval
+        run_dict = {}
+        pp_rec_dict = None
+        pp_sel = self.pp_obj[self.i_sel_pp]
+
+        # initial field
+        pp_steps = pp_sel.pp_steps_name
+        run_dict[pp_steps[-1]] = pp_rec
+
+        #
+        for pp_step in reversed(pp_steps[1:-1]):
+            # proprocessing dictionary initialisation
+            pp_rec_dict = pp_rec.to_dict() if (pp_rec_dict is None) else pp_rec_step.to_dict()
+
+            # retrieves the preprocessing step recording
+            pp_rec_step = pp_rec_dict['kwargs']['recording']
+            if isinstance(pp_rec_step, AstypeRecording):
+                # ignore "asType" objects
+                pp_rec_dict = pp_rec_dict['kwargs']['recording'].to_dict()
+                pp_rec_step = pp_rec_dict['kwargs']['recording']
+
+            # stores the run dictionary
+            run_dict[pp_step] = pp_rec_step
+
+        # sets the raw recording
+        run_dict[pp_steps[0]] = raw_rec
+
+        # returns the reverse dictionary
+        return {k: run_dict[k] for k in reversed(run_dict)}
