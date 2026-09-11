@@ -424,11 +424,11 @@ class LoadPrep(QDialog):
                 )
             )
 
-        #
-        self.parent().on_preprocessing_close(True, True)
-
         # closes the dialog window
         self.close()
+
+        # runs the pre-processing closed function
+        self.parent().on_preprocessing_close(True, True)
 
     def close_window_click(self):
 
