@@ -26,8 +26,8 @@ from spikeinterface.core import order_channels_by_depth
 import spykit.common.common_func as cf
 from spykit.threads.utils import ThreadWorker
 from spykit.common.postprocess import PostMemMap
-from spykit.info.preprocess import pp_flds, RunPreProcessing
 from spykit.info.preprocess import prep_task_map as pp_map
+from spykit.info.preprocess import pp_flds, RunPreProcessing
 from spykit.widgets.spike_sorting import RunSpikeSorting, SpikeSortInfo
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -1035,7 +1035,7 @@ class SessionObject(QObject):
     def load_sorting_para(self, ses_obj):
 
         # updates the signal function
-        if (ses_obj.session.sig_fcn is not None) and (not ses_obj.session.ssf_load):
+        if (ses_obj.session.sig_fcn is not None): # and (not ses_obj.session.ssf_load):
             # sets up the bad channel detection worker
             t_worker_sort = ThreadWorker(self.sp_main, self.get_sorter_info, (ses_obj))
             t_worker_sort.work_finished.connect(self.post_get_sorter_info)
@@ -1043,7 +1043,8 @@ class SessionObject(QObject):
             t_worker_sort.start()
 
             # updates the signal function
-            self.sig_fcn('sorterpara')
+            ses_obj.session.sig_fcn.emit('sorterpara')
+            # self.sig_fcn.emit('sorterpara')
 
     # ---------------------------------------------------------------------------
     # Post thread worker functions

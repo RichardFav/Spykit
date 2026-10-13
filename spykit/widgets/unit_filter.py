@@ -109,7 +109,7 @@ class FilterWidget(QWidget):
 
                 case 'Filter Metric':
                     # case is the filter metric
-                    self.hist_map = cf.rev_dict(cw.hist_map)
+                    self.hist_map = cf.reverse_dict(cw.hist_map)
                     p_list = list(self.hist_map.keys())
 
                 case 'Condition':
@@ -123,7 +123,7 @@ class FilterWidget(QWidget):
             match self.f_lbl:
                 case 'Comparison Value':
                     # case is the inter-filter operator
-                    self.param_map = cf.rev_dict(cw.param_map)
+                    self.param_map = cf.reverse_dict(cw.param_map)
                     p_list = list(self.param_map.keys())
 
             self.filt_combo = cw.QEditCombo(None, None, [''] + p_list)
@@ -648,7 +648,7 @@ class UnitFilterDialog(FilterManagerMixin, QDialog):
         self.filt_opt = np.empty((1, n_filt_fld), dtype=object)
 
         # field retrieval
-        self.hist_map = cf.rev_dict(cw.hist_map)
+        self.hist_map = cf.reverse_dict(cw.hist_map)
         self.q_met = self.session_obj.get_metric_table_values()
 
         # class widget setup

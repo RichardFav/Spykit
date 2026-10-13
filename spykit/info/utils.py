@@ -83,7 +83,7 @@ class InfoManager(QObject):
         # boolean class fields
         self.is_updating = False
         self.table_fcn_set = False
-        self.tab_show = [True, True, True, False]
+        self.tab_show = [True, True, False]
 
         # widget layout setup
         self.tabs = []

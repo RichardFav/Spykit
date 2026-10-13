@@ -384,7 +384,8 @@ class LoadPrep(QDialog):
         s_obj = self.session_obj.session
         self.session_obj.session.prep_obj.concat_runs = pp_sel.is_concat
         self.session_obj.session.prep_obj.per_shank = pp_sel.is_per_shank
-        self.session_obj.session.prep_obj.pp_steps_tot = pp_sel.pp_steps_tot
+        self.session_obj.session.prep_obj.pp_steps_new = deepcopy(pp_sel.pp_steps_tot)
+        self.session_obj.session.prep_obj.pp_steps_tot = deepcopy(pp_sel.pp_steps_tot)
 
         # updates the pre-processing config information
         pr_val = pp_sel.pp_steps_tot.values()

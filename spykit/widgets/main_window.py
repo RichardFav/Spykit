@@ -1191,9 +1191,9 @@ class MenuBar(QObject):
         self.update_progress_bar('Resetting Channel Data', 0.2)
         self.session_obj.reset_channel_data(channel_data)
 
-        # resets the sorting information object
-        if 'sorting_props' in ses_data:
-            self.session_obj.set_sorting_props(ses_data['sorting_props'])
+        # # resets the sorting information object
+        # if 'sorting_props' in ses_data:
+        #     self.session_obj.set_sorting_props(ses_data['sorting_props'])
 
         # updates the bad/sync channel status table fields
         self.update_progress_bar('Updating Channel Information', 0.3)
@@ -1212,58 +1212,11 @@ class MenuBar(QObject):
         # resets the trace view plot properties
         self.prop_manager.get_prop_tab('traceview').reset_prop_para()
 
-        # n_run = self.session_obj.session.get_run_count()
-        # for pt in ['general', 'trigger']:
-        #     # retrieves the property tab
-        #     prop_tab = self.prop_manager.get_prop_tab(pt)
-        #     prop_tab.p_props.reset_prop_para(prop_tab.p_info['ch_fld'], n_run)
-
         # resets the property/information panel fields
         self.prop_manager.set_prop_para(ses_data['prop_para'])
         self.info_manager.set_info_para(ses_data['info_para'])
         self.sp_main.time_manager.field_update('i_run')
         QApplication.processEvents()
-
-        # sets/runs the config field/routines
-        if (ses_data['configs'] is not None) and len(ses_data['configs'].prep_task):
-            # resets the preprocessing configuration fields
-            self.prep_para.reset_config_dict(ses_data['configs'])
-            self.session_obj.set_prep_opt(ses_data['configs'].prep_opt)
-
-            # determines if the session has been spike sorted
-            is_sorted = self.session_obj.is_session_sorted()
-            if is_sorted:
-                # if so, then enable the spike sorting menu items
-                self.set_menu_enabled_blocks('post-sorting')
-
-                # enables post-processing loading (if files are available)
-                mm_file = self.session_obj.get_mem_map_files(False)
-                self.set_menu_enabled('load_postprocessed', mm_file is not None)
-
-            # removes any temporary memory map files
-            self.sp_main.remove_temp_mem_maps()
-
-            # runs the preprocessing (if data in config field)
-            if not ignore_pp:
-                prep_task = prep_info.configs.task_name
-                if len(prep_task):
-                    # if there is preprocessed data, prompt the user if they would like to re-run the calculations
-                    t_str = 'Re-run Preprocessing?'
-                    q_str = 'The loaded session has preprocessed tasks. Would you like to re-run these tasks?'
-                    u_choice = QMessageBox.question(self.sp_main, 'Use Default Files?', q_str, cf.q_yes_no, cf.q_yes)
-                    if u_choice == cf.q_yes:
-                        # if so, run the preprocessing dialog window
-                        prep_opt = tuple(prep_info.configs.prep_opt.values())
-                        self.sp_main.run_preprocessing_dialog((prep_task, prep_opt))
-
-                    else:
-                        if is_sorted:
-                            # if the session is sorted, then enable the post-processing
-                            self.set_menu_enabled_blocks('sorted-without-preprocess')
-
-                        else:
-                            # disables the preprocessing menu items
-                            self.set_menu_enabled_blocks('clear-preprocess')
 
         # resets the status label
         self.update_progress_bar(None, None)
@@ -1433,15 +1386,15 @@ class MenuBar(QObject):
         ses_obj = self.session_obj
 
         # info/property parameter retrieval
-        info_list = ["preprocess", "status"]
+        info_list = ["status"]
         prop_list = ["general", "trace", "trigger"]
 
         # sets up the session save data dictionary
         session_data = {
             'state': ses_obj.state,
-            'configs': self.prep_para.configs,
+            # 'configs': self.prep_para.configs,
             'session_props': ses_obj.session.get_session_props(),
-            'sorting_props': ses_obj.session.sort_obj.s_props,
+            # 'sorting_props': ses_obj.session.sort_obj.s_props,
             'prop_para': self.prop_manager.get_prop_para(prop_list),
             'info_para': self.info_manager.get_info_para(info_list),
             'time_para': self.time_manager.get_time_para(),

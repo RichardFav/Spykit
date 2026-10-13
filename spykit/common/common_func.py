@@ -432,6 +432,7 @@ def check_edit_string(nw_str, use_special=False):
     # shows the error and returns a None value
     return None, e_str
 
+
 def show_error(text, title="", force_resize=False):
     # otherwise, create the error message
     err_dlg = QMessageBox()
@@ -699,15 +700,18 @@ def disp_nested_dict(d, p_gap='', show_dict=True, d_str=''):
     if not show_dict:
         return d_str
 
+
 def has_special_char(txt):
 
     pat = r'[^a-zA-Z0-9_&+# ]'
     return re.search(pat, txt) is not None
 
+
 def gen_random_string(str_len):
 
     char_list = string.ascii_lowercase + string.ascii_uppercase + string.digits
     return ''.join(random.choice(char_list) for _ in range(str_len))
+
 
 def wildcard_to_regex(pattern):
     """Converts a wildcard pattern to a regular expression pattern."""
@@ -717,26 +721,31 @@ def wildcard_to_regex(pattern):
     regex_pattern = regex_pattern.replace(r'\?', '.')
     return '^' + regex_pattern + '$'
 
+
 def bool_perm_array(n):
     """Creates a n-bit boolean permutation array"""
 
     perm_iterator = itertools.product([False, True], repeat=n)
     return np.array(list(perm_iterator), dtype=bool)
 
+
 def reverse_dict(d):
     """Reverses the key/values in the dictionary, d"""
 
     return {v: k for k, v in d.items()}
+
 
 def get_dict_key(d, v):
     """Determines the dictionary key for the value, v"""
 
     return next((key for key, val in d.items() if val == v), None)
 
+
 def round_up(n, decimals=0):
     """Rounds a number up to a specified number of decimal places."""
     factor = 10 ** decimals
     return math.ceil(n * factor) / factor
+
 
 def clear_layout(layout):
     """
@@ -797,11 +806,6 @@ def calc_ccgram(ts1, ts2, win_sz0=50, bin_size=1, return_freq=True):
         return hh[0] * (1000.0 / (bin_size * len(ts1))), (hh[1][:-1] + hh[1][1:]) / 2
     else:
         return hh[0], (hh[1][:-1] + hh[1][1:]) / 2
-
-
-def rev_dict(orig_dict):
-
-    return {value: key for key, value in orig_dict.items()}
 
 
 def flat_list(l):
@@ -868,6 +872,15 @@ def setup_subplot_image(p_widget, s_plot, p_ofs=None):
     # returns the image
     return p_map
 
+
+def reorder_dict_fields(d, new_key):
+
+    d_new = dict()
+
+    for k in new_key:
+        d_new[k] = d[k]
+
+    return d_new
 
 def rename_dict_field(d, old_key, new_key):
 
