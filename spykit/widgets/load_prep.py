@@ -30,7 +30,7 @@ from spikeinterface.preprocessing.interpolate_bad_channels import InterpolateBad
 # pyqt6 module import
 from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QGridLayout,
                              QWidget, QMessageBox, QGroupBox, QListWidget, QFrame)
-from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtCore import pyqtSignal, QTimer
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -233,6 +233,7 @@ class LoadPrep(QDialog):
         # other class fields
         self.pp_obj = []
         self.i_sel_pp = 0
+        self.t_timer = None
         self.t_worker = None
 
         # initialises the class fields/objects
@@ -242,6 +243,28 @@ class LoadPrep(QDialog):
         self.init_info_group()
         self.init_progress_frame()
         self.init_cont_buttons()
+
+        # wait until the sync manager has been initialised
+        if not self.sync_manager.is_init:
+            # disables the load button
+            self.cont_button[0].setEnabled(False)
+
+            # starts the progressbar
+            self.prog_bar.set_label("Sync Manager Setup")
+            self.prog_bar.set_progbar_state(True)
+
+            # starts the timer object
+            self.timer = QTimer()
+            self.timer.timeout.connect(self.check_sync_manager)
+            self.timer.start(100)
+
+    def check_sync_manager(self):
+
+        # if the sync manager has been initialised then stop the timer
+        if self.sync_manager.is_init:
+            self.timer.stop()
+            self.cont_button[0].setEnabled(True)
+            self.prog_bar.set_progbar_state(False)
 
     # ---------------------------------------------------------------------------
     # Class Property Widget Setup Functions
@@ -444,10 +467,6 @@ class LoadPrep(QDialog):
     # ---------------------------------------------------------------------------
 
     def setup_load_prep_data_worker(self):
-
-        # wait until the sync manager is initialised
-        while not self.sync_manager.is_init:
-            time.sleep(0.1)
 
         # clears any existing preprocessed data
         if self.session_obj.has_pp_runs():
