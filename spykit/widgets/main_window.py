@@ -336,6 +336,17 @@ class MainWindow(QMainWindow):
         probe_view.reset_out_line(ch_status)
         self.plot_manager.reset_probe_views()
 
+    def post_prep_load(self, h_load):
+
+        # pause for a little bit...
+        time.sleep(0.1)
+
+        # updates the post preprocessing properties
+        self.on_preprocessing_close(True, True)
+
+        # flag that the data load is complete
+        h_load.load_complete = True
+
     # ---------------------------------------------------------------------------
     # Progress Worker Slot Functions
     # ---------------------------------------------------------------------------
@@ -1224,7 +1235,10 @@ class MenuBar(QObject):
 
     def load_preprocessed(self):
 
-        LoadPrep(self.sp_main).show()
+        # creates/shows the preprocessing load dialog
+        h_load = LoadPrep(self.sp_main)
+        h_load.update_main_props.connect(self.sp_main.post_prep_load)
+        h_load.show()
 
     def load_postprocessed(self):
 

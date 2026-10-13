@@ -1,6 +1,7 @@
 # module import
 import os
 import re
+import time
 import numpy as np
 from glob import glob
 from pathlib import Path
@@ -11,6 +12,7 @@ from functools import partial as pfcn
 import spykit.common.common_func as cf
 import spykit.common.common_widget as cw
 from spykit.info.preprocess import pp_flds
+from spykit.threads.utils import ThreadWorker
 
 # spikeinterface module imports
 import spikeinterface.core as si
@@ -28,6 +30,7 @@ from spikeinterface.preprocessing.interpolate_bad_channels import InterpolateBad
 # pyqt6 module import
 from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QGridLayout,
                              QWidget, QMessageBox, QGroupBox, QListWidget, QFrame)
+from PyQt6.QtCore import pyqtSignal
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -166,8 +169,12 @@ class LoadPrepGroup(object):
 """
 
 class LoadPrep(QDialog):
+    # pyqtsignal functions
+    update_main_props = pyqtSignal(QDialog)
+
     # widget dimensions
     x_gap = 5
+    w_pr = 0.9
     width_dlg = 380
     hght_listbox = 150
     hght_button_frame = 40
@@ -194,35 +201,46 @@ class LoadPrep(QDialog):
         self.menu_bar = self.parent().menu_bar
         self.prep_para = self.parent().prep_para
         self.session_obj = self.parent().session_obj
+        self.sync_manager = self.parent().sync_manager
 
         # class layouts
         self.main_layout = QVBoxLayout()
         self.prep_layout = QVBoxLayout()
         self.task_layout = QVBoxLayout()
         self.info_layout = QHBoxLayout()
+        self.progress_layout = QVBoxLayout()
         self.button_layout = QHBoxLayout()
 
         # container class widgets
         self.prep_group = QGroupBox("Preprocessed Datasets")
         self.task_group = QGroupBox('Dataset Information')
         self.info_frame = QFrame(self)
+        self.progress_frame = QFrame(self)
         self.button_frame = QFrame(self)
 
         # other class widgets
         self.prep_list = QListWidget()
         self.task_list = QListWidget()
         self.info_lbls = []
+        self.prog_bar = cw.QDialogProgress(font=cw.font_lbl, is_task=True, timer_lbl=True)
         self.cont_button = []
+
+        # boolean class fields
+        self.is_running = False
+        self.is_updating = False
+        self.load_complete = False
 
         # other class fields
         self.pp_obj = []
         self.i_sel_pp = 0
+        self.t_worker = None
 
         # initialises the class fields/objects
         self.init_class_fields()
         self.init_prep_group()
         self.init_task_group()
         self.init_info_group()
+        self.init_progress_frame()
         self.init_cont_buttons()
 
     # ---------------------------------------------------------------------------
@@ -318,6 +336,22 @@ class LoadPrep(QDialog):
         # initialises the property fields
         self.prep_list_click()
 
+    def init_progress_frame(self):
+
+        # sets the frame/layout properties
+        self.main_layout.addWidget(self.progress_frame)
+        self.progress_frame.setContentsMargins(0, 0, 0, 0)
+        self.progress_frame.setLayout(self.progress_layout)
+        self.progress_frame.setStyleSheet(self.frame_border_style)
+        self.progress_layout.setContentsMargins(0, 0, 0, 0)
+        self.progress_layout.setSpacing(0)
+
+        # creates the progressbar widgets
+        self.prog_bar.set_enabled(False)
+        self.prog_bar.setContentsMargins(self.x_gap, self.x_gap, self.x_gap, self.x_gap)
+        self.prog_bar.lbl_obj.setContentsMargins(0, 2 * (self.x_gap - 1), 0, 0)
+        self.progress_layout.addWidget(self.prog_bar)
+
     def init_cont_buttons(self):
 
         # initialisations
@@ -372,13 +406,68 @@ class LoadPrep(QDialog):
 
     def load_button_click(self):
 
-        # field retrieval
-        pp_sel = self.pp_obj[self.i_sel_pp]
-        get_session_fcn = self.session_obj.session.get_session_runs
+        # if manually updating, then exit
+        if self.is_updating:
+            return
+
+        # resets the button state
+        time.sleep(0.05)
+
+        if self.is_running:
+            # stops the worker
+            self.t_worker.force_quit()
+            time.sleep(0.01)
+
+        else:
+            # flag that the worker is running
+            self.is_running = True
+
+            # disables the panel properties
+            self.set_dialog_props(False)
+            self.cont_button[0].setChecked(True)
+
+            # updates the progressbar
+            self.prog_bar.set_label("Initialising Data Output")
+            self.prog_bar.set_progbar_state(True)
+            time.sleep(0.1)
+
+            # loads the preprocessing data
+            self.setup_load_prep_data_worker()
+
+    def close_window_click(self):
+
+        # closes the dialog window
+        self.close()
+
+    # ---------------------------------------------------------------------------
+    # Preprocessing Data Load Methods
+    # ---------------------------------------------------------------------------
+
+    def setup_load_prep_data_worker(self):
+
+        # wait until the sync manager is initialised
+        while not self.sync_manager.is_init:
+            time.sleep(0.1)
 
         # clears any existing preprocessed data
         if self.session_obj.has_pp_runs():
             self.menu_bar.clear_preprocessing(False)
+
+        # creates the threadworker object
+        self.t_worker = ThreadWorker(self.parent(), self.run_load_prep_data_worker, ())
+        self.t_worker.work_finished.connect(self.load_prep_data_complete)
+
+        # starts the worker object
+        self.t_worker.start()
+
+    def run_load_prep_data_worker(self, prep_obj):
+
+        # pauses for a little bit...
+        time.sleep(0.1)
+
+        # field retrieval
+        pp_sel = self.pp_obj[self.i_sel_pp]
+        get_session_fcn = self.session_obj.session.get_session_runs
 
         # field reset
         s_obj = self.session_obj.session
@@ -391,8 +480,11 @@ class LoadPrep(QDialog):
         pr_val = pp_sel.pp_steps_tot.values()
         self.prep_para.update_config_fields(pr_val, pp_sel.is_per_shank, pp_sel.is_concat)
 
-        # memory allocation
         for i_run in range(pp_sel.n_run):
+            # updates the progressbar
+            lbl_str = f"Loading Data (Run {i_run + 1}/{pp_sel.n_run})"
+            self.prog_bar.set_label(lbl_str)
+
             # retrieves the recording objects for the current run
             pp_run = {}
             for i_shank in range(pp_sel.n_shank):
@@ -425,48 +517,35 @@ class LoadPrep(QDialog):
                 )
             )
 
-        # closes the dialog window
-        self.close()
+        # updates the progressbar
+        self.prog_bar.set_label('Updating Main Window')
 
         # runs the pre-processing closed function
-        self.parent().on_preprocessing_close(True, True)
+        self.update_main_props.emit(self)
 
-    def close_window_click(self):
+        return True
 
-        # closes the dialog window
-        self.close()
+    def load_prep_data_complete(self, load_flag):
 
-    # ---------------------------------------------------------------------------
-    # Preprocessing Data Load Methods
-    # ---------------------------------------------------------------------------
+        if load_flag:
+            while not self.load_complete:
+                time.sleep(0.1)
 
-    def load_prep_data(self):
+            # case is the data output was successful
+            self.prog_bar.set_label('Data Load Complete')
+            self.prog_bar.stop_timer()
+            time.sleep(0.1)
 
-        # field retrieval
-        folder_path_fcn = self.session_obj.setup_folder_path
-        i_run = range(1) if self.is_concat_run else range(len(self.run_names))
+            # closes the dialog window
+            self.close_window_click()
 
-        for i_run in n_run:
-            if self.is_per_shank:
-                # case is single shank recording
-                for i_shank in range(self.n_shank):
-                    # sets up the input folder
-                    in_folder = self.folder_path_fcn(
-                        s_type='preprocessing',
-                        is_concat_run=self.is_concat_run,
-                        i_run=i_run,
-                        i_shank=i_shank
-                    )
+        else:
+            # case is the user cancelled
+            self.prog_bar.set_progbar_state(False)
+            self.set_dialog_props(True)
 
-            else:
-                # case is single shank recording
-
-                # sets up the input folder
-                in_folder = self.folder_path_fcn(
-                    s_type='preprocessing',
-                    is_concat_run=self.is_concat_run,
-                    i_run=i_run,
-                )
+            # resets the running flag
+            self.is_running = False
 
     def setup_recording_chain(self, pp_rec, raw_rec):
 
@@ -479,7 +558,6 @@ class LoadPrep(QDialog):
         pp_steps = pp_sel.pp_steps_name
         run_dict[pp_steps[-1]] = pp_rec
 
-        #
         for pp_step in reversed(pp_steps[1:-1]):
             # proprocessing dictionary initialisation
             pp_rec_dict = pp_rec.to_dict() if (pp_rec_dict is None) else pp_rec_step.to_dict()
@@ -499,3 +577,16 @@ class LoadPrep(QDialog):
 
         # returns the reverse dictionary
         return {k: run_dict[k] for k in reversed(run_dict)}
+
+    # ------------------------------------------------------------------------------------
+
+    def set_dialog_props(self, state):
+
+        # sets the close button properties
+        self.prep_group.setEnabled(state)
+        self.task_group.setEnabled(state)
+        self.cont_button[1].setEnabled(state)
+        self.cont_button[0].setText(self.load_str[not state])
+
+        # pause for update...
+        time.sleep(0.01)
