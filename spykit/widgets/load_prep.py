@@ -28,7 +28,7 @@ from spikeinterface.preprocessing.common_reference import CommonReferenceRecordi
 from spikeinterface.preprocessing.interpolate_bad_channels import InterpolateBadChannelsRecording
 
 # pyqt6 module import
-from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QGridLayout,
+from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QGridLayout, QApplication,
                              QWidget, QMessageBox, QGroupBox, QListWidget, QFrame)
 from PyQt6.QtCore import pyqtSignal, QTimer
 
@@ -243,6 +243,12 @@ class LoadPrep(QDialog):
         self.init_info_group()
         self.init_progress_frame()
         self.init_cont_buttons()
+
+    def open_dialog(self):
+
+        # displays the dialog
+        self.show()
+        QApplication.processEvents()
 
         # wait until the sync manager has been initialised
         if not self.sync_manager.is_init:

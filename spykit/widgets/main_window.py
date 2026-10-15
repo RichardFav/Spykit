@@ -1235,10 +1235,12 @@ class MenuBar(QObject):
 
     def load_preprocessed(self):
 
-        # creates/shows the preprocessing load dialog
+        # creates the preprocessing load dialog
         h_load = LoadPrep(self.sp_main)
         h_load.update_main_props.connect(self.sp_main.post_prep_load)
-        h_load.show()
+
+        # opens the dialog
+        h_load.open_dialog()
 
     def load_postprocessed(self):
 

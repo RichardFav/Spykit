@@ -2122,6 +2122,13 @@ class RunPreProcessing(QObject):
         else:
             return len(run.items())
 
+    def get_prep_steps(self):
+
+        if self.pp_steps_tot is None:
+            return None
+        else:
+            return [x[0] for x in self.pp_steps_tot.values()]
+
     def set_prep_opt(self, prep_opt):
 
         self.per_shank = prep_opt['per_shank']

@@ -3,14 +3,14 @@ allow_single_cluster,Allow Single Clusters?,***,checkbox,clustering,method_kwarg
 allow_single_cluster,Allow Single Clusters?,***,checkbox,clustering,method_kwargs,hdbscan_kwargs,***,***,***,***
 allow_single_cluster,Allow Single Clusters?,***,checkbox,clustering,method_kwargs,split,method_kwargs,clusterer,***,***
 apply_local_svd,Apply Local SVD?,***,checkbox,clustering,method_kwargs,graph_kwargs,***,***,***,***
-apply_motion_correction,Apply Motion Correction?,Motion Correction,checkbox,Preprocessing,***,***,***,***,***,***
-apply_preprocessing,Apply Preprocessing?,,checkbox,Preprocessing,***,***,***,***,***,***
+apply_motion_correction,Apply Motion Correction?,Drift Correction,checkbox,Preprocessing,***,***,***,***,***,***
+apply_preprocessing,Apply Preprocessing?,Any,checkbox,Preprocessing,***,***,***,***,***,***
 apply_whitening,Apply Whitening?,Whitening,checkbox,Preprocessing,***,***,***,***,***,***
 car,Use Common Average Referencing?,Common Reference,checkbox,Preprocessing,***,***,***,***,***,***
 clear_cache,Force Cache Clearing?,***,checkbox,Job Parameters,***,***,***,***,***,***
 clustering_bin_seeding,Use Clustering Bin Seeding?,***,checkbox,Clustering,***,***,***,***,***,***
 common_ref_removal,Remove Median Common Reference,Common Reference,checkbox,Preprocessing,***,***,***,***,***,***
-datashift,Use Rigid Registration,Motion Correction,checkbox,Preprocessing,***,***,***,***,***,***
+datashift,Use Rigid Registration,Drift Correction,checkbox,Preprocessing,***,***,***,***,***,***
 debug,Keep Internal Data Structures?,***,checkbox,Data Files,***,***,***,***,***,***
 decay_filtering,Exclude Duplicate Spikes?,***,checkbox,Spike Detection,***,***,***,***,***,***
 delete_recording_dat,Delete Recording Data File?,***,checkbox,Data Files,***,***,***,***,***,***
@@ -20,14 +20,14 @@ denoise,Use Denoise Filter?,***,checkbox,Preprocessing,***,***,***,***,***,***
 deterministic_mode,Use Deterministic Mode?,***,checkbox,Job Parameters,***,***,***,***,***,***
 deterministic_peaks_detection,Use Deterministic Mode?,***,checkbox,Other Parameters,***,***,***,***,***,***
 do_CAR,Use Common Average Referencing?,Common Reference,checkbox,Preprocessing,***,***,***,***,***,***
-do_correction,Apply Drift Correction?,Motion Correction,checkbox,Preprocessing,***,***,***,***,***,***
-do_filter,Use Bandpass Filter?,Filtering,checkbox,Preprocessing,***,***,***,***,***,***
+do_correction,Apply Drift Correction?,Drift Correction,checkbox,Preprocessing,***,***,***,***,***,***
+do_filter,Use Bandpass Filter?,Bandpass Filter,checkbox,Preprocessing,***,***,***,***,***,***
 do_whitening,Use Whitening?,Whitening,checkbox,Preprocessing,***,***,***,***,***,***
 enable_detect_filter,Use Detection Filter?,***,checkbox,Spike Detection,***,***,***,***,***,***
-enable_sort_filter,Use Sorting Filter?,Filtering,checkbox,Preprocessing,***,***,***,***,***,***
+enable_sort_filter,Use Sorting Filter?,Bandpass Filter,checkbox,Preprocessing,***,***,***,***,***,***
 enforce_diagonal_to_zero,Enforce Zero Diagonal?,***,checkbox,clustering,method_kwargs,graph_kwargs,***,***,***,***
 fGpu,Enable GPU Usage?,***,checkbox,Job Parameters,***,***,***,***,***,***
-filter,Apply Filtering?,Filtering,checkbox,Preprocessing,***,***,***,***,***,***
+filter,Apply Filtering?,Bandpass Filter,checkbox,Preprocessing,***,***,***,***,***,***
 fParfor,Use Matlab Parfor?,***,checkbox,Job Parameters,***,***,***,***,***,***
 generate_phy,Generate Phys File?,***,checkbox,Data Files,***,***,***,***,***,***
 interpolation,Use Spike Interpolation?,***,checkbox,Spike Detection,***,***,***,***,***,***
@@ -36,7 +36,7 @@ keep_good_only,Keep Good Units Only?,***,checkbox,Clustering,***,***,***,***,***
 legacy,Use Legacy Solver?,***,checkbox,clustring,***,***,***,***,***,***
 localize,Perform Spike Localisation?,***,checkbox,Spike Detection,***,***,***,***,***,***
 low_memory,Use Low Memory Settings?,***,checkbox,Job Parameters,***,***,***,***,***,***
-lowpass,Enable Internal Low-Pass Filtering?,Filtering,checkbox,Preprocessing,***,***,***,***,***,***
+lowpass,Enable Internal Low-Pass Filtering?,Bandpass Filter,checkbox,Preprocessing,***,***,***,***,***,***
 merge_spikes,Use Automatic Merging?,***,checkbox,Merging,***,***,***,***,***,***
 motion_aware,Allow Template Drift?,***,checkbox,matching,method_kwargs,***,***,***,***,***
 multi_units_only,Track Multi-Unit Activity Only?,***,checkbox,Other Parameters,***,***,***,***,***,***
@@ -44,7 +44,7 @@ neuron_discover,Recluster During Deconvolution?,***,checkbox,Clustering,***,***,
 normed_distances,Normalise Distances?,***,checkbox,clustering,method_kwargs,graph_kwargs,***,***,***,***
 parfor,Use Matlab Parfor?,***,checkbox,Job Parameters,***,***,***,***,***,***
 pca_whiten,Use Whitening?,Whitening,checkbox,Preprocessing,***,***,***,***,***,***
-perform_drift_registration,Apply Drift Correction?,Motion Correction,checkbox,Preprocessing,***,***,***,***,***,***
+perform_drift_registration,Apply Drift Correction?,Drift Correction,checkbox,Preprocessing,***,***,***,***,***,***
 progress_bar,Show Terminal Progress Bar?,***,checkbox,Job Parameters,***,***,***,***,***,***
 progress_bar,Show Terminal Progress Bar?,***,checkbox,job_kwargs,***,***,***,***,***,***
 ReclusterClusters,Recluster Large Clusters?,***,checkbox,Clustering,***,***,***,***,***,***
@@ -52,7 +52,7 @@ recursive,Apply Recursion?,***,checkbox,clustering,method_kwargs,split,***,***,*
 regularize,Regularise Whitening?,Whitening,checkbox,whitening,***,***,***,***,***,***
 remove_empty,Remove Empty?,***,checkbox,clustering,method_kwargs,clean_templates,***,***,***,***
 rescale,Automatically Rescale Data?,***,checkbox,Spike Detection,***,***,***,***,***,***
-rigid,Assume Rigid Motion?,Motion Correction,checkbox,motion_correction,estimate_motion_kwargs,***,***,***,***,***
+rigid,Assume Rigid Motion?,Drift Correction,checkbox,motion_correction,estimate_motion_kwargs,***,***,***,***,***
 save_array,Save Intermediate Arrays?,***,checkbox,Data Files,***,***,***,***,***,***
 save_drift_spike_detections,Save Drift Correction Spikes?,***,checkbox,Data Files,***,***,***,***,***,***
 save_extra_vars,Save Extra Variables?,***,checkbox,Job Parameters,***,***,***,***,***,***
@@ -77,7 +77,7 @@ affinity,Affinity Method,***,combobox,clusterer_kwargs,***,***,***,***,***,***
 algorithm,Optimisation Algorithm,***,combobox,clusterer_kwargs,***,***,***,***,***,***
 amplitude_mode,Amplitude Mode,***,combobox,clustering,method_kwargs,sparsity,***,***,***,***
 bin_mode,Binning Mode,***,combobox,clustering,method_kwargs,graph_kwargs,***,***,***,***
-border_mode,Border Mode,Motion Correction,combobox,motion_correction,interpolate_motion_kwargs,***,***,***,***,***
+border_mode,Border Mode,Drift Correction,combobox,motion_correction,interpolate_motion_kwargs,***,***,***,***,***
 cache_preprocessing_mode,Preprocessing Cache Mode,***,combobox,Preprocessing,***,***,***,***,***,***
 cluster_selection_method,Selection Method,***,combobox,clusterer_kwargs,***,***,***,***,***,***
 cluster_selection_method,Selection Method,***,combobox,clustering,method_kwargs,clusterer,***,***,***,***
@@ -86,17 +86,17 @@ common_ref_type,Common Average Reference Method,Common Reference,combobox,Prepro
 common_reference,Common Average Reference Method,Common Reference,combobox,Preprocessing,***,***,***,***,***,***
 covariance_type,Covariance Type,***,combobox,clusterer_kwargs,***,***,***,***,***,***
 detect_sign,Detection Sign,***,combobox,Spike Detection,***,***,***,***,***,***
-direction,Peak Direction,Motion Correction,combobox,motion_correction,estimate_motion_kwargs,***,***,***,***,***
+direction,Peak Direction,Drift Correction,combobox,motion_correction,estimate_motion_kwargs,***,***,***,***,***
 dtype,Data Type,***,combobox,Job Parameters,***,***,***,***,***,***
 dtype,Data Type,All,combobox,preprocessing_dict,***,***,***,***,***,***
 engine,Convolution Calculation Engine,***,combobox,matching,method_kwargs,***,***,***,***,***
 feature,Feature,***,combobox,clustering,method_kwargs,***,***,***,***,***
 feature_type,Extraction Feature Type,***,combobox,Feature Extraction,***,***,***,***,***,***
-filter_detect_type,Detection Filter Type,Filtering,combobox,Preprocessing,***,***,***,***,***,***
-filter_mode,Filter Mode,Filtering,combobox,preprocessing_dict,***,***,***,***,***,***
-filter_type,Filter Type,Filtering,combobox,Preprocessing,***,***,***,***,***,***
-ftype,Filtering Type,Filtering,combobox,filtering,***,***,***,***,***,***
-ftype,Filtering Type,Filtering,combobox,preprocessing_dict,***,***,***,***,***,***
+filter_detect_type,Detection Filter Type,Bandpass Filter,combobox,Preprocessing,***,***,***,***,***,***
+filter_mode,Filter Mode,Bandpass Filter,combobox,preprocessing_dict,***,***,***,***,***,***
+filter_type,Filter Type,Bandpass Filter,combobox,Preprocessing,***,***,***,***,***,***
+ftype,Filtering Type,Bandpass Filter,combobox,filtering,***,***,***,***,***,***
+ftype,Filtering Type,Bandpass Filter,combobox,preprocessing_dict,***,***,***,***,***,***
 gather_mode,Detected Peak Gathering Mode,***,combobox,detection,pipeline_kwargs,***,***,***,***,***
 gather_mode,Detected Peak Gathering Mode,***,combobox,Job Parameters,***,***,***,***,***,***
 gather_mode,Detected Peak Gathering Mode,***,combobox,matching,pipeline_kwargs,***,***,***,***,***
@@ -110,38 +110,38 @@ method,Method,***,combobox,clustering,method_kwargs,sparsity,***,***,***,***
 method,Method,***,combobox,clustering,method_kwargs,split,method_kwargs,clusterer,***,***
 method,Method,***,combobox,detection,***,***,***,***,***,***
 method,Method,***,combobox,matching,***,***,***,***,***,***
-method,Method,Motion Correction,combobox,motion_correction,detect_kwargs,***,***,***,***,***
-method,Method,Motion Correction,combobox,motion_correction,estimate_motion_kwargs,***,***,***,***,***
-method,Method,Motion Correction,combobox,motion_correction,localize_peak_kwargs,***,***,***,***,***
+method,Method,Drift Correction,combobox,motion_correction,detect_kwargs,***,***,***,***,***
+method,Method,Drift Correction,combobox,motion_correction,estimate_motion_kwargs,***,***,***,***,***
+method,Method,Drift Correction,combobox,motion_correction,localize_peak_kwargs,***,***,***,***,***
 method,Method,***,combobox,selection,***,***,***,***,***,***
 mode,Mode,All,combobox,cache_preprocessing,***,***,***,***,***,***
-mode,Mode,Motion Correction,combobox,motion_correction,localize_peak_kwargs,weight_method,***,***,***,***
+mode,Mode,Drift Correction,combobox,motion_correction,localize_peak_kwargs,weight_method,***,***,***,***
 mode,Mode,Whitening,combobox,whitening,***,***,***,***,***,***
-motion_correction_preset,Preset,Motion Correction,combobox,Preprocessing,***,***,***,***,***,***
+motion_correction_preset,Preset,Drift Correction,combobox,Preprocessing,***,***,***,***,***,***
 mp_context,Multiprocessor Context,***,combobox,Job Parameters,***,***,***,***,***,***
 mp_context,Multiprocessor Context,***,combobox,job_kwargs,***,***,***,***,***,***
 operator,Operator,Common Reference,combobox,preprocessing_dict,***,***,***,***,***,***
 peak_sign,Detection Sign,***,combobox,detection,method_kwargs,***,***,***,***,***
 peak_sign,Detection Sign,***,combobox,matching,method_kwargs,***,***,***,***,***
-peak_sign,Detection Sign,Motion Correction,combobox,motion_correction,detect_kwargs,***,***,***,***,***
+peak_sign,Detection Sign,Drift Correction,combobox,motion_correction,detect_kwargs,***,***,***,***,***
 peak_sign,Detection Sign,***,combobox,Spike Detection,***,***,***,***,***,***
 pool_engine,Parallel Computing Type,***,combobox,Job Parameters,***,***,***,***,***,***
 pool_engine,Parallel Computing Type,***,combobox,job_kwargs,***,***,***,***,***,***
 preprocessing_function,Preprocessing Function,Any,combobox,Preprocessing,***,***,***,***,***,***
-preset,Preset,Motion Correction,combobox,motion_correction,***,***,***,***,***,***
+preset,Preset,Drift Correction,combobox,motion_correction,***,***,***,***,***,***
 projection_mode,Projection Mode,***,combobox,clustering,method_kwargs,split,method_kwargs,***,***,***
 reference,Reference,Common Reference,combobox,preprocessing_dict,***,***,***,***,***,***
 scheme,Sorting Scheme,***,combobox,Job Parameters,***,***,***,***,***,***
 scheme2_training_recording_sampling_mode,Scheme 2 Recording Sample Mode,***,combobox,Scheme 2 Parameters,***,***,***,***,***,***
 similarity_metric,Similarity Metric,***,combobox,clustering,method_kwargs,merge_from_templates,***,***,***,***
 sparse_mode,Sparsity Mode,***,combobox,clustering,method_kwargs,graph_kwargs,***,***,***,***
-spatial_interpolation_method,Spatial Interpolation Method,Motion Correction,combobox,motion_correction,interpolate_motion_kwargs,***,***,***,***,***
+spatial_interpolation_method,Spatial Interpolation Method,Drift Correction,combobox,motion_correction,interpolate_motion_kwargs,***,***,***,***,***
 stop_criteria,Stopping Criteria,***,combobox,matching,method_kwargs,***,***,***,***,***
 template_matching_engine,Matching Algorithm,***,combobox,Template Matching,***,***,***,***,***,***
 torch_device,Torch Device,***,combobox,Job Parameters,***,***,***,***,***,***
 torch_device,Torch Device,***,combobox,matching,method_kwargs,***,***,***,***,***
 whitening,Whitening Method,Whitening,combobox,Preprocessing,***,***,***,***,***,***
-win_shape,Window Shape,Motion Correction,combobox,motion_correction,estimate_motion_kwargs,***,***,***,***,***
+win_shape,Window Shape,Drift Correction,combobox,motion_correction,estimate_motion_kwargs,***,***,***,***,***
 cache_preprocessing,Preprocessing Cache Parameters,,dict,***,***,***,***,***,***,***
 chunk_preprocessing,Preprocessing Chunk Parameters,,dict,***,***,***,***,***,***,***
 clean_low_firing,Low Firing Cleaning Parameters,***,dict,clustering,method_kwargs,***,***,***,***,***
@@ -151,16 +151,16 @@ clusterer,Clusterer Properties,***,dict,clustering,method_kwargs,***,***,***,***
 clusterer,Clusterer Properties,***,dict,clustering,method_kwargs,split,method_kwargs,***,***,***
 clusterer_kwargs,Clusterer Parameters,***,dict,***,***,***,***,***,***,***
 clustering,Clustering Parameters,***,dict,***,***,***,***,***,***,***
-detect_kwargs,Detection Parameters,Motion Correction,dict,motion_correction,***,***,***,***,***,***
+detect_kwargs,Detection Parameters,Drift Correction,dict,motion_correction,***,***,***,***,***,***
 detection,Detection Parameters,***,dict,***,***,***,***,***,***,***
-estimate_motion_kwargs,Motion Estimation Parameters,Motion Correction,dict,motion_correction,***,***,***,***,***,***
+estimate_motion_kwargs,Motion Estimation Parameters,Drift Correction,dict,motion_correction,***,***,***,***,***,***
 filtering,Filtering Parameters,***,dict,***,***,***,***,***,***,***
 general,General Parameters,***,dict,***,***,***,***,***,***,***
 graph_kwargs,Graphing Parameters,***,dict,clustering,method_kwargs,***,***,***,***,***
 hdbscan_kwargs,HDBScan Parameters,***,dict,clustering,method_kwargs,***,***,***,***,***
-interpolate_motion_kwargs,Motion Interpolation Parameters,Motion Correction,dict,motion_correction,***,***,***,***,***,***
+interpolate_motion_kwargs,Motion Interpolation Parameters,Drift Correction,dict,motion_correction,***,***,***,***,***,***
 job_kwargs,Job Parameters,***,dict,***,***,***,***,***,***,***
-localize_peak_kwargs,Peak Localisation Parameters,Motion Correction,dict,motion_correction,***,***,***,***,***,***
+localize_peak_kwargs,Peak Localisation Parameters,Drift Correction,dict,motion_correction,***,***,***,***,***,***
 matching,Matching Parameters,***,dict,***,***,***,***,***,***,***
 merge_from_templates,Template Merging Parameters,***,dict,clustering,method_kwargs,***,***,***,***,***
 merging,Merging Parameters,***,dict,***,***,***,***,***,***,***
@@ -169,7 +169,7 @@ method_kwargs,Method Parameters,***,dict,clustering,method_kwargs,split,***,***,
 method_kwargs,Method Parameters,***,dict,detection,***,***,***,***,***,***
 method_kwargs,Method Parameters,***,dict,matching,***,***,***,***,N/A,N/A
 method_kwargs,Method Parameters,***,dict,selection,***,***,***,***,***,***
-motion_correction,Motion Correction Parameters,Motion Correction,dict,***,***,***,***,***,***,***
+motion_correction,Motion Correction Parameters,Drift Correction,dict,***,***,***,***,***,***,***
 peak_localization_kwargs,Peak Localisation Parameters,***,dict,clustering,method_kwargs,***,***,***,***,***
 pipeline_kwargs,Pipeline Parameters,***,dict,detection,***,***,***,***,***,***
 pipeline_kwargs,Pipeline Parameters,***,dict,matching,***,***,***,***,***,***
@@ -179,7 +179,7 @@ smoothing,Smoothing Parameters,***,dict,clustering,method_kwargs,***,***,***,***
 sparsity,Sparsity Parameters,***,dict,clustering,method_kwargs,***,***,***,***,***
 split,Split Parameters,***,dict,clustering,method_kwargs,***,***,***,***,***
 waveforms,Waveform Parameters,***,dict,clustering,method_kwargs,***,***,***,***,***
-weight_method,Weight Parameters,Motion Correction,dict,motion_correction,localize_peak_kwargs,***,***,***,***,***
+weight_method,Weight Parameters,Drift Correction,dict,motion_correction,localize_peak_kwargs,***,***,***,***,***
 whitening,Whitening Parameters,Whitening,dict,***,***,***,***,***,***,***
 acg_threshold,ACG Threshold Level,***,edit_float,Clustering,***,***,***,***,0,inf
 add_if_nearer_than,Min Electrode Group Distance (um),***,edit_float,Template Matching,***,***,***,***,1,inf
@@ -194,7 +194,7 @@ artifact_threshold,Artifact Threshold,***,edit_float,Preprocessing,***,***,***,*
 AUCsplit,AUC Split Criterion Threshold,***,edit_float,Clustering,***,***,***,***,0,inf
 auto_merge,Automatically Merge Spikes?,***,edit_float,Merging,***,***,***,***,0,inf
 batch_sec_drift,Batch Duration (s),***,edit_float,Clustering,***,***,***,***,0,inf
-bin_s,Bin Size (s),Motion Correction,edit_float,motion_correction,estimate_motion_kwargs,***,***,***,0,inf
+bin_s,Bin Size (s),Drift Correction,edit_float,motion_correction,estimate_motion_kwargs,***,***,***,0,inf
 ccg_threshold,CCG Threshold Level,***,edit_float,Clustering,***,***,***,***,0,inf
 chunk_duration,Chunk Duration (s),***,edit_float,Job Parameters,***,***,***,***,0.1,inf
 chunk_duration,Chunk Duration (s),***,edit_float,job_kwargs,***,***,***,***,0.1,10
@@ -216,7 +216,7 @@ detect_filter_fmin,Low-Pass Cutoff Freq (Hz),***,edit_float,Spike Detection,***,
 detect_interval,Min Inter-Event Duration (Frames),***,edit_float,Spike Detection,***,***,***,***,0,inf
 detect_threshold,Spike Detection Threshold,***,edit_float,detection,method_kwargs,***,***,***,0,inf
 detect_threshold,Spike Detection Threshold,***,edit_float,matching,method_kwargs,***,***,***,0,inf
-detect_threshold,Spike Detection Threshold,Motion Correction,edit_float,motion_correction,detect_kwargs,***,***,***,0,inf
+detect_threshold,Spike Detection Threshold,Drift Correction,edit_float,motion_correction,detect_kwargs,***,***,***,0,inf
 detect_threshold,Spike Detection Threshold,***,edit_float,Spike Detection,***,***,***,***,0,inf
 detect_time_radius_msec,Max Spike Temporal Difference (ms),***,edit_float,Spike Detection,***,***,***,***,0,inf
 detection_radius_um,Neighbourhood Radius (um),***,edit_float,matching,method_kwargs,***,***,***,0,inf
@@ -227,24 +227,24 @@ duplicate_spike_ms,Spike Refractory Period (ms),***,edit_float,Postprocessing,**
 epu,Min Update Step Size,***,edit_float,Template Matching,***,***,***,***,0,inf
 exclude_sweep_ms,Sweep Exclusion Window (ms),***,edit_float,detection,method_kwargs,***,***,***,0,inf
 exclude_sweep_ms,Sweep Exclusion Window (ms),***,edit_float,matching,method_kwargs,***,***,***,0,inf
-exclude_sweep_ms,Sweep Exclusion Window (ms),Motion Correction,edit_float,motion_correction,detect_kwargs,***,***,***,0,inf
+exclude_sweep_ms,Sweep Exclusion Window (ms),Drift Correction,edit_float,motion_correction,detect_kwargs,***,***,***,0,inf
 features_radius_um,Neighbourhood Radius (um),***,edit_float,Feature Extraction,***,***,***,***,0,inf
-fft_thresh,FFT Noise Peak Upper Threshold,Filtering,edit_float,Preprocessing,***,***,***,***,0,inf
-fft_thresh_low,FFT Noise Peak Lower Threshold,Filtering,edit_float,Preprocessing,***,***,***,***,0,inf
+fft_thresh,FFT Noise Peak Upper Threshold,Bandpass Filter,edit_float,Preprocessing,***,***,***,***,0,inf
+fft_thresh_low,FFT Noise Peak Lower Threshold,Bandpass Filter,edit_float,Preprocessing,***,***,***,***,0,inf
 FirstMatchFactor,First Match Factor,***,edit_float,Template Matching,***,***,***,***,0,inf
 fracse,Bin Step-Size (Std Dev),***,edit_float,Merging,***,***,***,***,0,inf
-freq_max,High-Pass Cutoff Freq (Hz),Filtering,edit_float,filtering,***,***,***,***,0,inf
-freq_max,High-Pass Cutoff Freq (Hz),Filtering,edit_float,Preprocessing,***,***,***,***,0,inf
-freq_max,High-Pass Cutoff Freq (Hz),Filtering,edit_float,preprocessing_dict,***,***,***,***,0,inf
-freq_min,Low-Pass Cutoff Freq (Hz),Filtering,edit_float,filtering,***,***,***,***,0,inf
-freq_min,Low-Pass Cutoff Freq (Hz),Filtering,edit_float,Preprocessing,***,***,***,***,0,inf
-freq_min,Low-Pass Cutoff Freq (Hz),Filtering,edit_float,preprocessing_dict,***,***,***,***,0,inf
-fshigh,High-Pass Cutoff Freq (Hz),Filtering,edit_float,Preprocessing,***,***,***,***,0,inf
-fslow,Low-Pass Cutoff Freq (Hz),Filtering,edit_float,Preprocessing,***,***,***,***,0,inf
+freq_max,High-Pass Cutoff Freq (Hz),Bandpass Filter,edit_float,filtering,***,***,***,***,0,inf
+freq_max,High-Pass Cutoff Freq (Hz),Bandpass Filter,edit_float,Preprocessing,***,***,***,***,0,inf
+freq_max,High-Pass Cutoff Freq (Hz),Bandpass Filter,edit_float,preprocessing_dict,***,***,***,***,0,inf
+freq_min,Low-Pass Cutoff Freq (Hz),Bandpass Filter,edit_float,filtering,***,***,***,***,0,inf
+freq_min,Low-Pass Cutoff Freq (Hz),Bandpass Filter,edit_float,Preprocessing,***,***,***,***,0,inf
+freq_min,Low-Pass Cutoff Freq (Hz),Bandpass Filter,edit_float,preprocessing_dict,***,***,***,***,0,inf
+fshigh,High-Pass Cutoff Freq (Hz),Bandpass Filter,edit_float,Preprocessing,***,***,***,***,0,inf
+fslow,Low-Pass Cutoff Freq (Hz),Bandpass Filter,edit_float,Preprocessing,***,***,***,***,0,inf
 gain,Signal Gain Factor,***,edit_float,Preprocessing,***,***,***,***,0,inf
 genericSpkTh,Crossing Threshold,***,edit_float,Spike Detection,***,***,***,***,0,inf
-highpass_cutoff,High-Pass Cutoff Freq (Hz),Filtering,edit_float,Preprocessing,***,***,***,***,0,inf
-hist_margin_um,Histogram Bin Size (um),Motion Correction,edit_float,motion_correction,estimate_motion_kwargs,***,***,***,0,inf
+highpass_cutoff,High-Pass Cutoff Freq (Hz),Bandpass Filter,edit_float,Preprocessing,***,***,***,***,0,inf
+hist_margin_um,Histogram Bin Size (um),Drift Correction,edit_float,motion_correction,estimate_motion_kwargs,***,***,***,0,inf
 inner_radius,Probe Radius (um),***,edit_float,Spike Detection,***,***,***,***,0,inf
 interpolation_time_bin_size_s,Interpolation Time Bin Size (s),***,edit_float,matching,method_kwargs,***,***,***,0,inf
 isocut_threshold,Threshold,***,edit_float,clusterer_kwargs,***,***,***,***,0,inf
@@ -310,7 +310,7 @@ preclust_threshold,Pre-Clustering Crossing Threshold,***,edit_float,Clustering,*
 radius_um,Neighbourhood Radius (um),***,edit_float,clustering,method_kwargs,***,***,***,0,Inf
 radius_um,Neighbourhood Radius (um),***,edit_float,detection,method_kwargs,***,***,***,0,inf
 radius_um,Neighbourhood Radius (um),***,edit_float,general,***,***,***,***,0,inf
-radius_um,Neighbourhood Radius (um),Motion Correction,edit_float,motion_correction,detect_kwargs,***,***,***,0,inf
+radius_um,Neighbourhood Radius (um),Drift Correction,edit_float,motion_correction,detect_kwargs,***,***,***,0,inf
 reassignment_ratio,Cluster Reassignment Ratio,***,edit_float,clusterer_kwargs,***,***,***,***,0,inf
 ref_ms,Spike Refractory Period (ms),***,edit_float,Spike Detection,***,***,***,***,0,inf
 relative_error,Relative Error,***,edit_float,matching,method_kwargs,***,***,***,0,inf
@@ -328,10 +328,10 @@ scheme2_phase1_detect_channel_radius,Scheme 2/Phase 1 Exclusion Radius,***,edit_
 scheme2_training_duration_sec,Scheme 2 Training Duration (s),***,edit_float,Scheme 2 Parameters,***,***,***,***,0,inf
 scheme3_block_duration_sec,Scheme 3 Block Duration (s),***,edit_float,Scheme 3 Parameters,***,***,***,***,0,inf
 SecondMatchFactor,Second Match Factor,***,edit_float,Template Matching,***,***,***,***,0,inf
-shift,Raw Trace DC Offset,Motion Correction,edit_float,Preprocessing,***,***,***,***,0,inf
-sig,Spatial Smoothing Constant (um),Motion Correction,edit_float,Preprocessing,***,***,***,***,0,inf
-sig_datashift,Gaussian Smoothing Std Dev,Motion Correction,edit_float,Preprocessing,***,***,***,***,0,inf
-sigma_um,Std Dev Size (um),Motion Correction,edit_float,motion_correction,interpolate_motion_kwargs,***,***,***,0,inf
+shift,Raw Trace DC Offset,Drift Correction,edit_float,Preprocessing,***,***,***,***,0,inf
+sig,Spatial Smoothing Constant (um),Drift Correction,edit_float,Preprocessing,***,***,***,***,0,inf
+sig_datashift,Gaussian Smoothing Std Dev,Drift Correction,edit_float,Preprocessing,***,***,***,***,0,inf
+sigma_um,Std Dev Size (um),Drift Correction,edit_float,motion_correction,interpolate_motion_kwargs,***,***,***,0,inf
 sigmaMask,Residual Variance Spatial Constant (um),***,edit_float,Template Matching,***,***,***,***,0,inf
 similarity_thresh,Similarity Threshold,***,edit_float,clustering,method_kwargs,merge_from_templates,***,***,0,Inf
 snippet_mask_radius,Snippet Mask Radius (um),***,edit_float,Spike Extraction,***,***,***,***,0,inf
@@ -345,7 +345,7 @@ sparsity_radius_um,Sparsity Radius (um),***,edit_float,matching,method_kwargs,**
 spatial_radius,Spike Neighbourhood Radius (um),***,edit_float,Common Parameters,***,***,***,***,0,inf
 spike_duration,Max Spike Duration (ms),***,edit_float,Spike Detection,***,***,***,***,0,inf
 spike_size_ms,Spike Duration (s),***,edit_float,Common Parameters,***,***,***,***,0,inf
-spkTh,Spike Detection Threshold,Motion Correction,edit_float,Preprocessing,***,***,***,***,0,inf
+spkTh,Spike Detection Threshold,Drift Correction,edit_float,Preprocessing,***,***,***,***,0,inf
 split_radius_um,Neighbourhood Radius (um),***,edit_float,Clustering,***,***,***,***,0,inf
 split_radius_um,Neighbourhood Radius (um),***,edit_float,clustering,method_kwargs,split,***,***,0,Inf
 split_radius_um,Neighbourhood Radius (um),***,edit_float,Merging,***,***,***,***,0,inf
@@ -371,9 +371,9 @@ tol,Convergence Tolerance,***,edit_float,clusterer_kwargs,***,***,***,***,0,1
 vicinity,Spike Modification Vicinity Area,***,edit_float,matching,method_kwargs,***,***,***,0,inf
 visibility_threshold,Min Channel Sparsity Peak Amplitude,***,edit_float,matching,method_kwargs,***,***,***,0,inf
 whitening_radius_um,Neighbourhood Radius (um),Whitening,edit_float,Preprocessing,***,***,***,***,0,inf
-win_margin_um,Boundary Margin (um),Motion Correction,edit_float,motion_correction,estimate_motion_kwargs,***,***,***,0,inf
-win_scale_um,Window Width (um),Motion Correction,edit_float,motion_correction,estimate_motion_kwargs,***,***,***,0,inf
-win_step_um,Window Spacing (um),Motion Correction,edit_float,motion_correction,estimate_motion_kwargs,***,***,***,0,inf
+win_margin_um,Boundary Margin (um),Drift Correction,edit_float,motion_correction,estimate_motion_kwargs,***,***,***,0,inf
+win_scale_um,Window Width (um),Drift Correction,edit_float,motion_correction,estimate_motion_kwargs,***,***,***,0,inf
+win_step_um,Window Spacing (um),Drift Correction,edit_float,motion_correction,estimate_motion_kwargs,***,***,***,0,inf
 window_length_ms,Window Length (ms),***,edit_float,clustering,method_kwargs,smoothing,***,***,0,Inf
 alignment_window,Inter-Channel Peak Sample Count,***,edit_int,Spike Detection,***,***,***,***,1,inf
 approx_rank,Template Matrix Rank,***,edit_int,matching,method_kwargs,***,***,***,1,inf
@@ -398,8 +398,8 @@ core_dist_n_jobs,Distributed Job Core Count,***,edit_int,clustering,method_kwarg
 core_dist_n_jobs,Distributed Job Core Count,***,edit_int,clustering,method_kwargs,hdbscan_kwargs,***,***,1,Inf
 delta_cut,Detection Threshold,***,edit_int,Spike Detection,***,***,***,***,1,inf
 detect_filter_order,Detection Filter Order,***,edit_int,Spike Detection,***,***,***,***,1,inf
-filter_order,Filter Order,Filtering,edit_int,filtering,***,***,***,***,1,inf
-filter_order,Filter Order,Filtering,edit_int,preprocessing_dict,***,***,***,***,1,inf
+filter_order,Filter Order,Bandpass Filter,edit_int,filtering,***,***,***,***,1,inf
+filter_order,Filter Order,Bandpass Filter,edit_int,preprocessing_dict,***,***,***,***,1,inf
 ForceMaxRAMforDat,Max RAM Allocation Size (B),***,edit_int,Job Parameters,***,***,***,***,1,inf
 gpu_id,GPU ID,***,edit_int,Job Parameters,***,***,***,***,1,inf
 index_maximum,Max Peak Index Sample Count,***,edit_int,Feature Extraction,***,***,***,***,1,inf
@@ -458,7 +458,7 @@ n_svd_components_per_channel,SVD Components per channel,***,edit_int,Feature Ext
 n_svd_components_per_channel,SVD Components per channel,***,edit_int,Template Matching,***,***,***,***,1,inf
 n_templates,Single-Channel Template Count,***,edit_int,Template Matching,***,***,***,***,1,inf
 nb_projections,PCA Projection Count,***,edit_int,clustering,method_kwargs,***,***,***,1,Inf
-nblocks,Probe Registation Block Count,Motion Correction,edit_int,Preprocessing,***,***,***,***,1,inf
+nblocks,Probe Registation Block Count,Drift Correction,edit_int,Preprocessing,***,***,***,***,1,inf
 nearest_chans,Nearest Channel Count,***,edit_int,Spike Detection,***,***,***,***,1,inf
 nearest_templates,Nearest Template Count,***,edit_int,Template Matching,***,***,***,***,1,inf
 Nfilt,Template Count,***,edit_int,Template Matching,***,***,***,***,1,inf
@@ -480,7 +480,7 @@ num_shifts,Temporal Shift Count,***,edit_int,clustering,method_kwargs,merge_from
 num_workers,CPU Processor Count,***,edit_int,Job Parameters,***,***,***,***,1,inf
 nup,Interpolation Factor,***,edit_int,Template Matching,***,***,***,***,1,inf
 p,Power Exponent,***,edit_int,clusterer_kwargs,***,***,***,***,1,inf
-p,Power Exponent,Motion Correction,edit_int,motion_correction,interpolate_motion_kwargs,***,***,***,1,inf
+p,Power Exponent,Drift Correction,edit_int,motion_correction,interpolate_motion_kwargs,***,***,***,1,inf
 pc_per_chan,PCA Dimension Count,***,edit_int,Clustering,***,***,***,***,2,inf
 pca_ncomponents,PCA Dimension Count,***,edit_int,Clustering,***,***,***,***,1,inf
 position_limit,Channel Neighbourhood Radius (um),***,edit_int,Postprocessing,***,***,***,***,1,inf
@@ -489,12 +489,12 @@ rank,SVD Component Count,***,edit_int,matching,method_kwargs,***,***,***,1,inf
 recursive_depth,Recursive Depth,***,edit_int,clustering,method_kwargs,split,***,***,1,Inf
 RecursiveDepth,Recursion Depth,***,edit_int,Clustering,***,***,***,***,1,inf
 refractory_period_frames,Refractory Period (Frames),***,edit_int,matching,method_kwargs,***,***,***,1,inf
-reorder,Reorder Batches?,Motion Correction,edit_int,Preprocessing,***,***,***,***,1,inf
+reorder,Reorder Batches?,Drift Correction,edit_int,Preprocessing,***,***,***,***,1,inf
 sample_shift,Template Sample Shift (Frames),***,edit_int,matching,method_kwargs,***,***,***,1,inf
 scales,Wavelet Decomposition Levels,***,edit_int,Feature Extraction,***,***,***,***,1,inf
 seed,Random Number Generator Seed,***,edit_int,Merging,***,***,***,***,0,65535
 seed,Random Number Generator Seed,***,edit_int,Other Parameters,***,***,***,***,0,65535
-sig_interp,Spatial Smoothing Constant (um),Motion Correction,edit_int,Preprocessing,***,***,***,***,1,inf
+sig_interp,Spatial Smoothing Constant (um),Drift Correction,edit_int,Preprocessing,***,***,***,***,1,inf
 skip_after_n_peaks,Computation Peak Skip Count,***,edit_int,detection,pipeline_kwargs,***,***,***,1,inf
 skip_after_n_peaks,Computation Peak Skip Count,***,edit_int,matching,pipeline_kwargs,***,***,***,1,inf
 sort_filter_order,Sorting Filter Order,***,edit_int,Feature Extraction,***,***,***,***,1,inf
@@ -515,11 +515,11 @@ tempdir,Temporary Output Directory,***,filespec,Data Files,***,***,***,***,***,*
 bad_channels,Bad Channels,***,fixed,Fixed,***,***,***,***,***,***
 amplitude_limits,Spike Amplitude Limits,***,group_edit_float,matching,method_kwargs,***,***,***,0,inf
 amplitudes,Allowable Template Amplitudes,***,group_edit_float,matching,method_kwargs,***,***,***,0,inf
-drift_smoothing,Gaussian Filter Parameters,Motion Correction,group_edit_float,Preprocessing,***,***,***,***,0,inf
+drift_smoothing,Gaussian Filter Parameters,Drift Correction,group_edit_float,Preprocessing,***,***,***,***,0,inf
 lam,Amplitude Penalty Importance,***,group_edit_float,Template Matching,***,***,***,***,0,inf
 local_radius,Neighbourhood Radius (um),Common Reference,group_edit_float,preprocessing_dict,***,***,***,***,0,inf
 momentum,Annealing Momentum,***,group_edit_float,Template Matching,***,***,***,***,0,inf
-sigma_list_um,Std Dev Grid Size,Motion Correction,group_edit_float,motion_correction,localize_peak_kwargs,weight_method,***,***,1,inf
+sigma_list_um,Std Dev Grid Size,Drift Correction,group_edit_float,motion_correction,localize_peak_kwargs,weight_method,***,***,1,inf
 Th,Projection Threshold,***,group_edit_float,Spike Detection,***,***,***,***,0,inf
 loc_range,Local Minima Window Size (Frames),***,group_edit_int,Spike Detection,***,***,***,***,0,inf
 long_range,Spatial Neighbourhood Size (Frames),***,group_edit_int,Spike Detection,***,***,***,***,0,inf

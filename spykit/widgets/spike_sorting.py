@@ -16,6 +16,7 @@ from functools import partial as pfcn
 # spykit module imports
 import spykit.common.common_func as cf
 import spykit.common.common_widget as cw
+from spykit.info.preprocess import pp_flds
 from spykit.threads.utils import ThreadWorker
 
 # spike interface module imports
@@ -77,6 +78,7 @@ class SpikeSortingDialog(QMainWindow):
 
     # array class fields
     sort_str = ['Start Spike Sorting', 'Cancel Spike Sorting']
+    pp_chk = ['bandpass_filter', 'common_reference', 'drift_correct', 'whitening']
 
     # sorter tab groupings
     sorter_groups = {
@@ -111,14 +113,35 @@ class SpikeSortingDialog(QMainWindow):
         self.ss_config = ss_config
 
         if self.sp_main is not None:
-            # creates the preprocessing run class object
+            # field retrieval
             self.session_obj = self.sp_main.session_obj
             self.session = self.session_obj.session
-            self.prep_opt = [self.session.prep_obj.per_shank, self.session.prep_obj.concat_runs]
+            self.has_pp = self.session_obj.has_pp_runs()
 
             # preprocessing options
-            self.per_shank_pp = self.session.prep_obj.per_shank
-            self.concat_runs_pp = self.session.prep_obj.concat_runs
+            self.pp_steps = []
+            if self.has_pp:
+                # experimental runs have been preprocessed
+                self.per_shank_pp = self.session.prep_obj.per_shank
+                self.concat_runs_pp = self.session.prep_obj.concat_runs
+
+                # sets the preprocessing fields
+                pp_steps_exp = self.session.prep_obj.get_prep_steps()
+                for pp_s in pp_steps_exp:
+                    if pp_s in self.pp_chk:
+                        self.pp_steps.append(pp_flds[pp_s])
+
+                # REMOVE ME LATER
+                self.pp_steps += ['Whitening']
+
+            else:
+                # experimental runs have not been preprocessed
+                self.per_shank_pp = False
+                self.concat_runs_pp = False
+
+            # sets the preprocessing options
+            self.prep_opt = [self.per_shank_pp, self.concat_runs_pp]
+            self.all_pp = np.array_equiv([pp_flds[x] for x in self.pp_chk], self.pp_steps)
 
         else:
             self.session = None
@@ -1004,6 +1027,7 @@ class SpikeSorterTab(QTabWidget):
 
     # array class fields
     tree_hdr = ['Property', 'Value']
+    true_pp_chk = ['skip_kilosort_preprocessing']
 
     # value to label sign key
     sign_v2l = {
@@ -1091,11 +1115,14 @@ class SpikeSorterTab(QTabWidget):
         self.setLayout(self.tab_layout)
         self.setObjectName(self.s_name)
 
-    def setup_tab_objects(self):
-
         # retrieves the sorter properties
         if self.s_props is None:
             self.s_props = self.main_dlg.ss_obj.setup_sorter_para(self.s_name)
+
+    def setup_tab_objects(self):
+
+        # updates the parameter preprocessing validity field
+        self.update_prep_para_validity()
 
         # sets the tree-view properties
         self.tree_prop.setLineWidth(1)
@@ -1182,7 +1209,7 @@ class SpikeSorterTab(QTabWidget):
         # updates the initialisation flag
         self.is_init = True
 
-    def create_child_tree_item(self, item_p, p_fld, i_edit=None):
+    def create_child_tree_item(self, item_p, p_fld, i_edit=None, i_lvl=0):
 
         # initialisations
         item_ch, h_obj = None, None
@@ -1192,16 +1219,27 @@ class SpikeSorterTab(QTabWidget):
             return item_ch, h_obj
 
         else:
-            # otherwise, retrieve the main property values
+            # case is the field is in properties
             props = self.s_props[p_fld]
-            p_type, p_value = props.get('type').strip(), props.get('value')
-            if isinstance(p_value, dict) and (len(p_value) == 0):
-                # special case: dictionary with no values
+            if not props.is_valid:
+                # case is the field has already been included in preprocessing
+                match props.type:
+                    case 'checkbox':
+                        # case is a checkbox object
+                        self.reset_prep_para_checkbox(p_fld)
+
                 return item_ch, h_obj
 
             else:
-                # if the dictionary
-                p_desc = self.reshape_para_desc(props.get('desc'))
+                # otherwise, retrieve the main property values
+                p_type, p_value = props.get('type').strip(), props.get('value')
+                if isinstance(p_value, dict) and (len(p_value) == 0):
+                    # special case: dictionary with no values
+                    return item_ch, h_obj
+
+                else:
+                    # if the dictionary
+                    p_desc = self.reshape_para_desc(props.get('desc'))
 
         # if creating a group editbox item
         if i_edit is None:
@@ -1282,7 +1320,7 @@ class SpikeSorterTab(QTabWidget):
                 n_edit = len(p_value)
                 for i_edit in range(n_edit):
                     # creates the child node
-                    item_ch_d, h_obj_d = self.create_child_tree_item(item_ch, p_fld, i_edit)
+                    item_ch_d, h_obj_d = self.create_child_tree_item(item_ch, p_fld, i_edit=i_edit)
                     if item_ch_d is None:
                         continue
 
@@ -1312,16 +1350,27 @@ class SpikeSorterTab(QTabWidget):
 
             case 'dict':
                 # case is a dictionary
-
-                # if there are no dictionary fields then exit
-                if len(props.get('child')) == 0:
+                p_fld_ch = props.get('child')
+                if len(p_fld_ch) == 0:
+                    # if there are no dictionary fields then exit
                     item_p.removeChild(item_ch)
                     return None, None
+
+                #
+                return_item = True
+                ch_type = np.array([self.s_props[k].type for k in p_fld_ch])
+                if (i_lvl == 0) and (not np.any(ch_type == 'dict')):
+                    # if the child item is a dictionary, then reset the parent item
+                    item_p.removeChild(item_ch)
+                    del item_ch
+
+                    item_ch = item_p
+                    return_item = False
 
                 # case is a dictionary
                 for k in props.get('child'):
                     # creates the child node
-                    item_ch_d, obj_prop_d = self.create_child_tree_item(item_ch, k)
+                    item_ch_d, obj_prop_d = self.create_child_tree_item(item_ch, k, i_lvl=i_lvl+1)
 
                     # sets the item properties
                     if item_ch_d is not None:
@@ -1332,6 +1381,14 @@ class SpikeSorterTab(QTabWidget):
                         # adds the child tree widget item
                         obj_prop_d.setFixedHeight(self.item_row_size)
                         self.tree_prop.setItemWidget(item_ch_d, 1, obj_prop_d)
+
+                # if the item has no children added, then return None values
+                if item_ch.childCount() == 0:
+                    item_p.removeChild(item_ch)
+                    return None, None
+
+                elif not return_item:
+                    return None, h_obj
 
             case 'fixed':
                 item_p.removeChild(item_ch)
@@ -1455,6 +1512,35 @@ class SpikeSorterTab(QTabWidget):
             f_name = os.path.split(nw_path)[1]
             h_obj.obj_edit.setText('../{0}'.format(f_name))
             h_obj.obj_edit.setToolTip(nw_path)
+
+    # ---------------------------------------------------------------------------
+    # Preprocessing Parameter Functions
+    # ---------------------------------------------------------------------------
+
+    def update_prep_para_validity(self):
+
+        for k, sp in self.s_props.items():
+            match sp.pptype:
+                case '***':
+                    # case is not affected by preprocessing
+                    continue
+
+                case 'Any':
+                    # case is affected by any preprocessing steps
+                    sp.is_valid = not self.main_dlg.has_pp
+
+                case 'All':
+                    # case is affected by all preprocessing steps
+                    sp.is_valid = not self.main_dlg.all_pp
+
+                case _:
+                    # case is affected by specific preprocessing step
+                    sp.is_valid = sp.pptype not in self.main_dlg.pp_steps
+
+    def reset_prep_para_checkbox(self, p_fld):
+
+        p_fld_sp = p_fld.split('-')
+        self.s_props[p_fld].set('value', p_fld_sp[-1] in self.true_pp_chk)
 
     # ---------------------------------------------------------------------------
     # Miscellaneous Functions
@@ -1623,6 +1709,7 @@ class SpikeSortPara(object):
         self.value = value
         self.dvalue = value
         self.ss_df = ss_df
+        self.is_valid = True
 
         # numerical fields
         self.isint = self.type in ['group_edit_int', 'edit_int']
