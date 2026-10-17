@@ -1156,8 +1156,8 @@ class SpikeSorterTab(QTabWidget):
     # array class fields
     tree_hdr = ['Property', 'Value']
     true_pp_chk = ['skip_kilosort_preprocessing']
-    combo_chg = ['simple-clusterer', 'spykingcircus2-matching_kwargs-method',
-                 'spykingcircus2-clustering_kwargs-method', 'spykingcircus2-motion_kwargs-preset']
+    combo_chg = ['simple-clusterer', 'spykingcircus2-matching-method',
+                 'spykingcircus2-clustering-method', 'spykingcircus2-motion_correction-preset']
 
     # value to label sign key
     sign_v2l = {
@@ -1356,6 +1356,11 @@ class SpikeSorterTab(QTabWidget):
         tree_header.setDefaultAlignment(cf.align_type['center'])
         tree_header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
         tree_header.setSectionResizeMode(1, QHeaderView.ResizeMode.Fixed)
+
+        # updates the comboboxes field (if within the combobox change array and valid)
+        for cc in self.combo_chg:
+            if cc.startswith(self.s_name) and self.s_props[cc].is_valid:
+                self.combo_update_para_change(cc)
 
         # updates the initialisation flag
         self.is_init = True
@@ -1640,13 +1645,15 @@ class SpikeSorterTab(QTabWidget):
         p_value = h_obj.currentText()
         p_name = p_str.split('-')[-1]
 
-        # parameter specific updates
-        match p_name:
-            case s_name if s_name in self.combo_chg:
-                self.combo_update_para_change(p_str, p_value)
+        if p_str in self.combo_chg:
+            # case are comboboxes which affect parameter visibility
+            self.combo_update_para_change(p_str, p_value)
 
-            case p_name if p_name in ['detect_sign', 'peak_sign']:
-                p_value = self.sign_l2v[p_value]
+        else:
+            # other parameter specific updates
+            match p_name:
+                case p_name if p_name in ['detect_sign', 'peak_sign']:
+                    p_value = self.sign_l2v[p_value]
 
         # updates the property field
         self.prop_change.emit()
@@ -1719,59 +1726,327 @@ class SpikeSorterTab(QTabWidget):
         else:
             # otherwise, sort the parameters by type rank and then alphabetically
             p_type_rank = np.array([self.p_rank[self.s_props[pg].type] for pg in p_grp])
+            return p_grp[np.lexsort((p_grp, p_type_rank))]
 
-            try:
-                return p_grp[np.lexsort((p_grp, p_type_rank))]
-            except:
-                pass
+    def setup_combo_dep_fields(self, p_fld_p):
 
-    def combo_update_para_change(self, p_str, p_value):
+        # children parameter field retrievl
+        p_fld = np.array([k for k in self.s_props.keys() if (p_fld_p in k)])
+        return p_fld[p_fld != p_fld_p]
+
+    def combo_update_para_change(self, p_str, p_value=None):
+
+        if p_value is None:
+            p_value = self.s_props[p_str].get('value')
 
         match p_str:
             case 'simple-clusterer':
                 # case is the simple solver clusterer
 
-                # matching parameters
-                a = 1
+                # field retrieval
+                p_fld_p = f"{p_str}_kwargs"
+
+                match p_value:
+                    case 'affinity_propagation':
+                        # case is affinity propagation
+                        p_fld_on = ['affinity', 'convergence_iter' , 'damping', 'max_iter']
+
+                    case 'gaussian_mixture':
+                        # case is gaussian mixture
+                        p_fld_on = ['covariance_type', 'n_components', 'tol']
+
+                    case p_value if p_value in ['hdbscan', 'hdbscan-gpu']:
+                        # case is hdbscan
+                        p_fld_on = ['algorithm', 'alpha', 'cluster_selection_epsilon',
+                                    'cluster_selection_method', 'cluster_selection_persistence',
+                                    'core_dist_n_jobs', 'leaf_size', 'max_cluster_size',
+                                    'min_cluster_size', 'p']
+
+                    case 'isosplit':
+                        # case is isosplit
+                        p_fld_on = ['isocut_threshold', 'max_iterations_per_pass',
+                                    'min_cluster_size', 'n_init']
+
+                    case 'kmeans':
+                        # case is kmeans
+                        p_fld_on = ['batch_size', 'init', 'max_iter', 'max_no_improvement',
+                                    'n_clusters', 'reassignment_ratio', 'tol']
+
+                    case 'mean_shift':
+                        # case is mean-shifting
+                        p_fld_on = ['max_iter', 'min_bin_freq']
+
+                pass
+
+            case 'spykingcircus2-matching-method':
+                # case is the spykingcircus2 matching methods
+
+                # field retrieval
+                p_fld_on = []
+                p_fld_p = f"{p_str}_kwargs"
 
                 # unique parameter matches
                 match p_value:
-                    case 'iterative-isosplit':
-                        # case is the iterative-isosplit method
-                        pass
+                    case 'circus-omp':
+                        # case is the circus-omp method
+                        p_fld_on += [
+                            'amplitudes',
+                            'max_failures',
+                            'omp_min_sps',
+                            'rank',
+                            'relative_error',
+                            'stop_criteria',
+                            'vicinity',
+                        ]
+
+                    case 'nearest':
+                        # case is the nearest method
+                        p_fld_on += [
+                            'neighborhood_radius_um',
+                            'sparsity_radius_um',
+                        ]
+
+                    case 'nearest-svd':
+                        # case is the nearest-svd method
+                        p_fld_on += [
+                            'neighborhood_radius_um',
+                            'sparsity_radius_um',
+                        ]
+
+                    case 'tdc-peeler':
+                        # case is the tdc-peeler method
+                        p_fld_on += [
+                            'amplitude_fitting_radius_um',
+                            'amplitude_limits',
+                            'cluster_radius_um',
+                            'interpolation_time_bin_size_s',
+                            'max_peeler_loop',
+                            'motion_aware',
+                            'motion_step_um',
+                            'ms_after',
+                            'ms_before',
+                            'peak_shift_ms',
+                            'sample_shift',
+                            'use_fine_detector',
+                        ]
+
+                    case 'wobble':
+                        # case is the wobble method
+                        p_fld_on += [
+                            'amplitude_variance',
+                            'approx_rank',
+                            'jitter_factor',
+                            'max_iter',
+                            'refractory_period_frames',
+                            'scale_amplitudes',
+                            'scale_max',
+                            'scale_min',
+                            'threshold',
+                            'visibility_threshold',
+                        ]
+
+                # multi-type parameter matches
+                match p_value:
+                    case p_value if p_value in ["nearest", "nearest-svd", "tdc-peeler"]:
+                        p_fld_on += [
+                            'detect_threshold',
+                            'detection_radius_um',
+                            'exclude_sweep_ms',
+                            'peak_sign',
+                        ]
+
+                    case p_value if p_value in ["wobble", "circus-omp"]:
+                        p_fld_on += [
+                            'engine',
+                            'torch_device',
+                        ]
+
+                pass
+
+            case 'spykingcircus2-clustering-method':
+                # case is the spykingcircus2 clustering methods
+
+                # field retrieval
+                p_fld_p = f"{p_str}_kwargs"
+
+                # unique parameter matches
+                match p_value:
+                    case 'graph-clustering':
+                        # case is the graph-clustering method
+                        p_fld_on = [
+                            'graph_kwargs-bin_mode',
+                            'graph_kwargs-neighbors_radius_um',
+                            'graph_kwargs-normed_distances',
+                            'graph_kwargs-n_neighbors',
+                            'graph_kwargs-n_components',
+                            'graph_kwargs-sparse_mode',
+                            'graph_kwargs-apply_local_svd',
+                            'graph_kwargs-enforce_diagonal_to_zero'
+                        ]
 
                     case 'hdbscan-positions':
                         # case is the hdbscan-positions method
-                        pass
+                        p_fld_on = [
+                            'peak_localization_kwargs-method',
+                            'hdbscan_kwargs',
+                            'hdbscan_kwargs-min_cluster_size',
+                            'hdbscan_kwargs-allow_single_cluster',
+                            'hdbscan_kwargs-core_dist_n_jobs',
+                        ]
+
+                    case 'iterative-hdbscan':
+                        # case is the iterative-isosplit method
+                        p_fld_on = [
+                            'split-method_kwargs-clusterer-allow_single_cluster',
+                        ]
+
+                    case 'iterative-isosplit':
+                        # case is the iterative-isosplit method
+                        p_fld_on = [
+                            'split-method_kwargs-clusterer-max_iterations_per_pass',
+                            'split-method_kwargs-clusterer-isocut_threshold',
+                            'split-method_kwargs-n_pca_features',
+                            'split-method_kwargs-projection_mode',
+                            'merge_from_templates-similarity_metric',
+                        ]
 
                     case 'random-projections':
                         # case is the random-projections method
-                        pass
+                        p_fld_on = [
+                            'clusterer-allow_single_cluster',
+                            'clusterer-core_dist_n_jobs',
+                            'clusterer-cluster_selection_method',
+                            'waveforms-ms_before',
+                            'waveforms-ms_after',
+                            'sparsity-method',
+                            'sparsity-amplitude_mode',
+                            'sparsity-threshold',
+                            'smoothing-window_length_ms',
+                            'radius_um',
+                            'nb_projections',
+                            'feature',
+                        ]
 
-                    case 'graph-clustering':
-                        # case is the graph-clustering method
-                        pass
-
-                # multi-parameter matches
+                # multi-type parameter matches
                 match p_value:
-                    case p_value if p_value in ['iterative-hdbscan', 'iterative-isosplit']:
-                        pass
+                    case p_value if p_value in ["iterative-hdbscan", "iterative-isosplit"]:
+                        p_fld_on += [
+                            'split-split_radius_um',
+                            'split-recursive',
+                            'split-recursive_depth',
+                            'split-method_kwargs-clusterer-method',
+                            'split-method_kwargs-clusterer-min_cluster_size',
+                            'split-method_kwargs-min_size_split',
+                            'clean_templates-sparsify_threshold',
+                            'clean_templates-min_snr',
+                            'clean_templates-remove_empty',
+                            'clean_templates-max_jitter_ms',
+                            'merge_from_templates-num_shifts',
+                            'merge_from_templates-similarity_thresh',
+                            'merge_from_templates-use_lags',
+                            'clean_low_firing-min_firing_rate',
+                        ]
 
-                    case p_value if p_value in ['random-projections', 'graph-clustering']:
-                        pass
+                    case p_value if p_value in ["random-projections", "graph-clustering"]:
+                        p_fld_on += [
+                            'clusterer-min_cluster_size',
+                        ]
 
-            case 'spykingcircus2-matching_kwargs-method':
-                # case is the spykingcircus2 matching methods
                 pass
 
-            case 'spykingcircus2-clustering_kwargs-method':
-                # case is the spykingcircus2 clustering methods
-                pass
-
-            case 'spykingcircus2-motion_kwargs-preset':
+            case 'spykingcircus2-motion_correction-preset':
                 # case is the spykingcircus2 motion correction preset
+
+                # field retrieval
+                p_fld_p = "spykingcircus2-motion_correction"
+                p_fld_on = [
+                    'detect_kwargs-method',
+                    'localize_peak_kwargs-method',
+                    'estimate_motion_kwargs-method',
+                    'interpolate_motion_kwargs-border_mode',
+                    'interpolate_motion_kwargs-spatial_interpolation_method',
+                    'interpolate_motion_kwargs-sigma_um',
+                    'interpolate_motion_kwargs-p',
+                ]
+
+                # kilosort-like only parameters
+                if p_value == 'kilosort_like':
+                    p_fld_on += [
+                        'estimate_motion_kwargs-hist_margin_um',
+                        'localize_peak_kwargs-weight_method-mode',
+                        'localize_peak_kwargs-weight_method-sigma_list_um',
+                    ]
+
+                # kilosort-like/rigid-fast parameters
+                if p_value in ["rigid_fast", "kilosort_like"]:
+                    p_fld_on += [
+                        'estimate_motion_kwargs-bin_s',
+                    ]
+
+                # dredge/dredge-fast parameters
+                if p_value in ["dredge", "dredge_fast"]:
+                    p_fld_on += [
+                        'estimate_motion_kwargs-win_margin_um',
+                    ]
+
+                if p_value in ["dredge", "dredge_fast", "kilosort_like"]:
+                    p_fld_on += [
+                        'estimate_motion_kwargs-win_shape',
+                        'estimate_motion_kwargs-win_step_um',
+                        'estimate_motion_kwargs-win_scale_um',
+                    ]
+
+                if p_value in ["dredge", "dredge_fast", "nonrigid_fast_and_accurate", "rigid_fast", "kilosort_like"]:
+                    p_fld_on += [
+                        'detect_kwargs-peak_sign',
+                        'detect_kwargs-detect_threshold',
+                        'detect_kwargs-exclude_sweep_ms',
+                        'detect_kwargs-radius_um',
+                    ]
+
+                if p_value in ["dredge", "dredge_fast", "nonrigid_accurate",
+                               "nonrigid_fast_and_accurate", "rigid_fast", "kilosort_like"]:
+                    p_fld_on += [
+                        'estimate_motion_kwargs-rigid',
+                    ]
+
+                if p_value in ["dredge", "dredge_fast", "nonrigid_accurate", "nonrigid_fast_and_accurate"]:
+                    p_fld_on += [
+                        'estimate_motion_kwargs-direction',
+                    ]
+
                 pass
 
+        # parameter field retrieval
+        p_fld_ch = self.setup_combo_dep_fields(p_fld_p)
+
+        # appends the base string
+        p_fld_on = [f"{p_fld_p}-{p}" for p in p_fld_on]
+        show_fld = np.array([(x in p_fld_on) for x in p_fld_ch])
+
+        # sets the children item visibility flags
+        p_item_p = {}
+        for pf in p_fld_ch:
+            # updates the item visibility properties
+            show_fld = pf in p_fld_on
+            self.h_item[pf].setHidden(not show_fld)
+
+            while True:
+                # sets the parent item flag
+                pf = '-'.join(pf.split('-')[:-1])
+                if pf == p_fld_p:
+                    break
+                else:
+                    if pf in p_item_p:
+                        p_item_p[pf] |= show_fld
+                    else:
+                        p_item_p[pf] = show_fld
+
+        # sets the parent item visibility flags
+        for k, v in p_item_p.items():
+            self.h_item[k].setHidden(not v)
+
+        pass
 
     def set_item_align(self, item, p_fld):
 
