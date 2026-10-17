@@ -667,11 +667,8 @@ class SpikeSortingDialog(QMainWindow):
                 self.set_sorter_tab_enabled('kilosort4', True)
 
                 # deletes the worker object
-                try:
-                    self.t_worker.deleteLater()
-                    self.t_worker = None
-                except:
-                    pass
+                self.t_worker.deleteLater()
+                self.t_worker = None
 
                 # connects the spike sorting signal function
                 self.session.sort_obj.update_prog.connect(self.worker_progress)
@@ -1473,11 +1470,7 @@ class SpikeSorterTab(QTabWidget):
                 # case is a lineedit group
 
                 # creates the editbox groups
-                try:
-                    n_edit = len(p_value)
-                except:
-                    pass
-
+                n_edit = len(p_value)
                 for i_edit in range(n_edit):
                     # creates the child node
                     item_ch_d, h_obj_d = self.create_child_tree_item(item_ch, p_fld, i_edit=i_edit)
@@ -1776,8 +1769,6 @@ class SpikeSorterTab(QTabWidget):
                         # case is mean-shifting
                         p_fld_on = ['max_iter', 'min_bin_freq']
 
-                pass
-
             case 'spykingcircus2-matching-method':
                 # case is the spykingcircus2 matching methods
 
@@ -1860,8 +1851,6 @@ class SpikeSorterTab(QTabWidget):
                             'engine',
                             'torch_device',
                         ]
-
-                pass
 
             case 'spykingcircus2-clustering-method':
                 # case is the spykingcircus2 clustering methods
@@ -1952,8 +1941,6 @@ class SpikeSorterTab(QTabWidget):
                             'clusterer-min_cluster_size',
                         ]
 
-                pass
-
             case 'spykingcircus2-motion_correction-preset':
                 # case is the spykingcircus2 motion correction preset
 
@@ -2015,8 +2002,6 @@ class SpikeSorterTab(QTabWidget):
                         'estimate_motion_kwargs-direction',
                     ]
 
-                pass
-
         # parameter field retrieval
         p_fld_ch = self.setup_combo_dep_fields(p_fld_p)
 
@@ -2045,8 +2030,6 @@ class SpikeSorterTab(QTabWidget):
         # sets the parent item visibility flags
         for k, v in p_item_p.items():
             self.h_item[k].setHidden(not v)
-
-        pass
 
     def set_item_align(self, item, p_fld):
 
@@ -2507,9 +2490,6 @@ class SpikeSortInfo(QObject):
 
     def setup_sorter_para_fields(self, s_name, p_fld, p_value, p_desc=None, p_str=[], p_dict={}):
 
-        if s_name == 'spykingcircus2':
-            pass
-
         # sets up the fields for all common parameters in the sorter
         for pf0 in p_fld:
             # skip any parameters that are being ignored
@@ -2598,9 +2578,6 @@ class SpikeSortInfo(QObject):
         # field retrieval
         p_str = p_fld.split('-')
         pf_ch = p_dict[p_fld].get('value')
-
-        if (p_str[0] == "spykingcircus2") and (p_str[1] == 'detection'):
-            a = 1
 
         # sets up the parameter
         if (pf_ch is None) or (len(pf_ch) == 0) or (p_fld in self.force_dict_search):
