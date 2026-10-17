@@ -78,7 +78,7 @@ algorithm,Optimisation Algorithm,***,combobox,clusterer_kwargs,***,***,***,***,*
 amplitude_mode,Amplitude Mode,***,combobox,clustering,method_kwargs,sparsity,***,***,***,***
 bin_mode,Binning Mode,***,combobox,clustering,method_kwargs,graph_kwargs,***,***,***,***
 border_mode,Border Mode,Drift Correction,combobox,motion_correction,interpolate_motion_kwargs,***,***,***,***,***
-cache_preprocessing_mode,Preprocessing Cache Mode,***,combobox,Preprocessing,***,***,***,***,***,***
+cache_preprocessing_mode,Preprocessing Cache Mode,All,combobox,Preprocessing,***,***,***,***,***,***
 cluster_selection_method,Selection Method,***,combobox,clusterer_kwargs,***,***,***,***,***,***
 cluster_selection_method,Selection Method,***,combobox,clustering,method_kwargs,clusterer,***,***,***,***
 clusterer,Cluster Selection Method,***,combobox,Clustering,***,***,***,***,***,***
@@ -142,9 +142,9 @@ torch_device,Torch Device,***,combobox,Job Parameters,***,***,***,***,***,***
 torch_device,Torch Device,***,combobox,matching,method_kwargs,***,***,***,***,***
 whitening,Whitening Method,Whitening,combobox,Preprocessing,***,***,***,***,***,***
 win_shape,Window Shape,Drift Correction,combobox,motion_correction,estimate_motion_kwargs,***,***,***,***,***
-cache_preprocessing,Preprocessing Cache Parameters,,dict,***,***,***,***,***,***,***
-chunk_preprocessing,Preprocessing Chunk Parameters,,dict,***,***,***,***,***,***,***
-clean_low_firing,Low Firing Cleaning Parameters,***,dict,clustering,method_kwargs,***,***,***,***,***
+cache_preprocessing,Preprocessing Cache Parameters,All,dict,***,***,***,***,***,***,***
+chunk_preprocessing,Preprocessing Chunk Parameters,All,dict,***,***,***,***,***,***,***
+clean_low_firing,Low Firing Rate Parameters,***,dict,clustering,method_kwargs,***,***,***,***,***
 clean_templates,Template Cleaning Parameters,***,dict,clustering,method_kwargs,***,***,***,***,***
 cleaning,Cleaning Parameters,***,dict,***,***,***,***,***,***,***
 clusterer,Clusterer Properties,***,dict,clustering,method_kwargs,***,***,***,***,***
@@ -249,7 +249,7 @@ inner_radius,Probe Radius (um),***,edit_float,Spike Detection,***,***,***,***,0,
 interpolation_time_bin_size_s,Interpolation Time Bin Size (s),***,edit_float,matching,method_kwargs,***,***,***,0,inf
 isocut_threshold,Threshold,***,edit_float,clusterer_kwargs,***,***,***,***,0,inf
 isocut_threshold,Threshold,***,edit_float,clustering,method_kwargs,split,method_kwargs,clusterer,0,Inf
-jitter_factor,Upsampled Jittered Template Count ,***,edit_float,matching,method_kwargs,***,***,***,0,inf
+jitter_factor,Upsampled Jittered Template Count ,***,edit_int,matching,method_kwargs,***,***,***,0,inf
 lam,Amplitude Penalty Importance,***,edit_float,Template Matching,***,***,***,***,0,inf
 left_cutout_time,Pre-Peak Cutout Duration (ms),***,edit_float,Spike Detection,***,***,***,***,0,inf
 margin_ms,Buffer Margin Time (ms),Common Reference,edit_float,preprocessing_dict,***,***,***,***,1,inf
@@ -420,7 +420,7 @@ max_no_improvement,Max Improvement Count,***,edit_int,clusterer_kwargs,***,***,*
 max_peeler_loop,Max Peeler Loop Count,***,edit_int,matching,method_kwargs,***,***,***,1,inf
 max_peels,Max Iteration Count,***,edit_int,Spike Detection,***,***,***,***,1,inf
 max_spk,Max Spike Count,***,edit_int,Template Matching,***,***,***,***,1,inf
-max_threads_per_worker,Max Threads per Worker,***,edit_int,General,***,***,***,***,1,inf
+max_threads_per_worker,Max Threads per Worker,***,edit_int,Job Parameters,***,***,***,***,1,inf
 MaxClustersPerTemp,Max Cluster Count,***,edit_int,Clustering,***,***,***,***,1,inf
 min_bin_freq,Min Bin Frequency,***,edit_int,clusterer_kwargs,***,***,***,***,1,inf
 min_clus,Min Cluster Size Increase,***,edit_int,Clustering,***,***,***,***,1,inf

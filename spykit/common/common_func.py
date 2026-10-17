@@ -39,6 +39,7 @@ q_yes_no_cancel = q_yes_no | q_cancel
 # boolean flags
 is_testing = True
 is_win = platform.system() == 'Windows'
+is_linux = platform.system() == 'Linux'
 
 # common parameters
 align_type = {
@@ -58,6 +59,7 @@ pen_style = {
 chk_state = {
     False: Qt.CheckState.Unchecked,
     True: Qt.CheckState.Checked,
+    None: Qt.CheckState.Unchecked,
 }
 
 ascend_flag = {

@@ -30,8 +30,132 @@ from PyQt6.QtWidgets import (QMainWindow, QWidget, QFrame, QFormLayout, QVBoxLay
 from PyQt6.QtCore import pyqtSignal, QTimeLine, Qt, QObject, QThread
 from PyQt6.QtGui import QColor, QFont
 
+# ----------------------------------------------------------------------------------------------------------------------
+
 # widget dimensions
 x_gap = 5
+
+# default parameter value dictionary
+def_val_dict = {
+    # combobox values
+    'affinity': 'euclidean',
+    'algorithm': 'best',
+    'amplitude_mode': 'peak_to_peak',
+    'bin_mode': 'channels',
+    'border_mode': 'force_extrapolate',
+    'covariance_type': 'full',
+    'cluster_selection_method': 'eom',
+    'direction': 'y',
+    'dtype': 'float32',
+    'engine': 'numpy',
+    'feature': 'ptp',
+    'filter_mode': 'sos',
+    'ftype': 'bessel',
+    'init': 'kmeans++',
+    'mp_context': 'none',
+    'mode': 'gaussian_2d',
+    'operator': 'median',
+    'peak_sign': 'neg',
+    'pool_engine': 'process',
+    'projection_mode': 'tsvd',
+    'reference': 'global',
+    'sparse_mode': 'knn',
+    'spatial_interpolation_method': 'kriging',
+    'similarity_metric': 'I1',
+    'stop_criteria': 'max_failures',
+    'torch_device': 'cpu',
+    'win_shape': 'gaussian',
+
+    # float parameter values
+    'amplitude_fitting_radius_um': 150.0,
+    'amplitude_variance': 1.0,
+    'bin_s': 2.0,
+    'cluster_radius_um': 150.0,
+    'cluster_selection_epsilon': 0.0,
+    'cluster_selection_persistence': 0.0,
+    'damping': 0.5,
+    'detection_radius_um': 100.0,
+    'freq_max': 6000.0,
+    'freq_min': 300.0,
+    'hist_margin_um': 0.0,
+    'interpolation_time_bin_size_s': 1.0,
+    'jitter_factor': 8.0,
+    'margin_ms': 5.0,
+    'min_firing_rate': 0.1,
+    'motion_step_um': 2.0,
+    'omp_min_sps': 0.1,
+    'peak_shift_ms': 0.2,
+    'reassignment_ratio': 0.01,
+    'relative_error': 5E-05,
+    'scale_max': np.inf,
+    'scale_min': 0.0,
+    'sigma_um': 20.0,
+    'similarity_thresh': 0.8,
+    'split_radius_um': 100.0,
+    'sparsity_radius_um': 100.0,
+    'tol': 1.0e-3,
+    'vicinity': 2.0,
+    'visibility_threshold': 1.0,
+    'window_length_ms': 0.25,
+    'win_margin_um': None,
+    'win_scale_um': 400.0,
+    'win_step_um': 400.0,
+
+    # integer parameter values
+    'alpha': 10,
+    'approx_rank': 5,
+    'batch_size': 1024,
+    'chunk_duration': 1,
+    'convergence_iter': 15,
+    'filter_order': 5,
+    'isocut_threshold': 2,
+    'leaf_size': 40,
+    'max_cluster_size': 0,
+    'max_failures': 5,
+    'max_iterations_per_pass': 500,
+    'max_jitter_ms': 0.2,
+    'max_no_improvement': 10,
+    'max_peeler_loop': 2,
+    'min_bin_freq': 1,
+    'min_local_neighbors': 5,
+    'min_size_split': 1,
+    'nb_projections': 10,
+    'num_shifts': 3,
+    'n_clusters': 0,
+    'n_init': 200,
+    'n_jobs': 1,
+    'n_neighbors': 5,
+    'n_pca_features': 1,
+    'p': 2,
+    'rank': 5,
+    'recursive_depth': 3,
+    'refractory_period_frames': 10,
+    'sample_shift': 2,
+    'skip_after_n_peaks': None,
+    'sparsify_threshold': 1,
+
+    # boolean parameter values
+    'allow_single_cluster': True,
+    'apply_local_svd': True,
+    'enforce_diagonal_to_zero': True,
+    'motion_aware': False,
+    'normed_distances': True,
+    'progress_bar': True,
+    'recursive': True,
+    'remove_empty': True,
+    'scale_amplitudes': False,
+    'select_per_channel': False,
+    'use_fine_detector': True,
+    'use_lags': True,
+
+    # float group parameter values
+    'amplitudes': [0.6, np.inf],
+    'amplitude_limits': [0.7, 1.4],
+    'local_radius': [30.0, 55.0],
+
+    # integer group parameter values
+    'sigma_list_um': [5, 25, 5],
+}
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -138,6 +262,10 @@ class SpikeSortingDialog(QMainWindow):
                 # experimental runs have not been preprocessed
                 self.per_shank_pp = False
                 self.concat_runs_pp = False
+
+            # REMOVE ME LATER
+            self.pp_steps = []
+            self.has_pp = False
 
             # sets the preprocessing options
             self.prep_opt = [self.per_shank_pp, self.concat_runs_pp]
@@ -1028,6 +1156,8 @@ class SpikeSorterTab(QTabWidget):
     # array class fields
     tree_hdr = ['Property', 'Value']
     true_pp_chk = ['skip_kilosort_preprocessing']
+    combo_chg = ['simple-clusterer', 'spykingcircus2-matching_kwargs-method',
+                 'spykingcircus2-clustering_kwargs-method', 'spykingcircus2-motion_kwargs-preset']
 
     # value to label sign key
     sign_v2l = {
@@ -1046,6 +1176,19 @@ class SpikeSorterTab(QTabWidget):
     # solver ignored parameter groups
     ig_para_grp = {
         'kilosort4': ['Fixed']
+    }
+
+    # parameter ranking dictionary
+    p_rank = {
+        'filespec': 0,
+        'combobox': 1,
+        'checkbox': 2,
+        'edit_float': 3,
+        'edit_int': 4,
+        'edit_string': 5,
+        'group_edit_float': 6,
+        'group_edit_int': 7,
+        'dict': 8,
     }
 
     # font properties
@@ -1093,7 +1236,7 @@ class SpikeSorterTab(QTabWidget):
         # other class fields
         self.s_props = None
         self.n_grp, self.n_para = 0, 0
-        self.h_grp, self.h_para = {}, []
+        self.h_item = {}
 
         # boolean class fields
         self.is_init = False
@@ -1137,12 +1280,19 @@ class SpikeSorterTab(QTabWidget):
 
         # determines the unique parameter class indices
         p_fld = np.array(list(self.s_props.keys()))
-        p_class = [self.s_props[pf].get_para_class() for pf in p_fld]
+        p_class = np.array([self.s_props[pf].get_para_class() for pf in p_fld])
+        p_class[np.array([p.count('-') for p in p_fld]) > 1] = '***'
+
+        # determines the parameter groupings
         p_grp, i_grp = np.unique(p_class, return_inverse=True)
         is_ok = np.ones(len(p_fld), dtype=bool)
 
         # creates the table fields for each
         for i, pg in enumerate(p_grp):
+            # if a non-base grouping then continue
+            if pg == '***':
+                continue
+
             # determines the parameters within the current grouping
             j_grp = np.where(i_grp == i)[0]
 
@@ -1158,7 +1308,7 @@ class SpikeSorterTab(QTabWidget):
 
             else:
                 # otherwise, get the reduced parameter group
-                p_fld_grp = p_fld[j_grp]
+                p_fld_grp = self.sort_group_para(p_fld[j_grp])
 
             # creates the parent item
             item = QTreeWidgetItem()
@@ -1180,6 +1330,7 @@ class SpikeSorterTab(QTabWidget):
                 if item_ch is not None:
                     self.set_item_align(item_ch, ps)
                     item.addChild(item_ch)
+                    self.h_item[str(ps)] = item_ch
 
                 # adds the child tree widget item
                 if obj_prop is not None:
@@ -1317,7 +1468,11 @@ class SpikeSorterTab(QTabWidget):
                 # case is a lineedit group
 
                 # creates the editbox groups
-                n_edit = len(p_value)
+                try:
+                    n_edit = len(p_value)
+                except:
+                    pass
+
                 for i_edit in range(n_edit):
                     # creates the child node
                     item_ch_d, h_obj_d = self.create_child_tree_item(item_ch, p_fld, i_edit=i_edit)
@@ -1350,7 +1505,7 @@ class SpikeSorterTab(QTabWidget):
 
             case 'dict':
                 # case is a dictionary
-                p_fld_ch = props.get('child')
+                p_fld_ch = self.sort_group_para(np.array(props.get('child')))
                 if len(p_fld_ch) == 0:
                     # if there are no dictionary fields then exit
                     item_p.removeChild(item_ch)
@@ -1359,7 +1514,8 @@ class SpikeSorterTab(QTabWidget):
                 #
                 return_item = True
                 ch_type = np.array([self.s_props[k].type for k in p_fld_ch])
-                if (i_lvl == 0) and (not np.any(ch_type == 'dict')):
+                # if (i_lvl == 0) and (not np.any(ch_type == 'dict')):
+                if (i_lvl == 0):
                     # if the child item is a dictionary, then reset the parent item
                     item_p.removeChild(item_ch)
                     del item_ch
@@ -1368,7 +1524,7 @@ class SpikeSorterTab(QTabWidget):
                     return_item = False
 
                 # case is a dictionary
-                for k in props.get('child'):
+                for k in p_fld_ch:
                     # creates the child node
                     item_ch_d, obj_prop_d = self.create_child_tree_item(item_ch, k, i_lvl=i_lvl+1)
 
@@ -1376,6 +1532,7 @@ class SpikeSorterTab(QTabWidget):
                     if item_ch_d is not None:
                         self.set_item_align(item_ch_d, k)
                         item_ch.addChild(item_ch_d)
+                        self.h_item[str(k)] = item_ch_d
 
                     if obj_prop_d is not None:
                         # adds the child tree widget item
@@ -1388,6 +1545,7 @@ class SpikeSorterTab(QTabWidget):
                     return None, None
 
                 elif not return_item:
+                    self.h_item[str(p_fld)] = item_ch
                     return None, h_obj
 
             case 'fixed':
@@ -1478,9 +1636,15 @@ class SpikeSorterTab(QTabWidget):
 
     def combo_prop_update(self, h_obj, s_prop_p, p_str):
 
-        # parameter specific updates
+        # field retrieval
         p_value = h_obj.currentText()
-        match p_str[-1]:
+        p_name = p_str.split('-')[-1]
+
+        # parameter specific updates
+        match p_name:
+            case s_name if s_name in self.combo_chg:
+                self.combo_update_para_change(p_str, p_value)
+
             case p_name if p_name in ['detect_sign', 'peak_sign']:
                 p_value = self.sign_l2v[p_value]
 
@@ -1546,6 +1710,69 @@ class SpikeSorterTab(QTabWidget):
     # Miscellaneous Functions
     # ---------------------------------------------------------------------------
 
+    def sort_group_para(self, p_grp):
+
+        if (p_grp is None) or (len(p_grp) == 0):
+            # case is an empty parameter group array
+            return []
+
+        else:
+            # otherwise, sort the parameters by type rank and then alphabetically
+            p_type_rank = np.array([self.p_rank[self.s_props[pg].type] for pg in p_grp])
+
+            try:
+                return p_grp[np.lexsort((p_grp, p_type_rank))]
+            except:
+                pass
+
+    def combo_update_para_change(self, p_str, p_value):
+
+        match p_str:
+            case 'simple-clusterer':
+                # case is the simple solver clusterer
+
+                # matching parameters
+                a = 1
+
+                # unique parameter matches
+                match p_value:
+                    case 'iterative-isosplit':
+                        # case is the iterative-isosplit method
+                        pass
+
+                    case 'hdbscan-positions':
+                        # case is the hdbscan-positions method
+                        pass
+
+                    case 'random-projections':
+                        # case is the random-projections method
+                        pass
+
+                    case 'graph-clustering':
+                        # case is the graph-clustering method
+                        pass
+
+                # multi-parameter matches
+                match p_value:
+                    case p_value if p_value in ['iterative-hdbscan', 'iterative-isosplit']:
+                        pass
+
+                    case p_value if p_value in ['random-projections', 'graph-clustering']:
+                        pass
+
+            case 'spykingcircus2-matching_kwargs-method':
+                # case is the spykingcircus2 matching methods
+                pass
+
+            case 'spykingcircus2-clustering_kwargs-method':
+                # case is the spykingcircus2 clustering methods
+                pass
+
+            case 'spykingcircus2-motion_kwargs-preset':
+                # case is the spykingcircus2 motion correction preset
+                pass
+
+
     def set_item_align(self, item, p_fld):
 
         # sets the text alignment
@@ -1566,6 +1793,10 @@ class SpikeSorterTab(QTabWidget):
             case 'version':
                 p_value = str(p_value)
 
+            case 'mp_context':
+                if p_value is None:
+                    p_value = 'none'
+
         # returns the parameter value
         return p_value
 
@@ -1576,6 +1807,13 @@ class SpikeSorterTab(QTabWidget):
             s_prop_p = s_prop_p[p]
 
         return s_prop_p
+
+    def expand_all_nodes(self, item):
+
+        # expands the current node
+        item.setExpanded(True)
+        for i in range(item.childCount()):
+            self.expand_all_nodes(item.child(i))
 
     # ---------------------------------------------------------------------------
     # Static Methods
@@ -1643,13 +1881,6 @@ class SpikeSorterTab(QTabWidget):
             case _:
                 # case is the other parameters
                 return p_val
-
-    def expand_all_nodes(self, item):
-
-        # expands the current node
-        item.setExpanded(True)
-        for i in range(item.childCount()):
-            self.expand_all_nodes(item.child(i))
 
     @staticmethod
     def reshape_para_desc(p_desc0):
@@ -1885,6 +2116,13 @@ class SpikeSortInfo(QObject):
                'fs', 'x_centers', 'delete_tmp_files']
     l_pattern = rf"(?<={re.escape('spikeinterface/')}).*?(?={re.escape('-')})"
 
+    # forced dictionary fields
+    force_dict_search = [
+        'spykingcircus2-general',
+        'spykingcircus2-motion_correction',
+        'spykingcircus2-detection-method_kwargs',
+    ]
+
     # group parameter to class key
     grp_key = {
         'sparsity': 'Sparsity',
@@ -1977,7 +2215,7 @@ class SpikeSortInfo(QObject):
         p_desc = get_sorter_params_description(s_name)
 
         # sorter specific updates
-        p_fld_common = list(set(p_info.keys()).intersection(set(p_desc.keys())))
+        # p_fld_common = list(set(p_info.keys()).intersection(set(p_desc.keys())))
         match s_name:
             case 'spykingcircus2':
                 # case is the tridesclous2 sorter
@@ -1986,16 +2224,16 @@ class SpikeSortInfo(QObject):
                     p_info['clustering']['legacy'] = p_info['clustering']['method'] != 'iterative-hdbscan'
                     p_info['clustering'] = cf.reorder_dict_fields(p_info['clustering'], p_fld_new)
 
-        if s_name == 'kilosort4':
-            pass
-
         # stores the parameter field for the sorter
         p_dict = {}
-        p_fld_common = sorted(p_fld_common, key=str.casefold)
+        p_fld_common = sorted(list(p_info.keys()), key=str.casefold)
         self.setup_sorter_para_fields(s_name, p_fld_common, p_info, p_desc, p_str=[s_name], p_dict=p_dict)
         return p_dict
 
     def setup_sorter_para_fields(self, s_name, p_fld, p_value, p_desc=None, p_str=[], p_dict={}):
+
+        if s_name == 'spykingcircus2':
+            pass
 
         # sets up the fields for all common parameters in the sorter
         for pf0 in p_fld:
@@ -2086,9 +2324,13 @@ class SpikeSortInfo(QObject):
         p_str = p_fld.split('-')
         pf_ch = p_dict[p_fld].get('value')
 
+        if (p_str[0] == "spykingcircus2") and (p_str[1] == 'detection'):
+            a = 1
+
         # sets up the parameter
-        if (pf_ch is None) or (len(pf_ch) == 0):
+        if (pf_ch is None) or (len(pf_ch) == 0) or (p_fld in self.force_dict_search):
             # determines the dictionary parameter field indices
+            pf_ch0 = deepcopy(pf_ch)
             i_pf = self.ss_df["C1"] == p_str[1]
             for i in range(2, len(p_str)):
                 i_pf = np.logical_and(i_pf, self.ss_df[f"C{i}"] == p_str[i])
@@ -2105,6 +2347,14 @@ class SpikeSortInfo(QObject):
             # sets up the parameter dictionary
             pf_d = self.ss_df['Parameter'].iloc[idx_pf]
             pf_ch = self.setup_para_dict(p_str, pf_d)
+
+            # resets the original non-dictionary parameter values
+            if (pf_ch0 is not None) and len(pf_ch0):
+                for pf_k, pf_v in pf_ch0.items():
+                    if not isinstance(pf_v, dict):
+                        pf_ch[pf_k] = pf_v
+
+            # updates the dictionary field
             p_dict[p_fld].value = pf_ch
 
         # sets up the dictionary children parameter fields
@@ -2128,561 +2378,6 @@ class SpikeSortInfo(QObject):
                         pf_ch[pf] = self.get_default_para_value(p_str, pf)
 
         return pf_ch
-
-    def get_default_para_value(self, p_str, pf):
-
-        # field retrieval
-        np_str = len(p_str)
-        c1_type = p_str[1]
-
-        match pf:
-            # --- GENERAL JOB PARAMETERS --- #
-
-            case 'chunk_duration':
-                # case is the chunk duration
-                return 1
-
-            case 'mp_context':
-                # case is the multiprocessor context
-                return 'none'
-
-            case 'n_jobs':
-                # case is the file save job count
-                return 1
-
-            case 'pool_engine':
-                # case is the parallel computing type
-                return 'process'
-
-            case 'progress_bar':
-                # case is progressbar display
-                return True
-
-            # --- LUPIN SOLVER DICTIONARY PARAMETERS --- #
-
-            case 'dtype':
-                # case is the data type
-                return 'float32'
-
-            case 'filter_mode':
-                # case is the filtering mode
-                return 'sos'
-
-            case 'filter_order':
-                # case is the filtering order
-                return 5
-
-            case 'freq_max':
-                # case is the min frequency
-                return 6000
-
-            case 'freq_min':
-                # case is the max frequency
-                return 300
-
-            case 'ftype':
-                # case is the filter type
-                return 'bessel'
-
-            case 'local_radius':
-                # case is the neigbourhood radius
-                return [30.0, 55.0]
-
-            case 'margin_ms':
-                # case is the buffer time
-                return 5
-
-            case 'min_local_neighbors':
-                # case is the min local neighbour count
-                return 5
-
-            case 'operator':
-                # case is the operator type
-                return 'median'
-
-            case 'reference':
-                # case is the reference flag
-                return 'global'
-
-            # --- SIMPLE SOLVER DICTIONARY PARAMETERS --- #
-
-            case 'affinity':
-                # case is the affinity method
-                return 'euclidean'
-
-            case 'algorithm':
-                # case is the clustering algorithm
-                return 'best'
-
-            case 'alpha':
-                # case is the distance scale factor
-                return 10
-
-            case 'batch_size':
-                # case is the batch size
-                return 1024
-
-            case 'cluster_selection_epsilon':
-                # case is the cluster selection threshold
-                return 0
-
-            case 'cluster_selection_method':
-                # case is the cluster selection method
-                return 'eom'
-
-            case 'cluster_selection_persistence':
-                # case is the cluster persistance threshold
-                return 0
-
-            case 'convergence_iter':
-                # case is the convergence iteration count
-                return 15
-
-            case 'core_dist_n_jobs':
-                # case is the distributed core count
-                match p_str[0]:
-                    case 'simple':
-                        # case is the simple solver
-                        return 4
-
-                    case 'spykingcircus2':
-                        # case is the spykingcircus2 solver
-                        return -1
-
-            case 'covariance_type':
-                # case is the covariance type
-                return 'full'
-
-            case 'damping':
-                # case is the damping factor
-                return 0.5
-
-            case 'init':
-                # case is the initialisation method
-                return 'kmeans++'
-
-            case 'isocut_threshold':
-                # case is the clustering threshold
-                return 2
-
-            case 'leaf_size':
-                # case is the branch leaf size
-                return 40
-
-            case 'max_cluster_size':
-                # case is the max cluster size
-                return 0
-
-            case 'max_iter':
-                # case is the max iteration count
-                match p_str[0]:
-                    case 'simple':
-                        # case is the simple solver
-                        return 300
-
-                    case 'spykingcircus2':
-                        # case is the spykingcircus2 solver
-                        return 1000
-
-            case 'max_iterations_per_pass':
-                # case is the max iteration pass count
-                return 500
-
-            case 'max_no_improvement':
-                # case is the max improvement count
-                return 10
-
-            case 'min_bin_freq':
-                # case is the minimum binning frequency
-                return 1
-
-            case 'min_cluster_size':
-                # case is the minimum cluster size
-                match p_str[0]:
-                    case 'simple':
-                        # case is the simple solver
-                        return 5
-
-                    case 'spykingcircus2':
-                        # case is the spykingcircus2 solver
-                        match p_str[3]:
-                            case 'clusterer':
-                                return 10
-
-                            case _:
-                                return 20
-
-            case 'n_clusters':
-                # case is the cluster count
-                return 8
-
-            case 'n_components':
-                # case is the PCA component count
-                match p_str[0]:
-                    case 'simple':
-                        # case is the simple solver
-                        return 1
-
-                    case 'spykingcircus2':
-                        # case is the spykingcircus2 solver
-                        match np_str:
-                            case 2:
-                                return 5
-
-                            case 4:
-                                return 10
-
-            case 'n_init':
-                # case is the initial cluster size
-                return 200
-
-            case 'p':
-                # case is the power exponent
-                return 2
-
-            case 'reassignment_ratio':
-                # case is the reassignment ratio
-                return 0.01
-
-            case 'tol':
-                # case is the tolerance
-                return 1.0e-3
-
-            # --- SPYKINGCIRCUS2 SOLVER PARAMETERS --- #
-
-            case 'motion_aware':
-                # case is allow drift flag
-                return False
-
-            case 'scale_amplitudes':
-                # case is the amplitude scale flag
-                return False
-
-            case 'select_per_channel':
-                # case is the select per channel flag
-                return False
-
-            case 'use_fine_detector':
-                # case is the fine detector flag
-                return True
-
-            case 'engine':
-                # case is the convolution calculation engine
-                return 'numpy'
-
-            case 'feature':
-                # case is the spike feature
-                return 'ptp'
-
-            case 'peak_sign':
-                # case is the peak sign
-                return 'neg'
-
-            case 'stop_criteria':
-                # case is the stopping criteria
-                return 'max_failures'
-
-            case 'torch_device':
-                # case is the torch device
-                return 'cpu'
-
-            case 'amplitude_fitting_radius_um':
-                # case is the amplitude fitting neighbourhood size
-                return 150.0
-
-            case 'allow_single_cluster':
-                # case the allow single cluster flag
-                return True
-
-            case 'apply_local_svd':
-                # case is the apply local svd flag
-                return True
-
-            case 'bin_mode':
-                # case is the binning mode
-                return 'channels'
-
-            case 'enforce_diagonal_to_zero':
-                # case is enforce zero diagonal flag
-                return True
-
-            case 'normed_distances':
-                # case is the normalise distance flag
-                return True
-
-            case 'min_firing_rate':
-                # case is the minimum firing rate
-                return 0.1
-
-            case 'min_snr':
-                # case is the minimum snr
-                match c1_type:
-                    case 'cleaning':
-                        return 5.0
-
-                    case 'clustering':
-                        return 2.5
-
-            case 'max_jitter_ms':
-                # case is the maximum temporal shift
-                return 0.2
-
-            case 'remove_empty':
-                # case is the remove empty flag
-                return True
-
-            case 'radius_um':
-                # case is the neighbourhood radius
-                match c1_type:
-                    case 'general':
-                        return 100
-
-                    case 'motion_correction':
-                        return 80
-
-                    case c1_type if c1_type in ['clustering', 'detection']:
-                        return 50
-
-            case 'sparsify_threshold':
-                # case is the sparsify threshold
-                return 1
-
-            case 'nb_projections':
-                # case is the pca projection count
-                return 10
-
-            case 'sparse_mode':
-                # case is the sparsity mode
-                return 'knn'
-
-            case pf if pf in ['neighborhood_radius_um', 'neighbors_radius_um']:
-                # case is the neighbourhood radius
-                return 50
-
-            case 'n_neighbors':
-                # case is the neighbourhood size
-                return 5
-
-            case 'use_lags':
-                # case is use time lags flag
-                return True
-
-            case 'similarity_metric':
-                # case is the similarity metric
-                return 'I1'
-
-            case 'similarity_thresh':
-                # case is the similarity threshold
-                return 0.8
-
-            case 'num_shifts':
-                # case is the temporal shift count
-                return 3
-
-            case 'window_length_ms':
-                # case is the window length
-                return 0.25
-
-            case 'amplitude_mode':
-                # case is the amplitude mode
-                return 'peak_to_peak'
-
-            case 'method':
-                # case is the method selection
-                match c1_type:
-                    case 'clustering':
-                        # case is the clustering methods
-                        match p_str[3]:
-                            case 'peak_localization_kwargs':
-                                return 'center_of_mass'
-
-                            case 'sparsity':
-                                return 'snr'
-
-                            case 'split':
-                                return 'hdbscan'
-
-                    case 'motion_correction':
-                        # case is the motion correction methods
-                        match p_str[2]:
-                            case 'detect_kwargs':
-                                return 'locally_exclusive'
-
-                            case 'estimate_motion_kwargs':
-                                return 'dredge_ap'
-
-                            case 'localize_peak_kwargs':
-                                return 'grid_convolution'
-
-            case 'threshold':
-                # case is the threshold value
-                match c1_type:
-                    case 'clustering':
-                        return 0.25
-
-                    case 'matching':
-                        return 50.0
-
-            case 'recursive':
-                # case is the apply recursion flag
-                return True
-
-            case 'split_radius_um':
-                # case is the split neighbourhood radius
-                return 100.0
-
-            case 'recursive_depth':
-                # case is the recursion depth
-                return 3
-
-            case 'projection_mode':
-                # case is the projection mode
-                return 'tsvd'
-
-            case 'min_size_split':
-                # case is the minimum split size
-                return 1
-
-            case 'n_pca_features':
-                # case is the PCA feature count
-                return 1
-
-            case 'ms_after':
-                # case is the pre-peak duration
-                match c1_type:
-                    case 'clustering':
-                        return 1.5
-
-                    case 'matching':
-                        return 0.8
-
-            case 'ms_before':
-                # case is the post-peak duration
-                match c1_type:
-                    case 'clustering':
-                        return 0.5
-
-                    case 'matching':
-                        return 0.5
-
-            case 'gather_mode':
-                # case is the gathering mode
-                match c1_type:
-                    case 'detection':
-                        return 'memory'
-
-                    case 'matching':
-                        return 'numpy'
-
-            case 'skip_after_n_peaks':
-                # case is the PCA feature count
-                return None
-
-            case 'amplitude_variance':
-                # case is the amplitude variance
-                return 1.0
-
-            case 'cluster_radius_um':
-                # case is the cluster neighbourhood radius
-                return 150.0
-
-            case 'detect_threshold':
-                # case is the detection threshold
-                match c1_type:
-                    case 'motion_correction':
-                        return 8
-
-                    case c1_type if c1_type in ['detection', 'matching']:
-                        return 5
-
-            case 'detection_radius_um':
-                # case is the detection radius
-                return 100.0
-
-            case 'exclude_sweep_ms':
-                # case is the detection radius
-                match c1_type:
-                    case 'detection':
-                        return 1.0
-
-                    case c1_type if c1_type in ['motion_correction', 'matching']:
-                        return 0.8
-
-            case 'interpolation_time_bin_size_s':
-                # case is the interpolation time bin size
-                return 1.0
-
-            case 'jitter_factor':
-                # case is the jitter factor
-                return 8.0
-
-            case 'motion_step_um':
-                # case is the drift step size
-                return 2.0
-
-            case 'omp_min_sps':
-                # case is the OMP minimum firing rate
-                return 0.1
-
-            case 'peak_shift_ms':
-                # case is the peak shift time
-                return 0.2
-
-            case 'relative_error':
-                # case is the relative error
-                return 5E-05
-
-            case 'scale_max':
-                # case is the maximum scale factor
-                return np.inf
-
-            case 'scale_min':
-                # case is the minimum scale factor
-                return 0.0
-
-            case 'sparsity_radius_um':
-                # case is the sparsity neighbourhood radius
-                return 100.0
-
-            case 'vicinity':
-                # case is the vicinity area
-                return 2.0
-
-            case 'visibility_threshold':
-                # case is the visibility threshold
-                return 1.0
-
-            case 'approx_rank':
-                # case is the initial rank approximate
-                return 5
-
-            case 'max_failures':
-                # case is the maximum failure count
-                return 5
-
-            case 'max_peeler_loop':
-                # case is the maximum peeler loop count
-                return 2
-
-            case 'rank':
-                # case is the SVD component count
-                return 5
-
-            case 'refractory_period_frames':
-                # case is the refractory period size
-                return 10
-
-            case 'sample_shift':
-                # case is the template sample shift
-                return 2
-
-            case 'amplitude_limits':
-                # case is the amplitude limits
-                return [0.7, 1.4]
-
-            case 'amplitudes':
-                # case is the allowable template amplitude limits
-                return [0.6, np.inf]
 
     def setup_para_list(self, p_fld, s_name, d_name):
 
@@ -2869,11 +2564,14 @@ class SpikeSortInfo(QObject):
                 return p_list
 
             case 'mp_context':
-                # case is the (multiple solvers)
-                return ["spawn", "none"]
+                # case is the multi-processor context (multiple solvers)
+                if cf.is_linux:
+                    return ["spawn", "fork", "none"]
+                else:
+                    return ["spawn", "none"]
 
             case 'operator':
-                # case is the (lupin/tridesclous2)
+                # case is the operator (lupin/tridesclous2)
                 return ["median", "average"]
 
             case 'peak_sign':
@@ -2992,6 +2690,179 @@ class SpikeSortInfo(QObject):
 
         pass
 
+    def get_default_para_value(self, p_str, pf):
+
+        # field retrieval
+        np_str = len(p_str)
+        c1_type = p_str[1]
+
+        if pf in def_val_dict:
+            # value is within the default parameter value dictionary
+            return def_val_dict[pf]
+
+        match pf:
+            # --- SIMPLE SOLVER DICTIONARY PARAMETERS --- #
+
+            case 'core_dist_n_jobs':
+                # case is the distributed core count
+                match p_str[0]:
+                    case 'simple':
+                        # case is the simple solver
+                        return 4
+
+                    case 'spykingcircus2':
+                        # case is the spykingcircus2 solver
+                        return -1
+
+            case 'max_iter':
+                # case is the max iteration count
+                match p_str[0]:
+                    case 'simple':
+                        # case is the simple solver
+                        return 300
+
+                    case 'spykingcircus2':
+                        # case is the spykingcircus2 solver
+                        return 1000
+
+            case 'min_cluster_size':
+                # case is the minimum cluster size
+                match p_str[0]:
+                    case 'simple':
+                        # case is the simple solver
+                        return 5
+
+                    case 'spykingcircus2':
+                        # case is the spykingcircus2 solver
+                        match p_str[3]:
+                            case 'clusterer':
+                                return 10
+
+                            case _:
+                                return 20
+
+            case 'n_components':
+                # case is the PCA component count
+                match p_str[0]:
+                    case 'simple':
+                        # case is the simple solver
+                        return 1
+
+                    case 'spykingcircus2':
+                        # case is the spykingcircus2 solver
+                        match np_str:
+                            case 2:
+                                return 5
+
+                            case 4:
+                                return 10
+
+            case 'min_snr':
+                # case is the minimum snr
+                match c1_type:
+                    case 'cleaning':
+                        return 5.0
+
+                    case 'clustering':
+                        return 2.5
+
+            case 'radius_um':
+                # case is the neighbourhood radius
+                match c1_type:
+                    case 'general':
+                        return 100
+
+                    case 'motion_correction':
+                        return 80
+
+                    case c1_type if c1_type in ['clustering', 'detection']:
+                        return 50
+
+            case pf if pf in ['neighborhood_radius_um', 'neighbors_radius_um']:
+                # case is the neighbourhood radius
+                return 50
+
+            case 'method':
+                # case is the method selection
+                match c1_type:
+                    case 'clustering':
+                        # case is the clustering methods
+                        match p_str[3]:
+                            case 'peak_localization_kwargs':
+                                return 'center_of_mass'
+
+                            case 'sparsity':
+                                return 'snr'
+
+                            case 'split':
+                                return 'hdbscan'
+
+                    case 'motion_correction':
+                        # case is the motion correction methods
+                        match p_str[2]:
+                            case 'detect_kwargs':
+                                return 'locally_exclusive'
+
+                            case 'estimate_motion_kwargs':
+                                return 'dredge_ap'
+
+                            case 'localize_peak_kwargs':
+                                return 'grid_convolution'
+
+            case 'threshold':
+                # case is the threshold value
+                match c1_type:
+                    case 'clustering':
+                        return 0.25
+
+                    case 'matching':
+                        return 50.0
+
+            case 'ms_after':
+                # case is the pre-peak duration
+                match c1_type:
+                    case 'clustering':
+                        return 1.5
+
+                    case 'matching':
+                        return 0.8
+
+            case 'ms_before':
+                # case is the post-peak duration
+                match c1_type:
+                    case 'clustering':
+                        return 0.5
+
+                    case 'matching':
+                        return 0.5
+
+            case 'gather_mode':
+                # case is the gathering mode
+                match c1_type:
+                    case 'detection':
+                        return 'memory'
+
+                    case 'matching':
+                        return 'numpy'
+
+            case 'detect_threshold':
+                # case is the detection threshold
+                match c1_type:
+                    case 'motion_correction':
+                        return 8
+
+                    case c1_type if c1_type in ['detection', 'matching']:
+                        return 5
+
+            case 'exclude_sweep_ms':
+                # case is the detection radius
+                match c1_type:
+                    case 'detection':
+                        return 1.0
+
+                    case c1_type if c1_type in ['motion_correction', 'matching']:
+                        return 0.8
+
     # ---------------------------------------------------------------------------
     # Static Methods
     # ---------------------------------------------------------------------------
@@ -3010,4 +2881,7 @@ class SpikeSortInfo(QObject):
     @staticmethod
     def get_description_field(p_desc, pf):
 
-        return '' if (p_desc is None) else p_desc[pf]
+        if (p_desc is None) or (pf not in p_desc):
+            return ''
+        else:
+            return p_desc[pf]
