@@ -255,17 +255,17 @@ class SpikeSortingDialog(QMainWindow):
                     if pp_s in self.pp_chk:
                         self.pp_steps.append(pp_flds[pp_s])
 
-                # REMOVE ME LATER
-                self.pp_steps += ['Whitening']
+                # # REMOVE ME LATER
+                # self.pp_steps += ['Whitening']
 
             else:
                 # experimental runs have not been preprocessed
                 self.per_shank_pp = False
                 self.concat_runs_pp = False
 
-            # REMOVE ME LATER
-            self.pp_steps = []
-            self.has_pp = False
+            # # REMOVE ME LATER
+            # self.pp_steps = []
+            # self.has_pp = False
 
             # sets the preprocessing options
             self.prep_opt = [self.per_shank_pp, self.concat_runs_pp]
@@ -1149,6 +1149,7 @@ class SpikeSorterTab(QTabWidget):
     x_gap = 5
     hght_row = 25
     item_row_size = 23
+    width_para_col = 150
 
     # array class fields
     tree_hdr = ['Property', 'Value']
@@ -1353,6 +1354,7 @@ class SpikeSorterTab(QTabWidget):
         tree_header.setDefaultAlignment(cf.align_type['center'])
         tree_header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
         tree_header.setSectionResizeMode(1, QHeaderView.ResizeMode.Fixed)
+        self.tree_prop.setColumnWidth(1, self.width_para_col)
 
         # updates the comboboxes field (if within the combobox change array and valid)
         for cc in self.combo_chg:
@@ -1863,6 +1865,7 @@ class SpikeSorterTab(QTabWidget):
                     case 'graph-clustering':
                         # case is the graph-clustering method
                         p_fld_on = [
+                            'clusterer-method',
                             'graph_kwargs-bin_mode',
                             'graph_kwargs-neighbors_radius_um',
                             'graph_kwargs-normed_distances',
@@ -1894,7 +1897,7 @@ class SpikeSorterTab(QTabWidget):
                         p_fld_on = [
                             'split-method_kwargs-clusterer-max_iterations_per_pass',
                             'split-method_kwargs-clusterer-isocut_threshold',
-                            'split-method_kwargs-n_pca_features',
+                            'split-method_kwargs-min_size_split',
                             'split-method_kwargs-projection_mode',
                             'merge_from_templates-similarity_metric',
                         ]
@@ -1902,6 +1905,7 @@ class SpikeSorterTab(QTabWidget):
                     case 'random-projections':
                         # case is the random-projections method
                         p_fld_on = [
+                            'clusterer-min_cluster_size',
                             'clusterer-allow_single_cluster',
                             'clusterer-core_dist_n_jobs',
                             'clusterer-cluster_selection_method',
@@ -1925,7 +1929,7 @@ class SpikeSorterTab(QTabWidget):
                             'split-recursive_depth',
                             'split-method_kwargs-clusterer-method',
                             'split-method_kwargs-clusterer-min_cluster_size',
-                            'split-method_kwargs-min_size_split',
+                            'split-method_kwargs-n_pca_features',
                             'clean_templates-sparsify_threshold',
                             'clean_templates-min_snr',
                             'clean_templates-remove_empty',
@@ -1934,11 +1938,6 @@ class SpikeSorterTab(QTabWidget):
                             'merge_from_templates-similarity_thresh',
                             'merge_from_templates-use_lags',
                             'clean_low_firing-min_firing_rate',
-                        ]
-
-                    case p_value if p_value in ["random-projections", "graph-clustering"]:
-                        p_fld_on += [
-                            'clusterer-min_cluster_size',
                         ]
 
             case 'spykingcircus2-motion_correction-preset':
@@ -2390,6 +2389,10 @@ class SpikeSortInfo(QObject):
         'cache_preprocessing': 'Cache Preprocessing',
     }
 
+    # matlab solvers
+    ignore_solvers = ['rtsort']
+    matlab_solvers = ['hdsort', 'ironclust', 'waveclus', 'kilosort', 'kilosort2', 'kilosort2_5', 'kilosort3']
+
     def __init__(self, ses_obj=None):
         super(SpikeSortInfo, self).__init__()
 
@@ -2444,12 +2447,17 @@ class SpikeSortInfo(QObject):
         # initialisations
         s_props = {}
         s_list = ['kilosort4']
-        ig_list = ['rtsort']
 
         # removes sorters from the ignore list
-        for sl in ig_list:
+        for sl in self.ignore_solvers:
             if sl in self.all_s:
                 self.all_s.remove(sl)
+
+        # removes any matlab-based solvers (if matlab is not installed)
+        if not cf.is_matlab_installed():
+            for sl in self.matlab_solvers:
+                if sl in self.all_s:
+                    self.all_s.remove(sl)
 
         # sets the sorter setup index array
         ind_s = np.array(range(len(self.all_s)), dtype=int)
@@ -2515,7 +2523,7 @@ class SpikeSortInfo(QObject):
                 case 'combobox':
                     # case is a combobox (enumeration)
                     # d_name = pf.split('-')[-2]
-                    p_dict[pf].set('list', self.setup_para_list(pf0, s_name, pf_sp[-2]))
+                    p_dict[pf].set('list', self.setup_para_list(pf0, s_name, pf_sp[-2], pf))
 
                 case 'dict':
                     # case is a dictionary field
@@ -2631,7 +2639,7 @@ class SpikeSortInfo(QObject):
 
         return pf_ch
 
-    def setup_para_list(self, p_fld, s_name, d_name):
+    def setup_para_list(self, p_fld, s_name, d_name, p_full):
 
         match p_fld:
             case 'affinity':
@@ -2768,7 +2776,12 @@ class SpikeSortInfo(QObject):
                                 "amplitude", "energy", "by_property"]
 
                     case 'clusterer':
-                        return ["hdbscan", "isosplit"]
+                        if 'split' in p_full:
+                            return ["hdbscan", "isosplit"]
+
+                        else:
+                            return ["networkx-louvain", "sknetwork-louvain",
+                                    "sknetwork-leiden", "leidenalg", "hdbscan"]
 
                     case 'detect_kwargs':
                         return ["locally_exclusive"]
@@ -3048,6 +3061,9 @@ class SpikeSortInfo(QObject):
 
                             case 'split':
                                 return 'hdbscan'
+
+                            case 'clusterer':
+                                return 'sknetwork-louvain'
 
                     case 'motion_correction':
                         # case is the motion correction methods

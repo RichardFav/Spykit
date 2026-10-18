@@ -7,6 +7,7 @@ import time
 import json
 import string
 import random
+import shutil
 import platform
 import colorsys
 import itertools
@@ -910,3 +911,12 @@ def subplot_geometry(s_plot):
 def is_dev():
 
     return (is_win and is_testing) and (os.environ['COMPUTERNAME'] == "DESKTOP-NLLEH0V")
+
+
+def is_matlab_installed():
+
+    if is_win:
+        return shutil.which("matlab.exe") is not None
+
+    else:
+        return shutil.which("matlab") is not None

@@ -107,7 +107,8 @@ loop_mode,Loop Mode,***,combobox,Job Parameters,***,***,***,***,***,***
 method,Method,***,combobox,clustering,***,***,***,***,***,***
 method,Method,***,combobox,clustering,method_kwargs,peak_localization_kwargs,***,***,***,***
 method,Method,***,combobox,clustering,method_kwargs,sparsity,***,***,***,***
-method,Method,***,combobox,clustering,method_kwargs,split,method_kwargs,clusterer,***,***
+method,Method,***,combobox,clustering,method_kwargs,split,method_kwargs,clusterer,***,**
+method,Method,***,combobox,clustering,method_kwargs,clusterer,***,***,***,****
 method,Method,***,combobox,detection,***,***,***,***,***,***
 method,Method,***,combobox,matching,***,***,***,***,***,***
 method,Method,Drift Correction,combobox,motion_correction,detect_kwargs,***,***,***,***,***
