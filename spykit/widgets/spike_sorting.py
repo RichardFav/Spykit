@@ -52,6 +52,7 @@ def_val_dict = {
     'filter_mode': 'sos',
     'ftype': 'bessel',
     'init': 'kmeans++',
+    'metric': 'minkowski',
     'mp_context': 'none',
     'mode': 'gaussian_2d',
     'operator': 'median',
@@ -72,6 +73,7 @@ def_val_dict = {
     'bin_s': 2.0,
     'cluster_radius_um': 150.0,
     'cluster_selection_epsilon': 0.0,
+    'cluster_selection_epsilon_max': np.inf,
     'cluster_selection_persistence': 0.0,
     'damping': 0.5,
     'detection_radius_um': 100.0,
@@ -86,6 +88,7 @@ def_val_dict = {
     'omp_min_sps': 0.1,
     'peak_shift_ms': 0.2,
     'reassignment_ratio': 0.01,
+    'reg_covar': 1e-6,
     'relative_error': 5E-05,
     'scale_max': np.inf,
     'scale_min': 0.0,
@@ -125,7 +128,7 @@ def_val_dict = {
     'n_init': 200,
     'n_jobs': 1,
     'n_neighbors': 5,
-    'n_pca_features': 1,
+    'n_pca_features': 3,
     'p': 2,
     'rank': 5,
     'recursive_depth': 3,
@@ -135,9 +138,12 @@ def_val_dict = {
     'sparsify_threshold': 1,
 
     # boolean parameter values
-    'allow_single_cluster': True,
+    # 'allow_single_cluster': True,
     'apply_local_svd': True,
+    'approx_min_span_tree': True,
+    'cluster_all': True,
     'enforce_diagonal_to_zero': True,
+    'gen_min_span_tree': False,
     'motion_aware': False,
     'normed_distances': True,
     'progress_bar': True,
@@ -1731,6 +1737,10 @@ class SpikeSorterTab(QTabWidget):
 
     def combo_update_para_change(self, p_str, p_value=None):
 
+        # initialisations
+        p_dict = {}
+
+        # default parameter value
         if p_value is None:
             p_value = self.s_props[p_str].get('value')
 
@@ -1746,30 +1756,57 @@ class SpikeSorterTab(QTabWidget):
                         # case is affinity propagation
                         p_fld_on = ['affinity', 'convergence_iter' , 'damping', 'max_iter']
 
+                        p_dict = {
+                            'max_iter': 200,
+                        }
+
                     case 'gaussian_mixture':
                         # case is gaussian mixture
-                        p_fld_on = ['covariance_type', 'n_components', 'tol']
+                        p_fld_on = ['covariance_type', 'n_components', 'reg_covar', 'tol']
+
+                        p_dict = {
+                            'max_iter': 100,
+                            'tol': 1e-3,
+                        }
 
                     case p_value if p_value in ['hdbscan', 'hdbscan-gpu']:
                         # case is hdbscan
-                        p_fld_on = ['algorithm', 'alpha', 'cluster_selection_epsilon',
-                                    'cluster_selection_method', 'cluster_selection_persistence',
-                                    'core_dist_n_jobs', 'leaf_size', 'max_cluster_size',
-                                    'min_cluster_size', 'p']
+                        p_fld_on = ['algorithm', 'allow_single_clusters', 'alpha',
+                                    'approx_min_span_tree', 'cluster_selection_epsilon',
+                                    'cluster_selection_epsilon_max', 'cluster_selection_method', 'cluster_selection_persistence',
+                                    'core_dist_n_jobs', 'gen_min_span_tree', 'leaf_size', 'max_cluster_size',
+                                    'metric', 'min_cluster_size', 'p']
+
+                        p_dict = {
+                            'min_cluster_size': 5,
+                        }
 
                     case 'isosplit':
                         # case is isosplit
                         p_fld_on = ['isocut_threshold', 'max_iterations_per_pass',
                                     'min_cluster_size', 'n_init']
 
+                        p_dict = {
+                            'min_cluster_size': 10,
+                        }
+
                     case 'kmeans':
                         # case is kmeans
                         p_fld_on = ['batch_size', 'init', 'max_iter', 'max_no_improvement',
                                     'n_clusters', 'reassignment_ratio', 'tol']
 
+                        p_dict = {
+                            'max_iter': 100,
+                            'tol': 0,
+                        }
+
                     case 'mean_shift':
                         # case is mean-shifting
-                        p_fld_on = ['max_iter', 'min_bin_freq']
+                        p_fld_on = ['cluster_all', 'max_iter', 'min_bin_freq']
+
+                        p_dict = {
+                            'max_iter': 300,
+                        }
 
             case 'spykingcircus2-matching-method':
                 # case is the spykingcircus2 matching methods
@@ -1848,6 +1885,10 @@ class SpikeSorterTab(QTabWidget):
                             'peak_sign',
                         ]
 
+                        p_dict = {
+                            'detection_radius_um': 80.0 if (p_value == 'tdc_peeler') else 100.0
+                        }
+
                     case p_value if p_value in ["wobble", "circus-omp"]:
                         p_fld_on += [
                             'engine',
@@ -1892,6 +1933,13 @@ class SpikeSorterTab(QTabWidget):
                             'split-method_kwargs-clusterer-allow_single_cluster',
                         ]
 
+                        p_dict = {
+                            'split-split_radius_um': 75.0,
+                            'split-method_kwargs-clusterer-method': 'hdbscan',
+                            'split-method_kwargs-clusterer-min_cluster_size': 20,
+                            'split-method_kwargs-n_pca_features': 3,
+                        }
+
                     case 'iterative-isosplit':
                         # case is the iterative-isosplit method
                         p_fld_on = [
@@ -1901,6 +1949,13 @@ class SpikeSorterTab(QTabWidget):
                             'split-method_kwargs-projection_mode',
                             'merge_from_templates-similarity_metric',
                         ]
+
+                        p_dict = {
+                            'split-split_radius_um': 60.0,
+                            'split-method_kwargs-clusterer-method': 'isosplit',
+                            'split-method_kwargs-clusterer-min_cluster_size': 10,
+                            'split-method_kwargs-n_pca_features': 6,
+                        }
 
                     case 'random-projections':
                         # case is the random-projections method
@@ -1955,13 +2010,83 @@ class SpikeSorterTab(QTabWidget):
                     'interpolate_motion_kwargs-p',
                 ]
 
-                # kilosort-like only parameters
-                if p_value == 'kilosort_like':
-                    p_fld_on += [
-                        'estimate_motion_kwargs-hist_margin_um',
-                        'localize_peak_kwargs-weight_method-mode',
-                        'localize_peak_kwargs-weight_method-sigma_list_um',
-                    ]
+                #
+                if p_value != 'medicine':
+                    p_dict = {
+                        'localize_peaks_kwargs-method': 'monopolar_triangulation',
+                        'detect_kwargs-radius_um': 80.0,
+                        'estimate_motion_kwargs-method': 'dredge_ap',
+                        'estimate_motion_kwargs-rigid': False,
+                        'interpolate_motion_kwargs-border_mode': 'force_extrapolate',
+                    }
+
+                match p_value:
+                    case 'dredge':
+                        # case is the dredge method
+
+                        # parameter dictionary values
+                        p_dict['estimate_motion_kwargs-win_shape'] = 'gaussian'
+                        p_dict['estimate_motion_kwargs-win_step_um'] = 400.0
+
+                    case 'dredge_fast':
+
+                        # parameter dictionary values
+                        p_dict['localize_peaks_kwargs-method'] = 'grid_convolution'
+                        p_dict['estimate_motion_kwargs-win_shape'] = 'gaussian'
+                        p_dict['estimate_motion_kwargs-win_step_um'] = 400.0
+
+                    case 'kilosort_like':
+                        # case is the kilosort-like method
+
+                        # parameter fields
+                        p_fld_on += [
+                            'estimate_motion_kwargs-hist_margin_um',
+                            'localize_peak_kwargs-weight_method-mode',
+                            'localize_peak_kwargs-weight_method-sigma_list_um',
+                        ]
+
+                        # parameter dictionary values
+                        p_dict['detect_kwargs-radius_um'] = 50.0
+                        p_dict['localize_peaks_kwargs-method'] = 'grid_convolution'
+                        p_dict['estimate_motion_kwargs-method'] = 'kilosort_like'
+                        p_dict['estimate_motion_kwargs-win_shape'] = 'rect'
+                        p_dict['estimate_motion_kwargs-win_step_um'] = 200.0
+                        p_dict['estimate_motion_kwargs-bin_s'] = 2.0
+                        p_dict['estimate_motion_kwargs-method'] = 'iterative_template'
+
+                    case 'medicine':
+                        # case is the medicine method
+
+                        # parameter dictionary values
+                        p_dict['estimate_motion_kwargs-method'] = 'medicine'
+                        p_dict['localize_peaks_kwargs-method'] = 'monopolar_triangulation'
+
+                    case 'nonrigid_accurate':
+                        # case is the non-rigid accurate method
+
+                        # parameter dictionary values
+                        p_dict['estimate_motion_kwargs-method'] = 'decentralized'
+                        p_dict['interpolate_motion_kwargs-border_mode'] = 'remove_channels'
+
+                    case 'nonrigid_fast_and_accurate':
+                        # case is the non-rigid fast and accurate method
+
+                        # parameter dictionary values
+                        p_dict['localize_peaks_kwargs-method'] = 'grid_convolution'
+                        p_dict['estimate_motion_kwargs-method'] = 'decentralized'
+                        p_dict['interpolate_motion_kwargs-border_mode'] = 'remove_channels'
+
+                    case 'rigid_fast':
+                        # case is the rigid fast method
+
+                        # parameter dictionary values
+                        p_dict['detect_kwargs-radius_um'] = 75.0
+                        p_dict['localize_peaks_kwargs-method'] = 'center_of_mass'
+                        p_dict['estimate_motion_kwargs-rigid'] = True
+                        p_dict['estimate_motion_kwargs-bin_s'] = 5.0
+                        p_dict['interpolate_motion_kwargs-border_mode'] = 'remove_channels'
+
+                # --- ADDITIONAL SOLVER SPECIFIC PARAMETERS --- #
 
                 # kilosort-like/rigid-fast parameters
                 if p_value in ["rigid_fast", "kilosort_like"]:
@@ -2029,6 +2154,30 @@ class SpikeSorterTab(QTabWidget):
         # sets the parent item visibility flags
         for k, v in p_item_p.items():
             self.h_item[k].setHidden(not v)
+
+        # resets the parameter values (if applicable)
+        if len(p_dict):
+            for pf0, pv in p_dict.items():
+                # retrieves the widget from the tree item
+                pf = f"{p_fld_p}-{pf0}"
+                s_prop_p = self.s_props[pf]
+                h_widget = self.tree_prop.itemWidget(self.h_item[pf], 1)
+
+                # updates the widget value
+                if isinstance(h_widget, QLineEdit):
+                    # case is a line edit widget
+                    h_widget.setText(str(pv))
+                    self.edit_prop_update(h_widget, s_prop_p, pf)
+
+                elif isinstance(h_widget, QComboBox):
+                    # case is a combobox widget
+                    h_widget.setCurrentText(pv)
+                    self.combo_prop_update(h_widget, s_prop_p, pf)
+
+                elif isinstance(h_widget, QCheckBox):
+                    # case is a checkbox widget
+                    h_widget.setCheckState(cf.chk_state[pv])
+                    self.check_prop_update(h_widget, s_prop_p, pf)
 
     def set_item_align(self, item, p_fld):
 
@@ -2804,6 +2953,11 @@ class SpikeSortInfo(QObject):
                         # case is selection comboboxes
                         return ['uniform']
 
+            case 'metric':
+                # case is the distance metrics
+                return ["euclidean", "l2", "minkowski", "p", "manhattan",
+                        "cityblock", "l1", "chebyshev", "infinity"]
+
             case 'mode':
                 # case is the mode selection
                 match d_name:
@@ -2967,6 +3121,17 @@ class SpikeSortInfo(QObject):
 
         match pf:
             # --- SIMPLE SOLVER DICTIONARY PARAMETERS --- #
+
+            case 'allow_single_cluster':
+                # case is allowing single clusters
+                match p_str[0]:
+                    case 'simple':
+                        # case is the simple solver
+                        return False
+
+                    case 'spykingcircus2':
+                        # case is the spykingcircus2 solver
+                        return True
 
             case 'core_dist_n_jobs':
                 # case is the distributed core count

@@ -2,12 +2,15 @@ Parameter,Label,PP,Type,C1,C2,C3,C4,C5,Min,Max
 allow_single_cluster,Allow Single Clusters?,***,checkbox,clustering,method_kwargs,clusterer,***,***,***,***
 allow_single_cluster,Allow Single Clusters?,***,checkbox,clustering,method_kwargs,hdbscan_kwargs,***,***,***,***
 allow_single_cluster,Allow Single Clusters?,***,checkbox,clustering,method_kwargs,split,method_kwargs,clusterer,***,***
+allow_single_cluster,Allow Single Clusters?,***,checkbox,clusterer_kwargs,***,***,***,***,***,***
 apply_local_svd,Apply Local SVD?,***,checkbox,clustering,method_kwargs,graph_kwargs,***,***,***,***
 apply_motion_correction,Apply Motion Correction?,Drift Correction,checkbox,Preprocessing,***,***,***,***,***,***
 apply_preprocessing,Apply Preprocessing?,Any,checkbox,Preprocessing,***,***,***,***,***,***
 apply_whitening,Apply Whitening?,Whitening,checkbox,Preprocessing,***,***,***,***,***,***
+approx_min_span_tree,Appoximate Min Spanning Tree?,***,checkbox,clusterer_kwargs,***,***,***,***,***,***
 car,Use Common Average Referencing?,Common Reference,checkbox,Preprocessing,***,***,***,***,***,***
 clear_cache,Force Cache Clearing?,***,checkbox,Job Parameters,***,***,***,***,***,***
+cluster_all,Cluster All Units?,***,checkbox,clusterer_kwargs,***,***,***,***,***,***
 clustering_bin_seeding,Use Clustering Bin Seeding?,***,checkbox,Clustering,***,***,***,***,***,***
 common_ref_removal,Remove Median Common Reference,Common Reference,checkbox,Preprocessing,***,***,***,***,***,***
 datashift,Use Rigid Registration,Drift Correction,checkbox,Preprocessing,***,***,***,***,***,***
@@ -29,6 +32,7 @@ enforce_diagonal_to_zero,Enforce Zero Diagonal?,***,checkbox,clustering,method_k
 fGpu,Enable GPU Usage?,***,checkbox,Job Parameters,***,***,***,***,***,***
 filter,Apply Filtering?,Bandpass Filter,checkbox,Preprocessing,***,***,***,***,***,***
 fParfor,Use Matlab Parfor?,***,checkbox,Job Parameters,***,***,***,***,***,***
+gen_min_span_tree,Generate Min Spanning Tree?,***,checkbox,clusterer_kwargs,***,***,***,***,***,***
 generate_phy,Generate Phys File?,***,checkbox,Data Files,***,***,***,***,***,***
 interpolation,Use Spike Interpolation?,***,checkbox,Spike Detection,***,***,***,***,***,***
 invert_sign,Invert Data Sign?,***,checkbox,Spike Detection,***,***,***,***,***,***
@@ -105,16 +109,17 @@ init,Initialisation Method,***,combobox,clusterer_kwargs,***,***,***,***,***,***
 initialize,Template Initialisation Method,***,combobox,Clustering,***,***,***,***,***,***
 loop_mode,Loop Mode,***,combobox,Job Parameters,***,***,***,***,***,***
 method,Method,***,combobox,clustering,***,***,***,***,***,***
+method,Method,***,combobox,clustering,method_kwargs,clusterer,***,***,***,***
 method,Method,***,combobox,clustering,method_kwargs,peak_localization_kwargs,***,***,***,***
 method,Method,***,combobox,clustering,method_kwargs,sparsity,***,***,***,***
-method,Method,***,combobox,clustering,method_kwargs,split,method_kwargs,clusterer,***,**
-method,Method,***,combobox,clustering,method_kwargs,clusterer,***,***,***,****
+method,Method,***,combobox,clustering,method_kwargs,split,method_kwargs,clusterer,***,***
 method,Method,***,combobox,detection,***,***,***,***,***,***
 method,Method,***,combobox,matching,***,***,***,***,***,***
 method,Method,Drift Correction,combobox,motion_correction,detect_kwargs,***,***,***,***,***
 method,Method,Drift Correction,combobox,motion_correction,estimate_motion_kwargs,***,***,***,***,***
 method,Method,Drift Correction,combobox,motion_correction,localize_peak_kwargs,***,***,***,***,***
 method,Method,***,combobox,selection,***,***,***,***,***,***
+metric,Distance Metric,***,combobox,clusterer_kwargs,***,***,***,***,***,***
 mode,Mode,All,combobox,cache_preprocessing,***,***,***,***,***,***
 mode,Mode,Drift Correction,combobox,motion_correction,localize_peak_kwargs,weight_method,***,***,***,***
 mode,Mode,Whitening,combobox,whitening,***,***,***,***,***,***
@@ -145,7 +150,7 @@ whitening,Whitening Method,Whitening,combobox,Preprocessing,***,***,***,***,***,
 win_shape,Window Shape,Drift Correction,combobox,motion_correction,estimate_motion_kwargs,***,***,***,***,***
 cache_preprocessing,Preprocessing Cache Parameters,All,dict,***,***,***,***,***,***,***
 chunk_preprocessing,Preprocessing Chunk Parameters,All,dict,***,***,***,***,***,***,***
-clean_low_firing,Low Firing Rate Parameters,***,dict,clustering,method_kwargs,***,***,***,***,***
+clean_low_firing,Low Firing Cleaning Parameters,***,dict,clustering,method_kwargs,***,***,***,***,***
 clean_templates,Template Cleaning Parameters,***,dict,clustering,method_kwargs,***,***,***,***,***
 cleaning,Cleaning Parameters,***,dict,***,***,***,***,***,***,***
 clusterer,Clusterer Properties,***,dict,clustering,method_kwargs,***,***,***,***,***
@@ -203,6 +208,7 @@ clip_post,Post-Peak Cutout Duration (ms),***,edit_float,Spike Detection,***,***,
 clip_pre,Pre-Peak Cutout Duration (ms),***,edit_float,Spike Detection,***,***,***,***,0,inf
 cluster_radius_um,Cluster Radius (um),***,edit_float,matching,method_kwargs,***,***,***,0,inf
 cluster_selection_epsilon,Distance Threshold,***,edit_float,clusterer_kwargs,***,***,***,***,0,inf
+cluster_selection_epsilon_max,Max Distance Threshold,***,edit_float,clusterer_kwargs,***,***,***,***,0,inf
 cluster_selection_persistence,Persistence Thresdhol,***,edit_float,clusterer_kwargs,***,***,***,***,0,inf
 clustering_alpha,Waveform PC Feature Threshold,***,edit_float,Clustering,***,***,***,***,0,inf
 clustering_bandwidth,Cluster Meanshift Bandwidth (um),***,edit_float,Clustering,***,***,***,***,0,inf
@@ -250,7 +256,7 @@ inner_radius,Probe Radius (um),***,edit_float,Spike Detection,***,***,***,***,0,
 interpolation_time_bin_size_s,Interpolation Time Bin Size (s),***,edit_float,matching,method_kwargs,***,***,***,0,inf
 isocut_threshold,Threshold,***,edit_float,clusterer_kwargs,***,***,***,***,0,inf
 isocut_threshold,Threshold,***,edit_float,clustering,method_kwargs,split,method_kwargs,clusterer,0,Inf
-jitter_factor,Upsampled Jittered Template Count ,***,edit_int,matching,method_kwargs,***,***,***,0,inf
+jitter_factor,Upsampled Jittered Template Count ,***,edit_float,matching,method_kwargs,***,***,***,0,inf
 lam,Amplitude Penalty Importance,***,edit_float,Template Matching,***,***,***,***,0,inf
 left_cutout_time,Pre-Peak Cutout Duration (ms),***,edit_float,Spike Detection,***,***,***,***,0,inf
 margin_ms,Buffer Margin Time (ms),Common Reference,edit_float,preprocessing_dict,***,***,***,***,1,inf
@@ -314,6 +320,7 @@ radius_um,Neighbourhood Radius (um),***,edit_float,general,***,***,***,***,0,inf
 radius_um,Neighbourhood Radius (um),Drift Correction,edit_float,motion_correction,detect_kwargs,***,***,***,0,inf
 reassignment_ratio,Cluster Reassignment Ratio,***,edit_float,clusterer_kwargs,***,***,***,***,0,inf
 ref_ms,Spike Refractory Period (ms),***,edit_float,Spike Detection,***,***,***,***,0,inf
+reg_covar,Covariance Regularisation,***,edit_float,clusterer_kwargs,***,***,***,***,0,1
 relative_error,Relative Error,***,edit_float,matching,method_kwargs,***,***,***,0,inf
 rescale_value,Signal Rescale Factor,Rescaling,edit_float,Preprocessing,***,***,***,***,0,inf
 right_cutout_time,Post-Peak Cutout Duration (ms),***,edit_float,Spike Detection,***,***,***,***,0,inf
@@ -421,7 +428,6 @@ max_no_improvement,Max Improvement Count,***,edit_int,clusterer_kwargs,***,***,*
 max_peeler_loop,Max Peeler Loop Count,***,edit_int,matching,method_kwargs,***,***,***,1,inf
 max_peels,Max Iteration Count,***,edit_int,Spike Detection,***,***,***,***,1,inf
 max_spk,Max Spike Count,***,edit_int,Template Matching,***,***,***,***,1,inf
-max_threads_per_worker,Max Threads per Worker,***,edit_int,Job Parameters,***,***,***,***,1,inf
 MaxClustersPerTemp,Max Cluster Count,***,edit_int,Clustering,***,***,***,***,1,inf
 min_bin_freq,Min Bin Frequency,***,edit_int,clusterer_kwargs,***,***,***,***,1,inf
 min_clus,Min Cluster Size Increase,***,edit_int,Clustering,***,***,***,***,1,inf
