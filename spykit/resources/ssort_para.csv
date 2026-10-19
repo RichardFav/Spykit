@@ -67,7 +67,7 @@ save_temp_files,Save Temporary Files?,***,checkbox,Job Parameters,***,***,***,**
 scale_amplitudes,Scale Template Amplitudes?,***,checkbox,matching,method_kwargs,***,***,***,***,***
 select_per_channel,Select per Channel?,***,checkbox,selection,method_kwargs,***,***,***,***,***
 shuffle_clusters,Shuffle Clusters?,***,checkbox,Clustering,***,***,***,***,***,***
-skip_kilosort_preprocessing,Skip Kilosort Preprocessing?,Any,checkbox,Preprocessing,***,***,***,***,***,***
+skip_kilosort_preprocessing,Skip Kilosort Preprocessing?,All,checkbox,Preprocessing,***,***,***,***,***,***
 stable_mode,Use Stable Solver Mode?,***,checkbox,Job Parameters,***,***,***,***,***,***
 templates_from_data,Compute Templates from data?,***,checkbox,Template Matching,***,***,***,***,***,***
 update_templates,Update Template?,***,checkbox,Template Matching,***,***,***,***,***,***

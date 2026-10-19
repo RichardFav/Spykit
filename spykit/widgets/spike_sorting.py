@@ -68,9 +68,11 @@ def_val_dict = {
     'win_shape': 'gaussian',
 
     # float parameter values
+    'alpha': 10.0,
     'amplitude_fitting_radius_um': 150.0,
     'amplitude_variance': 1.0,
     'bin_s': 2.0,
+    'chunk_duration': 1.0,
     'cluster_radius_um': 150.0,
     'cluster_selection_epsilon': 0.0,
     'cluster_selection_epsilon_max': np.inf,
@@ -81,8 +83,10 @@ def_val_dict = {
     'freq_min': 300.0,
     'hist_margin_um': 0.0,
     'interpolation_time_bin_size_s': 1.0,
+    'isocut_threshold': 2.0,
     'jitter_factor': 8.0,
     'margin_ms': 5.0,
+    'max_jitter_ms': 0.2,
     'min_firing_rate': 0.1,
     'motion_step_um': 2.0,
     'omp_min_sps': 0.1,
@@ -99,24 +103,21 @@ def_val_dict = {
     'tol': 1.0e-3,
     'vicinity': 2.0,
     'visibility_threshold': 1.0,
+    'sparsify_threshold': 1.0,
     'window_length_ms': 0.25,
     'win_margin_um': None,
     'win_scale_um': 400.0,
     'win_step_um': 400.0,
 
     # integer parameter values
-    'alpha': 10,
     'approx_rank': 5,
     'batch_size': 1024,
-    'chunk_duration': 1,
     'convergence_iter': 15,
     'filter_order': 5,
-    'isocut_threshold': 2,
     'leaf_size': 40,
     'max_cluster_size': 0,
     'max_failures': 5,
     'max_iterations_per_pass': 500,
-    'max_jitter_ms': 0.2,
     'max_no_improvement': 10,
     'max_peeler_loop': 2,
     'min_bin_freq': 1,
@@ -135,7 +136,6 @@ def_val_dict = {
     'refractory_period_frames': 10,
     'sample_shift': 2,
     'skip_after_n_peaks': None,
-    'sparsify_threshold': 1,
 
     # boolean parameter values
     # 'allow_single_cluster': True,
@@ -736,7 +736,7 @@ class SpikeSortingDialog(QMainWindow):
             time.sleep(0.1)
 
             # sets up the configuration dictionary
-            sort_config = self.setup_config_dict()
+            sort_config = {'sorting': {self.s_type: self.setup_config_dict()}}
 
             # retrieves the preprocessing information
             prep_obj = self.sp_main.session_obj.session.prep_obj
@@ -836,6 +836,13 @@ class SpikeSortingDialog(QMainWindow):
             cf.show_error(error_msg, 'Spike Sorting Calculation Error', True)
             self.prog_bar.set_progbar_state(False)
 
+            # force stops the worker
+            self.t_worker.force_quit()
+            time.sleep(0.01)
+
+            # shuts down logging
+            logging.shutdown()
+
             # updates the boolean flags
             self.ss_change = False
 
@@ -900,35 +907,66 @@ class SpikeSortingDialog(QMainWindow):
         h_tab_grp = self.tab_group_sort.findChild(QTabWidget, name=g_tab)
         h_tab_grp.setTabEnabled(i_tab, state)
 
-    def setup_config_dict(self):
+    def setup_config_dict(self, i_lvl=1, p_str_p=None):
 
-        # retrieves the sorter parameters
-        h_tab_s = self.tab_group_sort.currentWidget()
-        s_props_s = h_tab_s.findChild(SpikeSorterTab, name=self.s_type).s_props
+        # top-level field retrieval
+        if i_lvl == 1:
+            p_str_p = self.s_type
+
+        # field retrieval
+        s_dict = {}
+        h_tab_s = self.s_prop_flds[self.s_type]['tab']
+        s_props_s, h_item_s = h_tab_s.s_props, h_tab_s.h_item
+
+        # determines the children parameters of the current dictionary branch
+        p_str_ch0 = [x for x in s_props_s.keys() if (x.count('-') == i_lvl)]
+        p_str_ch = [x for x in p_str_ch0 if ('-'.join(x.split('-')[:(i_lvl)]) == p_str_p)]
 
         # determines the parameters with non-default value
-        s_dict = {}
-        ndef_para = [k for (k, v) in s_props_s.items() if (v.value != v.dvalue)]
-        for nd_p in ndef_para:
-            # determines which level
-            p_sp = nd_p.split('-')
-            n_lvl = len(p_sp) - 1
+        for ps in p_str_ch:
+            # ignore parameter if hidden and not a preprocessing parameter
+            if (ps in h_item_s) and (h_item_s[ps].isHidden()):
+                continue
 
-            # sets the parameter field within the config dictionary
-            s_dict_p = s_dict
-            for i_lvl in range(n_lvl):
-                p_fld = p_sp[i_lvl + 1]
-                if (i_lvl + 1) == n_lvl:
-                    # case is the leaf level
-                    s_dict_p[p_fld] = s_props_s[nd_p].get('value')
+            # retrieves the sub-dictionary fields
+            p_name = ps.split('-')[-1]
+            if s_props_s[ps].type == 'dict':
+                # case is a dictionary field
+                s_dict[p_name] = self.setup_config_dict(i_lvl=i_lvl+1, p_str_p=ps)
 
-                else:
-                    # case is a branch level
-                    if p_fld not in s_dict_p:
-                        s_dict_p[p_fld] = {}
-                    s_dict_p = s_dict_p[p_fld]
+            else:
+                # otherwise, set the non-dictionary field value
+                p_value = s_props_s[ps].value
+                match p_name:
+                    case 'mp_context':
+                        # case is the multi-processing context
+                        s_dict[p_name] = None if (p_value == 'none') else p_value
 
-        return {'sorting': {self.s_type: s_dict}}
+                    case _:
+                        # case is the other parameters
+                        s_dict[p_name] = p_value
+
+            # # sets the parameter field within the config dictionary
+            # s_dict_p = s_dict
+            # for i_lvl in range(n_lvl):
+            #     p_fld = p_sp[i_lvl + 1]
+            #     if (i_lvl + 1) == n_lvl:
+            #         # case is the leaf level
+            #         p_value = deepcopy(s_props_s[nd_p].get('value'))
+            #         if isinstance(p_value, dict):
+            #             self.append_config_dict(s_dict_p, p_value)
+            #             pass
+            #
+            #         else:
+            #             s_dict_p[p_fld] = p_value
+            #
+            #     else:
+            #         # case is a branch level
+            #         if p_fld not in s_dict_p:
+            #             s_dict_p[p_fld] = {}
+            #         s_dict_p = s_dict_p[p_fld]
+
+        return s_dict
 
     def get_sorter_tab_props(self, s_name):
 

@@ -56,7 +56,12 @@ class ThreadWorker(QThread):
 
         # force quits the thread worker
         self.is_running = False
-        self.terminate()
+
+        # attempts to terminate the worker
+        try:
+            self.terminate()
+        except:
+            pass
 
     def reset_error_hook(self):
 
