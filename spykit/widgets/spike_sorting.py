@@ -20,6 +20,7 @@ from spykit.info.preprocess import pp_flds
 from spykit.threads.utils import ThreadWorker
 
 # spike interface module imports
+import spikeinterface.core as si
 from spikeinterface.sorters import (available_sorters, installed_sorters, get_sorter_params_description,
                                     get_sorter_description, get_default_sorter_params)
 
@@ -51,7 +52,7 @@ def_val_dict = {
     'feature': 'ptp',
     'filter_mode': 'sos',
     'ftype': 'bessel',
-    'init': 'kmeans++',
+    'init': 'k-means++',
     'metric': 'minkowski',
     'mp_context': 'none',
     'mode': 'gaussian_2d',
@@ -62,7 +63,7 @@ def_val_dict = {
     'reference': 'global',
     'sparse_mode': 'knn',
     'spatial_interpolation_method': 'kriging',
-    'similarity_metric': 'I1',
+    'similarity_metric': 'l1',
     'stop_criteria': 'max_failures',
     'torch_device': 'cpu',
     'win_shape': 'gaussian',
@@ -84,7 +85,6 @@ def_val_dict = {
     'hist_margin_um': 0.0,
     'interpolation_time_bin_size_s': 1.0,
     'isocut_threshold': 2.0,
-    'jitter_factor': 8.0,
     'margin_ms': 5.0,
     'max_jitter_ms': 0.2,
     'min_firing_rate': 0.1,
@@ -114,6 +114,7 @@ def_val_dict = {
     'batch_size': 1024,
     'convergence_iter': 15,
     'filter_order': 5,
+    'jitter_factor': 8,
     'leaf_size': 40,
     'max_cluster_size': 0,
     'max_failures': 5,
@@ -125,7 +126,7 @@ def_val_dict = {
     'min_size_split': 1,
     'nb_projections': 10,
     'num_shifts': 3,
-    'n_clusters': 0,
+    'n_clusters': 8,
     'n_init': 200,
     'n_jobs': 1,
     'n_neighbors': 5,
@@ -136,6 +137,7 @@ def_val_dict = {
     'refractory_period_frames': 10,
     'sample_shift': 2,
     'skip_after_n_peaks': None,
+    'subsampling_factor': 1,
 
     # boolean parameter values
     # 'allow_single_cluster': True,
@@ -817,6 +819,23 @@ class SpikeSortingDialog(QMainWindow):
         sort_config, sort_opt = sort_obj
         per_shank, concat_runs = sort_opt
         run_sorter_method = self.get_sorter_method()
+
+        # solver specific pre-calculations
+        match self.s_type:
+            case 'spykingcircus2':
+                # case is the spykingcircus2 solver
+
+                # if using tdc-peeler/nearest (matching method) then calculate noise levels
+                match_method = sort_config['sorting'][self.s_type]['matching']['method']
+                if match_method in ['tdc-peeler', 'nearest']:
+                    rec = self.session_obj.get_current_recording_probe(False)
+                    noise_levels = si.get_noise_levels(rec, return_scaled=False)
+                    sort_config['sorting'][self.s_type]['matching']['matching_kwargs']['noise_levels'] = noise_levels
+
+                # ensures the motion aware match flag is set for the tdc-peeler matching method
+                if match_method == 'tdc-peeler':
+                    motion = sort_config['sorting'][self.s_type]['general']['motion']
+                    sort_config['sorting'][self.s_type]['matching']['matching_kwargs']['motion_aware'] = motion
 
         # runs the preprocessing
         try:
@@ -1807,7 +1826,7 @@ class SpikeSorterTab(QTabWidget):
                             'tol': 1e-3,
                         }
 
-                    case p_value if p_value in ['hdbscan', 'hdbscan-gpu']:
+                    case 'hdbscan':
                         # case is hdbscan
                         p_fld_on = ['algorithm', 'allow_single_clusters', 'alpha',
                                     'approx_min_span_tree', 'cluster_selection_epsilon',
@@ -1851,7 +1870,8 @@ class SpikeSorterTab(QTabWidget):
 
                 # field retrieval
                 p_fld_on = []
-                p_fld_p = f"{p_str}_kwargs"
+                p_fld_p = "spykingcircus2-matching-matching_kwargs"
+                # p_fld_p = f"{p_str}_kwargs"
 
                 # unique parameter matches
                 match p_value:
@@ -1874,13 +1894,6 @@ class SpikeSorterTab(QTabWidget):
                             'sparsity_radius_um',
                         ]
 
-                    case 'nearest-svd':
-                        # case is the nearest-svd method
-                        p_fld_on += [
-                            'neighborhood_radius_um',
-                            'sparsity_radius_um',
-                        ]
-
                     case 'tdc-peeler':
                         # case is the tdc-peeler method
                         p_fld_on += [
@@ -1889,7 +1902,6 @@ class SpikeSorterTab(QTabWidget):
                             'cluster_radius_um',
                             'interpolation_time_bin_size_s',
                             'max_peeler_loop',
-                            'motion_aware',
                             'motion_step_um',
                             'ms_after',
                             'ms_before',
@@ -1901,21 +1913,21 @@ class SpikeSorterTab(QTabWidget):
                     case 'wobble':
                         # case is the wobble method
                         p_fld_on += [
-                            'amplitude_variance',
-                            'approx_rank',
-                            'jitter_factor',
-                            'max_iter',
-                            'refractory_period_frames',
-                            'scale_amplitudes',
-                            'scale_max',
-                            'scale_min',
-                            'threshold',
-                            'visibility_threshold',
+                            'parameters-amplitude_variance',
+                            'parameters-approx_rank',
+                            'parameters-jitter_factor',
+                            'parameters-max_iter',
+                            'parameters-refractory_period_frames',
+                            'parameters-scale_amplitudes',
+                            'parameters-scale_max',
+                            'parameters-scale_min',
+                            'parameters-threshold',
+                            'parameters-visibility_threshold',
                         ]
 
                 # multi-type parameter matches
                 match p_value:
-                    case p_value if p_value in ["nearest", "nearest-svd", "tdc-peeler"]:
+                    case p_value if p_value in ["nearest", "tdc-peeler"]:
                         p_fld_on += [
                             'detect_threshold',
                             'detection_radius_um',
@@ -2031,6 +2043,7 @@ class SpikeSorterTab(QTabWidget):
                             'merge_from_templates-similarity_thresh',
                             'merge_from_templates-use_lags',
                             'clean_low_firing-min_firing_rate',
+                            'clean_low_firing-subsampling_factor',
                         ]
 
             case 'spykingcircus2-motion_correction-preset':
@@ -2370,7 +2383,11 @@ class SpikeSortPara(object):
         super(SpikeSortPara, self).__init__()
 
         # retrieves the parameter integer index
-        i_row = self.get_para_index(ss_info0, p_fld, s_name)
+        try:
+            i_row = self.get_para_index(ss_info0, p_fld, s_name)
+        except:
+            pass
+
         ss_info = ss_info0.iloc[i_row]
 
         # common parameter fields
@@ -2672,10 +2689,17 @@ class SpikeSortInfo(QObject):
         match s_name:
             case 'spykingcircus2':
                 # case is the tridesclous2 sorter
+
+                # ensures the clustering "legacy" parameter is present
                 if 'legacy' not in p_info['clustering']:
                     p_fld_new = ['legacy'] + list(p_info['clustering'].keys())
                     p_info['clustering']['legacy'] = p_info['clustering']['method'] != 'iterative-hdbscan'
                     p_info['clustering'] = cf.reorder_dict_fields(p_info['clustering'], p_fld_new)
+
+                # renames the "methods" key word arguments to "matching"
+                #  => this is due to an error in the spykingcircus solver?!
+                if 'method_kwargs' in p_info['matching']:
+                    p_info['matching']['matching_kwargs'] = p_info['matching'].pop('method_kwargs')
 
         # stores the parameter field for the sorter
         p_dict = {}
@@ -2859,7 +2883,7 @@ class SpikeSortInfo(QObject):
 
             case 'clusterer':
                 # case is the clusterer type
-                return ['hdbscan', 'isosplit', 'hdbscan-gpu', 'kmeans',
+                return ['hdbscan', 'isosplit', 'kmeans',
                         'mean_shift', 'affinity_propagation', 'gaussian_mixture']
 
             case 'common_ref_type':
@@ -2937,7 +2961,7 @@ class SpikeSortInfo(QObject):
 
             case 'init':
                 # case is the initialisation method (simple)
-                return ['kmeans++', 'random']
+                return ['k-means++', 'random']
 
             case 'initialize':
                 # case is the template initialisation method (kilosort)
@@ -2985,7 +3009,7 @@ class SpikeSortInfo(QObject):
 
                     case 'matching':
                         # case is matching comboboxes
-                        return ['nearest', 'nearest-svd', 'tdc-peeler', 'circus-omp', 'wobble']
+                        return ['nearest', 'tdc-peeler', 'circus-omp', 'wobble']
 
                     case 'selection':
                         # case is selection comboboxes
@@ -3061,7 +3085,7 @@ class SpikeSortInfo(QObject):
 
             case 'similarity_metric':
                 # case is the similarity metric (spykingcircus2)
-                return ['cosine', 'I1', 'I2']
+                return ['cosine', 'l1', 'l2']
 
             case 'sparse_mode':
                 # case is the sparsity mode (spykingcircus2)
@@ -3077,7 +3101,7 @@ class SpikeSortInfo(QObject):
 
             case 'template_matching_engine':
                 # case is the template matching engine (lupin)
-                return ['wobble', 'circus-omp', 'tdc-peeler', 'nearest-svd', 'nearest']
+                return ['wobble', 'circus-omp', 'tdc-peeler', 'nearest']
 
             case 'torch_device':
                 # case is the torch device (kilosort4)
@@ -3182,6 +3206,30 @@ class SpikeSortInfo(QObject):
                         # case is the spykingcircus2 solver
                         return -1
 
+            case 'detect_threshold':
+                # case is the detection threshold
+                match c1_type:
+                    case 'motion_correction':
+                        return 8
+
+                    case c1_type if c1_type in ['detection', 'matching']:
+                        return 5
+
+            case 'exclude_sweep_ms':
+                # case is the detection radius
+                match c1_type:
+                    case 'detection':
+                        return 1.0
+
+                    case c1_type if c1_type in ['motion_correction', 'matching']:
+                        return 0.8
+
+            case 'gather_mode':
+                # case is the gathering mode
+                match c1_type:
+                    case 'detection':
+                        return 'memory'
+
             case 'max_iter':
                 # case is the max iteration count
                 match p_str[0]:
@@ -3192,63 +3240,6 @@ class SpikeSortInfo(QObject):
                     case 'spykingcircus2':
                         # case is the spykingcircus2 solver
                         return 1000
-
-            case 'min_cluster_size':
-                # case is the minimum cluster size
-                match p_str[0]:
-                    case 'simple':
-                        # case is the simple solver
-                        return 5
-
-                    case 'spykingcircus2':
-                        # case is the spykingcircus2 solver
-                        match p_str[3]:
-                            case 'clusterer':
-                                return 10
-
-                            case _:
-                                return 20
-
-            case 'n_components':
-                # case is the PCA component count
-                match p_str[0]:
-                    case 'simple':
-                        # case is the simple solver
-                        return 1
-
-                    case 'spykingcircus2':
-                        # case is the spykingcircus2 solver
-                        match np_str:
-                            case 2:
-                                return 5
-
-                            case 4:
-                                return 10
-
-            case 'min_snr':
-                # case is the minimum snr
-                match c1_type:
-                    case 'cleaning':
-                        return 5.0
-
-                    case 'clustering':
-                        return 2.5
-
-            case 'radius_um':
-                # case is the neighbourhood radius
-                match c1_type:
-                    case 'general':
-                        return 100
-
-                    case 'motion_correction':
-                        return 80
-
-                    case c1_type if c1_type in ['clustering', 'detection']:
-                        return 50
-
-            case pf if pf in ['neighborhood_radius_um', 'neighbors_radius_um']:
-                # case is the neighbourhood radius
-                return 50
 
             case 'method':
                 # case is the method selection
@@ -3280,14 +3271,30 @@ class SpikeSortInfo(QObject):
                             case 'localize_peak_kwargs':
                                 return 'grid_convolution'
 
-            case 'threshold':
-                # case is the threshold value
-                match c1_type:
-                    case 'clustering':
-                        return 0.25
+            case 'min_cluster_size':
+                # case is the minimum cluster size
+                match p_str[0]:
+                    case 'simple':
+                        # case is the simple solver
+                        return 5
 
-                    case 'matching':
-                        return 50.0
+                    case 'spykingcircus2':
+                        # case is the spykingcircus2 solver
+                        match p_str[3]:
+                            case 'clusterer':
+                                return 10
+
+                            case _:
+                                return 20
+
+            case 'min_snr':
+                # case is the minimum snr
+                match c1_type:
+                    case 'cleaning':
+                        return 5.0
+
+                    case 'clustering':
+                        return 2.5
 
             case 'ms_after':
                 # case is the pre-peak duration
@@ -3307,32 +3314,46 @@ class SpikeSortInfo(QObject):
                     case 'matching':
                         return 0.5
 
-            case 'gather_mode':
-                # case is the gathering mode
+            case 'n_components':
+                # case is the PCA component count
+                match p_str[0]:
+                    case 'simple':
+                        # case is the simple solver
+                        return 1
+
+                    case 'spykingcircus2':
+                        # case is the spykingcircus2 solver
+                        match np_str:
+                            case 2:
+                                return 5
+
+                            case 4:
+                                return 10
+
+            case pf if pf in ['neighborhood_radius_um', 'neighbors_radius_um']:
+                # case is the neighbourhood radius
+                return 50
+
+            case 'radius_um':
+                # case is the neighbourhood radius
                 match c1_type:
-                    case 'detection':
-                        return 'memory'
+                    case 'general':
+                        return 100
+
+                    case 'motion_correction':
+                        return 80
+
+                    case c1_type if c1_type in ['clustering', 'detection']:
+                        return 50
+
+            case 'threshold':
+                # case is the threshold value
+                match c1_type:
+                    case 'clustering':
+                        return 0.25
 
                     case 'matching':
-                        return 'numpy'
-
-            case 'detect_threshold':
-                # case is the detection threshold
-                match c1_type:
-                    case 'motion_correction':
-                        return 8
-
-                    case c1_type if c1_type in ['detection', 'matching']:
-                        return 5
-
-            case 'exclude_sweep_ms':
-                # case is the detection radius
-                match c1_type:
-                    case 'detection':
-                        return 1.0
-
-                    case c1_type if c1_type in ['motion_correction', 'matching']:
-                        return 0.8
+                        return 50.0
 
     # ---------------------------------------------------------------------------
     # Static Methods
