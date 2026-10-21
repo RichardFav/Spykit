@@ -109,18 +109,18 @@ initialize,Template Initialisation Method,***,combobox,Clustering,***,***,***,**
 loop_mode,Loop Mode,***,combobox,Job Parameters,***,***,***,***,***,***
 method,Method,***,combobox,clustering,***,***,***,***,***,***
 method,Method,***,combobox,clustering,method_kwargs,clusterer,***,***,***,***
-method,Method,***,combobox,clustering,method_kwargs,peak_localization_kwargs,***,***,***,***
+method,Method,***,combobox,clustering,method_kwargs,localize_peaks_kwargs,***,***,***,***
 method,Method,***,combobox,clustering,method_kwargs,sparsity,***,***,***,***
 method,Method,***,combobox,clustering,method_kwargs,split,method_kwargs,clusterer,***,***
 method,Method,***,combobox,detection,***,***,***,***,***,***
 method,Method,***,combobox,matching,***,***,***,***,***,***
 method,Method,Drift Correction,combobox,motion_correction,detect_kwargs,***,***,***,***,***
 method,Method,Drift Correction,combobox,motion_correction,estimate_motion_kwargs,***,***,***,***,***
-method,Method,Drift Correction,combobox,motion_correction,localize_peak_kwargs,***,***,***,***,***
+method,Method,Drift Correction,combobox,motion_correction,localize_peaks_kwargs,***,***,***,***,***
 method,Method,***,combobox,selection,***,***,***,***,***,***
 metric,Distance Metric,***,combobox,clusterer_kwargs,***,***,***,***,***,***
 mode,Mode,All,combobox,cache_preprocessing,***,***,***,***,***,***
-mode,Mode,Drift Correction,combobox,motion_correction,localize_peak_kwargs,weight_method,***,***,***,***
+mode,Mode,Drift Correction,combobox,motion_correction,localize_peaks_kwargs,weight_method,***,***,***,***
 mode,Mode,Whitening,combobox,whitening,***,***,***,***,***,***
 motion_correction_preset,Preset,Drift Correction,combobox,Preprocessing,***,***,***,***,***,***
 mp_context,Multiprocessor Context,***,combobox,Job Parameters,***,***,***,***,***,***
@@ -165,7 +165,7 @@ graph_kwargs,Graphing Parameters,***,dict,clustering,method_kwargs,***,***,***,*
 hdbscan_kwargs,HDBScan Parameters,***,dict,clustering,method_kwargs,***,***,***,***,***
 interpolate_motion_kwargs,Motion Interpolation Parameters,Drift Correction,dict,motion_correction,***,***,***,***,***,***
 job_kwargs,Job Parameters,***,dict,***,***,***,***,***,***,***
-localize_peak_kwargs,Peak Localisation Parameters,Drift Correction,dict,motion_correction,***,***,***,***,***,***
+localize_peaks_kwargs,Peak Localisation Parameters,Drift Correction,dict,motion_correction,***,***,***,***,***,***
 matching,Matching Parameters,***,dict,***,***,***,***,***,***,***
 merge_from_templates,Template Merging Parameters,***,dict,clustering,method_kwargs,***,***,***,***,***
 merging,Merging Parameters,***,dict,***,***,***,***,***,***,***
@@ -176,7 +176,7 @@ method_kwargs,Method Parameters,***,dict,detection,***,***,***,***,***,***
 method_kwargs,Method Parameters,***,dict,selection,***,***,***,***,***,***
 motion_correction,Motion Correction Parameters,Drift Correction,dict,***,***,***,***,***,***,***
 parameters,Wobble Parameters,***,dict,matching,matching_kwargs,***,***,***,***,***
-peak_localization_kwargs,Peak Localisation Parameters,***,dict,clustering,method_kwargs,***,***,***,***,***
+localize_peaks_kwargs,Peak Localisation Parameters,***,dict,clustering,method_kwargs,***,***,***,***,***
 pipeline_kwargs,Pipeline Parameters,***,dict,detection,***,***,***,***,***,***
 pipeline_kwargs,Pipeline Parameters,***,dict,matching,***,***,***,***,***,***
 preprocessing_dict,Preprocessing Options,All,dict,***,***,***,***,***,***,***
@@ -185,7 +185,7 @@ smoothing,Smoothing Parameters,***,dict,clustering,method_kwargs,***,***,***,***
 sparsity,Sparsity Parameters,***,dict,clustering,method_kwargs,***,***,***,***,***
 split,Split Parameters,***,dict,clustering,method_kwargs,***,***,***,***,***
 waveforms,Waveform Parameters,***,dict,clustering,method_kwargs,***,***,***,***,***
-weight_method,Weight Parameters,Drift Correction,dict,motion_correction,localize_peak_kwargs,***,***,***,***,***
+weight_method,Weight Parameters,Drift Correction,dict,motion_correction,localize_peaks_kwargs,***,***,***,***,***
 whitening,Whitening Parameters,Whitening,dict,***,***,***,***,***,***,***
 acg_threshold,ACG Threshold Level,***,edit_float,Clustering,***,***,***,***,0,inf
 add_if_nearer_than,Min Electrode Group Distance (um),***,edit_float,Template Matching,***,***,***,***,1,inf
@@ -251,7 +251,7 @@ fslow,Low-Pass Cutoff Freq (Hz),Bandpass Filter,edit_float,Preprocessing,***,***
 gain,Signal Gain Factor,***,edit_float,Preprocessing,***,***,***,***,0,inf
 genericSpkTh,Crossing Threshold,***,edit_float,Spike Detection,***,***,***,***,0,inf
 highpass_cutoff,High-Pass Cutoff Freq (Hz),Bandpass Filter,edit_float,Preprocessing,***,***,***,***,0,inf
-hist_margin_um,Histogram Bin Size (um),Drift Correction,edit_float,motion_correction,estimate_motion_kwargs,***,***,***,0,inf
+hist_margin_um,Histogram Margin Size (um),Drift Correction,edit_float,motion_correction,estimate_motion_kwargs,***,***,***,0,inf
 inner_radius,Probe Radius (um),***,edit_float,Spike Detection,***,***,***,***,0,inf
 interpolation_time_bin_size_s,Interpolation Time Bin Size (s),***,edit_float,matching,matching_kwargs,***,***,***,0,inf
 isocut_threshold,Threshold,***,edit_float,clusterer_kwargs,***,***,***,***,0,inf
@@ -527,7 +527,7 @@ drift_smoothing,Gaussian Filter Parameters,Drift Correction,group_edit_float,Pre
 lam,Amplitude Penalty Importance,***,group_edit_float,Template Matching,***,***,***,***,0,inf
 local_radius,Neighbourhood Radius (um),Common Reference,group_edit_float,preprocessing_dict,***,***,***,***,0,inf
 momentum,Annealing Momentum,***,group_edit_float,Template Matching,***,***,***,***,0,inf
-sigma_list_um,Std Dev Grid Size,Drift Correction,group_edit_float,motion_correction,localize_peak_kwargs,weight_method,***,***,1,inf
+sigma_list_um,Std Dev Grid Size,Drift Correction,group_edit_float,motion_correction,localize_peaks_kwargs,weight_method,***,***,1,inf
 Th,Projection Threshold,***,group_edit_float,Spike Detection,***,***,***,***,0,inf
 loc_range,Local Minima Window Size (Frames),***,group_edit_int,Spike Detection,***,***,***,***,0,inf
 long_range,Spatial Neighbourhood Size (Frames),***,group_edit_int,Spike Detection,***,***,***,***,0,inf

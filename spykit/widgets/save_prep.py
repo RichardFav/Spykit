@@ -13,7 +13,7 @@ from multiprocess.managers import SyncManager
 import spykit.info.preprocess as pp
 import spykit.common.common_func as cf
 import spykit.common.common_widget as cw
-from spykit.threads.utils import ThreadWorker, SavePrepThreadWorker
+from spykit.threads.utils import ThreadWorker, ProcessPoolWorker
 
 # spikeinterface module imports
 import spikeinterface.core as si
@@ -235,7 +235,7 @@ class SavePrep(QDialog):
         if self.is_updating:
             return
 
-        # resets the button state
+        # pauses to update the program
         time.sleep(0.05)
 
         if self.is_running:
@@ -284,7 +284,7 @@ class SavePrep(QDialog):
         save_data = (pp_rec, pp_para, self.path_curr, self.n_worker)
 
         # creates the threadworker object
-        self.t_worker = SavePrepThreadWorker(self.sp_main, self.sync_manager, save_data)
+        self.t_worker = ProcessPoolWorker(self.sp_main, self.sync_manager, save_data, 'save_prep')
         self.t_worker.work_finished.connect(self.save_prep_data_complete)
         self.t_worker.work_progress.connect(self.save_prep_data_progress)
 

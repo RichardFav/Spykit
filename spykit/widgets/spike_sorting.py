@@ -2,6 +2,7 @@
 import re
 import os
 import time
+import dill
 import docker
 import shutil
 import logging
@@ -17,7 +18,7 @@ from functools import partial as pfcn
 import spykit.common.common_func as cf
 import spykit.common.common_widget as cw
 from spykit.info.preprocess import pp_flds
-from spykit.threads.utils import ThreadWorker
+from spykit.threads.utils import ThreadWorker, ProcessPoolWorker
 
 # spike interface module imports
 import spikeinterface.core as si
@@ -72,8 +73,6 @@ def_val_dict = {
     'alpha': 10.0,
     'amplitude_fitting_radius_um': 150.0,
     'amplitude_variance': 1.0,
-    'bin_s': 2.0,
-    'chunk_duration': 1.0,
     'cluster_radius_um': 150.0,
     'cluster_selection_epsilon': 0.0,
     'cluster_selection_epsilon_max': np.inf,
@@ -243,6 +242,8 @@ class SpikeSortingDialog(QMainWindow):
         # sets the input arguments
         self.sp_main = sp_main
         self.ss_config = ss_config
+        self.sync_manager = sp_main.sync_manager
+        self.time_manager = sp_main.time_manager
 
         if self.sp_main is not None:
             # field retrieval
@@ -272,8 +273,8 @@ class SpikeSortingDialog(QMainWindow):
                 self.concat_runs_pp = False
 
             # # REMOVE ME LATER
-            # self.pp_steps = []
-            # self.has_pp = False
+            self.pp_steps = []
+            self.has_pp = False
 
             # sets the preprocessing options
             self.prep_opt = [self.per_shank_pp, self.concat_runs_pp]
@@ -308,7 +309,7 @@ class SpikeSortingDialog(QMainWindow):
 
         # boolean class fields
         self.ss_change = False
-        self.is_running = True
+        self.is_running = False
         self.is_updating = False
         self.per_shank = False
         self.concat_runs = False
@@ -714,11 +715,15 @@ class SpikeSortingDialog(QMainWindow):
         if self.is_updating:
             return
 
-        # resets the button state
-        self.is_running = not self.button_cont[0].isChecked()
+        # pauses to update the program
         time.sleep(0.05)
 
         if self.is_running:
+            # stops the worker
+            self.t_worker.force_quit()
+            time.sleep(0.01)
+
+        else:
             if not self.check_sort_overwrite():
                 # if the user cancelled, then exit the function
                 self.is_updating = True
@@ -728,36 +733,29 @@ class SpikeSortingDialog(QMainWindow):
                 # exits the function
                 return
 
+            # flag that the worker is running
+            self.is_running = True
+
             # disables the panel properties
             self.set_sorting_props(False)
             self.button_cont[0].setChecked(True)
 
             # updates the progressbar
-            self.prog_bar.set_label("Running Spike Sorting")
+            self.prog_bar.set_label("Initialising Sorter")
             self.prog_bar.set_progbar_state(True)
             time.sleep(0.1)
 
-            # sets up the configuration dictionary
-            sort_config = {'sorting': {self.s_type: self.setup_config_dict()}}
-
             # retrieves the preprocessing information
             prep_obj = self.sp_main.session_obj.session.prep_obj
-            sort_opt = (self.per_shank and (not prep_obj.per_shank),
-                        self.concat_runs and (not prep_obj.concat_runs))
+            sort_props = {
+                'ss_config': self.setup_sort_config(),
+                'sorter_method': self.get_sorter_method(),
+                'per_shank': self.per_shank and (not prep_obj.per_shank),
+                'concat_runs': self.concat_runs and (not prep_obj.concat_runs),
+            }
 
             # starts running the pre-processing
-            self.setup_spike_sorting_worker((sort_config, sort_opt))
-
-        else:
-            # stops the worker
-            self.t_worker.force_quit()
-            time.sleep(0.01)
-
-            # disables the progressbar fields
-            self.prog_bar.set_progbar_state(False)
-
-            # resets the other properties
-            self.set_sorting_props(True)
+            self.setup_spike_sorting_worker(sort_props)
 
     def close_window(self):
 
@@ -794,78 +792,30 @@ class SpikeSortingDialog(QMainWindow):
     # Spike Sorting Worker Functions
     # ---------------------------------------------------------------------------
 
-    def set_checkbox_enabled_props(self):
+    def setup_spike_sorting_worker(self, sort_props):
 
-        # sets the by shank checkbox enabled properties
-        n_shank = self.session_obj.get_shank_count()
-        self.checkbox_opt[0].setEnabled((n_shank > 1) and (not self.per_shank_pp))
-
-        # sets the concatenation checkbox enabled properties
-        n_run = self.session.get_run_count()
-        self.checkbox_opt[1].setEnabled((n_run > 1) and (not self.concat_runs_pp))
-
-    def setup_spike_sorting_worker(self, sort_obj):
+        # sets the sorting parameter object
+        sort_para = (dill.dumps(self.session.sort_obj.s), dill.dumps(sort_props))
 
         # creates the threadworker object
-        self.t_worker = ThreadWorker(self.sp_main, self.run_spike_sorting_worker, sort_obj)
+        self.t_worker = ProcessPoolWorker(self.sp_main, self.sync_manager, sort_para, 'spike_sort')
         self.t_worker.work_finished.connect(self.spike_sorting_complete)
+        self.t_worker.work_init_complete.connect(self.spike_sorting_init_complete)
+        self.t_worker.work_error.connect(self.spike_sorting_error)
 
         # starts the worker object
         self.t_worker.start()
 
-    def run_spike_sorting_worker(self, sort_obj):
+    def spike_sorting_init_complete(self):
 
-        # sorting parameters
-        sort_config, sort_opt = sort_obj
-        per_shank, concat_runs = sort_opt
-        run_sorter_method = self.get_sorter_method()
+        self.prog_bar.set_label("Running Spike Sorting")
 
-        # solver specific pre-calculations
-        match self.s_type:
-            case 'spykingcircus2':
-                # case is the spykingcircus2 solver
-
-                # if using tdc-peeler/nearest (matching method) then calculate noise levels
-                match_method = sort_config['sorting'][self.s_type]['matching']['method']
-                if match_method in ['tdc-peeler', 'nearest']:
-                    rec = self.session_obj.get_current_recording_probe(False)
-                    noise_levels = si.get_noise_levels(rec, return_scaled=False)
-                    sort_config['sorting'][self.s_type]['matching']['matching_kwargs']['noise_levels'] = noise_levels
-
-                # ensures the motion aware match flag is set for the tdc-peeler matching method
-                if match_method == 'tdc-peeler':
-                    motion = sort_config['sorting'][self.s_type]['general']['motion']
-                    sort_config['sorting'][self.s_type]['matching']['matching_kwargs']['motion_aware'] = motion
-
-        # runs the preprocessing
-        try:
-            self.session.sort_obj.sort(sort_config, per_shank, concat_runs, run_sorter_method)
-            return []
-        except Exception as e:
-            return str(e)
-
-    def spike_sorting_complete(self, sorting_msg):
+    def spike_sorting_complete(self, sort_flag):
 
         # stops and updates the progressbar
         self.prog_bar.stop_timer()
 
-        if len(sorting_msg):
-            # case is there was a spike-sorting calculation error
-            error_msg = self.get_spike_sorting_error(sorting_msg)
-            cf.show_error(error_msg, 'Spike Sorting Calculation Error', True)
-            self.prog_bar.set_progbar_state(False)
-
-            # force stops the worker
-            self.t_worker.force_quit()
-            time.sleep(0.01)
-
-            # shuts down logging
-            logging.shutdown()
-
-            # updates the boolean flags
-            self.ss_change = False
-
-        else:
+        if sort_flag:
             # updates the boolean flags
             self.ss_change = True
 
@@ -873,18 +823,66 @@ class SpikeSortingDialog(QMainWindow):
             self.prog_bar.set_label('Spike Sorting Complete')
             self.prog_bar.set_full_prog()
 
+        else:
+            # case is there was a spike-sorting calculation error
+            self.prog_bar.set_progbar_state(False)
+
+            # updates the boolean flags
+            self.ss_change = False
+
+        # resets the running flag
+        self.is_running = False
+        self.t_worker.timer.stop()
+
         # resets the other properties
         self.set_sorting_props(True)
 
-    def reset_tab_types(self):
+    def spike_sorting_error(self, error_msg):
 
-        # tab-group change callback function
-        h_tab_sel = self.tab_group_sort.currentWidget()
-        self.g_type = h_tab_sel.objectName()
+        # stops the processbar
+        self.prog_bar.set_progbar_state(False)
 
-        # retrieves the sub-group type
-        h_tab_grp_sub = h_tab_sel.findChild(QTabWidget)
-        self.s_type = h_tab_grp_sub.currentWidget().objectName()
+        # case is there was a spike-sorting calculation error
+        error_msg_final = self.get_spike_sorting_error(error_msg)
+        cf.show_error(error_msg_final, 'Spike Sorting Calculation Error', True)
+
+        # force stops the worker
+        self.t_worker.force_quit()
+        time.sleep(0.01)
+
+    def setup_sort_config(self):
+
+        # sets up the configuration dictionary
+        sort_config = {'sorting': {self.s_type: self.setup_config_dict()}}
+
+        # solver specific pre-calculations
+        s_config = sort_config['sorting'][self.s_type]
+        match self.s_type:
+            case 'spykingcircus2':
+                # case is the spykingcircus2 solver
+
+                # sets the motion correction fields (if applicable)
+                if s_config['apply_motion_correction']:
+                    motion_preset = s_config['motion_correction']['preset']
+                    if motion_preset == 'kilosort_like':
+                        sl = s_config['motion_correction']['localize_peaks_kwargs']['weight_method']['sigma_list_um']
+                        sl_um = np.linspace(sl[0], sl[1], int(sl[2]))
+                        s_config['motion_correction']['localize_peaks_kwargs']['weight_method']['sigma_list_um'] = sl_um
+
+                # if using tdc-peeler/nearest (matching method) then calculate noise levels
+                match_method = s_config['matching']['method']
+                if match_method in ['tdc-peeler', 'nearest']:
+                    rec = self.session_obj.get_current_recording_probe(False)
+                    noise_levels = si.get_noise_levels(rec, return_scaled=False)
+                    s_config['matching']['matching_kwargs']['noise_levels'] = noise_levels
+
+                # ensures the motion aware match flag is set for the tdc-peeler matching method
+                if match_method == 'tdc-peeler':
+                    motion = s_config['general']['motion']
+                    s_config['matching']['matching_kwargs']['motion_aware'] = motion
+
+        # runs the preprocessing
+        return sort_config
 
     # ---------------------------------------------------------------------------
     # Worker Progress Functions
@@ -904,6 +902,16 @@ class SpikeSortingDialog(QMainWindow):
     # ---------------------------------------------------------------------------
     # Miscellaneous Methods
     # ---------------------------------------------------------------------------
+
+    def set_checkbox_enabled_props(self):
+
+        # sets the by shank checkbox enabled properties
+        n_shank = self.session_obj.get_shank_count()
+        self.checkbox_opt[0].setEnabled((n_shank > 1) and (not self.per_shank_pp))
+
+        # sets the concatenation checkbox enabled properties
+        n_run = self.session.get_run_count()
+        self.checkbox_opt[1].setEnabled((n_run > 1) and (not self.concat_runs_pp))
 
     def set_sorting_props(self, state):
 
@@ -925,6 +933,16 @@ class SpikeSortingDialog(QMainWindow):
         g_tab, i_tab = self.get_sorter_tab_props(sl_name)
         h_tab_grp = self.tab_group_sort.findChild(QTabWidget, name=g_tab)
         h_tab_grp.setTabEnabled(i_tab, state)
+
+    def reset_tab_types(self):
+
+        # tab-group change callback function
+        h_tab_sel = self.tab_group_sort.currentWidget()
+        self.g_type = h_tab_sel.objectName()
+
+        # retrieves the sub-group type
+        h_tab_grp_sub = h_tab_sel.findChild(QTabWidget)
+        self.s_type = h_tab_grp_sub.currentWidget().objectName()
 
     def setup_config_dict(self, i_lvl=1, p_str_p=None):
 
@@ -1970,7 +1988,7 @@ class SpikeSorterTab(QTabWidget):
                     case 'hdbscan-positions':
                         # case is the hdbscan-positions method
                         p_fld_on = [
-                            'peak_localization_kwargs-method',
+                            'localize_peaks_kwargs-method',
                             'hdbscan_kwargs',
                             'hdbscan_kwargs-min_cluster_size',
                             'hdbscan_kwargs-allow_single_cluster',
@@ -2052,8 +2070,9 @@ class SpikeSorterTab(QTabWidget):
                 # field retrieval
                 p_fld_p = "spykingcircus2-motion_correction"
                 p_fld_on = [
+                    'preset',
                     'detect_kwargs-method',
-                    'localize_peak_kwargs-method',
+                    'localize_peaks_kwargs-method',
                     'estimate_motion_kwargs-method',
                     'interpolate_motion_kwargs-border_mode',
                     'interpolate_motion_kwargs-spatial_interpolation_method',
@@ -2092,8 +2111,8 @@ class SpikeSorterTab(QTabWidget):
                         # parameter fields
                         p_fld_on += [
                             'estimate_motion_kwargs-hist_margin_um',
-                            'localize_peak_kwargs-weight_method-mode',
-                            'localize_peak_kwargs-weight_method-sigma_list_um',
+                            'localize_peaks_kwargs-weight_method-mode',
+                            'localize_peaks_kwargs-weight_method-sigma_list_um',
                         ]
 
                         # parameter dictionary values
@@ -2102,7 +2121,7 @@ class SpikeSorterTab(QTabWidget):
                         p_dict['estimate_motion_kwargs-method'] = 'kilosort_like'
                         p_dict['estimate_motion_kwargs-win_shape'] = 'rect'
                         p_dict['estimate_motion_kwargs-win_step_um'] = 200.0
-                        p_dict['estimate_motion_kwargs-bin_s'] = 2.0
+                        p_dict['estimate_motion_kwargs-bin_s'] = self.main_dlg.ss_obj.get_bin_size(2.0)
                         p_dict['estimate_motion_kwargs-method'] = 'iterative_template'
 
                     case 'medicine':
@@ -2134,7 +2153,7 @@ class SpikeSorterTab(QTabWidget):
                         p_dict['detect_kwargs-radius_um'] = 75.0
                         p_dict['localize_peaks_kwargs-method'] = 'center_of_mass'
                         p_dict['estimate_motion_kwargs-rigid'] = True
-                        p_dict['estimate_motion_kwargs-bin_s'] = 5.0
+                        p_dict['estimate_motion_kwargs-bin_s'] = self.main_dlg.ss_obj.get_bin_size(5.0)
                         p_dict['interpolate_motion_kwargs-border_mode'] = 'remove_channels'
 
                 # --- ADDITIONAL SOLVER SPECIFIC PARAMETERS --- #
@@ -2383,11 +2402,7 @@ class SpikeSortPara(object):
         super(SpikeSortPara, self).__init__()
 
         # retrieves the parameter integer index
-        try:
-            i_row = self.get_para_index(ss_info0, p_fld, s_name)
-        except:
-            pass
-
+        i_row = self.get_para_index(ss_info0, p_fld, s_name)
         ss_info = ss_info0.iloc[i_row]
 
         # common parameter fields
@@ -2602,6 +2617,7 @@ class SpikeSortInfo(QObject):
 
         # sets the session object
         self.ses_obj = ses_obj
+        self.time_manager = ses_obj.sp_main.time_manager
 
         # memory allocation
         self.all_s = available_sorters()
@@ -2979,7 +2995,7 @@ class SpikeSortInfo(QObject):
                         return ["iterative-hdbscan", "iterative-isosplit", "hdbscan-positions",
                                 "random-projections", "graph-clustering"]
 
-                    case 'peak_localization_kwargs':
+                    case 'localize_peaks_kwargs':
                         return ["center_of_mass", "monopolar_triangulation", "grid_convolution"]
 
                     case 'sparsity':
@@ -3000,7 +3016,7 @@ class SpikeSortInfo(QObject):
                     case 'estimate_motion_kwargs':
                         return ["iterative_template", "dredge_ap", "decentralized", "medicine"]
 
-                    case 'localize_peak_kwargs':
+                    case 'localize_peaks_kwargs':
                         return ["monopolar_triangulation", "grid_convolution", "center_of_mass"]
 
                     case 'detection':
@@ -3130,6 +3146,18 @@ class SpikeSortInfo(QObject):
     # Getter Functions
     # ---------------------------------------------------------------------------
 
+    def get_bin_size(self, def_bin_s):
+
+        # calculates the max bin size (based on experiment duration)
+        t_max = np.min(self.time_manager.get('t_dur', True)[0])
+        max_bin_s = np.pow(10.0, np.floor(np.log10(t_max)))
+
+        # returns the bin size based on the relative max/default bin sizes
+        if max_bin_s < def_bin_s:
+            return max_bin_s
+        else:
+            return def_bin_s
+
     def get_sorter_info(self):
 
         try:
@@ -3195,6 +3223,22 @@ class SpikeSortInfo(QObject):
                         # case is the spykingcircus2 solver
                         return True
 
+            case 'bin_s':
+                # case is the temporal binning size
+                return 2.0
+
+            case 'chunk_duration':
+                # case is the chunk-duration
+                def_chunk_dur, n_chunk_min = 1.0, 2
+                t_max = np.min(self.time_manager.get('t_dur', True)[0])
+                if t_max / def_chunk_dur < n_chunk_min:
+                    # if the expt is short, then recalculate the chunk durations
+                    return np.round(t_max / n_chunk_min, 2)
+
+                else:
+                    # otherwise, use the default chunk duration
+                    return def_chunk_dur
+
             case 'core_dist_n_jobs':
                 # case is the distributed core count
                 match p_str[0]:
@@ -3219,10 +3263,10 @@ class SpikeSortInfo(QObject):
                 # case is the detection radius
                 match c1_type:
                     case 'detection':
-                        return 1.0
+                        return self.get_bin_size(1.0)
 
                     case c1_type if c1_type in ['motion_correction', 'matching']:
-                        return 0.8
+                        return self.get_bin_size(0.8)
 
             case 'gather_mode':
                 # case is the gathering mode
@@ -3247,7 +3291,7 @@ class SpikeSortInfo(QObject):
                     case 'clustering':
                         # case is the clustering methods
                         match p_str[3]:
-                            case 'peak_localization_kwargs':
+                            case 'localize_peaks_kwargs':
                                 return 'center_of_mass'
 
                             case 'sparsity':
@@ -3268,7 +3312,7 @@ class SpikeSortInfo(QObject):
                             case 'estimate_motion_kwargs':
                                 return 'dredge_ap'
 
-                            case 'localize_peak_kwargs':
+                            case 'localize_peaks_kwargs':
                                 return 'grid_convolution'
 
             case 'min_cluster_size':
