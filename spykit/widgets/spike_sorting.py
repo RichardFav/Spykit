@@ -273,8 +273,8 @@ class SpikeSortingDialog(QMainWindow):
                 self.concat_runs_pp = False
 
             # # REMOVE ME LATER
-            self.pp_steps = []
-            self.has_pp = False
+            # self.pp_steps = []
+            # self.has_pp = False
 
             # sets the preprocessing options
             self.prep_opt = [self.per_shank_pp, self.concat_runs_pp]
