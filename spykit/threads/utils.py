@@ -2,6 +2,7 @@
 import sys
 import dill
 import time
+import traceback
 from multiprocess import Queue
 from pathos.multiprocessing import ProcessingPool
 
@@ -122,8 +123,18 @@ def run_spike_sort(sort_para, queue):
             per_shank=sort_props['per_shank'],
             concat_runs=sort_props['concat_runs']
         )
+
     except Exception as e:
-        queue.put([str(e)])
+        # sets up the error message info dictionary
+        err_info = {
+            'exc_type': type(e).__name__,
+            'exe_msg': str(e),
+            'exc_args': e.args,
+            'tb_details': traceback.extract_tb(e.__traceback__),
+        }
+
+        # adds the error dictionary to the queue
+        queue.put([err_info])
         time.sleep(2.5 * t_period)
 
 class ProcessPoolWorker(QThread):
@@ -132,7 +143,7 @@ class ProcessPoolWorker(QThread):
     work_finished = pyqtSignal(bool)
     work_progress = pyqtSignal(int, int)
     work_init_complete = pyqtSignal()
-    work_error = pyqtSignal(str)
+    work_error = pyqtSignal(dict)
 
     def __init__(self, parent, sync_manager, work_data, job_type):
         super(ProcessPoolWorker, self).__init__(parent)

@@ -43,6 +43,8 @@ if __name__ == '__main__':
     app = QApplication(sys.argv)
 
     if is_testing:
+        from spykit.testing.testing import Testing
+
         # case is running testing mode
         test_obj = Testing(test_type)
         h_app = test_obj.run_test()

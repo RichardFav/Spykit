@@ -110,6 +110,20 @@ class Testing(object):
                 # case is running the bomb cell solver
                 return self.run_bomb_cell()
 
+            case 16:
+                # case is running the spike sorting error dialog
+                import pickle
+                from spykit.widgets.error_dialog import SpikeSortErrorDialog
+
+                with open('ErrorExample.pkl', 'rb') as f:
+                    err_info = pickle.load(f)
+
+                with open('ErrorExample2.pkl', 'rb') as f:
+                    err_info2 = pickle.load(f)
+
+                return SpikeSortErrorDialog(err_info2)
+                # SpikeSortErrorDialog(err_info).exec()
+
     def run_dialog_test(self, title_str="My Dialog"):
         """
 

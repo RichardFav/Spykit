@@ -18,6 +18,7 @@ from functools import partial as pfcn
 import spykit.common.common_func as cf
 import spykit.common.common_widget as cw
 from spykit.info.preprocess import pp_flds
+from spykit.widgets.error_dialog import SpikeSortErrorDialog
 from spykit.threads.utils import ThreadWorker, ProcessPoolWorker
 
 # spike interface module imports
@@ -837,14 +838,18 @@ class SpikeSortingDialog(QMainWindow):
         # resets the other properties
         self.set_sorting_props(True)
 
-    def spike_sorting_error(self, error_msg):
+    def spike_sorting_error(self, err_info):
+
+        # remove me later
+        import pickle
+        with open('ErrorExample.pkl', 'wb') as f:
+            pickle.dump(err_info, f)
 
         # stops the processbar
         self.prog_bar.set_progbar_state(False)
 
         # case is there was a spike-sorting calculation error
-        error_msg_final = self.get_spike_sorting_error(error_msg)
-        cf.show_error(error_msg_final, 'Spike Sorting Calculation Error', True)
+        SpikeSortErrorDialog(err_info).exec()
 
         # force stops the worker
         self.t_worker.force_quit()
@@ -2588,8 +2593,8 @@ class SpikeSortPara(object):
 
 class SpikeSortInfo(QObject):
     # other static class fields
-    ig_para = ['shift', 'scale', 'datashift',
-               'fs', 'x_centers', 'delete_tmp_files']
+    ig_para = ['shift', 'scale', 'datashift', 'minfr_goodchannels',
+               'fs', 'x_centers', 'delete_tmp_files', 'nested_params']
     l_pattern = rf"(?<={re.escape('spikeinterface/')}).*?(?={re.escape('-')})"
 
     # forced dictionary fields
